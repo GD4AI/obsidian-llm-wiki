@@ -295,8 +295,15 @@ export async function createNewPage(
     // `mergeFrontmatter` helper still owns the merge-page.ts path
     // (which has different requirements: emit a fresh `updated:`
     // stamp and full re-serialization).
+    // On the create path the machine knows the page's complete provenance:
+    // exactly the one source of this run. The model
+    // sometimes invents additional `sources:` entries (observed: 5 of 8
+    // "multi-source" pages were born with a second source whose note does
+    // not exist), and the #523 passthrough carries them past the
+    // constraints pass. Drop whatever the model wrote before stamping the
+    // true source: fabricated provenance is worse than none.
     const sourcedContent = sourceSlug
-      ? appendSourceSlugToFrontmatter(mentionsInjectedContent, sourceSlug)
+      ? appendSourceSlugToFrontmatter(dropSourcesField(mentionsInjectedContent), sourceSlug)
       : mentionsInjectedContent;
     // Stage 4 (#568): one field — the extraction's validated belonging
     // subset joins the identity value in `tags:` instead of feeding a
@@ -425,4 +432,20 @@ export function appendSourceSlugToFrontmatter(content: string, sourceSlug: strin
     lines.splice(sourcesIdx + 1, contEnd - (sourcesIdx + 1), ...newContinuation);
   }
   return `---\n${lines.join('\n')}\n---\n${body}`;
+}
+
+/**
+ * Remove any `sources:` field (block or flow style) from the frontmatter.
+ * Used by the create path only, right before the true source is stamped —
+ * see the call site in `createNewPage`. List items may sit at column 0 or
+ * indented; the run ends at the first line that is not a `- ` item. Content
+ * without frontmatter is returned unchanged.
+ */
+export function dropSourcesField(content: string): string {
+  if (!content.startsWith('---')) return content;
+  const fmEnd = content.indexOf('\n---\n', 3);
+  if (fmEnd === -1) return content;
+  const fm = content.substring(0, fmEnd + 1);
+  const cleaned = fm.replace(/^sources:[^\n]*\n(?:[ \t]*-[^\n]*\n)*/m, '');
+  return cleaned === fm ? content : cleaned + content.substring(fmEnd + 1);
 }
