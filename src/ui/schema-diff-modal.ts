@@ -31,6 +31,7 @@ import { lineDiff } from '../core/diff';
 import { TEXTS } from '../texts';
 import {
   applyDiffModalClasses,
+  buildDiffCell,
   normalizeEmptyMode,
   removeDiffModalClasses,
 } from './schema-diff-modal-classes';
@@ -307,36 +308,9 @@ export class SchemaDiffModal extends Modal {
     leftPane.empty();
     rightPane.empty();
     for (const row of this.rows) {
-      leftPane.appendChild(this.renderCell(row.leftLineNo, row.leftText, row.op === 'del', 'left'));
-      rightPane.appendChild(this.renderCell(row.rightLineNo, row.rightText, row.op === 'add', 'right'));
+      buildDiffCell(leftPane, row.leftLineNo, row.leftText, row.op === 'del', 'left');
+      buildDiffCell(rightPane, row.rightLineNo, row.rightText, row.op === 'add', 'right');
     }
-  }
-
-  private renderCell(lineNo: number | null, text: string, highlighted: boolean, side: 'left' | 'right'): HTMLElement {
-    // Each cell uses the row-highlight color matching its side: left
-    // pane highlights (deletions) get a red tint, right pane highlights
-    // (additions) get a green tint. This way the two sides are visually
-    // distinct — a row that's red on the left is green on the right, and
-    // rows that only change on one side have a blank placeholder on the
-    // other side.
-    const sideClass = side === 'left' ? ' llm-wiki-schema-diff-row-del' : ' llm-wiki-schema-diff-row-add';
-    const rowClass = 'llm-wiki-schema-diff-row' + (highlighted ? sideClass : '');
-    const contentClass = 'llm-wiki-schema-diff-content' + (highlighted ? ' llm-wiki-schema-diff-content-highlight' : '');
-
-    const cell = activeDocument.createDiv();
-    cell.className = rowClass;
-
-    const gutter = activeDocument.createSpan();
-    gutter.className = 'llm-wiki-schema-diff-gutter';
-    gutter.textContent = lineNo == null ? '' : String(lineNo);
-    cell.appendChild(gutter);
-
-    const content = activeDocument.createSpan();
-    content.className = contentClass;
-    content.textContent = text;
-    cell.appendChild(content);
-
-    return cell;
   }
 
   private refresh() {

@@ -12,7 +12,7 @@ vi.mock('obsidian', () => ({
 }));
 
 import { lineDiff } from '../../core/diff';
-import { applyDiffModalClasses, removeDiffModalClasses } from '../../ui/schema-diff-modal-classes';
+import { applyDiffModalClasses, removeDiffModalClasses, buildDiffCell } from '../../ui/schema-diff-modal-classes';
 
 // v1.22.0 #97: when the LLM reports changes_needed=false, the
 // SchemaDiffModal should show the *current* schema in BOTH panes
@@ -144,5 +144,34 @@ describe('SchemaDiffModal modalEl class lifecycle (v1.22.1)', () => {
       modalEl as unknown as { addClass: (c: string) => void; removeClass: (c: string) => void; empty: () => void },
     );
     expect(classes.has('llm-wiki-schema-diff-modal')).toBe(false);
+  });
+});
+
+// `buildDiffCell` must never construct elements directly on a Document — a Document can only ever hold one child element, so appending a second one throws `HierarchyRequestError`. Building on the given `parent` Element instead (which can hold any number of children) is what makes rendering more than one cell possible at all; see `buildDiffCell`'s own doc comment.
+describe('buildDiffCell (#593)', () => {
+  it('does not throw, and appends the cell as a child of the given parent', () => {
+    const parent = document.createElement('div');
+    let cell: HTMLElement | undefined;
+    expect(() => {
+      cell = buildDiffCell(parent, 1, 'some line', false, 'left');
+    }).not.toThrow();
+    expect(parent.contains(cell!)).toBe(true);
+  });
+
+  it('builds a cell with the gutter line number and content text', () => {
+    const parent = document.createElement('div');
+    const cell = buildDiffCell(parent, 3, 'hello world', true, 'left');
+    expect(cell.className).toContain('llm-wiki-schema-diff-row');
+    expect(cell.className).toContain('llm-wiki-schema-diff-row-del');
+    expect(cell.querySelector('.llm-wiki-schema-diff-gutter')?.textContent).toBe('3');
+    expect(cell.querySelector('.llm-wiki-schema-diff-content')?.textContent).toBe('hello world');
+    expect(cell.querySelector('.llm-wiki-schema-diff-content')?.className).toContain('llm-wiki-schema-diff-content-highlight');
+  });
+
+  it('right-side highlight uses the add row class, not del', () => {
+    const parent = document.createElement('div');
+    const cell = buildDiffCell(parent, null, '', true, 'right');
+    expect(cell.className).toContain('llm-wiki-schema-diff-row-add');
+    expect(cell.querySelector('.llm-wiki-schema-diff-gutter')?.textContent).toBe('');
   });
 });
