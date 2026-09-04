@@ -278,8 +278,8 @@ Consider:
 Output JSON format:
 {
   "changes_needed": true,
-  "new_schema_body": "The COMPLETE updated schema body in markdown, starting with the H1 title. Include all sections that should exist after the update (you may keep unchanged sections exactly as-is).",
-  "suggestions": "Markdown description of suggested schema changes with reasoning (1-3 sentences)"
+  "new_schema_body": "The COMPLETE schema body, in markdown, as it would read IF this proposal were accepted — starting with the H1 title, including every section that would exist after accepting (unchanged sections may be kept exactly as-is). Nothing has been applied yet.",
+  "suggestions": "Markdown description of the PROPOSED schema changes with reasoning (1-3 sentences). Phrase this as a proposal that has not been applied yet ('would add...', 'proposes to...') — never past tense ('added...', 'changed...'), since Apply has not been clicked."
 }
 
 If no changes are needed:
@@ -290,7 +290,7 @@ If no changes are needed:
 
 CRITICAL:
 - The "suggestions" field must be written in the user's UI language below (after this CRITICAL block). Do NOT default to English unless the user's UI language is English.
-- new_schema_body is the COMPLETE schema after your changes — not a diff, not a patch. The apply path replaces the current body with new_schema_body verbatim.
+- new_schema_body is the COMPLETE schema as it would read IF this proposal were accepted — not a diff, not a patch, and not yet applied. The apply path replaces the current body with new_schema_body verbatim only if and when the user clicks Apply.
 - DO NOT include YAML frontmatter (--- ... ---) in new_schema_body. Start directly with the H1 title (e.g. "# Wiki Schema Configuration").
 - DO NOT wrap new_schema_body in markdown code fences (\`\`\`). The parser strips them, but cleaner output reduces parse risk on small models.
 - Preserve all existing sections that are still relevant. Only change what the analysis actually warrants.
