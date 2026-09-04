@@ -202,6 +202,26 @@ describe('Dead Link Detector — Pure Functions', () => {
       const result = buildDeadLinkReplacement(nestedPage, 'wiki');
       expect(result).toBe('[[concepts/deep/learning|Deep Learning]]');
     });
+
+    // Issue #592: `title` is the filename slug — prefer `displayTitle` (the page's real H1 or first alias) when set, since title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
+    it('prefers displayTitle over title when set', () => {
+      const page: PageRef = {
+        path: 'wiki/entities/haem-a3.md',
+        title: 'haem-a3',
+        displayTitle: 'Haem A₃',
+      };
+      const result = buildDeadLinkReplacement(page, 'wiki');
+      expect(result).toBe('[[entities/haem-a3|Haem A₃]]');
+    });
+
+    it('falls back to title when displayTitle is absent', () => {
+      const page: PageRef = {
+        path: 'wiki/entities/haem-a3.md',
+        title: 'haem-a3',
+      };
+      const result = buildDeadLinkReplacement(page, 'wiki');
+      expect(result).toBe('[[entities/haem-a3|haem-a3]]');
+    });
   });
 
   describe('replaceDeadLink', () => {

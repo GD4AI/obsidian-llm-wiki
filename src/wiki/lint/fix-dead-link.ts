@@ -10,6 +10,7 @@ import {
   findDeadLinkTarget,
   buildDeadLinkReplacement,
   replaceDeadLink,
+  extractDeadLinkAlias,
 } from '../../core/dead-link-detector';
 import { getExistingWikiPages } from './get-existing-pages';
 import { selectCandidateWindow, contextAround } from '../../core/candidate-window';
@@ -144,10 +145,13 @@ export async function fixDeadLink(
     ? targetName.split('/').pop()!
     : targetName;
 
+  // A dead link may already carry an author-written alias (`[[wrong-path|Custom Name]]`) - extracted once so every branch below that repairs this link prefers it over the target's own displayTitle/title. See extractDeadLinkAlias's doc comment.
+  const existingAlias = extractDeadLinkAlias(sourceContent, targetName);
+
   const preMatch = findDeadLinkTarget(existingPages, targetBasename);
 
   if (preMatch) {
-    const newLink = buildDeadLinkReplacement(preMatch, ctx.settings.wikiFolder);
+    const newLink = buildDeadLinkReplacement(preMatch, ctx.settings.wikiFolder, existingAlias);
     const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
     await ctx.createOrUpdateFile(sourcePath, updatedContent);
     return `pre-check corrected (alias match): ${newLink}`;
@@ -266,7 +270,7 @@ export async function fixDeadLink(
       p.aliases?.some(a => slugify(a).toLowerCase() === safetySlug)
     );
     if (aliasMatch) {
-      const newLink = `[[${makeRelPath(aliasMatch.path, ctx.settings.wikiFolder)}|${aliasMatch.title}]]`;
+      const newLink = `[[${makeRelPath(aliasMatch.path, ctx.settings.wikiFolder)}|${existingAlias || aliasMatch.displayTitle || aliasMatch.title}]]`;
       const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
       await ctx.createOrUpdateFile(sourcePath, updatedContent);
       return `safety-net corrected (alias match for stub): ${newLink}`;
@@ -322,7 +326,7 @@ export async function fixDeadLink(
   }
 
   if (match) {
-    const newLink = `[[${makeRelPath(match.path, ctx.settings.wikiFolder)}|${match.title}]]`;
+    const newLink = `[[${makeRelPath(match.path, ctx.settings.wikiFolder)}|${existingAlias || match.displayTitle || match.title}]]`;
     const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
     await ctx.createOrUpdateFile(sourcePath, updatedContent);
     return `fallback corrected: ${newLink}`;

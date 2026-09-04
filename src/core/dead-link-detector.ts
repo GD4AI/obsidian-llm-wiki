@@ -8,6 +8,11 @@ export interface PageRef {
   path: string;
   title: string;
   aliases?: string[];
+  /**
+   * Issue #592: `title` is the filename slug (`getExistingWikiPages` sets it from `f.basename`), not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
+   * When present, this is the page's real H1 (or, absent that, its first frontmatter alias) and should be preferred over `title` anywhere a link repair needs to show the reader something, not just address the page.
+   */
+  displayTitle?: string;
 }
 
 // #308: a link target is slugified ("Systemische-Inflammation"), titles and
@@ -81,6 +86,7 @@ export function findDeadLinkTarget(
  *
  * @param page - The matching page
  * @param wikiFolder - Wiki root folder (e.g., "wiki")
+ * @param existingAlias - An alias the dead link already carried (`[[wrong-path|Custom Name]]`), from `extractDeadLinkAlias`. The reader already saw this name — it outranks even the target's own `displayTitle`.
  * @returns Formatted wiki link (e.g., "[[entities/chain-of-thought|Chain of Thought]]")
  *
  * @example
@@ -91,12 +97,35 @@ export function findDeadLinkTarget(
  */
 export function buildDeadLinkReplacement(
   page: PageRef,
-  wikiFolder: string
+  wikiFolder: string,
+  existingAlias?: string
 ): string {
   const relPath = page.path
     .replace(wikiFolder + '/', '')
     .replace('.md', '');
-  return `[[${relPath}|${page.title}]]`;
+  return `[[${relPath}|${existingAlias || page.displayTitle || page.title}]]`;
+}
+
+/**
+ * A dead link may already carry an author-written alias. Extracted once by `fixDeadLink` and passed into every branch that repairs the link, so a pre-existing alias always wins over the target's own displayTitle/title.
+ * Only matches links that already have a `|alias` segment — a bare `[[target]]` or `[[target#heading]]` correctly returns undefined so callers fall through to displayTitle/title.
+ *
+ * @example
+ * extractDeadLinkAlias('See [[wrong-path|Custom Name]] here', 'wrong-path')
+ * // => 'Custom Name'
+ * extractDeadLinkAlias('See [[wrong-path]] here', 'wrong-path')
+ * // => undefined
+ */
+export function extractDeadLinkAlias(
+  content: string,
+  targetName: string
+): string | undefined {
+  const linkRegex = /\[\[([^\]|#]+)(?:#[^\]|]*)?\|([^\]]+)\]\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = linkRegex.exec(content)) !== null) {
+    if (m[1].trim() === targetName) return m[2].trim();
+  }
+  return undefined;
 }
 
 /**
