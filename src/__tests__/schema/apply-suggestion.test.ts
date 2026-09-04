@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySchemaSuggestion } from '../../schema/apply-suggestion';
+import { applySchemaSuggestion, bumpSchemaMetadata } from '../../schema/apply-suggestion';
 import { App, TFile } from 'obsidian'; // mocked in setup.ts
 
 // v1.22.0 #97: business logic for "apply a Schema suggestion" — the
@@ -173,5 +173,106 @@ describe('applySchemaSuggestion (#97)', () => {
       onCacheInvalidate: () => { invalidated++; },
     });
     expect(invalidated).toBe(1);
+  });
+
+  // spliceBody preserves the original frontmatter verbatim, so `updated`/`auto_suggestion_count` must be bumped separately — see bumpSchemaMetadata.
+  describe('audit-trail metadata bump (#597)', () => {
+    it('sets updated to the apply date and increments auto_suggestion_count', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        now: () => new Date('2026-06-22T10:30:00.000Z'),
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-06-22');
+      expect(written).not.toContain('updated: 2026-06-21');
+      expect(written).toContain('auto_suggestion_count: 1');
+      expect(written).toContain('version: 1');
+    });
+
+    it('increments auto_suggestion_count again on a second apply', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        now: () => new Date('2026-06-22T10:30:00.000Z'),
+      });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: '# Wiki Schema\n\n## Wiki Structure\n- Entity pages (custom v2)\n',
+        now: () => new Date('2026-06-23T09:00:00.000Z'),
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-06-23');
+      expect(written).toContain('auto_suggestion_count: 2');
+    });
+
+    // Apply can happen arbitrarily later than suggestion generation, so a fresh `now()` at apply time — even truncated to a date — would never equal the suggestion's own timestamp, and same-day suggestions would become indistinguishable by `updated:` alone.
+    it('uses the exact suggestion timestamp for `updated`, not a date derived from apply-time `now`', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        // Deliberately different day/time than the suggestion timestamp, to prove `updated:` doesn't come from apply-time `now()` at all.
+        now: () => new Date('2026-09-05T23:59:59.000Z'),
+        suggestionTimestamp: '2026-09-04T11:38:14.724Z',
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-09-04T11:38:14.724Z');
+      expect(written).not.toContain('updated: 2026-09-05');
+    });
+
+    // Pin a timezone far enough ahead of UTC (UTC+14) that a UTC instant just before midnight already falls on the next calendar day locally — the exact condition where a local-time value and a UTC value disagree — so this test is deterministic regardless of the machine it runs on.
+    it('falls back to a UTC ISO timestamp (not local time) when no suggestionTimestamp is given', async () => {
+      const originalTz = process.env.TZ;
+      process.env.TZ = 'Pacific/Kiritimati'; // UTC+14
+      try {
+        const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+        const fixedNow = new Date('2026-06-22T23:30:00.000Z'); // already 2026-06-23 locally at UTC+14
+        await applySchemaSuggestion({
+          app: vault as unknown as App,
+          currentPath: 'wiki/schema/config.md',
+          newBody: NEW_BODY,
+          now: () => fixedNow,
+        });
+
+        const written = vault.vault.files.get('wiki/schema/config.md')!;
+        expect(written).toContain(`updated: ${fixedNow.toISOString()}`);
+        expect(written).not.toContain('updated: 2026-06-23');
+      } finally {
+        if (originalTz === undefined) delete process.env.TZ;
+        else process.env.TZ = originalTz;
+      }
+    });
+  });
+});
+
+describe('bumpSchemaMetadata (#597)', () => {
+  it('rewrites updated and increments auto_suggestion_count, leaving other lines untouched', () => {
+    const result = bumpSchemaMetadata(CURRENT_FILE, '2026-06-22');
+    expect(result).toContain('version: 1');
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).toContain(CURRENT_BODY.trim());
+  });
+
+  it('appends both fields when neither is present in the frontmatter', () => {
+    const noMeta = '---\nversion: 1\n---\n\n# Body\n';
+    const result = bumpSchemaMetadata(noMeta, '2026-06-22');
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+  });
+
+  it('is a no-op on content with no frontmatter', () => {
+    const noFm = '# Just a body\n';
+    expect(bumpSchemaMetadata(noFm, '2026-06-22')).toBe(noFm);
   });
 });
