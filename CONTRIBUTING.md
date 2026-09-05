@@ -112,7 +112,7 @@ src/
 │   ├── ingest-queue.ts         # IngestQueue pub/sub store (v1.23.0, Issue #130)
 │   ├── build-graph.ts          # Wiki-link graph builder (v1.23.0)
 │   ├── monte-carlo-ppr.ts      # Fogaras 2005 MC-PPR engine (v1.23.0)
-│   ├── ppr-cascade.ts          # Hybrid 3-tier retrieval cascade (v1.23.0, 213 LOC)
+│   ├── ppr-cascade.ts          # Hybrid 3-tier retrieval cascade (v1.23.0, 213 LOC; v1.27.x PATCH PR #625: Unicode word runs, needleHits word-start, PPR-ranked merge)
 │   ├── section-extractor.ts    # Zero-LLM Tier B section parser (v1.23.0)
 │   ├── hub-detection.ts        # Hub-link distinctiveness scanner (v1.23.0)
 │   ├── hub-link-distinctiveness.ts # Link distinctiveness scoring (v1.23.0, #157/#175)
@@ -135,6 +135,7 @@ src/
 │   ├── llm-task-usage.ts       # Per-step LLM call + wall-time ledger (PR #409, v1.26.1 eucher)
 │   ├── clamp-page-sections.ts  # Section-shaped page clamp + withhold/restore for contradiction rewrite (#287 follow-on, v1.26.4 PR #492)
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
+│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
 ├── wiki/                # Wiki engine modules
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
 │   ├── graph-cache.ts   # (v1.25.1) `_cachedGraph` + invalidate logic
@@ -221,7 +222,7 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 3677 tests / 260 files; v1.27.0 MINOR release-prep)
+└── __tests__/           # Unit tests (vitest, 3975 tests / 279 files; v1.27.x PATCH wave C 2026-09-05)
 
 tools/                  # CLI toolchain (in-tree, ships via package.json bin) — see also the standalone sibling repo
 └── llm-wiki-cli/       # Headless ingest CLI (v1.26.0, PRs #372 + #387)

@@ -8,9 +8,26 @@
 
 ---
 
-## Current state (2026-08-27)
+## Current state (2026-09-05)
 
-**Latest shipped:** **v1.27.0 MINOR** — 36 commits, 181 files, +11197/-3158 LOC,
+**Latest shipped:** **v1.27.0 MINOR** (2026-08-27) — 36 commits, 181 files,
++11197/-3158 LOC, **3677 tests passing** (see CHANGELOG §1.27.0). Since then the
+v1.27.x PATCH slot has taken 26 PRs: wave A (09-02, 12 PRs), wave B (09-04,
+9 PRs), wave C (09-04/05, 5 DocTpoint fix PRs #625/#626/#629/#630/#631 closing
+#623/#624/#627/#628) plus the 3-phase repo-audit cleanup (#632/#633/#634).
+**3975 tests / 279 files on main `ddf392d`**, all Gate-1 green.
+
+**Next:** v1.27.x PATCH remaining scope — re-review #569-11-commits if updated,
+decide #603 (write-gate contract) / #604 (dead contradiction loop) / #567
+(limit contract), Jan-Heldal #592/#593/#594/#597 PRs if submitted, #542 +
+first #407-Stage-2 PR, #539 follow-ups, then #528/#521 late-PATCH.
+ROADMAP.md "v1.27.x PATCH" milestone is the live tracker.
+
+> **Superseded 2026-09-05 (wave-C merge):** the 2026-08-27 pointer block below
+> is the pre-PATCH snapshot. Current state is the block above (3975 tests,
+> main `ddf392d`). Kept for archaeology — do not update the old block.
+
+**Latest shipped (2026-08-27 snapshot):** **v1.27.0 MINOR** — 36 commits, 181 files, +11197/-3158 LOC,
 **3677 tests passing**. Highlights: Bedrock SSO/IAM (#425 / PR #540),
 MinerU multi-format ingest (#404), source-page verbatim quotes (#496),
 Fix Dead Links leave-it (#485), ingest candidate gate (#514), per-step
@@ -308,6 +325,26 @@ contributor lands a ≥5-PR cluster. Decision documented in AGENTS.md "PR merge
 workflow".
 
 ---
+
+## Lessons learned (2026-09-05 session — wave-C 5-PR merge + audit-trio + doc sync)
+
+**Trigger:** user "按你建议执行 review+Approve+Merge，然后更新 CHANGELOG、ROADMAP、MEMORY、CONTRIBUTING". Merged #630 → #629 → #625 → #626 → #631 (small-to-large; audits #632/#633/#634 already on main as base); main `bf3cd3d` → `ddf392d`; 3932 → 3975 tests (279 files). Labels `bug` + milestone `v1.27.x PATCH` applied to all five post-merge (verify showed 630/629/625 first, 626/631 needed a retry pass). Linked issues #623/#624/#627/#628 auto-closed via `Closes`.
+
+### Durable lessons
+
+1. **Merge-then-label works but verify per item, not per batch.** `gh pr edit --add-label --milestone` on merged PRs succeeds, but GraphQL EOF/TLS flakes meant the batch verify loop timed out after 3 of 5 — the remaining two needed an individual retry. Lesson: verify each PR's labels+milestone in the same command that sets them, with retries, before moving on.
+2. **Zero-file-overlap across a same-author wave is checkable in one pass and worth checking.** The five DocTpoint PRs touched disjoint production files (ppr-cascade / related-link-corrector+wiki-engine / llm-client-wrapper / section-extractor / paragraph-provenance+merge/related-page) — confirming `交集=∅` up front justified the small-to-large merge order and ruled out cross-PR conflicts without rebases.
+3. **Doc-sync arithmetic must be recomputed from git log, not carried forward.** The CHANGELOG header I inherited said "21 PRs … 3677 → 3830" (wave A+B only); the true post-wave-C count is 26 PRs / 3975 tests — wave C (5) + audit trio (3) + #569/#607 (2, merged 09-04 after the 21-PR doc commit `0ad53c6`) were all missing. `git log --oneline <last-doc-commit>..HEAD` is the source of truth for "N PRs merged" lines.
+4. **#629 closed the b302aab reasoning-streaming question.** The streamed answer "thought 43/55s" because `taskPolicies` never reached `createMessageStream` — verified reasoning never enters `onChunk` (earlier session), so the policy gap was the only remaining suspect and #629's diff confirms it. Record the negative result where the question was asked: b302aab (wrap-string format + idempotence guard) cannot cause reasoning streaming.
+5. **#631's accepted inconsistency is now project state.** Rewrite paths are 2-guarded (`merge-page`, `related-page` via `guardBodyRewrite`) / 1-unguarded (`mergeDuplicatePages`, `resolveContradiction`). The follow-up note exists in the review comment and ROADMAP wave-C table — the next person touching either unguarded path must read it first.
+
+### State pointers (2026-09-05)
+
+- **Open PRs:** #570 (wontfix, no action). #569/#607 already MERGED 09-04 (verify before re-reviewing — ROADMAP backlog row 1 is stale).
+- **Open design calls:** #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract) — unchanged.
+- **Community:** Jan-Heldal #592/#593/#594/#597 still awaiting PRs; #608 image-embeds deferred to MINOR.
+- **Milestones:** v1.27.x PATCH open=10; v1.27.0 MINOR closed (0); v1.27.0+ research open=15.
+- **Docs synced:** CHANGELOG [Unreleased] (5 Fixed + 1 Refactor entries), ROADMAP wave-C table + header date, MEMORY current-state + this lesson block, CONTRIBUTING test count + 2 tree rows.
 
 ## Lessons learned (2026-09-04 session — wave-B rewrite-safety audit + 21-PR PATCH wave)
 

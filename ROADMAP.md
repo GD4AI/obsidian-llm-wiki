@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.27.0 MINOR (2026-08-27). See [CHANGELOG.md §1.27.0](./CHANGELOG.md#1270---2026-08-27) for the canonical composition record. | **Updated:** 2026-09-04 (post v1.27.x PATCH triage — 21-PR wave merged: 12 on 09-02 + 9 on 09-04; 3830 tests)
+**Latest shipped:** v1.27.0 MINOR (2026-08-27). See [CHANGELOG.md §1.27.0](./CHANGELOG.md#1270---2026-08-27) for the canonical composition record. | **Updated:** 2026-09-05 (post wave-C merge — 5 DocTpoint fix PRs #625/#626/#629/#630/#631 + 3 audit cleanups #632/#633/#634; 3975 tests)
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -85,6 +85,23 @@ Open follow-ups from review threads: alias-floor unification (#537×#532), bound
 
 Architect + community correctness wave merged 09-02: repetition-loop echo (#572), task-policy `__proto__` guard (#571), Hermes cross-reference memory (#587), contradiction marker read half (#578), item-level contradiction lane (#576), contentHash drift lint (#577), merge note paragraphs (#579), preamble cut fix (#580), heading normalization (#581), cancelled-ingest fix (#583), reasoning-channel gates (#585/#586), Claude-residue removal (#574). Plus Tier-0 5-PR wave (09-02, merged in order #596 → #602 → #591 → #600 → #589): ingest ownership from `source_file` (#596), contradiction write-path resolution (#602), dev-instrument link cache (#591), picker disk-state (#600), cross-folder dedup routing (#589). 3741 → 3792 tests.
 
+### Shipped into v1.27.x PATCH — wave C (2026-09-04/05, 5 PRs + 3 audit cleanups, main `ddf392d`)
+
+DocTpoint query/ingest/LLM correctness wave + maintainer three-phase repo-audit cleanup, review-approved and squash-merged 09-05 in one pass (order #630 → #629 → #625 → #626 → #631; audits #632 → #633 → #634 merge-first as the base):
+
+| PR | Issue | What | Severity class |
+|----|-------|------|----------------|
+| **#630** | #628 | concept page reaches the answer prompt as its Description, not its one-line Definition (`extractSummaryFromPage` Description-first for both types; 183/241 measured) | query-quality |
+| **#629** | #627 | per-step thinking policy applied on the stream path (`*=default:off` reached every step except the one the user waits for; 43/55s measured) — root cause of the "streamed answer thinks" report, not `b302aab` | correctness |
+| **#625** | #623 | `\p{L}\p{N}\p{M}` tokenizer + word-start `needleHits` + PPR-ranked `mergeWithPPR` (Creatin page hidden by Kahneman/Salbei noise on a 3K-page German vault) | query-quality |
+| **#626** | #624 | folder-wrong links re-pointed vault-wide + source page + new Stage 4.5 `repointLinksAfterRun` (314 measured; folder decided at dedup #589) | graph-integrity |
+| **#631** | — | sourced-paragraph guard `guardBodyRewrite` — footnoted paragraphs another source owns survive rewrites (571-pair replay: 120 restored, 164 footnotes re-attached) | **content-loss** |
+| **#632** | — | audit phase 1: 8 no-op changes (UTC-day site, `ru` locale gaps, 2 dead code, test dedupe) | hygiene |
+| **#633** | — | audit phase 2: openai-sdk-client onto canonical `wrapReasoningContent` (one wrap contract) | hygiene |
+| **#634** | — | audit phase 3: T1 dedupe+relocation + T3 controller round-trip collapse (−82 net, 3932→3932) | hygiene |
+
+3975 tests (Gate 1 green). Issues #623/#624/#627/#628 auto-closed by their PRs. Open design calls unchanged: #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract). #631 follow-up recorded: `mergeDuplicatePages`/`resolveContradiction` stay unguarded (2-guarded/1-unguarded until the follow-up note).
+
 ### Shipped into v1.27.x PATCH — wave B (2026-09-04, 9 PRs, main `8feb5fd`)
 
 DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one pass (09-04):
@@ -107,7 +124,7 @@ DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one 
 
 | # | Issue | What | Why now | Owner | Status |
 |---|-------|------|---------|-------|--------|
-| 1 | **#569 / #568** | Domain-axis write side (one-field `tags:`, vault-tag vocabulary) — PR #569 35 files | #91 read-side prerequisite; **B1-B6 fixed** (unionDomains fold helper at all 3 writers, empty-wikiFolder guard, DropReason narrowed) + T1-T3 tests landed; 6 further commits after the fix need fresh review | DocTpoint | PR open; **B1-B6 done 09-02 — awaiting full re-review** (11 commits) |
+| 1 | **#568** | Domain-axis write side follow-ups (post-#569-merge) | #91 read-side prerequisite; PR #569 MERGED 09-04 (`9d6183c`), gate table #607 MERGED 09-04 (`6a5ba34`) — remaining work is follow-ups on the merged base, not re-review | DocTpoint | Merged base; file follow-up issues as needed |
 | 2 | **#567** | `customEntityLimit` / `customConceptLimit` ceiling-vs-denominator coupling reduces yield as limit rises | Real user pain (11-50 default range); recommended contract: ceiling-only + stop gets own signal sibling to `checkEmptyBatch` | green-dalii (owner-self) | Issue open; needs contract decision then PR; #607's gate table addresses part of it |
 | 3 | **#603** | "single write gate" contract does not hold — six writers bypass `createOrUpdatePage` | Design call (09-02 reply): narrow documented contract + progressive funnel + write-audit logging | DocTpoint | Open; design decision pending |
 | 4 | **#604** | contradiction resolution loop dead code — nothing sets `review_ok` | Design call (09-02 reply): remove dead branch, keep review field on record | DocTpoint | Open; design decision pending |
@@ -144,10 +161,10 @@ DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one 
 
 | Phase | Items | ETA |
 |-------|-------|-----|
-| **Next** (re-review + design) | re-review #569 (11 commits, B1-B6 done) + decide #603/#604 + #567 contract | ~1-2 days |
+| **Next** (design) | decide #603/#604 + #567 contract + Jan-Heldal PRs + #542/#407-Stage-2 | ~1-2 days |
 | **Mid PATCH** (community + consolidation) | Jan-Heldal #592/#593/#594/#597 PRs (if submitted) + #542 + first PR of #407 Stage 2 + #539 follow-ups | ~3 days |
 | **Late PATCH** (research-grade) | #528 type-repair chunking + #521 zh/ja measurement | ~5 days |
-| **Future MINOR** (v1.28.0, not yet a milestone) | #607 gate three-outcome table (post-#569) + #608 image-embed ingest + #317/#326/#295 design-track | — |
+| **Future MINOR** (v1.28.0, not yet a milestone) | #608 image-embed ingest + #317/#326/#295 design-track | — |
 
 ### Triage discipline notes (post-triage 2026-08-28)
 
