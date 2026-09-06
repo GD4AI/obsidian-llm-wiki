@@ -48,3 +48,11 @@ describe('buildSamplingArgs', () => {
     expect(Object.keys(result)).toEqual(['temperature']);
   });
 });
+
+describe('abortSignal (#646)', () => {
+  it('is emitted when given and absent otherwise', () => {
+    const signal = new AbortController().signal;
+    expect(buildSamplingArgs({ temperature: 0.1, abortSignal: signal })).toEqual({ temperature: 0.1, abortSignal: signal });
+    expect(buildSamplingArgs({ temperature: 0.1 })).toEqual({ temperature: 0.1 });
+  });
+});

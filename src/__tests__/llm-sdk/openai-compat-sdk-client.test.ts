@@ -131,6 +131,14 @@ describe('OpenAICompatSdkClient', () => {
       expect(callOpts.apiKey).toBe('test-key');
     });
 
+    it('hands the abort signal to the AI SDK (#646)', async () => {
+      const client = new OpenAICompatSdkClient({ apiKey: 'test-key', baseURL: preset.baseURL, provider: preset.id });
+      const signal = new AbortController().signal;
+      await client.createMessage({ model: preset.model, max_tokens: 100, messages: [{ role: 'user', content: 'hi' }], abortSignal: signal });
+      const call = mockGenerateText.mock.calls.at(-1)![0] as Record<string, unknown>;
+      expect(call.abortSignal).toBe(signal);
+    });
+
     it('creates the model with the given id', async () => {
       const client = new OpenAICompatSdkClient({
         apiKey: 'test-key',
