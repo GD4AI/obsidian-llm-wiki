@@ -40,7 +40,7 @@ import {
   stripUnknownSections,
 } from '../../core/section-header-canonicalizer';
 import { guardBodyRewrite } from '../../core/paragraph-provenance';
-import { correctRelatedLinkPrefixes } from '../../core/related-link-corrector';
+import { applyRelatedLinks } from './related-links';
 import { mergeFrontmatter, parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { incomingTypeTag } from '../../core/tag-vocab';
 import { collectActiveVocabulary } from '../../core/domain-axis';
@@ -52,7 +52,6 @@ import { injectMentionsSection } from '../../core/mentions-injector';
 import { renderTemplate } from '../../core/template-renderer';
 import { applySectionLabels, getSectionLabels } from '../system-prompts';
 import { UNIVERSAL_LINK_CONSTRAINTS } from '../prompts/constraints';
-import { getExistingWikiPages } from '../lint/get-existing-pages';
 import { classifyMergeNeed, isSourceOwnPageLemma, type ComplementaryItem } from './merge-triage';
 import { assembleFinalContent } from './mentions-integration';
 import { applyComplementaryAppends } from './complementary-appends';
@@ -314,16 +313,9 @@ export async function mergePage(
     const labels = getSectionLabels(ctx.settings);
     const canonicalizedBody = canonicalizeSectionHeaders(cleanedBody, Object.values(labels));
     const prunedBody = stripUnknownSections(canonicalizedBody, Object.values(labels));
-    const correctedBody = correctRelatedLinkPrefixes(
-      prunedBody,
-      info.related_entities,
-      info.related_concepts,
-      labels.related_entities,
-      labels.related_concepts,
-      // #482 stage 2: the merge prompt no longer carries a page list, so the
-      // link targets are resolved here — against every page, not a window.
-      { wikiFolder: ctx.settings.wikiFolder, pages: await getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder) },
-    );
+    // Related links resolved against every page, sections written from the
+    // lists with the page's earlier entries in front — see page-factory/related-links.ts.
+    const correctedBody = await applyRelatedLinks(ctx, prunedBody, info, labels, { pageType, keepFrom: existingBody });
     // Completeness is the schema's call, not the model's: sections the rewrite
     // dropped or collapsed come back (#618), footnoted paragraphs another source
     // owns come back, the H1 comes back (#419). The Mentions section is

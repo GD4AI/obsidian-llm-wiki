@@ -32,14 +32,13 @@ import { TOKENS_PAGE_GENERATION } from '../../constants';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { canonicalizeSectionHeaders, stripUnknownSections } from '../../core/section-header-canonicalizer';
-import { correctRelatedLinkPrefixes } from '../../core/related-link-corrector';
+import { applyRelatedLinks } from './related-links';
 import { parseFrontmatter, enforceFrontmatterConstraints, mergeFrontmatterArrayField } from '../../core/frontmatter';
 import { collectActiveVocabulary } from '../../core/domain-axis'; // local patch (Tag-Achse S138)
 import { injectMentionsSection } from '../../core/mentions-injector';
 import { renderTemplate } from '../../core/template-renderer';
 import { applySectionLabels, getSectionLabels } from '../system-prompts';
 import { resolvePagePath, type PathResolutionContext } from './path-resolution';
-import { getExistingWikiPages } from '../lint/get-existing-pages';
 import { mergePage } from './merge-page';
 import { appendToReviewedPage } from './merge-page';
 import { isConversationSource, contextualizeError } from './contextualize';
@@ -239,16 +238,9 @@ export async function createNewPage(
     // Drop prompt-scaffolding sections the model copied into the body (e.g.
     // `## Active Tag Vocabulary`) — the schema decides which sections exist.
     const prunedContent = stripUnknownSections(canonicalizedContent, Object.values(labels));
-    const correctedContent = correctRelatedLinkPrefixes(
-      prunedContent,
-      info.related_entities,
-      info.related_concepts,
-      labels.related_entities,
-      labels.related_concepts,
-      // #482 stage 2: the prompt no longer carries a page list, so the link
-      // targets are resolved here — against every page, not a window.
-      { wikiFolder: ctx.settings.wikiFolder, pages: await getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder) },
-    );
+    // Related links resolved against every page, sections written from the
+    // lists — see page-factory/related-links.ts.
+    const correctedContent = await applyRelatedLinks(ctx, prunedContent, info, labels, { pageType });
     // Issue #244: programmatically inject the Mentions section.
     const isConv = isConversationSource(sourceFile, ctx.settings.wikiFolder);
     const mentionsForInject = isConv

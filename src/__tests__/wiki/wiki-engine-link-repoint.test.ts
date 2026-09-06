@@ -69,7 +69,10 @@ describe('WikiEngine.ingestSource — end-of-run link re-point', () => {
     expect(creatin).not.toContain('concepts/Phosphocreatin');
     // Both the prose link and the Related-section link — the section said
     // "concept", the vault says entity.
-    expect(creatin.match(/\[\[entities\/phosphocreatin\|Phosphocreatin\]\]/g)).toHaveLength(2);
+    // Shaping routes a related name to its kind before generation, so
+    // the Related-section link is born as `entities/Phosphocreatin` and only
+    // the prose link is re-pointed; the two differ in case, which resolves.
+    expect(creatin.match(/\[\[entities\/phosphocreatin\|Phosphocreatin\]\]/gi)).toHaveLength(2);
   });
 
   it('the source page gets the same pass', async () => {

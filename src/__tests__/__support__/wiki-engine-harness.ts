@@ -71,6 +71,7 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
 
   const app = {
     vault: {
+      configDir: '.obsidian',
       read: async (f: { path: string }) => files.get(f.path) ?? '',
       create: async (p: string, c: string) => { files.set(p, c); },
       process: async (f: { path: string }, fn: (d: string) => string) => {

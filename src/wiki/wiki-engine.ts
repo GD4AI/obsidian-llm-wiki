@@ -23,6 +23,8 @@ import { formatTaskUsage, snapshotTaskUsage, taskUsageSince } from '../core/llm-
 import { TEXTS } from '../texts';
 import { renderTemplate } from '../core/template-renderer';
 import { slugify } from '../core/slug';
+import { shapeRelatedLists, kindOf } from '../core/related-shaping';
+import { isIngestableSource } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
 import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, extractBody } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
@@ -1142,6 +1144,7 @@ export class WikiEngine {
       // has already been folded into the routing, so only the domain
       // validation runs — over the survivors AND the planned stubs, whose
       // frontmatter carries the same validated subset.
+      let domainVocabulary: string[] = [];
       {
         if (!tableApplied) {
           // #620 parity: a dropped name the vault already has a page for keeps
@@ -1166,7 +1169,7 @@ export class WikiEngine {
         // Stage 5 (#568): validation accepts exactly what the declared source
         // folders and the wiki's own pages carry — new values are born by
         // tagging a note or a page, not by editing a settings list.
-        const domainVocabulary = collectActiveVocabulary(this.app, this.settings);
+        domainVocabulary = collectActiveVocabulary(this.app, this.settings);
         for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
           const selection = selectDomains(item.domains, domainVocabulary);
           if (selection.rejected.length > 0) {
@@ -1174,6 +1177,39 @@ export class WikiEngine {
           }
           if (selection.kept.length > 0) item.domains = selection.kept;
           else delete item.domains;
+        }
+      }
+
+      // Every page born from this note links its siblings, a related name
+      // the vault answers is written under the page's own title and kind,
+      // and a name nothing answers stays as written and is counted.
+      // Deterministic, no model call; see core/related-shaping.ts.
+      {
+        const pages = await this.getExistingWikiPages();
+        const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
+        const prefix = this.settings.wikiFolder + '/';
+        const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
+        const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
+        const configDir = this.app.vault.configDir;
+        const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
+          .filter(f => folders.some(w => isIngestableSource(f.path, w, false, this.settings.wikiFolder, configDir)))
+          .map(f => f.basename);
+        const shaped = shapeRelatedLists(analysis, {
+          resolve: name => {
+            const rel = resolvePath(name);
+            if (!rel) return undefined;
+            return { title: titleByRel.get(rel) ?? name, kind: kindOf(rel) };
+          },
+          willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
+          vocabulary: domainVocabulary,
+        });
+        analysis.entities = shaped.entities;
+        analysis.concepts = shaped.concepts;
+        if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
+          const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
+          const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
+          console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
+          this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
         }
       }
 

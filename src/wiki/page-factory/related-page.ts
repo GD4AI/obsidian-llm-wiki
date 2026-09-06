@@ -29,7 +29,7 @@ import {
   canonicalizeSectionHeaders,
   stripUnknownSections,
 } from '../../core/section-header-canonicalizer';
-import { correctRelatedLinkPrefixes } from '../../core/related-link-corrector';
+import { applyRelatedLinks } from './related-links';
 import { getSectionLabels } from '../system-prompts';
 import { getExistingWikiPages } from '../lint/get-existing-pages';
 import { UNIVERSAL_LINK_CONSTRAINTS } from '../prompts/constraints';
@@ -162,17 +162,9 @@ export async function updateRelatedPage(
   // `sources/`-mis-prefixed link in a Related section was never re-typed.
   const canonicalizedBody = canonicalizeSectionHeaders(cleanedBody, Object.values(labels));
   const prunedBody = stripUnknownSections(canonicalizedBody, Object.values(labels));
-  const correctedBody = correctRelatedLinkPrefixes(
-    prunedBody,
-    newInfo.related_entities,
-    newInfo.related_concepts,
-    labels.related_entities,
-    labels.related_concepts,
-    // #482 stage 2: resolve the link targets against every page. This path
-    // never had a candidate list in its prompt, so until now a related name
-    // whose page carries a different title could only become a dead link.
-    { wikiFolder: ctx.settings.wikiFolder, pages: await getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder) },
-  );
+  // Related links resolved against every page, sections written from the
+  // lists with the page's earlier entries in front — see page-factory/related-links.ts.
+  const correctedBody = await applyRelatedLinks(ctx, prunedBody, newInfo, labels, { pageType: asEntity ? 'entity' : 'concept', keepFrom: existingBody });
 
   // Completeness is the schema's call, not the model's: sections the rewrite
   // dropped or collapsed come back (#618), footnoted paragraphs another source
