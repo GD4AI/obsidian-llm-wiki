@@ -46,6 +46,16 @@ jobs:
       - name: Install (lockfile-pinned)
         run: pnpm install --frozen-lockfile
 
+      - name: Audit (dev + prod, high+)
+        # Dependency security gate: fail the PR the day a vulnerable transitive
+        # dep lands, not when a human notices the Dependabot alert. `--audit-level
+        # high` so low/moderate advisories (noisy, often unfixable) don't block;
+        # `--ignore-registry-errors` so a transient registry reset (ECONNRESET
+        # seen in the wild) fails the *audit step's exit-code intent* instead of
+        # hard-failing the PR on a network blip. Dependabot auto-PRs (separate
+        # config) are the fix path; this gate only catches drift before merge.
+        run: pnpm audit --audit-level high --ignore-registry-errors
+
       - name: Five-Gate (lint + typecheck + build + test + css-lint)
         # Order is non-negotiable: `build` MUST run before `test`. The test
         # suite contains build-artifact verifications (e.g.

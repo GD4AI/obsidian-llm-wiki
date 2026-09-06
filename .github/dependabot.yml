@@ -1,0 +1,52 @@
+# Dependabot version updates (security updates are always-on and need no config).
+#
+# Why this exists: the fast-uri 3.1.5 -> 3.1.6 -> 3.1.7 chain (2026-09, four
+# GHSA advisories) showed the failure mode this prevents — a vulnerable
+# transitive devDep sat pinned by a manual `overrides` entry until a human
+# noticed the Dependabot alert and hand-bumped it. The overrides that forced a
+# single instance (fast-uri) are gone; the one that genuinely needs pinning
+# (brace-expansion 5.0.9, because old minimatch@8/9/3 peers declare ^2/^1 and
+# would otherwise pull vulnerable legacy instances) stays. With this file,
+# Dependabot opens a PR the day a transitive dep drifts out of range; the
+# `pnpm audit --audit-level high` step in pr-ci.yml blocks merges in the
+# meantime. Human action reduces to review + merge, not hand-editing four files.
+#
+# `package-ecosystem: npm` covers pnpm-lock.yaml (GitHub native support) and
+# package-lock.json alike. `open-pull-requests-limit` kept low to avoid a
+# burst of dependency churn PRs competing with the release queue.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    versioning-strategy: increase-if-necessary
+    # No `labels:` — the repo has no `dependencies` label and Dependabot would
+    # create one implicitly; the maintainer's triage labels (bug/enhancement)
+    # don't fit dependency PRs. Default no-label is fine: the audit gate + CI
+    # are the real signal.
+    ignore:
+      # eslint stays at the Bot-aligned major (10.x per eslint-plugin-obsidianmd
+      # review pipeline); never auto-bump across major.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # brace-expansion is force-pinned by overrides (legacy minimatch peers
+      # would pull ^2/^1); a Dependabot PR for it can never merge as-is.
+      - dependency-name: "brace-expansion"
+
+  # GitHub Actions themselves (checkout/setup-node/attest-build-provenance)
+  # are supply-chain surface too — a vulnerable action version is as bad as a
+  # vulnerable npm dep. Weekly, low limit; same review path as npm PRs.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:30"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 2
