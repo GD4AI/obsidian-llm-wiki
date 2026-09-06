@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.27.0 MINOR (2026-08-27). See [CHANGELOG.md §1.27.0](./CHANGELOG.md#1270---2026-08-27) for the canonical composition record. | **Updated:** 2026-09-05 (post wave-C merge — 5 DocTpoint fix PRs #625/#626/#629/#630/#631 + 3 audit cleanups #632/#633/#634; 3975 tests)
+**Latest shipped:** v1.27.1 PATCH (2026-09-06, 46 commits / 3993 tests). See [CHANGELOG.md §1.27.1](./CHANGELOG.md#1271---2026-09-06) for the canonical composition record. | **Updated:** 2026-09-06 (v1.27.1 release prep — wave C/D + audit trio + #636/#637 all SHIPPED)
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -75,7 +75,7 @@ Open follow-ups from review threads: alias-floor unification (#537×#532), bound
 
 ---
 
-## v1.27.x PATCH cycle — current scope (updated 2026-09-04)
+## v1.27.x PATCH cycle — SHIPPED 2026-09-06 as v1.27.1
 
 **Triggered by:** v1.27.0 MINOR shipped 2026-08-27 (`3464cce`). PATCH backlog is the union of (a) v1.27.0 ship-day bugs from architect-level triage, (b) deferred items from v1.27.0 review threads, (c) post-MINOR new Issues filed by @DocTpoint (2026-08-28 onwards: #567 / #568 / #605–#620 series).
 
@@ -101,6 +101,17 @@ DocTpoint query/ingest/LLM correctness wave + maintainer three-phase repo-audit 
 | **#634** | — | audit phase 3: T1 dedupe+relocation + T3 controller round-trip collapse (−82 net, 3932→3932) | hygiene |
 
 3975 tests (Gate 1 green). Issues #623/#624/#627/#628 auto-closed by their PRs. Open design calls unchanged: #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract). #631 follow-up recorded: `mergeDuplicatePages`/`resolveContradiction` stay unguarded (2-guarded/1-unguarded until the follow-up note).
+
+### Shipped into v1.27.x PATCH — wave D (2026-09-05/06, 2 PRs, main `f1f2936`)
+
+Deterministic-related-lists + dependency-security root fix, the final wave before v1.27.1 shipped:
+
+| PR | Issue | What | Severity class |
+|----|-------|------|----------------|
+| **#636** | #635 | related lists deterministic end to end: siblings link each other, vault-known names keep title+kind, Related sections rendered from the lists not the model (dead related 24%→1%, 0 pages without a live link was 103) | content-loss / graph-integrity |
+| **#637** | — | 8 fast-uri Dependabot alerts closed at the root: `^3.1.7`, redundant override dropped, CI `pnpm audit` gate, `.github/dependabot.yml` auto-PR (weekly npm + actions) | security |
+
+3993 tests (Gate 1 green). #636 closes #635; #637 closes 8 Dependabot alerts (open=0). v1.27.1 release notes carry both.
 
 ### Shipped into v1.27.x PATCH — wave B (2026-09-04, 9 PRs, main `8feb5fd`)
 

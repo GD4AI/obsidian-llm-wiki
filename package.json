@@ -1,6 +1,6 @@
 {
   "name": "karpathywiki",
-  "version": "1.27.0",
+  "version": "1.27.1",
   "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=22"
