@@ -36,19 +36,21 @@ describe('WikiEngine.ingestSource — related shaping', () => {
       .filter(m => m.includes('Related entities:'))
       .map(m => `${(m.match(/Related entities:[^\\]*/) ?? [''])[0]} | ${(m.match(/Related concepts:[^\\]*/) ?? [''])[0]}`);
     expect(lines).toEqual([
-      // Berberin: Metformin under its vault title, Secukinumab kept as written, Vitamin K2 as a note that will be a page, sibling concept added
-      'Related entities: Metformin, Secukinumab, Vitamin K2 | Related concepts: Insulinresistenz',
-      // Insulinresistenz: sibling entity added, the unanswered concept kept
+      // Berberin: Metformin under its vault title, Secukinumab kept as written, Vitamin K2 as a note that will be a page — live entries, so no sibling
+      'Related entities: Metformin, Secukinumab, Vitamin K2 | Related concepts: No related concepts',
+      // Insulinresistenz: its only name is unanswered, so the sibling entity rescues it; the unanswered concept kept
       'Related entities: Berberin | Related concepts: Metabolisches Syndrom',
     ]);
 
     // The written page carries the sections rendered from the
     // same lists — Metformin on its vault path, the unanswered names on their
-    // planned paths, the sibling concept — whatever the model returned.
+    // planned paths — whatever the model returned; no sibling concept, the
+    // page has live entries of its own.
     const berberinPage = h.files.get('wiki/entities/berberin.md') ?? '';
-    expect(berberinPage).toContain('## Verwandte Entitäten\n\n- [[entities/Metformin|Metformin]]\n- [[entities/secukinumab|Secukinumab]]\n- [[entities/vitamin-k2|Vitamin K2]]\n\n## Verwandte Konzepte\n\n- [[concepts/insulinresistenz|Insulinresistenz]]\n');
+    expect(berberinPage).toContain('## Verwandte Entitäten\n\n- [[entities/Metformin|Metformin]]\n- [[entities/secukinumab|Secukinumab]]\n- [[entities/vitamin-k2|Vitamin K2]]\n');
+    expect(berberinPage).not.toContain('concepts/insulinresistenz');
 
     const msg = h.progressMessages.find(m => m.startsWith('Related lists:'));
-    expect(msg).toBe('Related lists: 2 sibling edges, 2 unanswered names, 2 tag values dropped');
+    expect(msg).toBe('Related lists: 1 sibling edges, 2 unanswered names, 2 tag values dropped');
   });
 });

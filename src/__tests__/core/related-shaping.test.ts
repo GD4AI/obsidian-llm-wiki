@@ -1,6 +1,6 @@
 // See core/related-shaping.ts.
 import { describe, it, expect } from 'vitest';
-import { shapeRelatedLists } from '../../core/related-shaping';
+import { SIBLING_CAP, shapeRelatedLists } from '../../core/related-shaping';
 import type { EntityInfo, ConceptInfo } from '../../types';
 
 const ent = (name: string, rel: Partial<EntityInfo> = {}): EntityInfo =>
@@ -39,17 +39,33 @@ describe('shapeRelatedLists', () => {
     expect(r.entities[0].related_entities).toEqual(['vitamin k2', 'Dissent-Stub']);
   });
 
-  it('links every page born from the note to its siblings, by kind, without self or duplicates', () => {
+  it('gives an orphan its siblings, by kind, without self or duplicates — a page with a live entry gets none', () => {
     const r = shapeRelatedLists(
       { entities: [ent('Berberin'), ent('Metformin', { related_entities: ['berberin'] })], concepts: [con('Insulinresistenz')] },
       deps,
     );
-    expect(r.entities[0].related_entities).toEqual(['Metformin']);
+    expect(r.entities[0].related_entities).toEqual(['Metformin']); // orphan: siblings
     expect(r.entities[0].related_concepts).toEqual(['Insulinresistenz']);
-    expect(r.entities[1].related_entities).toEqual(['Berberin']);
+    expect(r.entities[1].related_entities).toEqual(['Berberin']); // live entry of its own: no sibling added
+    expect(r.entities[1].related_concepts).toBeUndefined();
     expect(r.concepts[0].related_entities).toEqual(['Berberin', 'Metformin']);
     expect(r.concepts[0].related_concepts).toEqual([]);
-    expect(r.siblings).toBe(5);
+    expect(r.siblings).toBe(4);
+  });
+
+  it('a page whose only related name is itself is an orphan (review fix)', () => {
+    const r = shapeRelatedLists({ entities: [ent('Berberin', { related_entities: ['berberin'] }), ent('Metformin')], concepts: [] }, deps);
+    expect(r.entities[0].related_entities).toEqual(['Metformin']);
+  });
+
+  it('caps an orphan at SIBLING_CAP siblings and counts an unanswered name as no way out', () => {
+    const r = shapeRelatedLists(
+      { entities: [ent('A1', { related_entities: ['Niemand'] }), ent('A2'), ent('A3'), ent('A4'), ent('A5')], concepts: [] },
+      deps,
+    );
+    expect(r.entities[0].related_entities).toEqual(['Niemand', 'A2', 'A3', 'A4']); // frontier name kept, then 3 siblings
+    expect(r.entities[1].related_entities).toHaveLength(SIBLING_CAP);
+    expect(r.siblings).toBe(5 * SIBLING_CAP);
   });
 
   it('routes a survivor named in the wrong list to the list of its kind', () => {
