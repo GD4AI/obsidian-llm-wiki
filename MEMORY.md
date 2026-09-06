@@ -8,6 +8,28 @@
 
 ---
 
+## Current state (2026-09-06)
+
+**Latest shipped:** **v1.27.1 PATCH** (2026-09-06) — 46 merge commits since
+v1.27.0, 194 files, +10487/−3258 LOC, **3993 tests / 282 files** (see CHANGELOG
+§1.27.1). Content: deterministic related lists (#636), sourced-paragraph
+rewrite guard (#631), vault-wide folder-link repoint (#626), stream-path
+thinking policy (#629), local-calendar dates (#612), two-gate contradiction
+records (#610), stop-word/lex-PPR fix (#625), 3-phase repo audit
+(#632/#633/#634), dependency-security root fix (#637: fast-uri ^3.1.7, CI
+`pnpm audit` gate, `.github/dependabot.yml` weekly auto-PRs). All Gate-1 green.
+
+**Next:** v1.27.x PATCH shipped — remaining open design calls #603 (write-gate
+contract) / #604 (dead contradiction loop) / #567 (limit contract); Jan-Heldal
+#592/#593/#594/#597 PRs if submitted; #542 + #407-Stage-2; future MINOR
+(v1.28.0) backlog #608 image-embed ingest + #317/#326/#295 design-track.
+ROADMAP.md "v1.27.x PATCH" milestone now CLOSED (shipped as v1.27.1); open
+items live under `v1.27.0+ research` / backlog rows.
+
+> **Superseded 2026-09-06 (v1.27.1 shipped):** the 2026-09-05 block below is
+> the pre-release snapshot (3975 tests, main `ddf392d`). Kept for
+> archaeology — do not update the old block.
+
 ## Current state (2026-09-05)
 
 **Latest shipped:** **v1.27.0 MINOR** (2026-08-27) — 36 commits, 181 files,

@@ -222,7 +222,7 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 3975 tests / 279 files; v1.27.x PATCH wave C 2026-09-05)
+└── __tests__/           # Unit tests (vitest, 3993 tests / 282 files; v1.27.1 PATCH 2026-09-06)
 
 tools/                  # CLI toolchain (in-tree, ships via package.json bin) — see also the standalone sibling repo
 └── llm-wiki-cli/       # Headless ingest CLI (v1.26.0, PRs #372 + #387)
