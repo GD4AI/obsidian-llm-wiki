@@ -30,12 +30,12 @@ jobs:
           npm run build
 
       - name: Generate artifact attestation for main.js
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: main.js
 
       - name: Generate artifact attestation for styles.css
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: styles.css
 
