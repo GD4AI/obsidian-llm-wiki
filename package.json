@@ -41,7 +41,7 @@
     "esbuild": "0.28.1",
     "eslint": "10.2.1",
     "eslint-plugin-obsidianmd": "^0.4.2",
-    "fast-uri": "3.1.5",
+    "fast-uri": "^3.1.7",
     "jsdom": "^30.0.1",
     "obsidian": "1.12.3",
     "tslib": "2.4.0",
@@ -51,7 +51,6 @@
     "yaml": "^2.4.2"
   },
   "overrides": {
-    "fast-uri": "3.1.5",
     "brace-expansion": "5.0.9"
   },
   "dependencies": {
