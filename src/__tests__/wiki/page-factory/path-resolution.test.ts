@@ -503,3 +503,60 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
     expect(ctx.written.get('wiki/concepts/Stress.md')).toContain('type_conflict: entity');
   });
 });
+
+describe('resolvePagePath — a name too short to infer identity from (#661)', () => {
+  // `Cr` reached the semantic call on a vault where no page carried it and was
+  // merged into `Kreatinin` by two different window builders. Two code points
+  // carry nothing a summary could confirm, so when no page claims the name,
+  // the model is not asked.
+  const vaultOf = (files: Record<string, string>) => ({
+    files,
+    mockVault: {
+      getMarkdownFiles: () =>
+        Object.keys(files).map(p => ({ path: p, basename: p.split('/').pop()!.replace(/\.md$/, '') })),
+    },
+  });
+  const stranger = vaultOf({ 'wiki/entities/Kreatinin.md': '---\ntitle: Kreatinin\n---\n\n# page' });
+  const carrier = vaultOf({ 'wiki/entities/Kreatinin.md': '---\naliases:\n  - Cr\n---\n\n# page' });
+  const twoCarriers = vaultOf({
+    'wiki/entities/Chrom.md': '---\naliases:\n  - Cr\n---\nbody',
+    'wiki/entities/Kalorienrestriktion.md': '---\naliases:\n  - Cr\n---\nbody',
+  });
+  const answering = (reply: object) => ({ createMessage: vi.fn(async () => JSON.stringify(reply)) });
+
+  it('creates a two-character name without asking the model when no page carries it', async () => {
+    const client = answering({ match: true, path: 'wiki/entities/Kreatinin.md' });
+    const result = await resolvePagePath(makeCtx({ ...stranger, client }), 'Cr', 'entity', 'Kreatinin-Kurzform im Laborbefund');
+    expect(client.createMessage).not.toHaveBeenCalled();
+    expect(result.path).toBe('wiki/entities/Cr.md');
+  });
+
+  it('still asks the model for a three-character name', async () => {
+    const client = answering({ match: false });
+    await resolvePagePath(makeCtx({ ...stranger, client }), 'CRP', 'entity', 'desc');
+    expect(client.createMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('still asks the model for a two-character name in a script whose characters are words', async () => {
+    // 肝脏 (liver) is a complete Chinese name at two code points.
+    const client = answering({ match: false });
+    await resolvePagePath(makeCtx({ ...stranger, client }), '肝脏', 'entity', 'desc');
+    expect(client.createMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('still resolves a two-character alias deterministically', async () => {
+    const client = answering({ match: false });
+    const result = await resolvePagePath(makeCtx({ ...carrier, client }), 'Cr', 'entity', 'desc');
+    expect(result.path).toBe('wiki/entities/Kreatinin.md');
+    expect(client.createMessage).not.toHaveBeenCalled();
+  });
+
+  it('still routes a two-character ambiguous designator through the ranked candidates', async () => {
+    // #446's path: the pages carrying the name are shown, the model only
+    // chooses among them. The guard is about names nobody claims.
+    const client = answering({ match: true, path: 'wiki/entities/Chrom.md' });
+    const result = await resolvePagePath(makeCtx({ ...twoCarriers, client }), 'Cr', 'entity', 'desc');
+    expect(client.createMessage).toHaveBeenCalledTimes(1);
+    expect(result.path).toBe('wiki/entities/Chrom.md');
+  });
+});

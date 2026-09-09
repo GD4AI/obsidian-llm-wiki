@@ -21,7 +21,7 @@
 //     fires; optionally appends includePaths that aren't already in the
 //     list.
 
-import { WIKI_SUBFOLDERS, TOKENS_DEDUP_RESOLUTION, DEDUP_CANDIDATE_TOP_K } from '../../constants';
+import { MIN_DEDUP_NAME_LENGTH, WIKI_SUBFOLDERS, TOKENS_DEDUP_RESOLUTION, DEDUP_CANDIDATE_TOP_K } from '../../constants';
 import { slugify } from '../../core/slug';
 import { ConflictResolver } from '../../core/conflict-resolver';
 import { selectCandidateWindow } from '../../core/candidate-window';
@@ -104,6 +104,11 @@ export interface PathResolutionContext extends AliasesContext {
  * match, re-decides the entity/concept classification against the vault's
  * Classification Rules (see `applyClassificationDecision`).
  */
+// #661: the length floor applies to names written in scripts whose letters are
+// not words on their own. A two-character Han, Kana or Hangul name is a complete
+// word and keeps its model call; a name mixing in anything else is left alone too.
+const ALPHABETIC_NAME = /^[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{N}\p{M}\p{P}\s]+$/u;
+
 export async function resolvePagePath(
   ctx: PathResolutionContext,
   name: string,
@@ -212,6 +217,17 @@ export async function resolvePagePath(
       ...ambiguous,
       ...crossCandidates,
     ].filter((p, i, arr) => arr.findIndex(q => q.path === p.path) === i);
+
+    // #661: no page carries this name and it is too short to infer identity
+    // from (see `MIN_DEDUP_NAME_LENGTH`). The deterministic answers are all in
+    // `seeded` by now; what would follow is a lexical window and a model call,
+    // so the create fallback is taken before either is built.
+    if (seeded.length === 0 && ALPHABETIC_NAME.test(name.trim()) && [...name.trim()].length < MIN_DEDUP_NAME_LENGTH) {
+      console.debug(
+        `Entity resolution: "${name}" is shorter than ${MIN_DEDUP_NAME_LENGTH} code points and no page carries it — creating, not asking the model`,
+      );
+      return { path: fallbackPath };
+    }
 
     // Both wiki folders feed the window (#472 both ways): the folder is the
     // extraction's guess, not a property of the referent, so a near-name twin
