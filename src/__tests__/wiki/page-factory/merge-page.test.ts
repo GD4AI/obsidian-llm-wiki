@@ -507,3 +507,66 @@ describe('mergePage — the triage lane reports what it records (onContradiction
     expect(seen).toEqual([]);
   });
 });
+
+// The complementary path writes into whatever section the triage names, and a
+// Related section is a legal target — its per-section call produces prose
+// bullets with a provenance marker, which the two Related sections are not
+// supposed to carry: every other write path renders them from the typed lists.
+describe('mergePage — a complementary append into a Related section is rendered, not pasted', () => {
+  const WITH_RELATED = [
+    '---', 'title: Caching', '---', '',
+    '## Description', 'Old text.', '',
+    '## Related Concepts', '', '- [[concepts/Alpha|Alpha]]', '- [[concepts/Beta|Beta]]', '',
+  ].join('\n');
+
+  function run(appended: string) {
+    const ctx = makeCtx(makeClient([
+      JSON.stringify({
+        strategy: 'complementary',
+        reason: 'expand',
+        items: [{ kind: 'complementary', content: 'more', target_section: 'Related Concepts' }],
+      }),
+      appended,
+    ]));
+    return mergePage(
+      ctx, createMockEntity({ name: 'Caching' }), 'entity',
+      { path: 'note.md', basename: 'note.md' }, WITH_RELATED, [], 'wiki/entities/caching.md',
+    ).then(() => ctx.written.get('wiki/entities/caching.md')!);
+  }
+
+  function relatedBullets(page: string): string[] {
+    const sec = /^## Related Concepts\n([\s\S]*?)(?=^## |\Z)/m.exec(page);
+    return (sec?.[1] ?? '').split('\n').filter(l => l.startsWith('- [['));
+  }
+
+  it('keeps the link the append named and drops the prose around it', async () => {
+    const page = await run('- [[concepts/SCFAs|SCFAs]] strengthen the barrier. ^[Source: [[Leaky Gut]]]');
+    const bullets = relatedBullets(page);
+    expect(bullets).toContain('- [[concepts/SCFAs|SCFAs]]');
+    expect(bullets.every(l => /^- \[\[[^\]]+\]\]$/.test(l))).toBe(true);
+  });
+
+  it('lists a target once when the append repeats one the page already has', async () => {
+    const page = await run([
+      '- [[concepts/Alpha|Alpha]] again, with prose. ^[Source: [[X]]]',
+      '- [[concepts/SCFAs|SCFAs]] (protective)',
+    ].join('\n'));
+    expect(relatedBullets(page).filter(l => l.includes('concepts/Alpha'))).toHaveLength(1);
+  });
+
+  it('leaves the list untouched when the append lands in another section', async () => {
+    const ctx = makeCtx(makeClient([
+      JSON.stringify({
+        strategy: 'complementary', reason: 'expand',
+        items: [{ kind: 'complementary', content: 'more', target_section: 'Description' }],
+      }),
+      'One more sentence.',
+    ]));
+    await mergePage(
+      ctx, createMockEntity({ name: 'Caching' }), 'entity',
+      { path: 'note.md', basename: 'note.md' }, WITH_RELATED, [], 'wiki/entities/caching.md',
+    );
+    expect(relatedBullets(ctx.written.get('wiki/entities/caching.md')!))
+      .toEqual(['- [[concepts/Alpha|Alpha]]', '- [[concepts/Beta|Beta]]']);
+  });
+});

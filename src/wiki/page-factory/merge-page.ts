@@ -41,6 +41,7 @@ import {
 } from '../../core/section-header-canonicalizer';
 import { guardBodyRewrite } from '../../core/paragraph-provenance';
 import { applyRelatedLinks } from './related-links';
+import { relatedListLines } from '../../core/related-sections';
 import { mergeFrontmatter, parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { incomingTypeTag } from '../../core/tag-vocab';
 import { collectActiveVocabulary } from '../../core/domain-axis';
@@ -148,6 +149,8 @@ export async function mergePage(
     // the #312 override below: only `skip` is rerouted. A write that adds
     // content promotes the page: the marker is stripped below.
     const existingIsStub = isStubPage(existingFm);
+
+    const labels = getSectionLabels(ctx.settings);
 
     // 1. v1.24.0 #216 — classify-then-route triage.
     let shouldSkip = false;
@@ -257,7 +260,30 @@ export async function mergePage(
     }
 
     if (shouldSkip) {
-      const bodyToWrite = complementaryBody ?? existingBody;
+      let bodyToWrite = complementaryBody ?? existingBody;
+      // The complementary append writes into whatever section the triage named,
+      // and a Related section is a legal target. What the per-section call
+      // writes there is prose with a provenance marker rather than a list
+      // entry, so it never passes the pass that renders these two sections
+      // from the typed lists — the one the create, related and rewrite paths
+      // all go through. The result is a Related list holding model prose and
+      // the same target twice. Run the same pass here, but only when the
+      // append actually changed a Related section: it reads every page in the
+      // vault, and most appends land elsewhere.
+      if (
+        complementaryBody !== null &&
+        relatedListLines(existingBody, labels.related_entities, labels.related_concepts) !==
+          relatedListLines(complementaryBody, labels.related_entities, labels.related_concepts)
+      ) {
+        // Two deliberate narrowings. `keepFrom` is the appended body, not the
+        // one before it: the append named a relation, and that stays an entry
+        // — what goes is the prose around the link, which the list does not
+        // carry. And the typed lists are left out: this path is here to render
+        // what the append wrote, not to add the new source's related names.
+        // Passing them would make every complementary merge grow the list,
+        // which is a different change with a different argument.
+        bodyToWrite = await applyRelatedLinks(ctx, bodyToWrite, {}, labels, { pageType, keepFrom: bodyToWrite });
+      }
       // Item-level contradictions reach this path (complementary write):
       // stamp the same frontmatter marker the rewrite path stamps below.
       let fmToWrite = contradictedSourcePath
@@ -310,7 +336,6 @@ export async function mergePage(
     }
 
     // 3. Assemble final content (re-assert related-link types deterministically).
-    const labels = getSectionLabels(ctx.settings);
     const canonicalizedBody = canonicalizeSectionHeaders(cleanedBody, Object.values(labels));
     const prunedBody = stripUnknownSections(canonicalizedBody, Object.values(labels));
     // Related links resolved against every page, sections written from the

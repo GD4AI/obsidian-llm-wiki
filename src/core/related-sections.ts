@@ -72,6 +72,22 @@ function keptEntries(lines: string[], labels: string[], universe: string[], reso
   return out;
 }
 
+/**
+ * The bullet lines of both Related sections, verbatim — a cheap "did this
+ * write touch the list" check for callers that only sometimes have to run the
+ * rendering pass, which reads every page in the vault.
+ */
+export function relatedListLines(content: string, entitiesLabel: string, conceptsLabel: string): string {
+  const lines = content.split('\n');
+  const universe = [entitiesLabel, 'Related Entities', conceptsLabel, 'Related Concepts'];
+  const out: string[] = [];
+  for (const labels of [[entitiesLabel, 'Related Entities'], [conceptsLabel, 'Related Concepts']]) {
+    const sec = findSection(lines, labels, universe);
+    if (sec) out.push(...lines.slice(sec.start + 1, sec.end).filter(l => /^\s*[-*]\s+\[\[/.test(l)));
+  }
+  return out.join('\n');
+}
+
 function folderOf(rel: string, fallback: Folder): Folder {
   return rel.startsWith('concepts/') ? 'concepts' : rel.startsWith('entities/') ? 'entities' : fallback;
 }
