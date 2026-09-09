@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian, read without downloading remote URLs, and sent with the extraction request to vision-capable providers. The limit is 10 images at 10 MiB each; missing, unsupported, oversized, and duplicate files leave text ingestion intact.
+
 ## [1.27.1] - 2026-09-06
 
 46 merge commits since v1.27.0 (2026-08-27 → 09-06, 194 files, +10487/−3257 LOC, 3677 → 3993 tests). **PATCH** — deterministic related lists (#636), sourced-paragraph rewrite guard (#631), vault-wide folder-link repoint (#626), stream-path thinking policy (#629), local-calendar date stamps (#612), two-gate contradiction records (#610), stop-word/lex-PPR query fix (#625), 3-phase repo audit cleanup (#632/#633/#634), plus the wave-A/B correctness wave (#557-#622).

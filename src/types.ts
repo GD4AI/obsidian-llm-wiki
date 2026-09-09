@@ -411,6 +411,9 @@ export interface LLMWikiSettings {
    */
   writePdfMarkdownToVault?: boolean;
 
+  /** Opt-in local-image analysis for Markdown source embeds. */
+  analyzeEmbeddedImages?: boolean;
+
   // Issue #128: per-task sampling temperature. Leave undefined to use the
   // provider's default. Low values (e.g. 0.15) improve fidelity for extraction
   // and verbatim quotes; higher values (e.g. 0.7) make chat answers more fluid.
@@ -732,7 +735,20 @@ export interface IngestOptions {
  */
 export type MessageContentPart =
   | { type: 'text'; text: string }
-  | { type: 'file'; data: string; mediaType: 'application/pdf'; filename?: string };
+  | { type: 'file'; data: string; mediaType: 'application/pdf'; filename?: string }
+  | ImageContentPart;
+
+/** A local image encoded as base64 for the AI SDK's multimodal input. */
+export type ImageContentPart = {
+  type: 'image';
+  image: string;
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif' | 'image/bmp';
+};
+
+/** User messages may carry images; assistant messages retain text/file compatibility. */
+export type LLMMessage =
+  | { role: 'user'; content: string | MessageContentPart[] }
+  | { role: 'assistant'; content: string | Exclude<MessageContentPart, ImageContentPart>[] };
 
 /**
  * Why the provider stopped generating. Mirrors the AI SDK v6 `FinishReason`
@@ -786,7 +802,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     response_format?:
       | { type: 'json_object' }
       // v1.26.3 PATCH pilot (Issue #443): a schema can now travel with
@@ -889,7 +905,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     // v1.26.3 PATCH Phase B: `schema` accepts either a raw JSON Schema
     // (legacy callers) or a Zod schema (Phase B migrations — the Zod
     // schema is the single source of truth for both the Tier 0 wire
@@ -918,7 +934,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     onChunk: (chunk: string) => void;
     enableThinking?: boolean;
     temperature?: number;
@@ -1290,6 +1306,7 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // PDF conversion.
   forcePdfSupport: false,
   writePdfMarkdownToVault: false,
+  analyzeEmbeddedImages: false,
   // v1.26.0 (#382 item 2): dedup threshold overrides — undefined = use the
   // LINT_DEDUP_* constants in src/constants.ts. The UI renders them only
   // when showAdvancedSettings is on (Advanced Settings panel, bottom of the

@@ -713,6 +713,8 @@ export const JA_TEXTS = {
     forcePdfSupportName: 'PDF サポートを強制',
     forcePdfSupportDesc: 'デフォルトはオフ。プロバイダーがネイティブ対応リストにないものの PDF を処理できる場合は、このスイッチをオンにして試すことができます。オンにすると PDF が現在のプロバイダーに送られ、拒否された場合は通知で案内されます。ネイティブ PDF プロバイダー（Anthropic / OpenAI / Bedrock）では不要です。',
     writePdfMarkdownToVaultName: '変換後の Markdown を Vault に書き込む',
+    analyzeEmbeddedImagesName: 'Markdown 取り込み中に埋め込み画像を解析',
+    analyzeEmbeddedImagesDesc: '既定ではオフです。有効にすると、Markdown 抽出リクエストにローカル画像を最大 10 枚（各 10 MiB）送信します。リモート画像は取得しません。',
     markdownConversionBackendName: 'Markdown 変換バックエンド',
     markdownConversionBackendDesc: 'Native はプロバイダーの組み込み PDF サポートを使用します（範囲が限られ、すべてのプロバイダー/モデルが PDF に対応するわけではなく、LLM トークンを消費します）。MinerU はオンラインサービスで、高速・日次クォータまで無料・PDF/画像/Office に対応しますが、API トークンが必要です（下のフィールドに設定）。',
     markdownConversionBackendNative: 'プロバイダーの PDF/画像 対応',

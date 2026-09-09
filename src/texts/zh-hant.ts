@@ -713,6 +713,8 @@ export const ZH_HANT_TEXTS = {
     forcePdfSupportName: '強制啟用 PDF 支援',
     forcePdfSupportDesc: '預設關閉。如果你的 provider 不在原生支援清單中，但其實可以處理 PDF，可以打開這個開關試試。打開後 PDF 會送給目前的 provider，若被拒絕，會用提示通知你。原生支援 PDF 的 provider（Anthropic / OpenAI / Bedrock）不需要這個開關。',
     writePdfMarkdownToVaultName: '將轉換後的 Markdown 寫入 Vault',
+    analyzeEmbeddedImagesName: '在 Markdown 攝入時分析嵌入圖片',
+    analyzeEmbeddedImagesDesc: '預設關閉。開啟後會隨 Markdown 擷取請求傳送最多 10 張本地圖片，每張最大 10 MiB；絕不下載遠端圖片。',
     markdownConversionBackendName: 'Markdown 轉換後端',
     markdownConversionBackendDesc: 'Native 使用 provider 自帶的 PDF 支援（範圍有限，並非所有 provider/model 都支援 PDF，消耗 LLM tokens）。MinerU 是線上服務——速度快、按日配額免費、支援 PDF/圖片/Office——但需要 API Token（於下方欄位填寫）。',
     markdownConversionBackendNative: 'Provider PDF/圖片 支援',

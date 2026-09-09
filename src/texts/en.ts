@@ -775,6 +775,8 @@ export const EN_TEXTS = {
     forcePdfSupportDesc: 'Off by default. Turn this on if your provider isn\'t listed as native but can still handle PDF files. When on, the PDF will be sent to your current provider — if it gets rejected, you\'ll see a clear notice. Native PDF providers (Anthropic / OpenAI / Bedrock) don\'t need this.',
     writePdfMarkdownToVaultName: 'Write converted Markdown to Vault',
     writePdfMarkdownToVaultDesc: 'Off by default. When on, each PDF conversion result is written to a "<basename>.pdf.md" file next to the source PDF. When off (cache-only architecture), results live only in the plugin cache and leave no artifacts in your Vault.',
+    analyzeEmbeddedImagesName: 'Analyze embedded images during Markdown ingestion',
+    analyzeEmbeddedImagesDesc: 'Off by default. Sends up to 10 local image embeds (10 MiB each) with the Markdown extraction request. Remote images are never downloaded.',
     markdownConversionBackendName: 'Markdown conversion backend',
     markdownConversionBackendDesc: 'Native uses your provider\'s built-in PDF support (limited scope, not every provider/model handles PDF, costs LLM tokens). MinerU is an online service — fast, free up to the daily quota, accepts PDF/images/Office — but requires an API token (set it in the field below).',
     markdownConversionBackendNative: 'Provider PDF/image support',

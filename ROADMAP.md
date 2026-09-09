@@ -4,6 +4,8 @@
 
 **Latest shipped:** v1.27.1 PATCH (2026-09-06, 46 commits / 3993 tests). See [CHANGELOG.md §1.27.1](./CHANGELOG.md#1271---2026-09-06) for the canonical composition record. | **Updated:** 2026-09-06 (v1.27.1 release prep — wave C/D + audit trio + #636/#637 all SHIPPED)
 
+**Next MINOR candidate:** Issue #608 — opt-in local Markdown-image analysis. The implementation resolves vault-local Obsidian and Markdown image embeds into vision input, with a 10-image / 10 MiB guard; remote images, OCR, caching, and multi-frame GIF analysis remain out of scope.
+
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
 **v1.27.0 MINOR Phase4 (CLI demote) — MERGED 2026-08-22**: PR #511 (`002da74`, closes #507) migrates `tools/llm-wiki-cli/` → `tools/dev-instrument/` (UPSTREAM DEV-ONLY INSTRUMENT, engine contributors only), eliminating 49 of ~52 Obsidian Bot errors. Two review rounds by @DocTpoint (round-2 blocking finding produced the shim-bundle smoke test now in Gate 1); legacy snapshot at `legacy/cli-v1.26.4-snapshot`. One-cycle deprecation notice ships in the v1.27.0 release notes.

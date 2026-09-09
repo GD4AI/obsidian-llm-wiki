@@ -33,6 +33,7 @@ import { getActiveEntityTags, getActiveConceptTags, foldToVocabulary } from '../
 import { SourceAnalysisLLMSchema, LemmaClassifyLLMSchema, TypeRepairLLMSchema } from '../llm-sdk/output-schemas';
 import { callLlm } from '../core/llm-dispatch';
 import { findRepetitionLoop, isSourceBorneLoop, REPETITION_LOOP_MIN_REPEATS } from '../core/repetition-loop';
+import { collectEmbeddedImages } from '../core/embedded-image-resolver';
 
 // ── Batch response normalization ─────────────────────────────────
 // LLMs often return irregular JSON: omitted empty arrays, non-array truthy
@@ -311,6 +312,19 @@ export class SourceAnalyzer {
     const client = this.ctx.getClient();
     if (!client) throw new Error('LLM client not initialized');
 
+    const embeddedImages = this.ctx.settings.analyzeEmbeddedImages === true
+      ? await collectEmbeddedImages({
+        markdown: content,
+        sourcePath: file.path,
+        resolveLink: (target, sourcePath) =>
+          this.ctx.app.metadataCache.getFirstLinkpathDest(target, sourcePath)?.path ?? null,
+        readBinary: path => this.ctx.app.vault.adapter.readBinary(path),
+      })
+      : null;
+    if (embeddedImages && Object.values(embeddedImages.skipped).some(count => count > 0)) {
+      console.debug('[embedded-images] skipped:', embeddedImages.skipped);
+    }
+
     for (let batchNum = 0; batchNum < limits.maxBatches; batchNum++) {
       const isFirstBatch = batchNum === 0;
 
@@ -406,14 +420,17 @@ export class SourceAnalyzer {
         // baseURL — exactly what LMStudio accepts. On Tier 1 / Tier 2, the SDK
         // drops the schema and falls back to `Output.json()` / no-field; we then
         // parse `result.text` via the existing parseJsonResponse path.
+        const messageContent = embeddedImages?.parts.length
+          ? [{ type: 'text' as const, text: finalPrompt }, ...embeddedImages.parts]
+          : finalPrompt;
         const extractArgs = {
           task: 'extract' as const,
           model: resolvedModel,
           max_tokens: batchMaxTokens,
           system: systemPrompt,
-          messages: [{ role: 'user' as const, content: finalPrompt }],
+          messages: [{ role: 'user' as const, content: messageContent }],
           response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-          cacheBreakpoint: staticPrefix.length,
+          ...(embeddedImages?.parts.length ? {} : { cacheBreakpoint: staticPrefix.length }),
           maxTokensPerCall: retryCap,
           // Extraction never mentioned the thinking setting, so whatever the
           // server had been started with decided it and the setting meant

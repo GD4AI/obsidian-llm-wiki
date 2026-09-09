@@ -515,6 +515,8 @@ export const DE_TEXTS = {
     forcePdfSupportName: 'PDF-Unterstützung erzwingen',
     forcePdfSupportDesc: 'Standardmäßig aus. Schalten Sie dies ein, wenn Ihr Provider nicht in der nativen Liste steht, aber trotzdem PDFs verarbeiten kann. Bei aktiviertem Schalter wird das PDF an Ihren aktuellen Provider gesendet; wird es abgelehnt, sehen Sie einen Hinweis. Native PDF-Provider (Anthropic / OpenAI / Bedrock) benötigen diese Einstellung nicht.',
     writePdfMarkdownToVaultName: 'Konvertiertes Markdown in Vault schreiben',
+    analyzeEmbeddedImagesName: 'Eingebettete Bilder bei der Markdown-Aufnahme analysieren',
+    analyzeEmbeddedImagesDesc: 'Standardmäßig aus. Sendet bis zu 10 lokale Bildeinbettungen (je 10 MiB) mit der Markdown-Extraktion. Remote-Bilder werden nie heruntergeladen.',
     markdownConversionBackendName: 'Markdown-Konvertierungs-Backend',
     markdownConversionBackendDesc: 'Verwenden Sie die native PDF-Unterstützung Ihres Providers (begrenzter Umfang, nicht jeder Provider/jedes Modell verarbeitet PDF, verbraucht LLM-Tokens). MinerU ist ein Online-Dienst — schnell, bis zum täglichen Kontingent kostenlos, akzeptiert PDF/Bilder/Office — erfordert jedoch ein API-Token (im Feld unten festlegen).',
     markdownConversionBackendNative: 'Provider-PDF-/Bild-Unterstützung',

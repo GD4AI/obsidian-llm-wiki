@@ -515,6 +515,8 @@ export const KO_TEXTS = {
     forcePdfSupportName: 'PDF 지원 강제',
     forcePdfSupportDesc: '기본값은 꺼짐. provider가 네이티브 지원 목록에 없지만 PDF를 처리할 수 있다면, 이 스위치를 켜서 시도해 볼 수 있습니다. 켜면 PDF가 현재 provider로 전송되며, 거부되면 알림으로 안내됩니다. 네이티브 PDF provider(Anthropic / OpenAI / Bedrock)는 이 설정이 필요 없습니다.',
     writePdfMarkdownToVaultName: '변환된 Markdown을 Vault에 기록',
+    analyzeEmbeddedImagesName: 'Markdown 수집 중 포함된 이미지 분석',
+    analyzeEmbeddedImagesDesc: '기본값은 꺼짐입니다. 활성화하면 Markdown 추출 요청에 로컬 이미지 최대 10개(각 10 MiB)를 보냅니다. 원격 이미지는 다운로드하지 않습니다.',
     markdownConversionBackendName: 'Markdown 변환 백엔드',
     markdownConversionBackendDesc: 'Native는 제공업체의 내장 PDF 지원을 사용합니다(범위가 제한적이며 모든 제공업체/모델이 PDF를 처리하는 것은 아니며 LLM 토큰을 소비합니다). MinerU는 온라인 서비스로 — 빠르고, 일일 할당량까지 무료이며, PDF/이미지/Office를 지원합니다 — 하지만 API 토큰이 필요합니다(아래 필드에 설정).',
     markdownConversionBackendNative: '제공업체 PDF/이미지 지원',

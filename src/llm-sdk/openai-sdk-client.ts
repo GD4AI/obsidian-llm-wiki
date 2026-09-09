@@ -148,7 +148,7 @@ export class OpenAISdkClient implements LLMClient {
       const result = await generateText({
         model: languageModel,
         ...(system ? { system } : {}),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages,
         maxOutputTokens: max_tokens,
         // Provider-specific options (OpenAI: reasoning effort + thinking).
         // Type: AI-SDK's SharedV3ProviderOptions is a deeply-typed JSON
@@ -192,7 +192,7 @@ export class OpenAISdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           providerOptions: this.buildProviderOptions({
             model,
@@ -230,7 +230,7 @@ export class OpenAISdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           providerOptions: this.buildProviderOptions({
             model,
