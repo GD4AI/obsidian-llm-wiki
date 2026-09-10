@@ -49,3 +49,32 @@ export function normalizeEmptyMode(opts: {
 }): string {
   return opts.isEmpty ? opts.currentBody : opts.newBody;
 }
+
+/**
+ * Builds one diff-pane cell (gutter + content) as a child of `parent`. Lives here rather than on SchemaDiffModal, same as its siblings above — testable without triggering Vite's import-analysis failure on the real Modal class.
+ *
+ * Builds directly on `parent` rather than on `activeDocument`: Obsidian's `Node.createEl`/`createDiv`/`createSpan` create AND append the new element to `this` (per obsidian.d.ts: "Create an element and append it to this node"). A Document can only ever have one child element, so calling these on `activeDocument` throws `HierarchyRequestError` on the second cell — an ordinary Element can hold any number of children, so building on `parent` avoids that entirely, matching the file's own existing idiom elsewhere (`contentEl.createDiv(...)`, `diffContainer.createDiv(...)` above).
+ *
+ * Each cell uses the row-highlight color matching its side: left pane highlights (deletions) get a red tint, right pane highlights (additions) get a green tint, so a row that's red on the left is green on the right, and rows that only change on one side get a blank placeholder on the other.
+ */
+export function buildDiffCell(
+  parent: HTMLElement,
+  lineNo: number | null,
+  text: string,
+  highlighted: boolean,
+  side: 'left' | 'right',
+): HTMLElement {
+  const sideClass = side === 'left' ? ' llm-wiki-schema-diff-row-del' : ' llm-wiki-schema-diff-row-add';
+  const rowClass = 'llm-wiki-schema-diff-row' + (highlighted ? sideClass : '');
+  const contentClass = 'llm-wiki-schema-diff-content' + (highlighted ? ' llm-wiki-schema-diff-content-highlight' : '');
+
+  const cell = parent.createDiv({ cls: rowClass });
+
+  const gutter = cell.createSpan({ cls: 'llm-wiki-schema-diff-gutter' });
+  gutter.textContent = lineNo == null ? '' : String(lineNo);
+
+  const content = cell.createSpan({ cls: contentClass });
+  content.textContent = text;
+
+  return cell;
+}
