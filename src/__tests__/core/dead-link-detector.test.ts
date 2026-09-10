@@ -256,6 +256,15 @@ describe('Dead Link Detector — Pure Functions', () => {
       expect(result).toBe('See [[entities/cot|first name]] and later [[entities/cot|second name]] again.');
     });
 
+    // DocTpoint's #653 review: a bare occurrence and an aliased occurrence of the same
+    // target on one page must not cross-contaminate — the bare one gets the fallback
+    // replacement (i.e. displayTitle), the aliased one keeps its own alias, independently.
+    it('gives the fallback replacement to a bare occurrence while a sibling occurrence keeps its own alias', () => {
+      const mixed = 'First bare [[wrong-target]] then aliased [[wrong-target|receptors]].';
+      const result = replaceDeadLink(mixed, 'wrong-target', '[[entities/cot|Chain of Thought]]');
+      expect(result).toBe('First bare [[entities/cot|Chain of Thought]] then aliased [[entities/cot|receptors]].');
+    });
+
     it('handles links with section anchors', () => {
       const linkWithAnchor = 'See [[思维链#section]] for details.';
       const result = replaceDeadLink(linkWithAnchor, '思维链', '[[entities/cot|Chain of Thought]]');
