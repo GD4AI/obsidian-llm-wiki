@@ -12,7 +12,7 @@
 //   - Replaces the existing `aliases:` block if present, otherwise injects a
 //     fresh block before the closing `---`.
 
-import { filterRedundantAliases, resolveMinAliasLength } from '../../core/slug';
+import { aliasKey, filterRedundantAliases, resolveMinAliasLength } from '../../core/slug';
 import { parseFrontmatter } from '../../core/frontmatter';
 
 // Moved to core/slug.ts so the create path (enforceFrontmatterConstraints)
@@ -60,7 +60,12 @@ export async function appendAliases(
 
   const fm = parseFrontmatter(content);
   const existingAliases = Array.isArray(fm?.aliases) ? fm.aliases : [];
-  const toAdd = candidates.filter(a => !existingAliases.includes(a));
+  // Fold before comparing, the same way `filterRedundantAliases` just folded
+  // the batch and the cross-page claims. A plain `includes` here made this the
+  // one list compared byte-exactly, so an incoming "NAc" did not recognise the
+  // "NAC" already on the page. The spelling already on disk wins.
+  const existingKeys = new Set(existingAliases.map(aliasKey));
+  const toAdd = candidates.filter(a => !existingKeys.has(aliasKey(a)));
   if (toAdd.length === 0) return;
 
   const merged = [...existingAliases, ...toAdd];
