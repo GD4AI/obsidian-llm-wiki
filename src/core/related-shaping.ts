@@ -1,4 +1,4 @@
-// Related lists: siblings link each other, and a related name the vault
+// Related lists: an orphan gets siblings, and a related name the vault
 // already answers is written under that page's own title and folder.
 //
 // The extraction may name anything from the note in `related_entities` /
@@ -63,6 +63,9 @@ function nameVariants(name: string): string[] {
   return m ? [name, m[1].trim(), m[2].trim()].filter(Boolean) : [name];
 }
 
+/** Siblings an orphan gets — enough for a way out, not a clique. */
+export const SIBLING_CAP = 3;
+
 export function shapeRelatedLists(
   analysis: Pick<SourceAnalysis, 'entities' | 'concepts'>,
   deps: RelatedShapingDeps,
@@ -78,11 +81,13 @@ export function shapeRelatedLists(
 
   const shape = (self: string, ents: string[] | undefined, cons: string[] | undefined) => {
     const outE: string[] = []; const outC: string[] = []; const seen = new Set<string>([nameKey(self)]);
-    const put = (name: string, kind: RelatedKind | undefined, into: RelatedKind) => {
+    let hasLive = false;
+    const put = (name: string, kind: RelatedKind | undefined, into: RelatedKind): boolean => {
       const k = nameKey(name);
-      if (!k || seen.has(k)) return;
+      if (!k || seen.has(k)) return false;
       seen.add(k);
       ((kind ?? into) === 'concept' ? outC : outE).push(name);
+      return true;
     };
     for (const [list, into] of [[ents, 'entity'], [cons, 'concept']] as const) {
       for (const raw of list ?? []) {
@@ -98,20 +103,29 @@ export function shapeRelatedLists(
         for (const v of nameVariants(name)) {
           const vk = nameKey(v);
           const s = survivors.get(vk);
-          if (s) { put(s.name, s.kind, into); placed = true; break; }
+          if (s) { hasLive = put(s.name, s.kind, into) || hasLive; placed = true; break; }
           const r = deps.resolve(v);
-          if (r) { put(r.title, r.kind, into); placed = true; break; }
+          if (r) { hasLive = put(r.title, r.kind, into) || hasLive; placed = true; break; }
         }
         if (placed) continue;
-        if (willExist.has(k)) { put(name, undefined, into); continue; }
+        if (willExist.has(k)) { hasLive = put(name, undefined, into) || hasLive; continue; }
         if (!prefixed && tagLeaves.has(k)) { tags.push({ on: self, name }); continue; }
         if (!seen.has(k)) unanswered.push({ on: self, name });
         put(name, undefined, into);
       }
     }
-    for (const s of survivors.values()) {
-      if (seen.has(nameKey(s.name))) continue;
-      put(s.name, s.kind, s.kind); siblings++;
+    // Siblings only rescue an orphan. Written for every page they were 99 %
+    // of the live edges on a 537-page rebuild (8562 of 8673), cliques of up
+    // to 20 pages per note, 462 pages with no other live edge — a graph of
+    // co-birth, not content, and redundant with the source page both
+    // siblings already link. A page whose own related names reach nothing
+    // alive (a self-link is nothing) gets up to SIBLING_CAP siblings.
+    if (!hasLive) {
+      const before = siblings;
+      for (const s of survivors.values()) {
+        if (siblings - before >= SIBLING_CAP) break;
+        if (put(s.name, s.kind, s.kind)) siblings++;
+      }
     }
     return { outE, outC };
   };
