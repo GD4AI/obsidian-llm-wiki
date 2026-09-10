@@ -838,3 +838,12 @@ export const BATCH_CHARS_PER_ITEM = 600;
 export const MIN_ALIAS_LENGTH = 2;
 export const MIN_ALIAS_LENGTH_MIN = 2;
 export const MIN_ALIAS_LENGTH_MAX = 6;
+
+// #661: the shortest extracted name the semantic dedup may be asked about when
+// no page carries it. Two code points carry nothing a summary could confirm —
+// `Cr` was merged into `Kreatinin` by two different window builders — so below
+// this the resolver creates instead of inferring. Deliberately not
+// `MIN_ALIAS_LENGTH`: what a vault accepts as an alias is the user's setting;
+// this is about what the resolver may infer, and a short alias a user did set
+// still resolves deterministically.
+export const MIN_DEDUP_NAME_LENGTH = 3;
