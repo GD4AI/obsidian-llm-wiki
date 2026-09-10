@@ -293,30 +293,7 @@ export async function fixDeadLink(
     return `stub created (unfilled): ${stubPath} — will be filled by next ingest of a real source`;
   }
 
-  // ---- Deterministic fallback when LLM fails ----
-  const lowerTarget = targetBasename.toLowerCase();
-  const targetSlug = slugify(targetBasename).toLowerCase();
-  let match = existingPages.find(p =>
-    p.title.toLowerCase() === lowerTarget ||
-    slugify(p.title).toLowerCase() === targetSlug
-  );
-
-  if (!match) {
-    match = existingPages.find(p =>
-      p.aliases?.some(a =>
-        a.toLowerCase() === lowerTarget ||
-        slugify(a).toLowerCase() === targetSlug
-      )
-    );
-  }
-
-  if (match) {
-    const newLink = `[[${makeRelPath(match.path, ctx.settings.wikiFolder)}|${match.displayTitle || match.title}]]`;
-    const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
-    await ctx.createOrUpdateFile(sourcePath, updatedContent);
-    return `fallback corrected: ${newLink}`;
-  }
-
+  // findDeadLinkTarget's pre-check above already ruled out every existing-page match.
   // No match — create an honest placeholder stub. Do NOT expand it via LLM.
   // #485: same leave-it gate as the LLM create_stub branch above.
   if (!shouldCreateStubForUnresolvableLink(ctx.settings)) {
