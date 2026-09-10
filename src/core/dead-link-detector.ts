@@ -3,17 +3,15 @@
 // Zero side effects, fully testable
 
 import { computeSlug } from './slug';
+import type { WikiPageRef } from '../types';
 
-export interface PageRef {
-  path: string;
-  title: string;
-  aliases?: string[];
-  /**
-   * Issue #592: `title` is the filename slug (`getExistingWikiPages` sets it from `f.basename`), not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
-   * When present, this is the page's real H1 and should be preferred over `title` anywhere a link repair needs to show the reader something, not just address the page.
-   */
-  displayTitle?: string;
-}
+// Deliberately narrower than WikiPageRef — these functions only need a page's
+// identity and names, not wikiLink/tags/ctime/text, so callers (and tests) can
+// build a minimal literal instead of a full page object. Derived via Pick so
+// the shared fields (notably displayTitle, see below) have one definition.
+export type PageRef = Pick<WikiPageRef, 'path' | 'title' | 'aliases' | 'displayTitle'>;
+// Issue #592: `title` is the filename slug (`getExistingWikiPages` sets it from `f.basename`), not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
+// `displayTitle`, when present, is the page's real H1 and should be preferred over `title` anywhere a link repair needs to show the reader something, not just address the page.
 
 // #308: a link target is slugified ("Systemische-Inflammation"), titles and
 // aliases are not ("Systemische Inflammation"). toLowerCase() alone leaves the
