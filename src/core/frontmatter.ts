@@ -534,9 +534,15 @@ export function mergeFrontmatter(
   const existingSources = Array.isArray(fm.sources) ? fm.sources : [];
   const sourceSet = new Set<string>();
   for (const s of existingSources) {
-    sourceSet.add(normalizeSourcePath(String(s)));
+    // Skip empty entries: a bare `sources:` line parses to [''], which would
+    // otherwise emit a stray `[[]]` link that the #125 normalizer has to clean
+    // up downstream. (Originally found on the create path; since v1.26.0 that
+    // path uses upstream's `appendSourceSlugToFrontmatter`, so merge-page.ts is
+    // the remaining caller that can see a model-written bare `sources:`.)
+    const n = normalizeSourcePath(String(s));
+    if (n) sourceSet.add(n);
   }
-  sourceSet.add(newSourcePath);
+  if (newSourcePath) sourceSet.add(newSourcePath);
   const mergedSources = Array.from(sourceSet).map(s => `[[${s}]]`);
 
   const created = fm.created || localDateStamp();

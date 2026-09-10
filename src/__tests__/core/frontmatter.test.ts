@@ -529,6 +529,16 @@ describe('mergeFrontmatter', () => {
     expect(result.wasMerged).toBe(true);
   });
 
+  it('does not emit a stray empty wikilink when an existing bare sources field is empty', () => {
+    // The create-path stamp calls mergeFrontmatter on enforce output, where a
+    // model-written block sources field has been reduced to a bare `sources:`
+    // line → parseFrontmatter yields ['']. The empty entry must be dropped.
+    const input = '---\ntype: entity\nsources:\ntags:\n---\n\nBody';
+    const result = mergeFrontmatter(input, 'sources/Neurologie');
+    expect(result.frontmatter).toContain('[[sources/Neurologie]]');
+    expect(result.frontmatter).not.toContain('[[]]');
+  });
+
   it('preserves created date', () => {
     const input = '---\ntype: entity\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\nBody';
     const result = mergeFrontmatter(input, 'sources/test.md');
