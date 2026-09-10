@@ -2,11 +2,12 @@ import { App } from 'obsidian';
 import { parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { CANDIDATE_WINDOW_TEXT_CHARS } from '../../constants';
 import { isInFolderScope } from '../../core/folder-scope';
+import type { WikiPageRef } from '../../types';
 
 export async function getExistingWikiPages(
   app: App,
   wikiFolder: string
-): Promise<Array<{ path: string; title: string; displayTitle?: string; wikiLink: string; aliases?: string[]; tags?: string[]; ctime?: number; text?: string }>> {
+): Promise<WikiPageRef[]> {
   const wikiFiles = app.vault
     .getMarkdownFiles()
     .filter(
@@ -18,7 +19,7 @@ export async function getExistingWikiPages(
         !f.path.includes('/contradictions/')
     );
 
-  const pages: Array<{ path: string; title: string; displayTitle?: string; wikiLink: string; aliases?: string[]; tags?: string[]; ctime?: number; text?: string }> = [];
+  const pages: WikiPageRef[] = [];
   for (const f of wikiFiles) {
     const relPath = f.path.replace(wikiFolder + '/', '').replace('.md', '');
     const content = await app.vault.read(f);
