@@ -355,3 +355,15 @@ describe('schema ↔ runtime header contract (#328 Phase 1)', () => {
     expect(section).toMatch(/## Active Tag Vocabulary/);
   });
 });
+
+describe('buildActiveTagVocabularySection — renders the one vocabulary when given', () => {
+  it('lists the harvested lists instead of the settings list, and names the source-page rule', () => {
+    const section = buildActiveTagVocabularySection(
+      mkSettings({ tagVocabularyMode: 'custom', customEntityTags: 'Sorte/Erkrankung' }),
+      { entities: ['Sorte/Erkrankung', 'Sorte/Organisation'], concepts: ['Sorte/Mechanismus'] },
+    );
+    expect(section).toContain('- Sorte/Organisation');
+    expect(section).toContain('- Sorte/Mechanismus');
+    expect(section).toMatch(/Source pages:.*form value/);
+  });
+});

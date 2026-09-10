@@ -34,7 +34,7 @@ import { cleanMarkdownResponse } from '../../core/markdown';
 import { canonicalizeSectionHeaders, stripUnknownSections } from '../../core/section-header-canonicalizer';
 import { applyRelatedLinks } from './related-links';
 import { parseFrontmatter, enforceFrontmatterConstraints, mergeFrontmatterArrayField } from '../../core/frontmatter';
-import { collectActiveVocabulary } from '../../core/domain-axis'; // local patch (Tag-Achse S138)
+import { activeVocabulary } from '../../core/vocabulary';
 import { injectMentionsSection } from '../../core/mentions-injector';
 import { renderTemplate } from '../../core/template-renderer';
 import { applySectionLabels, getSectionLabels } from '../system-prompts';
@@ -228,7 +228,7 @@ export async function createNewPage(
       pagePath: path,
       // S138: the birth path writes only vocabulary-carried nested values —
       // retained leaks would legitimize themselves via the wiki harvest.
-      domainVocabulary: collectActiveVocabulary(ctx.app as never, ctx.settings),
+      domainVocabulary: activeVocabulary(ctx.app as never, ctx.settings, pageType),
     });
     const labels = getSectionLabels(ctx.settings);
     // Re-assert the known section labels before the link corrector runs, so a

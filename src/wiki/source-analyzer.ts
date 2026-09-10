@@ -18,7 +18,8 @@ import { isCrossLanguage, normalizeSourceLanguage, getWikiLanguageName } from '.
 import { renderTemplate } from '../core/template-renderer';
 import { matchExtractedToExisting } from '../core/index-search';
 import { coerceToArray } from '../core/arrays';
-import { buildDomainContext, collectActiveVocabulary } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
+import { buildDomainContext } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
+import { activeVocabulary, domainVocabulary } from '../core/vocabulary';
 import { isBlankSource } from '../core/frontmatter';
 import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
 import { getExistingWikiPages } from './lint/get-existing-pages';
@@ -29,7 +30,7 @@ import { calculateBatchLimits, adjustBatchSizeForResponse, getCustomTypeCaps } f
 import { detectConvergence, checkCumulativeLimits, checkEmptyBatch, formatConvergenceStatus } from '../core/convergence-detector';
 import { createEmptyAccumulation, mergeBatchResults, buildSourceAnalysis, calculateBatchStats } from '../core/batch-merger';
 import { decideSourceLemma } from '../core/source-lemma';
-import { getActiveEntityTags, getActiveConceptTags, foldToVocabulary } from '../core/tag-vocab';
+import { foldToVocabulary } from '../core/tag-vocab';
 import { SourceAnalysisLLMSchema, LemmaClassifyLLMSchema, TypeRepairLLMSchema } from '../llm-sdk/output-schemas';
 import { callLlm } from '../core/llm-dispatch';
 import { findRepetitionLoop, isSourceBorneLoop, REPETITION_LOOP_MIN_REPEATS } from '../core/repetition-loop';
@@ -300,7 +301,7 @@ export class SourceAnalyzer {
       content,
       source_path: file.path,
       domain_context: buildDomainContext(
-        collectActiveVocabulary(this.ctx.app, this.ctx.settings),
+        domainVocabulary(this.ctx.app, this.ctx.settings),
       ),
     });
     const batchMarker = '{{batch_context}}';
@@ -893,9 +894,7 @@ export class SourceAnalyzer {
    * about the note's own subject, so any user-curated subtype applies).
    */
   private firstActiveTag(target: 'entity' | 'concept'): string {
-    const tags = target === 'entity'
-      ? getActiveEntityTags(this.ctx.settings)
-      : getActiveConceptTags(this.ctx.settings);
+    const tags = activeVocabulary(this.ctx.app, this.ctx.settings, target);
     return tags[0] ?? 'other';
   }
 
@@ -919,8 +918,8 @@ export class SourceAnalyzer {
    * leaves the item as extracted, which is exactly today's behaviour.
    */
   private async repairTypesAgainstVocabulary(analysis: SourceAnalysis): Promise<void> {
-    const entityVocab = getActiveEntityTags(this.ctx.settings);
-    const conceptVocab = getActiveConceptTags(this.ctx.settings);
+    const entityVocab = activeVocabulary(this.ctx.app, this.ctx.settings, 'entity');
+    const conceptVocab = activeVocabulary(this.ctx.app, this.ctx.settings, 'concept');
     // The literal unions on EntityInfo/ConceptInfo predate custom
     // vocabularies; writing a vocabulary term through a string-typed view is
     // what the lemma path does too (`as 'other'` at firstActiveTag's call).

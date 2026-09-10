@@ -27,7 +27,8 @@ function makeCtx(pages: Record<string, string>, reply: string) {
   let seenPrompt = '';
   const ctx = {
     settings: { wikiFolder: 'wiki', disableThinking: false },
-    app: {},
+    // the one vocabulary (vocabulary.ts) is harvested from the vault before every system prompt
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as never,
     tryReadFile: async (p: string) => pages[p],
     createOrUpdateFile: async (p: string, c: string) => { written[p] = c; },
     getSchemaContext: async () => '',

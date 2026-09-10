@@ -10,7 +10,7 @@ import { renderTemplate } from '../../core/template-renderer';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { retargetLinksToPage } from '../../core/link-retarget';
 import { localDateStamp } from '../../core/format';
-import { collectActiveVocabulary } from '../../core/domain-axis';
+import { activeVocabulary, activeVocabularyLists, vocabularyKindFor } from '../../core/vocabulary';
 
 export async function mergeDuplicatePages(
   ctx: EngineContext,
@@ -95,7 +95,8 @@ export async function mergeDuplicatePages(
         system: await buildSystemPrompt(
           ctx.settings,
           ctx.getSchemaContext,
-          'merge'
+          'merge',
+          activeVocabularyLists(ctx.app, ctx.settings)
         ),
         messages: [{ role: 'user', content: prompt }],
         ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
@@ -177,7 +178,7 @@ export async function mergeDuplicatePages(
   const enforced = enforceFrontmatterConstraints(newContent, pageType, ctx.settings, {
     preserveCreated: targetFm?.created,
     pagePath: targetPath,
-    domainVocabulary: collectActiveVocabulary(ctx.app, ctx.settings), // local patch (Tag-Achse S138)
+    domainVocabulary: activeVocabulary(ctx.app, ctx.settings, vocabularyKindFor(pageType)),
   });
   await ctx.createOrUpdateFile(targetPath, enforced);
 

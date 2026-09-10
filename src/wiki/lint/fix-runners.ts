@@ -9,7 +9,8 @@ import { PROMPTS } from '../../prompts';
 import { parseJsonResponse } from '../../core/json';
 import { detectRateLimitFailures, formatRateLimitNotice } from '../../core/rate-limit';
 import { resolveModelForTask } from '../../core/model-resolver';
-import { getActiveEntityTags, getActiveConceptTags, getActiveSourceTags } from '../../core/tag-vocab';
+import { getActiveSourceTags } from '../../core/tag-vocab';
+import { activeVocabulary, domainVocabulary } from '../../core/vocabulary';
 import { mergeFrontmatterArrayField, replaceFrontmatterArrayField, parseFrontmatter } from '../../core/frontmatter';
 import { renderTemplate } from '../../core/template-renderer';
 import { TOKENS_LINT_ALIAS_BATCH, NOTICE_ERROR, NOTICE_RATE_LIMIT } from '../../constants';
@@ -530,11 +531,13 @@ export async function runRetagViolations(
         const bodyPreview = body.slice(0, 400).replace(/\n+/g, ' ').trim();
 
         // Active vocabulary for the page's type
-        const validVocab = v.pageType === 'entity'
-          ? getActiveEntityTags(ctx.settings)
-          : v.pageType === 'concept'
-            ? getActiveConceptTags(ctx.settings)
-            : getActiveSourceTags(ctx.settings);
+        // One vocabulary (vocabulary.ts) — the same list the system prompt
+        // below renders and the write gate enforces. A source page carries
+        // the closed form list next to the `Group/Value` view of it; the flat
+        // identity types belong to entity and concept pages.
+        const validVocab = v.pageType === 'entity' || v.pageType === 'concept'
+          ? activeVocabulary(ctx.app, ctx.settings, v.pageType)
+          : [...getActiveSourceTags(ctx.settings), ...domainVocabulary(ctx.app, ctx.settings)];
 
         // #328 Phase 1 follow-up: the active tag vocabulary section is now
         // injected exactly once per LLM call at the system layer (by the

@@ -147,6 +147,7 @@ aliases: ["Alternative name or translation"]  # REQUIRED: at least 1 alias, must
    - **CRITICAL: do NOT invent translations for established technical terms.** Real-world usage
      always wins over linguistic purity. Only include translations that actually exist in the target language.
    - **If no natural alias exists**, use the source file name or the page title itself. The aliases field MUST NOT be left empty — always provide at least one alias
+7. **Tags** — keep the values given in the tags field below. You may add values from the Active Tag Vocabulary that describe what this source is about. Never add any other value.
 
 **Output Format:**
 ---
