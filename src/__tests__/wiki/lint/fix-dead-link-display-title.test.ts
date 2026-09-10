@@ -150,6 +150,31 @@ describe('fixDeadLink — preserves an existing alias already in the dead link (
     expect(writes[0]!.content).not.toContain('Haem A₃');
   });
 
+  // Issue #653 follow-up: extractDeadLinkAlias used to grab only the FIRST occurrence's
+  // alias and stamp it onto every occurrence of the same target. Each occurrence must
+  // keep its own alias instead.
+  it('pre-check: keeps each occurrence\'s own alias, not just the first one\'s', async () => {
+    vi.spyOn(getExistingPages, 'getExistingWikiPages').mockResolvedValue([
+      {
+        path: 'wiki/entities/haem-a3.md',
+        title: 'haem-a3',
+        displayTitle: 'Haem A₃',
+        wikiLink: '[[entities/haem-a3|haem-a3]]',
+      },
+    ] as never);
+    const { ctx, writes } = makeCtx(
+      noopClient(),
+      '# My Page\n\nFirst mention [[wrong-path/haem-a3|receptors]], later [[wrong-path/haem-a3|the receptor]] again.\n'
+    );
+
+    const out = await fixDeadLink(ctx, 'wiki/entities/MyPage.md', 'wrong-path/haem-a3');
+
+    expect(out).toContain('pre-check corrected');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.content).toContain('[[entities/haem-a3|receptors]]');
+    expect(writes[0]!.content).toContain('[[entities/haem-a3|the receptor]]');
+  });
+
   it('deterministic fallback: keeps the link\'s own existing alias over the target\'s displayTitle', async () => {
     vi.spyOn(getExistingPages, 'getExistingWikiPages').mockResolvedValue([
       {

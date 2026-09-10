@@ -44,12 +44,10 @@ export async function getExistingWikiPages(
     }
 
     // Issue #592: `title` (below) is the filename slug, not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
-    // Prefer the page's actual H1, falling back to its first frontmatter alias when the body has no parseable heading (a real, existing page can still lack one).
+    // Prefer the page's actual H1; when there's no parseable heading, leave it unset so callers fall back to `title` — frontmatter aliases are unordered abbreviations/variants, not necessarily what the page is called.
     // Costs no extra read — `body` is already produced above for the candidate-window text below.
     const h1Match = body.trim().match(/^#\s+(.+?)(?:\n|$)/);
-    const displayTitle = h1Match
-      ? h1Match[1].trim()
-      : (Array.isArray(fm?.aliases) && fm.aliases.length > 0 ? String(fm.aliases[0]) : undefined);
+    const displayTitle = h1Match ? h1Match[1].trim() : undefined;
 
     pages.push({
       path: f.path,

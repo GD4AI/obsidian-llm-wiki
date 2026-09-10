@@ -10,7 +10,7 @@ export interface PageRef {
   aliases?: string[];
   /**
    * Issue #592: `title` is the filename slug (`getExistingWikiPages` sets it from `f.basename`), not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
-   * When present, this is the page's real H1 (or, absent that, its first frontmatter alias) and should be preferred over `title` anywhere a link repair needs to show the reader something, not just address the page.
+   * When present, this is the page's real H1 and should be preferred over `title` anywhere a link repair needs to show the reader something, not just address the page.
    */
   displayTitle?: string;
 }
@@ -86,7 +86,6 @@ export function findDeadLinkTarget(
  *
  * @param page - The matching page
  * @param wikiFolder - Wiki root folder (e.g., "wiki")
- * @param existingAlias - An alias the dead link already carried (`[[wrong-path|Custom Name]]`), from `extractDeadLinkAlias`. The reader already saw this name — it outranks even the target's own `displayTitle`.
  * @returns Formatted wiki link (e.g., "[[entities/chain-of-thought|Chain of Thought]]")
  *
  * @example
@@ -97,43 +96,26 @@ export function findDeadLinkTarget(
  */
 export function buildDeadLinkReplacement(
   page: PageRef,
-  wikiFolder: string,
-  existingAlias?: string
+  wikiFolder: string
 ): string {
   const relPath = page.path
     .replace(wikiFolder + '/', '')
     .replace('.md', '');
-  return `[[${relPath}|${existingAlias || page.displayTitle || page.title}]]`;
-}
-
-/**
- * A dead link may already carry an author-written alias. Extracted once by `fixDeadLink` and passed into every branch that repairs the link, so a pre-existing alias always wins over the target's own displayTitle/title.
- * Only matches links that already have a `|alias` segment — a bare `[[target]]` or `[[target#heading]]` correctly returns undefined so callers fall through to displayTitle/title.
- *
- * @example
- * extractDeadLinkAlias('See [[wrong-path|Custom Name]] here', 'wrong-path')
- * // => 'Custom Name'
- * extractDeadLinkAlias('See [[wrong-path]] here', 'wrong-path')
- * // => undefined
- */
-export function extractDeadLinkAlias(
-  content: string,
-  targetName: string
-): string | undefined {
-  const linkRegex = /\[\[([^\]|#]+)(?:#[^\]|]*)?\|([^\]]+)\]\]/g;
-  let m: RegExpExecArray | null;
-  while ((m = linkRegex.exec(content)) !== null) {
-    if (m[1].trim() === targetName) return m[2].trim();
-  }
-  return undefined;
+  return `[[${relPath}|${page.displayTitle || page.title}]]`;
 }
 
 /**
  * Replace dead link in content with corrected link.
  *
+ * A dead link may already carry an author-written alias (`[[wrong-path|Custom Name]]`).
+ * The reader already saw that name, so it outranks whatever display name `replacement`
+ * carries — this is checked per match, not once for the whole file, so a page with two
+ * occurrences of the same target under two different aliases keeps both instead of one
+ * overwriting the other.
+ *
  * @param content - Source page content
  * @param targetName - Dead link target to find
- * @param replacement - Replacement wiki link
+ * @param replacement - Replacement wiki link, used verbatim for an occurrence with no alias of its own
  * @returns Updated content with link replaced
  *
  * @example
@@ -145,12 +127,14 @@ export function replaceDeadLink(
   targetName: string,
   replacement: string
 ): string {
-  const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
+  const linkRegex = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]/g;
   return content.replace(
     linkRegex,
-    (fullMatch: string, capturedTarget: string) => {
-      if (capturedTarget.trim() === targetName) return replacement;
-      return fullMatch;
+    (fullMatch: string, capturedTarget: string, capturedAlias?: string) => {
+      if (capturedTarget.trim() !== targetName) return fullMatch;
+      if (!capturedAlias) return replacement;
+      const relPath = replacement.match(/^\[\[([^\]|]+)/)![1];
+      return `[[${relPath}|${capturedAlias.trim()}]]`;
     }
   );
 }

@@ -1,4 +1,4 @@
-// `getExistingWikiPages()` sets `title` from the filename slug, not a display name. `displayTitle` (H1, or the first frontmatter alias when there is no parseable heading) is what a display name should come from instead — this pins its extraction directly.
+// `getExistingWikiPages()` sets `title` from the filename slug, not a display name. `displayTitle` (the page's H1) is what a display name should come from instead — this pins its extraction directly.
 
 import { describe, it, expect } from 'vitest';
 import { getExistingWikiPages } from '../../../wiki/lint/get-existing-pages';
@@ -19,7 +19,10 @@ describe('getExistingWikiPages — displayTitle extraction (#592)', () => {
     expect(pages[0]!.displayTitle).toBe('Haem A₃');
   });
 
-  it('falls back to the first frontmatter alias when there is no H1', async () => {
+  // Aliases are unordered abbreviations/variants, not necessarily what the page is
+  // called — the filename (via `title`, left for callers to fall back to) is the
+  // safer default when there's no H1 to go by.
+  it('leaves displayTitle undefined when there is no H1, even with frontmatter aliases present', async () => {
     const { ctx } = createMockContext({
       vaultFiles: {
         'wiki/entities/no-h1.md': '---\ntype: entity\naliases:\n  - "My Frontmatter Alias"\n  - "Other Alias"\n---\nNo heading here, just prose.\n',
@@ -29,7 +32,7 @@ describe('getExistingWikiPages — displayTitle extraction (#592)', () => {
     const pages = await getExistingWikiPages(ctx.app, 'wiki');
 
     expect(pages).toHaveLength(1);
-    expect(pages[0]!.displayTitle).toBe('My Frontmatter Alias');
+    expect(pages[0]!.displayTitle).toBeUndefined();
   });
 
   it('leaves displayTitle undefined when there is neither an H1 nor an alias', async () => {
