@@ -164,7 +164,7 @@ export async function mergeDuplicatePages(
     // alone, so a duplicate merge dropped every user-owned field of the
     // surviving page (`redirect_to:`, `parent_org:`, ...). Same helper, same
     // semantics as mergeFrontmatter: the survivor's lines, verbatim.
-    { tagStyle: 'block', passthroughLines: extractPassthroughLines(targetContent) }
+    { passthroughLines: extractPassthroughLines(targetContent) }
   ) + '\n\n' + mergedBody;
   const pageType = targetPath.includes(`/${WIKI_SUBFOLDERS.entities}/`)
     ? 'entity'

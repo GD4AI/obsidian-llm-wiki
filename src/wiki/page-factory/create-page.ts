@@ -381,10 +381,12 @@ export function appendSourceSlugToFrontmatter(content: string, sourceSlug: strin
 
   const sourcesIdx = lines.findIndex(l => /^sources:\s*$/.test(l));
   if (sourcesIdx === -1) {
-    // No existing `sources:` key — insert one. Anchor on `tags:` so the
-    // block order (type / created / updated / sources / tags / aliases /
-    // reviewed) matches the canonical layout produced by
-    // `enforceFrontmatterConstraints` + `serializeFrontmatter`.
+    // No existing `sources:` key — insert one. Anchor on the `tags:` block
+    // header so the order (type / created / updated / sources / tags /
+    // aliases / reviewed) matches `serializeFrontmatter`. The anchor only
+    // matches a block list: while the gate still wrote `tags: [x]` inline it
+    // never matched, and `sources:` landed after `aliases:` on every new page
+    // that no later re-serialization (the domain merge below) put in order.
     //
     // Double-quote the wikilink value — bare `- [[x]]` YAML-parses as a
     // nested flow sequence (not a string). See PR #405 review.
