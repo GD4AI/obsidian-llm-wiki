@@ -276,7 +276,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish } = params;
+    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish, abortSignal } = params;
     // Issue #481: a pinned mode skips the prober for this call. `text_prompt`
     // puts no `response_format` on the wire, so the JSON shape has to come from
     // the prompt — the same prefix the 400-driven demotion adds at retry time,
@@ -345,7 +345,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           reasoningEffort,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-        ...buildSamplingArgs({ temperature, top_p, seed }),
+        ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
       });
       reportFinish(onFinish, result.finishReason, result.usage);
       // Issue #443 follow-up (v1.26.x PATCH) — mirror createMessageWithOutput:
@@ -520,7 +520,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             reasoningEffort,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         reportFinish(onFinish, result.finishReason, result.usage);
         return result.text;
@@ -604,7 +604,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             enableThinking: true,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         // Retry succeeded — commit the cache decision now. If the
         // retry above throws, this line never runs and the cache is
@@ -740,7 +740,7 @@ export class OpenAICompatSdkClient implements LLMClient {
               reasoningEffort,
               repetitionPenalty: repetition_penalty,
             }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-            ...buildSamplingArgs({ temperature, top_p, seed }),
+            ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
           });
           console.debug(`[OUTPUT-MODE-DEMOTE-DEBUG] baseURL=${this.baseURL} retry succeeded. Cache committed: mode=${demotedMode}.`);
           reportFinish(onFinish, result.finishReason, result.usage);
@@ -803,7 +803,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             reasoningEffort,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         reportFinish(onFinish, result.finishReason, result.usage);
         return result.text;
@@ -847,6 +847,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   async createMessageWithOutput<T = unknown>(params: {
     model: string;
     max_tokens: number;
+    abortSignal?: AbortSignal;
     system?: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
     response_format?: { type: 'json_object'; schema?: Record<string, unknown> | z.ZodType };
@@ -866,7 +867,7 @@ export class OpenAICompatSdkClient implements LLMClient {
     finishReason: LLMFinishReason;
     usage?: LLMUsage;
   }> {
-    const { model, max_tokens, messages, response_format, outputModeOverride, enableThinking, reasoningEffort, repetition_penalty, temperature, top_p, seed, onFinish } = params;
+    const { model, max_tokens, messages, response_format, outputModeOverride, enableThinking, reasoningEffort, repetition_penalty, temperature, top_p, seed, onFinish, abortSignal } = params;
     // See createMessage — a pinned `text_prompt` needs the prompt-side
     // enforcement up front, because no demotion retry will add it.
     const system = forcedTextPromptSystem(params.system, response_format, outputModeOverride);
@@ -921,7 +922,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           reasoningEffort,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-        ...buildSamplingArgs({ temperature, top_p, seed }),
+        ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
       });
       reportFinish(onFinish, result.finishReason, result.usage);
       // Issue #443 follow-up (v1.26.x PATCH) — LMStudio + Qwen3.5 routes the
@@ -1044,7 +1045,7 @@ export class OpenAICompatSdkClient implements LLMClient {
                   reasoningEffort,
                   repetitionPenalty: repetition_penalty,
                 }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-                ...buildSamplingArgs({ temperature, top_p, seed }),
+                ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
               });
               reportFinish(onFinish, retryResult.finishReason, retryResult.usage);
               // Cache committed per-model ONLY on retry success (mirror the
@@ -1145,7 +1146,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             reasoningEffort,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         reportFinish(onFinish, result.finishReason, result.usage);
         return {
@@ -1206,7 +1207,7 @@ export class OpenAICompatSdkClient implements LLMClient {
                 reasoningEffort,
                 repetitionPenalty: repetition_penalty,
               }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-              ...buildSamplingArgs({ temperature, top_p, seed }),
+              ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
             });
             reportFinish(onFinish, result.finishReason, result.usage);
             return {
@@ -1246,7 +1247,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             reasoningEffort,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         reportFinish(onFinish, result.finishReason, result.usage);
         return {
@@ -1421,6 +1422,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   async createMessageStream(params: {
     model: string;
     max_tokens: number;
+    abortSignal?: AbortSignal;
     system?: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     onChunk: (chunk: string) => void;
@@ -1433,7 +1435,7 @@ export class OpenAICompatSdkClient implements LLMClient {
     task?: string;
     onFinish?: (meta: { finishReason: LLMFinishReason }) => void;
   }): Promise<string> {
-    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, seed, enableThinking, onFinish } = params;
+    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, seed, enableThinking, onFinish, abortSignal } = params;
 
     // v1.23.0 P1-7 follow-up: stream path uses streamWithFallback
     // (real streaming via window.fetch with CORS fallback to
@@ -1469,7 +1471,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           enableThinking,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-        ...buildSamplingArgs({ temperature, top_p, seed }),
+        ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
       });
 
       let fullText = '';
@@ -1545,7 +1547,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             enableThinking,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
 
         let fullText = '';
@@ -1597,7 +1599,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             enableThinking: true,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         let fullText = '';
         for await (const chunk of result.textStream) {
@@ -1636,7 +1638,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             enableThinking,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p, seed }),
+          ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         let fullText = '';
         for await (const chunk of result.textStream) {

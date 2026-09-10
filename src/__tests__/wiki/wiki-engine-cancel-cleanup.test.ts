@@ -91,3 +91,25 @@ describe('WikiEngine.ingestSource — cancellation removes the completion marker
     expect(h.reports[0]?.cancelled).toBe(true);
   });
 });
+
+describe('WikiEngine — a cancel is honoured at the next page write', () => {
+  it('writes no content page after the cancel, even when the model call it was waiting on returns', async () => {
+    // The abort signal does not reach the model call; the call returns its
+    // page body after the user pressed stop. The write gate refuses it, the
+    // AbortError branch trashes the summary page, and nothing half-written
+    // stays behind for a later trigger to skip.
+    let h: ReturnType<typeof createWikiEngineHarness> | null = null;
+    h = createWikiEngineHarness({
+      files: { [SOURCE_NOTE_PATH]: '# ACT\n\nBody text.' },
+      llmResponses: [ANALYSIS_RESPONSE, SUMMARY_RESPONSE, '# Steven Hayes\n\nFounder of ACT.', '# Psychological Flexibility\n\nCore construct.'],
+      beforeLLMCall: () => {
+        if (h && summaryPageWritten(h.files)) h.engine.cancelIngestion();
+      },
+    });
+    await h.engine.ingestSource(sourceFile());
+
+    expect([...h.files.keys()].filter(p => /\/(entities|concepts)\//.test(p))).toEqual([]);
+    expect(summaryPageWritten(h.files)).toBeUndefined();
+    expect(h.reports[0]?.cancelled).toBe(true);
+  });
+});

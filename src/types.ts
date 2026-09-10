@@ -895,6 +895,12 @@ export interface LLMClient {
     // schema is the single source of truth for both the Tier 0 wire
     // shape and the Tier 1/2 fallback parseJsonResponse validation).
     response_format?: { type: 'json_object'; schema?: Record<string, unknown> | z.ZodType };
+    /**
+     * Aborts the request (#646). The engine's cancel flips it; the SDK
+     * clients hand it to the AI SDK, which aborts the HTTP request. Without
+     * it a cancel waits for the running call to finish.
+     */
+    abortSignal?: AbortSignal;
     task?: string;
     /** See `createMessage`. Set by the wrapper from the per-task policy. */
     outputModeOverride?: OutputMode;
@@ -926,6 +932,8 @@ export interface LLMClient {
     seed?: number;
     repetition_penalty?: number;
     /** Step label for per-task LLM accounting (Issue #469) — same contract as createMessage. */
+    /** Aborts the request (#646) — see `createMessage`. */
+    abortSignal?: AbortSignal;
     task?: string;
     /** Issue: streamed answers were truncated silently — surface finish_reason. */
     onFinish?: (meta: LLMFinishMeta) => void;

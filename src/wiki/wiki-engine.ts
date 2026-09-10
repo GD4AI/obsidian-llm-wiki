@@ -24,6 +24,7 @@ import { TEXTS } from '../texts';
 import { renderTemplate } from '../core/template-renderer';
 import { slugify } from '../core/slug';
 import { shapeRelatedLists, kindOf } from '../core/related-shaping';
+import { withAbortSignal } from '../core/llm-abort';
 import { isIngestableSource } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
 import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, extractBody } from '../core/frontmatter';
@@ -214,7 +215,11 @@ export class WikiEngine {
     const ctx: EngineContext = {
       app: this.app,
       settings: this.settings,
-      getClient: () => this.getLLMClient(),
+      // #646: the engine's cancel rides on every model call.
+      getClient: () => {
+        const client = this.getLLMClient();
+        return client ? withAbortSignal(client, () => this.abortController?.signal) : client;
+      },
       createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
       deleteFile: p => this.deleteFile(p),
       tryReadFile: p => this.tryReadFile(p),
@@ -1820,6 +1825,14 @@ export class WikiEngine {
   }
 
   async createOrUpdateFile(path: string, content: string): Promise<void> {
+    // #646: a cancelled ingest stops at the next page write. The abort signal
+    // reaches the model call only since the same fix; before, every call ran
+    // to its end and the cancel was honoured at three checkpoints per ingest.
+    // A stop pressed during a merge went unnoticed for minutes, and closing
+    // Obsidian inside that window skipped #583's cleanup — the summary page
+    // stayed, stamped complete, and every later trigger skipped the source.
+    // Outside an ingest there is no controller and this is a no-op.
+    this.checkCancelled();
     console.debug('createOrUpdateFile:', path);
 
     // Central pollution detection: strip folder-prefix duplication from wiki-links

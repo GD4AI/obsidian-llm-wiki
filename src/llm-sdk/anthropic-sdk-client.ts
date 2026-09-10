@@ -176,7 +176,7 @@ export class AnthropicSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, enableThinking, cacheBreakpoint, onFinish } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, enableThinking, cacheBreakpoint, onFinish, abortSignal } = params;
 
     // Issue #449 v1.26.4 PATCH follow-up: when cacheBreakpoint is defined,
     // split the FIRST user message's text content at the offset and attach
@@ -201,7 +201,7 @@ export class AnthropicSdkClient implements LLMClient {
           enableThinking,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-        ...buildSamplingArgs({ temperature, top_p }, { withSeed: false }),
+        ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
       });
       reportFinish(onFinish, result.finishReason);
       return result.text;
@@ -230,7 +230,7 @@ export class AnthropicSdkClient implements LLMClient {
             enableThinking,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p }, { withSeed: false }),
+          ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
         });
         reportFinish(onFinish, result.finishReason);
         return result.text;
@@ -274,6 +274,7 @@ export class AnthropicSdkClient implements LLMClient {
   async createMessageStream(params: {
     model: string;
     max_tokens: number;
+    abortSignal?: AbortSignal;
     system?: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     onChunk: (chunk: string) => void;
@@ -287,7 +288,7 @@ export class AnthropicSdkClient implements LLMClient {
     /** Step label for per-task accounting (Issue #469). Not consumed here — forwarded for interface conformance. */
     task?: string;
   }): Promise<string> {
-    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, enableThinking } = params;
+    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, enableThinking, abortSignal } = params;
 
     // v1.23.0 P1.5: same URL fallback as createMessage, so streaming
     // (Query Wiki) is consistent with non-streaming (Ingest / Lint /
@@ -306,7 +307,7 @@ export class AnthropicSdkClient implements LLMClient {
           enableThinking,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-        ...buildSamplingArgs({ temperature, top_p }, { withSeed: false }),
+        ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
       });
 
       let fullText = '';
@@ -355,7 +356,7 @@ export class AnthropicSdkClient implements LLMClient {
             enableThinking,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
-          ...buildSamplingArgs({ temperature, top_p }, { withSeed: false }),
+          ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
         });
 
         let fullText = '';

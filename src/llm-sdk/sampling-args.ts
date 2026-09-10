@@ -28,6 +28,8 @@ export interface SamplingArgs {
   temperature?: number;
   top_p?: number;
   seed?: number;
+  /** #646: rides along here because every real model call spreads this helper. */
+  abortSignal?: AbortSignal;
 }
 
 /**
@@ -46,11 +48,13 @@ export function buildSamplingArgs(
   temperature?: number;
   topP?: number;
   seed?: number;
+  abortSignal?: AbortSignal;
 } {
   const withSeed = options.withSeed ?? true;
-  const out: { temperature?: number; topP?: number; seed?: number } = {};
+  const out: { temperature?: number; topP?: number; seed?: number; abortSignal?: AbortSignal } = {};
   if (args.temperature !== undefined) out.temperature = args.temperature;
   if (args.top_p !== undefined) out.topP = args.top_p;
   if (withSeed && args.seed !== undefined) out.seed = args.seed;
+  if (args.abortSignal !== undefined) out.abortSignal = args.abortSignal;
   return out;
 }

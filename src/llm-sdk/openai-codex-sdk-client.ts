@@ -133,7 +133,7 @@ export class OpenAICodexSdkClient implements LLMClient {
     const system = forcedTextPromptSystem(params.system, params.response_format, params.outputModeOverride);
     try {
       let streamError: unknown;
-      const result = streamText({ model, ...(system ? { system } : {}), messages: params.messages.map((message) => ({ role: message.role, content: message.content })), maxOutputTokens: params.max_tokens, ...(params.temperature !== undefined ? { temperature: params.temperature } : {}), ...(params.top_p !== undefined ? { topP: params.top_p } : {}), ...(!forcedText && params.response_format?.type === 'json_object' ? { output: Output.json() } : {}), providerOptions: this.providerOptions(params.enableThinking), maxRetries: 0, onError: ({ error }) => { streamError = error; } });
+      const result = streamText({ model, ...(system ? { system } : {}), messages: params.messages.map((message) => ({ role: message.role, content: message.content })), maxOutputTokens: params.max_tokens, ...(params.temperature !== undefined ? { temperature: params.temperature } : {}), ...(params.top_p !== undefined ? { topP: params.top_p } : {}), ...(!forcedText && params.response_format?.type === 'json_object' ? { output: Output.json() } : {}), ...(params.abortSignal ? { abortSignal: params.abortSignal } : {}), providerOptions: this.providerOptions(params.enableThinking), maxRetries: 0, onError: ({ error }) => { streamError = error; } });
       let text = '';
       for await (const chunk of result.textStream) text += chunk;
       if (streamError !== undefined) throw streamError instanceof Error ? streamError : new Error(typeof streamError === 'string' ? streamError : 'Codex stream failed');
@@ -145,7 +145,7 @@ export class OpenAICodexSdkClient implements LLMClient {
   async createMessageStream(params: Parameters<NonNullable<LLMClient['createMessageStream']>>[0]): Promise<string> {
     const model = this.getModel(params.model, this.streamFetchImpl);
     try {
-      const result = streamText({ model, ...(params.system ? { system: params.system } : {}), messages: params.messages.map((message) => ({ role: message.role, content: message.content })), maxOutputTokens: params.max_tokens, ...(params.temperature !== undefined ? { temperature: params.temperature } : {}), ...(params.top_p !== undefined ? { topP: params.top_p } : {}), providerOptions: this.providerOptions(params.enableThinking), maxRetries: 0 });
+      const result = streamText({ model, ...(params.system ? { system: params.system } : {}), messages: params.messages.map((message) => ({ role: message.role, content: message.content })), maxOutputTokens: params.max_tokens, ...(params.temperature !== undefined ? { temperature: params.temperature } : {}), ...(params.top_p !== undefined ? { topP: params.top_p } : {}), ...(params.abortSignal ? { abortSignal: params.abortSignal } : {}), providerOptions: this.providerOptions(params.enableThinking), maxRetries: 0 });
       let text = '';
       for await (const chunk of result.textStream) {
         text += chunk;
