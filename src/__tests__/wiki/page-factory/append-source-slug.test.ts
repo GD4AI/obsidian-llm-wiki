@@ -308,3 +308,42 @@ describe('appendSourceSlugToFrontmatter (#399)', () => {
     });
   });
 });
+
+// local patch (S142): the create path drops model-written `sources:` before
+// stamping the true source — fabricated provenance is worse than none.
+import { dropSourcesField } from '../../../wiki/page-factory/create-page';
+
+describe('dropSourcesField (S142 create-path provenance guard)', () => {
+  it('removes a block-style sources list, keeping every other field', () => {
+    const input = '---\ntype: concept\nsources:\n  - "[[sources/Metabolismus_Übersicht]]"\n  - "[[sources/Acetylsalicylsäure]]"\ntags:\n  - "Thema/Diagnostik"\n---\n\n# Titel\n';
+    const out = dropSourcesField(input);
+    expect(out).not.toContain('sources:');
+    expect(out).toContain('type: concept');
+    expect(out).toContain('tags:');
+    expect(out).toContain('# Titel');
+  });
+
+  it('removes a block-style list whose items sit at column 0', () => {
+    const input = '---\ntype: entity\nsources:\n- "[[sources/A]]"\n- "[[sources/B]]"\ntags: [x]\n---\n\nBody\n';
+    expect(dropSourcesField(input)).toBe('---\ntype: entity\ntags: [x]\n---\n\nBody\n');
+  });
+
+  it('removes a flow-style sources line', () => {
+    const input = '---\ntype: entity\nsources: ["[[sources/X]]"]\n---\n\nBody\n';
+    expect(dropSourcesField(input)).toBe('---\ntype: entity\n---\n\nBody\n');
+  });
+
+  it('leaves content without sources or frontmatter unchanged (same reference)', () => {
+    const noFm = '# Nur Body\n';
+    expect(dropSourcesField(noFm)).toBe(noFm);
+    const noSources = '---\ntype: entity\n---\n\nBody\n';
+    expect(dropSourcesField(noSources)).toBe(noSources);
+  });
+
+  it('drop + append leaves exactly the one true source', () => {
+    const input = '---\ntype: concept\nsources:\n  - "[[sources/Erfunden]]"\n---\n\nBody\n';
+    const out = appendSourceSlugToFrontmatter(dropSourcesField(input), 'Acetylsalicylsäure');
+    expect(out).toContain('[[sources/Acetylsalicylsäure]]');
+    expect(out).not.toContain('Erfunden');
+  });
+});
