@@ -130,7 +130,7 @@ Output JSON format:
   "entities": [
     {
       "name": "Short Reference Name",
-      "type": "person|organization|project|product|event|place|other",
+      "type": "exactly one of the Entity types listed in the Active Tag Vocabulary section — copy its spelling",
       "summary": "Entity information summary",
       "mentions_in_source": ["Specific mentions in conversation"]
     }
@@ -138,7 +138,7 @@ Output JSON format:
   "concepts": [
     {
       "name": "Concept Name",
-      "type": "theory|method|field|phenomenon|standard|term|other",
+      "type": "exactly one of the Concept types listed in the Active Tag Vocabulary section — copy its spelling",
       "summary": "Concept definition",
       "mentions_in_source": ["Specific mentions in conversation"],
       "related_concepts": ["Related Concept 1", "Related Concept 2"]
