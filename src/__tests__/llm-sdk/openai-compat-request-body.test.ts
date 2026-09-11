@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { OpenAICompatSdkClient } from '../../llm-sdk/openai-compat-sdk-client';
+import { FixDeadLinkSchema, type FixDeadLink } from '../../llm-sdk/output-schemas';
 
 // Everything this client adds beyond the standard fields travels as
 // `providerOptions`. The AI SDK forwards those to the request body only
@@ -434,5 +435,128 @@ describe('OpenAICompatSdkClient — Issue #414: repetitionPenalty dialect dispat
       const body = await captureBody('lmstudio', 0.5);
       expect(body.repeat_penalty).toBe(0.5);
     });
+  });
+});
+
+// Issue #658: a strict OpenAI-compatible endpoint rejected `FixDeadLinkSchema`
+// because `required` did not list its four optional properties
+// (`'required' is required to be supplied and to be an array including every
+// key in properties. Missing 'action'`). The strict dialect is a negotiated
+// tier: the plain body goes first (unchanged for every backend that accepts
+// it — LM Studio measured), the strict rewrite is sent after that 400 and
+// remembered per (baseURL, model). These tests read what the SDK actually
+// sends and what the caller actually receives.
+describe('OpenAICompatSdkClient — Issue #658: strict schema dialect as a negotiated tier', () => {
+  const STRICT_REJECTION = `Invalid schema for response_format 'response': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'action'.`;
+
+  const respond = (content: string): Response => new Response(JSON.stringify({
+    id: 'x', object: 'chat.completion', created: 0, model: 'm',
+    choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+  const reject400 = (message: string): Response => new Response(JSON.stringify({ error: { message } }), { status: 400, headers: { 'content-type': 'application/json' } });
+
+  type Body = Record<string, unknown>;
+  const schemaOf = (body: Body): Record<string, unknown> =>
+    (body.response_format as { json_schema: { schema: Record<string, unknown> } }).json_schema.schema;
+
+  /** A client whose fetch answers from a script of responses and records every request body. */
+  function scripted(provider: string, script: Array<() => Response>) {
+    const bodies: Body[] = [];
+    const stub = vi.fn(async (_url: string, init?: { body?: unknown }) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      const next = script.shift();
+      if (!next) throw new Error('script exhausted');
+      return next();
+    });
+    const client = new OpenAICompatSdkClient({
+      apiKey: 'k', baseURL: 'http://localhost/v1/', provider,
+      fetch: stub as never,
+    });
+    const call = () => client.createMessageWithOutput<FixDeadLink>({
+      model: 'm', max_tokens: 100,
+      messages: [{ role: 'user', content: 'hi' }],
+      response_format: { type: 'json_object', schema: FixDeadLinkSchema },
+    });
+    return { bodies, call };
+  }
+
+  const STRICT_BODY = {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    additionalProperties: false,
+    properties: {
+      action: { type: ['string', 'null'] },
+      correct_link: { type: ['string', 'null'] },
+      stub_title: { type: ['string', 'null'] },
+      stub_type: { type: ['string', 'null'] },
+    },
+    required: ['action', 'correct_link', 'stub_title', 'stub_type'],
+    type: 'object',
+  };
+
+  it('LM Studio: the first body is the plain adapter body, unchanged (optionals not required)', async () => {
+    const { bodies, call } = scripted('lmstudio', [() => respond('{"action":"skip"}')]);
+    await call();
+    expect(bodies).toHaveLength(1);
+    const schema = schemaOf(bodies[0]);
+    expect(schema.required).toBeUndefined();
+    expect(schema.properties).toEqual({
+      action: { type: 'string' }, correct_link: { type: 'string' }, stub_title: { type: 'string' }, stub_type: { type: 'string' },
+    });
+    expect((bodies[0].response_format as { json_schema: { strict: boolean } }).json_schema.strict).toBe(true);
+  });
+
+  it('custom strict endpoint: the #658 400 is answered with the strict body, and the caller sees the answer', async () => {
+    const { bodies, call } = scripted('custom', [
+      () => reject400(STRICT_REJECTION),
+      () => respond('{"action":"stub","correct_link":null,"stub_title":"Kreatin","stub_type":"entity"}'),
+    ]);
+    const result = await call();
+    expect(bodies).toHaveLength(2);
+    expect(schemaOf(bodies[1])).toEqual(STRICT_BODY);
+    expect(result.outputMode).toBe('json_schema_strict');
+    expect(result.output).toEqual({ action: 'stub', stub_title: 'Kreatin', stub_type: 'entity' });
+  });
+
+  it('the strict tier is remembered: the next call goes strict directly, no second 400', async () => {
+    const { bodies, call } = scripted('custom', [
+      () => reject400(STRICT_REJECTION),
+      () => respond('{"action":"skip","correct_link":null,"stub_title":null,"stub_type":null}'),
+      () => respond('{"action":"skip","correct_link":null,"stub_title":null,"stub_type":null}'),
+    ]);
+    await call();
+    const second = await call();
+    expect(bodies).toHaveLength(3);
+    expect(schemaOf(bodies[2])).toEqual(STRICT_BODY);
+    expect(second.output).toEqual({ action: 'skip' });
+  });
+
+  it('a backend that rejects json_schema as a field still demotes to json_object, not to strict', async () => {
+    const { bodies, call } = scripted('custom', [
+      () => reject400("Unsupported parameter: 'response_format.json_schema'"),
+      () => respond('{"action":"skip"}'),
+    ]);
+    const result = await call();
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1].response_format).toEqual({ type: 'json_object' });
+    expect(result.outputMode).toBe('json_object');
+  });
+
+  it('the non-typed branch is unchanged: no schema, no dialect, json_object on the wire', async () => {
+    let body: Body = {};
+    const stub = vi.fn(async (_url: string, init?: { body?: unknown }) => {
+      body = JSON.parse(String(init?.body));
+      return respond('{}');
+    });
+    const client = new OpenAICompatSdkClient({
+      apiKey: 'k', baseURL: 'http://localhost/v1/', provider: 'custom',
+      fetch: stub as never,
+    });
+    await client.createMessage({
+      model: 'm', max_tokens: 100,
+      messages: [{ role: 'user', content: 'hi' }],
+      response_format: { type: 'json_object' },
+    });
+    expect(body.response_format).toEqual({ type: 'json_object' });
   });
 });
