@@ -57,22 +57,29 @@ export type BatchValidity = 'valid' | 'empty' | 'unusable';
  * `source_path` is that note's path — set here, not copied by the model.
  * Downstream `m.source_path || defaultSourcePath` let a model copy win, and
  * measured copies were a typo, a control character for `α`, and a
- * translation of the file name.
+ * translation of the file name. The same holds for `extracted_at`, which the
+ * Mentions formatter sorts by, and `source_slug`: the prompt no longer asks
+ * for either, and whatever a model still sends is replaced.
  */
 function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T, sourcePath: string): T {
+  const now = new Date().toISOString();
   // If the LLM already returned structured provenance, keep its quotes
   // but clear the legacy field when both are present (avoids duplicate output).
   if (item.mentions_with_provenance?.length) {
     return {
       ...item,
-      mentions_with_provenance: item.mentions_with_provenance.map(m => ({ ...m, source_path: sourcePath })),
+      mentions_with_provenance: item.mentions_with_provenance.map(m => ({
+        ...m,
+        source_path: sourcePath,
+        source_slug: '',
+        extracted_at: now,
+      })),
       ...(item.mentions_in_source?.length ? { mentions_in_source: undefined } : {}),
     };
   }
   // Otherwise, synthesize provenance from the legacy string[].
   const quotes = item.mentions_in_source?.filter(q => q?.trim()) ?? [];
   if (quotes.length === 0) return item;
-  const now = new Date().toISOString();
   const provenance: MentionWithProvenance[] = quotes.map(quote => ({
     quote,
     source_path: sourcePath,
@@ -293,9 +300,9 @@ export class SourceAnalyzer {
     // the note, so its prefix is identical for every note and per-note cost is
     // a function of the note instead of the vault.
     //
-    // Issue #244 (manual test fix): inject the source's original vault path
-    // so the LLM records it in `mentions_with_provenance[i].source_path`
-    // instead of guessing `wiki/sources/<slug>`.
+    // The note's vault path travels as context — for a note without an H1 its
+    // file name is the only title the model sees. The model no longer copies
+    // it into each quote; `fillMentionsWithProvenance` sets it (#679).
     // domain axis stage 3 (#568): the vault's tag vocabulary is the
     // allowed list for the per-item `domains` subset. Rendered into the static
     // prefix (before {{batch_context}}); the block is the same for every note,
@@ -365,7 +372,7 @@ export class SourceAnalyzer {
       // their translation behavior unchanged.
       const crossLanguage = isCrossLanguage(sourceLang, wikiLang);
       const translationHint = crossLanguage
-        ? `\n\nTRANSLATION (cross-language wikis): For each entry in mentions_with_provenance, ALSO add a 'translation' field containing a ${wikiLangName} translation of the quote text. The 'quote' field MUST stay verbatim in the source's original language; the translation goes in a separate 'translation' field. Example: {"quote": "Machine learning is fun", "translation": "机器学习很有趣", "source_path": "...", ...}`
+        ? `\n\nTRANSLATION (cross-language wikis): For each entry in mentions_with_provenance, ALSO add a 'translation' field containing a ${wikiLangName} translation of the quote text. The 'quote' field MUST stay verbatim in the source's original language; the translation goes in a separate 'translation' field. Example: {"quote": "Machine learning is fun", "translation": "机器学习很有趣"}`
         : '';
       // #328 Phase 1 follow-up: user-layer tag-vocab removed — system layer (buildSystemPrompt) always injects once.
       const finalPrompt = prompt + langHint + translationHint;

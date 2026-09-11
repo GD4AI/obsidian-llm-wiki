@@ -180,6 +180,19 @@ describe('toStrictSchema — the Schema object Output.object() receives', () => 
     expect(result).toEqual({ success: true, value: { match: false } });
   });
 
+  // #679: a declared property is a request. At this tier every property is
+  // `required`, so a quote item that declared the three code-stamped fields
+  // made the model emit them on every quote, whatever the prompt said.
+  it('does not ask a quote for what the code stamps (source_path, source_slug, extracted_at)', () => {
+    const body = wireBody(SourceAnalysisLLMSchema);
+    for (const list of ['entities', 'concepts']) {
+      const item = (body.properties![list] as JSONSchema7).items as JSONSchema7;
+      const quote = (item.properties!.mentions_with_provenance as JSONSchema7).items as JSONSchema7;
+      expect(Object.keys(quote.properties ?? {})).toEqual(['quote', 'translation']);
+      expect(quote.required).toEqual(['quote', 'translation']);
+    }
+  });
+
   it('is memoised per schema object, so retries do not re-adapt or re-normalise', () => {
     let adaptions = 0;
     const adapt = () => { adaptions += 1; return zodSchema(FixDeadLinkSchema); };

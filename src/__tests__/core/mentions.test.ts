@@ -428,6 +428,29 @@ describe('normalizeBatchResponse — fillMentionsWithProvenance (#244)', () => {
     const { data } = normalizeBatchResponse(raw, 'Notizen/TNF-α.md');
     expect(data.entities[0].mentions_with_provenance![0].source_path).toBe('Notizen/TNF-α.md');
   });
+
+  // The prompt no longer asks for `extracted_at` or `source_slug`. A model that
+  // still sends them — the old example carried a fixed date — does not decide
+  // the order the Mentions formatter sorts by.
+  it('stamps extracted_at and clears source_slug on structured provenance', () => {
+    const before = new Date().toISOString();
+    const raw = {
+      entities: [{
+        name: 'TNF-α',
+        type: 'other' as const,
+        summary: 'Test',
+        mentions_in_source: [],
+        mentions_with_provenance: [
+          { quote: 'TNF-α treibt die Entzündung', source_path: '', source_slug: 'tnf', extracted_at: '2026-07-05T00:00:00Z' },
+        ],
+      }],
+      concepts: [],
+    };
+    const { data } = normalizeBatchResponse(raw, 'Notizen/TNF-α.md');
+    const m = data.entities[0].mentions_with_provenance![0];
+    expect(m.extracted_at >= before).toBe(true);
+    expect(m.source_slug).toBe('');
+  });
 });
 
 // v1.25.10 PATCH Issue #363 — parser tolerance for empty-target bullets.

@@ -232,6 +232,10 @@ describe('analyzeSource payload (#482)', () => {
     // The note itself and its path still travel.
     expect(prompt).toContain('Content.');
     expect(prompt).toContain('sources/test.md');
+    // …but no quote is asked to carry what the code stamps on it (#679).
+    expect(prompt).not.toContain('source_path');
+    expect(prompt).not.toContain('source_slug');
+    expect(prompt).not.toContain('extracted_at');
   });
 
   it('renders an identical prefix for two notes in different vault states', async () => {

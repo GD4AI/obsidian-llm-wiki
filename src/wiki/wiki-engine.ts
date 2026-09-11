@@ -1766,7 +1766,6 @@ export class WikiEngine {
       content: extractBody(content).substring(0, 500),
       analysis: JSON.stringify(analysis),
       created_pages_list: createdPagesList || '(none)',
-      source_file: file.path,
       date: ingestDate,
       tags: tagsValue,
       constraints: UNIVERSAL_LINK_CONSTRAINTS,
