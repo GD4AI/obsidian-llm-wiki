@@ -112,7 +112,7 @@ describe('SourceAnalyzer', () => {
     expect(result!.entities).toHaveLength(0);
   });
 
-  it('extracts source_title and summary from first batch', async () => {
+  it('takes source_title from the note H1 and summary from the first batch', async () => {
     const a = mockAnalyze(
       { [DOC_PATH]: '# Doc\nBody.' },
       [JSON.stringify({
@@ -124,7 +124,9 @@ describe('SourceAnalyzer', () => {
     );
     const result = await run(a, DOC_PATH);
     expect(result).not.toBeNull();
-    expect(result!.source_title).toBe('My Document');
+    // A note's title is its own H1; the model title only stands for a PDF.
+    expect(result!.source_title).toBe('Doc');
+    expect(result!.summary).toBe('This document covers important topics.');
   });
 
   it('handles LLM returning empty arrays for both categories', async () => {
