@@ -237,9 +237,15 @@ export async function fixDeadLink(
       newLink = `[[${newLink}]]`;
     }
 
-    const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
-    await ctx.createOrUpdateFile(sourcePath, updatedContent);
-    return `corrected: ${newLink}`;
+    // A hallucinated/empty/unclosed correct_link (e.g. "[[]]", or "[[foo" left open because it already
+    // started with "[[" and skipped the wrap above) has no path replaceDeadLink can pair with a preserved
+    // alias, or would write broken markdown outright — treat it as no usable answer and fall through to the
+    // create_stub / deterministic-stub branches below instead.
+    if (/^\[\[[^\]|]+.*\]\]$/.test(newLink)) {
+      const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
+      await ctx.createOrUpdateFile(sourcePath, updatedContent);
+      return `corrected: ${newLink}`;
+    }
   }
 
   if (result?.action === 'create_stub' && result.stub_title) {
