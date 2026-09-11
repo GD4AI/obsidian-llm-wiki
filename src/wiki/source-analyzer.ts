@@ -11,6 +11,8 @@ import {
   MentionWithProvenance,
   LLMFinishReason,
   LLMUsage,
+  EmbeddedImageAnalysisReport,
+  LLMClient,
 } from '../types';
 import { PROMPTS } from '../prompts';
 import { parseJsonResponse, parseJsonResult } from '../core/json';
@@ -30,10 +32,10 @@ import { detectConvergence, checkCumulativeLimits, checkEmptyBatch, formatConver
 import { createEmptyAccumulation, mergeBatchResults, buildSourceAnalysis, calculateBatchStats } from '../core/batch-merger';
 import { decideSourceLemma } from '../core/source-lemma';
 import { getActiveEntityTags, getActiveConceptTags, foldToVocabulary } from '../core/tag-vocab';
-import { SourceAnalysisLLMSchema, LemmaClassifyLLMSchema, TypeRepairLLMSchema } from '../llm-sdk/output-schemas';
+import { EmbeddedImageEvidenceSchema, SourceAnalysisLLMSchema, LemmaClassifyLLMSchema, TypeRepairLLMSchema } from '../llm-sdk/output-schemas';
 import { callLlm } from '../core/llm-dispatch';
 import { findRepetitionLoop, isSourceBorneLoop, REPETITION_LOOP_MIN_REPEATS } from '../core/repetition-loop';
-import { collectEmbeddedImages } from '../core/embedded-image-resolver';
+import { discoverEmbeddedImages, gifFirstFrameToPng, packageEmbeddedImages, readEmbeddedImagePart } from '../core/embedded-image-resolver';
 
 // ── Batch response normalization ─────────────────────────────────
 // LLMs often return irregular JSON: omitted empty arrays, non-array truthy
@@ -85,6 +87,12 @@ export interface NormalizedBatch {
   contradictions: ContradictionInfo[];
   relatedPages: string[];
   keyPoints: string[];
+}
+
+function isVisionInputRejected(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /(?:image|vision|multimodal|content[_ -]?type).{0,80}(?:unsupported|not supported|invalid|reject)/i.test(message)
+    || /(?:unsupported|not supported|invalid|reject).{0,80}(?:image|vision|multimodal|content[_ -]?type)/i.test(message);
 }
 
 // Normalize a raw LLM batch response into a well-formed NormalizedBatch.
@@ -297,8 +305,18 @@ export class SourceAnalyzer {
     // allowed list for the per-item `domains` subset. Rendered into the static
     // prefix (before {{batch_context}}); the block is the same for every note,
     // so the prefix cache holds across notes. Empty when no note carries tags.
+    const client = this.ctx.getClient();
+    if (!client) throw new Error('LLM client not initialized');
+
+    const imageAnalysis = this.ctx.settings.analyzeEmbeddedImages === true
+      ? await this.analyzeEmbeddedImages(content, file.path, client)
+      : undefined;
+    const extractionContent = imageAnalysis?.evidence
+      ? `${content}\n\n## Embedded Image Visual Evidence\n${imageAnalysis.evidence}`
+      : content;
+
     const templateUntouched = renderTemplate(PROMPTS.analyzeSource, {
-      content,
+      content: extractionContent,
       source_path: file.path,
       domain_context: buildDomainContext(
         collectActiveVocabulary(this.ctx.app, this.ctx.settings),
@@ -308,22 +326,6 @@ export class SourceAnalyzer {
     const markerIdx = templateUntouched.indexOf(batchMarker);
     const staticPrefix = templateUntouched.substring(0, markerIdx);
     const suffixTemplate = templateUntouched.substring(markerIdx + batchMarker.length);
-
-    const client = this.ctx.getClient();
-    if (!client) throw new Error('LLM client not initialized');
-
-    const embeddedImages = this.ctx.settings.analyzeEmbeddedImages === true
-      ? await collectEmbeddedImages({
-        markdown: content,
-        sourcePath: file.path,
-        resolveLink: (target, sourcePath) =>
-          this.ctx.app.metadataCache.getFirstLinkpathDest(target, sourcePath)?.path ?? null,
-        readBinary: path => this.ctx.app.vault.adapter.readBinary(path),
-      })
-      : null;
-    if (embeddedImages && Object.values(embeddedImages.skipped).some(count => count > 0)) {
-      console.debug('[embedded-images] skipped:', embeddedImages.skipped);
-    }
 
     for (let batchNum = 0; batchNum < limits.maxBatches; batchNum++) {
       const isFirstBatch = batchNum === 0;
@@ -420,17 +422,14 @@ export class SourceAnalyzer {
         // baseURL — exactly what LMStudio accepts. On Tier 1 / Tier 2, the SDK
         // drops the schema and falls back to `Output.json()` / no-field; we then
         // parse `result.text` via the existing parseJsonResponse path.
-        const messageContent = embeddedImages?.parts.length
-          ? [{ type: 'text' as const, text: finalPrompt }, ...embeddedImages.parts]
-          : finalPrompt;
         const extractArgs = {
           task: 'extract' as const,
           model: resolvedModel,
           max_tokens: batchMaxTokens,
           system: systemPrompt,
-          messages: [{ role: 'user' as const, content: messageContent }],
+          messages: [{ role: 'user' as const, content: finalPrompt }],
           response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-          ...(embeddedImages?.parts.length ? {} : { cacheBreakpoint: staticPrefix.length }),
+          cacheBreakpoint: staticPrefix.length,
           maxTokensPerCall: retryCap,
           // Extraction never mentioned the thinking setting, so whatever the
           // server had been started with decided it and the setting meant
@@ -791,6 +790,7 @@ export class SourceAnalyzer {
       // generated sources/<slug> page can carry them.
       sourceNoteAliases
     );
+    if (imageAnalysis) analysis.embedded_image_analysis = imageAnalysis.report;
 
     // patch 16 — lemma guarantee. The extraction prompt asks what a text
     // mentions, never what it is about, so the note's own topic is regularly
@@ -813,6 +813,91 @@ export class SourceAnalyzer {
     console.debug('  - Deduplicated names:', accumulation.extractedNames.size);
 
     return analysis;
+  }
+
+  private async analyzeEmbeddedImages(markdown: string, sourcePath: string, client: LLMClient): Promise<{ evidence: string; report: EmbeddedImageAnalysisReport }> {
+    const discovery = await discoverEmbeddedImages({
+      markdown,
+      sourcePath,
+      resolveLink: (target, path) => this.ctx.app.metadataCache.getFirstLinkpathDest(target, path)?.path ?? null,
+      stat: path => this.ctx.app.vault.adapter.stat(path),
+    });
+    const report: EmbeddedImageAnalysisReport = {
+      discovered: discovery.discovered,
+      queued: discovery.candidates.length,
+      sent: 0,
+      analyzed: 0,
+      packages: 0,
+      convertedGifs: 0,
+      failedPackages: 0,
+      skipped: [...discovery.skipped],
+    };
+    const evidence: Array<{ index: number; text: string }> = [];
+    const packages = packageEmbeddedImages(discovery.candidates);
+    const model = resolveModelForTask(this.ctx.settings, 'ingest');
+    const system = await this.ctx.buildSystemPrompt('analyze');
+
+    for (let packageIndex = 0; packageIndex < packages.length; packageIndex++) {
+      const abortSignal = this.ctx.getAbortSignal?.();
+      if (abortSignal?.aborted) abortSignal.throwIfAborted();
+      const imagePackage = packages[packageIndex];
+      const byteLength = imagePackage.reduce((total, image) => total + image.byteLength, 0);
+      const parts = [];
+      for (const image of imagePackage) {
+        try {
+          const part = await readEmbeddedImagePart(image, {
+            readBinary: path => this.ctx.app.vault.adapter.readBinary(path),
+            gifFirstFrame: gifFirstFrameToPng,
+          });
+          if (image.mediaType === 'image/gif') report.convertedGifs++;
+          parts.push({ image, part });
+        } catch (error) {
+          report.skipped.push({ path: image.path, reason: image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing' });
+          console.warn('[embedded-images] unable to read image:', image.path, error);
+        }
+      }
+      if (parts.length === 0) continue;
+      report.packages++;
+      report.sent += parts.length;
+      console.debug(`[embedded-images] package ${packageIndex + 1}/${packages.length}: ${parts.length} image(s), ${byteLength} bytes`);
+      const positions = parts.map(({ image }) => `Image ${image.index}: ${image.path}`).join('\n');
+      try {
+        const response = await client.createMessage({
+          task: 'embedded-image-analysis',
+          model,
+          max_tokens: 3000,
+          ...(system ? { system } : {}),
+          messages: [{ role: 'user', content: [{ type: 'text', text: `${PROMPTS.analyzeEmbeddedImages}\n\n${positions}` }, ...parts.map(({ part }) => part)] }],
+          response_format: { type: 'json_object' },
+          ...(abortSignal ? { abortSignal } : {}),
+          ...(this.ctx.settings.disableThinking === true ? { enableThinking: false } : {}),
+        });
+        const parsed = EmbeddedImageEvidenceSchema.safeParse(await parseJsonResponse(response));
+        if (!parsed.success) throw new Error('Embedded image analysis returned an invalid images array');
+        const packageIndexes = new Set(parts.map(({ image }) => image.index));
+        const analyzedIndexes = new Set<number>();
+        for (const item of parsed.data.images) {
+          if (!packageIndexes.has(item.index)) continue;
+          const visibleText = (item.visible_text ?? '').trim();
+          const description = (item.description ?? '').trim();
+          if (visibleText || description) {
+            evidence.push({ index: item.index, text: [visibleText && `Visible text: ${visibleText}`, description && `Description: ${description}`].filter(Boolean).join('\n') });
+            analyzedIndexes.add(item.index);
+          }
+        }
+        report.analyzed += analyzedIndexes.size;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        if (!isVisionInputRejected(error)) throw error;
+        report.failedPackages++;
+        console.warn('[embedded-images] provider rejected image input; text ingestion will continue:', error);
+        this.ctx.onProgress?.(getText(this.ctx.settings.language, 'embeddedImagesVisionUnsupported'));
+      }
+    }
+
+    const formattedEvidence = evidence.sort((a, b) => a.index - b.index).map(item => `### Image ${item.index}\n${item.text}`).join('\n\n');
+    console.debug('[embedded-images] complete:', report);
+    return { evidence: formattedEvidence, report };
   }
 
   /**

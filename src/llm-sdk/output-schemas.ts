@@ -353,3 +353,13 @@ export const WelcomeTranslationLLMSchema = z.object({
   translated: z.string(),
 }).passthrough();
 export type WelcomeTranslationLLM = z.infer<typeof WelcomeTranslationLLMSchema>;
+
+/** Factual evidence extracted from one bounded package of embedded images. */
+export const EmbeddedImageEvidenceSchema = z.object({
+  images: z.array(z.object({
+    index: z.number(),
+    visible_text: z.string().optional(),
+    description: z.string().optional(),
+  }).passthrough()),
+}).passthrough();
+export type EmbeddedImageEvidence = z.infer<typeof EmbeddedImageEvidenceSchema>;

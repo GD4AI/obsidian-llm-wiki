@@ -525,7 +525,7 @@ export const IT_TEXTS = {
     forcePdfSupportDesc: 'Disattivato per impostazione predefinita. Attiva questa opzione se il tuo provider non è nell\'elenco nativo ma può comunque gestire i PDF. Quando è attiva, il PDF viene inviato al provider corrente; se viene rifiutato, vedrai un messaggio di avviso. I provider PDF nativi (Anthropic / OpenAI / Bedrock) non hanno bisogno di questa opzione.',
     writePdfMarkdownToVaultName: 'Scrivi il Markdown convertito nel Vault',
     analyzeEmbeddedImagesName: 'Analizza immagini incorporate durante l’acquisizione Markdown',
-    analyzeEmbeddedImagesDesc: 'Disattivato per impostazione predefinita. Invia fino a 10 immagini locali incorporate (10 MiB ciascuna) con l’estrazione Markdown. Le immagini remote non vengono mai scaricate.',
+    analyzeEmbeddedImagesDesc: 'Disattivato per impostazione predefinita. Analizza tutte le immagini locali idonee in pacchetti da 20 MiB; ogni immagine è limitata a 10 MiB. Le immagini remote non vengono mai scaricate.',
     markdownConversionBackendName: 'Backend di conversione Markdown',
     markdownConversionBackendDesc: 'Usa il supporto nativo PDF del tuo provider (ambito limitato, non tutti i provider/modelli gestiscono PDF, consuma token LLM). MinerU è un servizio online — veloce, gratuito fino alla quota giornaliera, accetta PDF/immagini/Office — ma richiede un token API (inseriscilo nel campo sotto).',
     markdownConversionBackendNative: 'Supporto PDF/immagini del provider',
@@ -742,6 +742,9 @@ export const IT_TEXTS = {
     ingestReportClose: 'Chiudi',
     ingestReportCreatedPages: 'Pagine create: {count}',
     ingestReportUpdatedPages: 'Pagine aggiornate: {count}',
+    ingestReportEmbeddedImages: 'Immagini incorporate: {discovered} trovate, {queued} in coda, {sent} inviate, {analyzed} analizzate; {packages} pacchetto/i, {gifs} primo/i fotogramma/i GIF convertito/i, {failed} pacchetto/i non riusciti',
+    ingestReportEmbeddedImageSkipped: 'Immagini incorporate ignorate',
+    embeddedImagesVisionUnsupported: 'Questo endpoint ha rifiutato l’analisi delle immagini. L’acquisizione del testo continuerà; usa un modello con visione o disattiva l’analisi delle immagini incorporate.',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Registro operazioni',
     logHeaderSubtitle: 'Ogni acquisizione, esecuzione lint e operazione di manutenzione viene registrata qui automaticamente. Per una migliore visualizzazione, usa il pannello **Cronologia operazioni**:',

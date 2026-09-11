@@ -280,6 +280,17 @@ export const ingestCommands = {
       const allFailedItems = reports.flatMap(r => r.failedItems);
       const allRejectedFiles = reports.flatMap(r => r.rejectedFiles || []);
       const allSuccess = reports.every(r => r.success);
+      const imageReports = reports.map(r => r.embeddedImageAnalysis).filter((r): r is NonNullable<typeof r> => r !== undefined);
+      const embeddedImageAnalysis = imageReports.length > 0 ? {
+        discovered: imageReports.reduce((sum, r) => sum + r.discovered, 0),
+        queued: imageReports.reduce((sum, r) => sum + r.queued, 0),
+        sent: imageReports.reduce((sum, r) => sum + r.sent, 0),
+        analyzed: imageReports.reduce((sum, r) => sum + r.analyzed, 0),
+        packages: imageReports.reduce((sum, r) => sum + r.packages, 0),
+        convertedGifs: imageReports.reduce((sum, r) => sum + r.convertedGifs, 0),
+        failedPackages: imageReports.reduce((sum, r) => sum + r.failedPackages, 0),
+        skipped: imageReports.flatMap(r => r.skipped),
+      } : undefined;
 
       const aggregated: IngestReport = {
         sourceFile: sourceLabel,
@@ -294,6 +305,7 @@ export const ingestCommands = {
         skippedFiles: skippedCount,
         totalFilesInFolder: totalFiles,
         rejectedFiles: allRejectedFiles,
+        ...(embeddedImageAnalysis ? { embeddedImageAnalysis } : {}),
       };
 
       new IngestReportModal(this.app, aggregated, this.settings.language).open();

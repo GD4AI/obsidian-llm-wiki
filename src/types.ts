@@ -95,6 +95,19 @@ export interface SourceAnalysis {
    * (tests, callers predating #496) legitimately omit it.
    */
   mentions_in_source?: string[];
+  /** Runtime-only diagnostics for opt-in embedded image analysis. */
+  embedded_image_analysis?: EmbeddedImageAnalysisReport;
+}
+
+export interface EmbeddedImageAnalysisReport {
+  discovered: number;
+  queued: number;
+  sent: number;
+  analyzed: number;
+  packages: number;
+  convertedGifs: number;
+  failedPackages: number;
+  skipped: Array<{ path: string; reason: string }>;
 }
 
 export interface EntityInfo {
@@ -688,6 +701,7 @@ export interface IngestReport {
   skipped?: boolean;
   /** Files rejected by the requirements gate, with the reason for each. */
   rejectedFiles?: Array<{ path: string; reason: RejectionReason; detail?: string }>;
+  embeddedImageAnalysis?: EmbeddedImageAnalysisReport;
 }
 
 /** Cross-file dedup state shared across a folder/batch ingest run (#164). */
@@ -1009,6 +1023,7 @@ export interface EngineContext {
   getSectionLabels: () => Record<string, string>;
   getExistingWikiPages: () => Promise<Array<{ path: string; title: string; wikiLink: string; aliases?: string[] }>>;
   getSchemaContext: (task: string) => Promise<string | undefined>;
+  getAbortSignal?: () => AbortSignal | undefined;
   /**
    * SubtleCrypto from Obsidian's popout-window-aware `activeWindow.crypto`.
    * Used by the PDF cache to derive a content-addressed key without

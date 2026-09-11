@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian, read without downloading remote URLs, and sent with the extraction request to vision-capable providers. The limit is 10 images at 10 MiB each; missing, unsupported, oversized, and duplicate files leave text ingestion intact.
+- **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian and processed in 20 MiB visual-evidence packages, so a source has no image-count limit. Each image remains capped at 10 MiB; GIFs send a static first frame; remote URLs are never downloaded. Image failures leave text ingestion intact and surface in the ingest report.
 
 ## [1.27.1] - 2026-09-06
 

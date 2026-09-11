@@ -686,6 +686,9 @@ export const FR_TEXTS = {
     ingestReportClose: 'Fermer',
     ingestReportCreatedPages: 'Pages créées : {count}',
     ingestReportUpdatedPages: 'Pages mises à jour : {count}',
+    ingestReportEmbeddedImages: 'Images intégrées : {discovered} trouvées, {queued} en attente, {sent} envoyées, {analyzed} analysées ; {packages} lot(s), {gifs} première(s) image(s) GIF convertie(s), {failed} lot(s) en échec',
+    ingestReportEmbeddedImageSkipped: 'Images intégrées ignorées',
+    embeddedImagesVisionUnsupported: 'Ce point de terminaison a refusé l’analyse d’images. L’ingestion du texte continue ; utilisez un modèle de vision ou désactivez l’analyse des images intégrées.',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Journal des opérations',
     logHeaderSubtitle: 'Chaque ingestion, exécution de lint et opération de maintenance est enregistrée ici automatiquement. Pour une meilleure visualisation, utilisez le panneau **Historique des opérations** :',
@@ -718,7 +721,7 @@ export const FR_TEXTS = {
     forcePdfSupportDesc: 'Désactivé par défaut. Activez cette option si votre fournisseur ne figure pas dans la liste native mais peut quand même traiter les PDF. Lorsqu\'elle est activée, le PDF est envoyé à votre fournisseur actuel ; en cas de rejet, un message vous en informe. Les fournisseurs PDF natifs (Anthropic / OpenAI / Bedrock) n\'ont pas besoin de cette option.',
     writePdfMarkdownToVaultName: 'Écrire le Markdown converti dans le Vault',
     analyzeEmbeddedImagesName: 'Analyser les images intégrées lors de l’ingestion Markdown',
-    analyzeEmbeddedImagesDesc: 'Désactivé par défaut. Envoie jusqu’à 10 images locales intégrées (10 Mio chacune) avec l’extraction Markdown. Les images distantes ne sont jamais téléchargées.',
+    analyzeEmbeddedImagesDesc: 'Désactivé par défaut. Analyse toutes les images locales admissibles en paquets de 20 Mio ; chaque image est limitée à 10 Mio. Les images distantes ne sont jamais téléchargées.',
     markdownConversionBackendName: 'Backend de conversion Markdown',
     markdownConversionBackendDesc: 'Utilisez la prise en charge native PDF de votre fournisseur (portée limitée, tous les fournisseurs/modèles ne gèrent pas le PDF, consomme des tokens LLM). MinerU est un service en ligne — rapide, gratuit jusqu\'au quota quotidien, accepte PDF/images/Office — mais nécessite un jeton API (à saisir dans le champ ci-dessous).',
     markdownConversionBackendNative: 'Prise en charge PDF/images du fournisseur',

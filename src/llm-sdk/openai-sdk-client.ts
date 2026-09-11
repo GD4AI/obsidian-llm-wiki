@@ -138,7 +138,7 @@ export class OpenAISdkClient implements LLMClient {
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
     // Type-safe params destructure (LLMClient.createMessage signature).
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, response_format, onFinish } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, response_format, onFinish, abortSignal } = params;
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
@@ -149,6 +149,7 @@ export class OpenAISdkClient implements LLMClient {
         model: languageModel,
         ...(system ? { system } : {}),
         messages,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         // Provider-specific options (OpenAI: reasoning effort + thinking).
         // Type: AI-SDK's SharedV3ProviderOptions is a deeply-typed JSON

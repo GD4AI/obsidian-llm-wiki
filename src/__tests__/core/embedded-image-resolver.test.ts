@@ -1,47 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { collectEmbeddedImages } from '../../core/embedded-image-resolver';
+import { discoverEmbeddedImages, packageEmbeddedImages, readEmbeddedImagePart } from '../../core/embedded-image-resolver';
 
-const bytes = new Uint8Array([0, 1, 2, 3]);
-
-describe('collectEmbeddedImages', () => {
-  it('resolves Obsidian and Markdown embeds in document order', async () => {
-    const result = await collectEmbeddedImages({
-      markdown: '![[assets/one.png|300]]\n![two](assets/two.jpg)',
+describe('embedded image resolver', () => {
+  it('discovers Obsidian and Markdown embeds in document order without a note-wide count limit', async () => {
+    const result = await discoverEmbeddedImages({
+      markdown: Array.from({ length: 11 }, (_, index) => `![[assets/${index}.png]]`).join('\n'),
       sourcePath: 'notes/source.md',
-      resolveLink: target => ({
-        'assets/one.png': 'assets/one.png',
-        'assets/two.jpg': 'assets/two.jpg',
-      })[target] ?? null,
-      readBinary: async () => bytes,
+      resolveLink: target => target,
+      stat: async () => ({ size: 1 }),
     });
-    expect(result.parts).toEqual([
-      { type: 'image', image: 'AAECAw==', mediaType: 'image/png' },
-      { type: 'image', image: 'AAECAw==', mediaType: 'image/jpeg' },
-    ]);
+    expect(result.candidates).toHaveLength(11);
+    expect(result.candidates.map(image => image.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
-  it('skips remote, missing, unsupported, duplicate, and oversized embeds without failing text ingest', async () => {
-    const result = await collectEmbeddedImages({
+  it('skips remote, missing, unsupported, duplicate, and oversized embeds', async () => {
+    const result = await discoverEmbeddedImages({
       markdown: '![[ok.webp]] ![[ok.webp]] ![[missing.png]] ![](https://example.com/a.png) ![[large.bmp]] ![[note.pdf]]',
       sourcePath: 'notes/source.md',
-      maxImages: 10,
       maxBytes: 3,
       resolveLink: target => ({ 'ok.webp': 'ok.webp', 'large.bmp': 'large.bmp', 'note.pdf': 'note.pdf' })[target] ?? null,
-      readBinary: async path => path === 'large.bmp' ? new Uint8Array(4) : new Uint8Array([1]),
+      stat: async path => ({ size: path === 'large.bmp' ? 4 : 1 }),
     });
-    expect(result.parts).toHaveLength(1);
-    expect(result.skipped).toEqual({ duplicate: 1, limit: 0, missing: 1, remote: 1, oversized: 1, unsupported: 1 });
+    expect(result.candidates).toHaveLength(1);
+    expect(result.skipped.map(item => item.reason)).toEqual(['duplicate', 'missing', 'remote', 'oversized', 'unsupported']);
   });
 
-  it('accepts URL-encoded Markdown paths and limits selected images', async () => {
-    const result = await collectEmbeddedImages({
-      markdown: '![first](assets/a%20b.gif) ![[second.png]]',
-      sourcePath: 'notes/source.md',
-      maxImages: 1,
-      resolveLink: target => target === 'assets/a b.gif' ? target : target === 'second.png' ? target : null,
-      readBinary: async () => bytes,
-    });
-    expect(result.parts).toEqual([{ type: 'image', image: 'AAECAw==', mediaType: 'image/gif' }]);
-    expect(result.skipped.limit).toBe(1);
+  it('packages images at the byte boundary while preserving order', () => {
+    const images = [1, 2, 3].map(index => ({ index, path: `${index}.png`, mediaType: 'image/png' as const, byteLength: 10 }));
+    expect(packageEmbeddedImages(images, 20).map(group => group.map(image => image.index))).toEqual([[1, 2], [3]]);
+  });
+
+  it('encodes regular images and converts GIFs to a first-frame PNG', async () => {
+    const png = await readEmbeddedImagePart({ index: 1, path: 'a.png', mediaType: 'image/png', byteLength: 4 }, { readBinary: async () => new Uint8Array([0, 1, 2, 3]) });
+    const gif = await readEmbeddedImagePart({ index: 2, path: 'a.gif', mediaType: 'image/gif', byteLength: 4 }, { readBinary: async () => new Uint8Array([4]), gifFirstFrame: async () => new Uint8Array([5]) });
+    expect(png).toEqual({ type: 'image', image: 'AAECAw==', mediaType: 'image/png' });
+    expect(gif).toEqual({ type: 'image', image: 'BQ==', mediaType: 'image/png' });
   });
 });

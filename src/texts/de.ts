@@ -516,7 +516,7 @@ export const DE_TEXTS = {
     forcePdfSupportDesc: 'Standardmäßig aus. Schalten Sie dies ein, wenn Ihr Provider nicht in der nativen Liste steht, aber trotzdem PDFs verarbeiten kann. Bei aktiviertem Schalter wird das PDF an Ihren aktuellen Provider gesendet; wird es abgelehnt, sehen Sie einen Hinweis. Native PDF-Provider (Anthropic / OpenAI / Bedrock) benötigen diese Einstellung nicht.',
     writePdfMarkdownToVaultName: 'Konvertiertes Markdown in Vault schreiben',
     analyzeEmbeddedImagesName: 'Eingebettete Bilder bei der Markdown-Aufnahme analysieren',
-    analyzeEmbeddedImagesDesc: 'Standardmäßig aus. Sendet bis zu 10 lokale Bildeinbettungen (je 10 MiB) mit der Markdown-Extraktion. Remote-Bilder werden nie heruntergeladen.',
+    analyzeEmbeddedImagesDesc: 'Standardmäßig aus. Analysiert alle geeigneten lokalen Bildeinbettungen in 20-MiB-Paketen; jedes Bild ist auf 10 MiB begrenzt. Remote-Bilder werden nie heruntergeladen.',
     markdownConversionBackendName: 'Markdown-Konvertierungs-Backend',
     markdownConversionBackendDesc: 'Verwenden Sie die native PDF-Unterstützung Ihres Providers (begrenzter Umfang, nicht jeder Provider/jedes Modell verarbeitet PDF, verbraucht LLM-Tokens). MinerU ist ein Online-Dienst — schnell, bis zum täglichen Kontingent kostenlos, akzeptiert PDF/Bilder/Office — erfordert jedoch ein API-Token (im Feld unten festlegen).',
     markdownConversionBackendNative: 'Provider-PDF-/Bild-Unterstützung',
@@ -734,6 +734,9 @@ export const DE_TEXTS = {
     ingestReportClose: 'Schließen',
     ingestReportCreatedPages: 'Erstellte Seiten: {count}',
     ingestReportUpdatedPages: 'Aktualisierte Seiten: {count}',
+    ingestReportEmbeddedImages: 'Eingebettete Bilder: {discovered} gefunden, {queued} vorgemerkt, {sent} gesendet, {analyzed} analysiert; {packages} Paket(e), {gifs} GIF-Erstbild(er) konvertiert, {failed} Paket(e) fehlgeschlagen',
+    ingestReportEmbeddedImageSkipped: 'Übersprungene eingebettete Bilder',
+    embeddedImagesVisionUnsupported: 'Dieser Endpunkt hat die Bildanalyse abgelehnt. Die Texterfassung wird fortgesetzt; wählen Sie ein vision-fähiges Modell oder deaktivieren Sie die Bildanalyse.',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Betriebsprotokoll',
     logHeaderSubtitle: 'Jede Aufnahme, Lint-Ausführung und Wartungsoperation wird hier automatisch aufgezeichnet. Für eine bessere Ansicht nutzen Sie das **Betriebsverlauf**-Panel:',

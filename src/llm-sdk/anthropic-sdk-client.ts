@@ -176,7 +176,7 @@ export class AnthropicSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, enableThinking, cacheBreakpoint, onFinish } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, enableThinking, cacheBreakpoint, onFinish, abortSignal } = params;
 
     // Issue #449 v1.26.4 PATCH follow-up: when cacheBreakpoint is defined,
     // split the FIRST user message's text content at the offset and attach
@@ -196,6 +196,7 @@ export class AnthropicSdkClient implements LLMClient {
         // Anthropic's 4 cache breakpoints (Issue #449 Branch D fix).
         ...(system ? { system } : {}),
         messages: messagesWithCacheControl,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         providerOptions: this.buildProviderOptions({
           enableThinking,

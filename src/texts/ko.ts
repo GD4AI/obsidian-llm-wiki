@@ -516,7 +516,7 @@ export const KO_TEXTS = {
     forcePdfSupportDesc: '기본값은 꺼짐. provider가 네이티브 지원 목록에 없지만 PDF를 처리할 수 있다면, 이 스위치를 켜서 시도해 볼 수 있습니다. 켜면 PDF가 현재 provider로 전송되며, 거부되면 알림으로 안내됩니다. 네이티브 PDF provider(Anthropic / OpenAI / Bedrock)는 이 설정이 필요 없습니다.',
     writePdfMarkdownToVaultName: '변환된 Markdown을 Vault에 기록',
     analyzeEmbeddedImagesName: 'Markdown 수집 중 포함된 이미지 분석',
-    analyzeEmbeddedImagesDesc: '기본값은 꺼짐입니다. 활성화하면 Markdown 추출 요청에 로컬 이미지 최대 10개(각 10 MiB)를 보냅니다. 원격 이미지는 다운로드하지 않습니다.',
+    analyzeEmbeddedImagesDesc: '기본값은 꺼짐입니다. 활성화하면 적격 로컬 이미지를 모두 20 MiB 패키지로 분석하며, 각 이미지는 10 MiB까지입니다. 원격 이미지는 다운로드하지 않습니다.',
     markdownConversionBackendName: 'Markdown 변환 백엔드',
     markdownConversionBackendDesc: 'Native는 제공업체의 내장 PDF 지원을 사용합니다(범위가 제한적이며 모든 제공업체/모델이 PDF를 처리하는 것은 아니며 LLM 토큰을 소비합니다). MinerU는 온라인 서비스로 — 빠르고, 일일 할당량까지 무료이며, PDF/이미지/Office를 지원합니다 — 하지만 API 토큰이 필요합니다(아래 필드에 설정).',
     markdownConversionBackendNative: '제공업체 PDF/이미지 지원',
@@ -735,6 +735,9 @@ export const KO_TEXTS = {
     ingestReportClose: '닫기',
     ingestReportCreatedPages: '생성된 페이지: {count}',
     ingestReportUpdatedPages: '업데이트된 페이지: {count}',
+    ingestReportEmbeddedImages: '포함된 이미지: {discovered}개 발견, {queued}개 대기열, {sent}개 전송, {analyzed}개 분석. {packages}개 패키지, GIF 첫 프레임 {gifs}개 변환, 실패 {failed}개',
+    ingestReportEmbeddedImageSkipped: '건너뛴 포함 이미지',
+    embeddedImagesVisionUnsupported: '이 엔드포인트가 이미지 분석을 거부했습니다. 텍스트 수집은 계속됩니다. 비전 지원 모델로 전환하거나 포함 이미지 분석을 끄세요.',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki 작업 기록',
     logHeaderSubtitle: '모든 수집, Lint 실행 및 유지보수 작업이 여기에 자동 기록됩니다. 더 나은 보기를 위해 **작업 기록** 패널을 사용하세요:',

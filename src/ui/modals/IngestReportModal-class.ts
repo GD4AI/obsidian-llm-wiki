@@ -46,7 +46,7 @@ export class IngestReportModal extends Modal {
   }
 
   onOpen() {
-    const { sourceFile, createdPages, updatedPages, entitiesCreated, conceptsCreated, failedItems, contradictionsFound, success, errorMessage, elapsedSeconds, skippedFiles, totalFilesInFolder, rejectedFiles } = this.report;
+    const { sourceFile, createdPages, updatedPages, entitiesCreated, conceptsCreated, failedItems, contradictionsFound, success, errorMessage, elapsedSeconds, skippedFiles, totalFilesInFolder, rejectedFiles, embeddedImageAnalysis } = this.report;
 
     const statusEmoji = success ? '✅' : '⚠️';
     this.contentEl.createEl('h2', { text: `${statusEmoji} ${this.t('ingestReportTitle')}` });
@@ -80,6 +80,16 @@ export class IngestReportModal extends Modal {
       : '';
     statsEl.createEl('p', { text: createdText + breakdown });
     statsEl.createEl('p', { text: this.t('ingestReportUpdatedPages').replace('{count}', String(updatedPages.length)) });
+    if (embeddedImageAnalysis) {
+      statsEl.createEl('p', { text: this.t('ingestReportEmbeddedImages')
+        .replace('{sent}', String(embeddedImageAnalysis.sent))
+        .replace('{discovered}', String(embeddedImageAnalysis.discovered))
+        .replace('{queued}', String(embeddedImageAnalysis.queued))
+        .replace('{analyzed}', String(embeddedImageAnalysis.analyzed))
+        .replace('{packages}', String(embeddedImageAnalysis.packages))
+        .replace('{gifs}', String(embeddedImageAnalysis.convertedGifs))
+        .replace('{failed}', String(embeddedImageAnalysis.failedPackages)) });
+    }
     if (contradictionsFound > 0) {
       statsEl.createEl('p', { text: this.t('ingestReportContradictionsFound').replace('{count}', String(contradictionsFound)) });
     }
@@ -123,6 +133,15 @@ export class IngestReportModal extends Modal {
       for (const r of rejectedFiles) {
         const name = r.path.split('/').pop() || r.path;
         list.createEl('li', { text: `${name} — ${this.t(this.reasonLabelKey(r.reason))}` });
+      }
+    }
+
+    if (embeddedImageAnalysis && embeddedImageAnalysis.skipped.length > 0) {
+      this.contentEl.createEl('h3', { text: this.t('ingestReportEmbeddedImageSkipped') });
+      const list = this.contentEl.createEl('ul');
+      for (const skipped of embeddedImageAnalysis.skipped) {
+        const name = skipped.path.split('/').pop() || skipped.path;
+        list.createEl('li', { text: `${name} — ${skipped.reason}` });
       }
     }
 

@@ -276,7 +276,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish } = params;
+    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish, abortSignal } = params;
     // Issue #481: a pinned mode skips the prober for this call. `text_prompt`
     // puts no `response_format` on the wire, so the JSON shape has to come from
     // the prompt — the same prefix the 400-driven demotion adds at retry time,
@@ -337,6 +337,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         model: languageModel,
         ...(system ? { system } : {}),
         messages,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         ...outputArgs,
         providerOptions: this.buildProviderOptions({

@@ -689,6 +689,9 @@ export const ZH_TEXTS = {
     ingestReportClose: '关闭',
     ingestReportCreatedPages: '创建页面：{count}',
     ingestReportUpdatedPages: '更新页面：{count}',
+    ingestReportEmbeddedImages: '内嵌图片：发现 {discovered} 张，排队 {queued} 张，发送 {sent} 张，成功分析 {analyzed} 张；共 {packages} 包，GIF 首帧转换 {gifs} 张，失败 {failed} 包',
+    ingestReportEmbeddedImageSkipped: '已跳过的内嵌图片',
+    embeddedImagesVisionUnsupported: '当前端点拒绝图片分析。文字摄入将继续；请改用支持视觉的模型或关闭内嵌图片分析。',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki 操作日志',
     logHeaderSubtitle: '每次摄入、Lint 运行和维护操作都会自动记录在这里。推荐使用**操作历史**面板获得更好的可视化呈现：',
@@ -722,7 +725,7 @@ export const ZH_TEXTS = {
     forcePdfSupportDesc: '默认关闭。如果你的 provider 不是原生支持 PDF 的，但又确实能处理 PDF，可以打开这个开关试一试。打开后会发送 PDF 给当前 provider，如果被拒绝，会用提示告诉你。原生支持 PDF 的 provider（Anthropic / OpenAI / Bedrock）不需要这个开关。',
     writePdfMarkdownToVaultName: '将转换后的 Markdown 写入 Vault',
     analyzeEmbeddedImagesName: '在 Markdown 摄入时分析嵌入图片',
-    analyzeEmbeddedImagesDesc: '默认关闭。开启后会随 Markdown 提取请求发送最多 10 张本地图片，每张最大 10 MiB；绝不下载远程图片。',
+    analyzeEmbeddedImagesDesc: '默认关闭。开启后会分包分析全部符合条件的本地图片，每包最多 20 MiB、单张最大 10 MiB；绝不下载远程图片。',
     writePdfMarkdownToVaultDesc: '默认关闭。开启后，每次 PDF 转换的结果会写入源 PDF 旁边的 “<原名>.pdf.md” 文件。关闭时，转换结果仅保存在插件缓存，不在你的 Vault 中留下实现产物。',
     markdownConversionBackendName: 'Markdown 转换后端',
     markdownConversionBackendDesc: 'Native 使用 provider 自带的 PDF 支持（范围有限，并非所有 provider/model 都支持 PDF，消耗 LLM tokens）。MinerU 是在线服务——速度快、按日配额免费、支持 PDF/图片/Office——但需要 API Token（在下方字段填写）。',

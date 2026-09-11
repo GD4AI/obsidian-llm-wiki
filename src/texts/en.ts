@@ -740,6 +740,9 @@ export const EN_TEXTS = {
     ingestReportClose: 'Close',
     ingestReportCreatedPages: 'Created pages: {count}',
     ingestReportUpdatedPages: 'Updated pages: {count}',
+    ingestReportEmbeddedImages: 'Embedded images: {analyzed}/{discovered} analyzed; {sent} sent from {queued} queued in {packages} package(s), {gifs} GIF first frame(s) converted, {failed} package(s) failed',
+    ingestReportEmbeddedImageSkipped: 'Embedded images skipped',
+    embeddedImagesVisionUnsupported: 'Image analysis was rejected by this endpoint. Text ingestion will continue; use a vision-capable model or disable embedded image analysis.',
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Operation Log',
     logHeaderSubtitle: 'Every ingest, lint run, and maintenance operation is recorded here automatically. For a better experience, use the **Operation History** panel:',
@@ -776,7 +779,7 @@ export const EN_TEXTS = {
     writePdfMarkdownToVaultName: 'Write converted Markdown to Vault',
     writePdfMarkdownToVaultDesc: 'Off by default. When on, each PDF conversion result is written to a "<basename>.pdf.md" file next to the source PDF. When off (cache-only architecture), results live only in the plugin cache and leave no artifacts in your Vault.',
     analyzeEmbeddedImagesName: 'Analyze embedded images during Markdown ingestion',
-    analyzeEmbeddedImagesDesc: 'Off by default. Sends up to 10 local image embeds (10 MiB each) with the Markdown extraction request. Remote images are never downloaded.',
+    analyzeEmbeddedImagesDesc: 'Off by default. Analyzes every eligible local image embed in 20 MiB packages; each image is limited to 10 MiB. Remote images are never downloaded.',
     markdownConversionBackendName: 'Markdown conversion backend',
     markdownConversionBackendDesc: 'Native uses your provider\'s built-in PDF support (limited scope, not every provider/model handles PDF, costs LLM tokens). MinerU is an online service — fast, free up to the daily quota, accepts PDF/images/Office — but requires an API token (set it in the field below).',
     markdownConversionBackendNative: 'Provider PDF/image support',

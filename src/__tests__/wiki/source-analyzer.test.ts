@@ -33,30 +33,75 @@ function run(
 }
 
 describe('SourceAnalyzer', () => {
-  it('adds resolved local embeds to the extraction message only when image analysis is enabled', async () => {
+  it('analyzes resolved local embeds before text extraction without re-uploading images', async () => {
     const { ctx } = createMockContext({
       vaultFiles: { [TEST_PATH]: '# Test\n![[assets/chart.png]]' },
       settings: { analyzeEmbeddedImages: true },
-      llmResponses: [JSON.stringify({ entities: [], concepts: [] })],
+      llmResponses: [
+        JSON.stringify({ images: [{ index: 1, visible_text: 'Chart title', description: 'A line chart.' }] }),
+        JSON.stringify({ entities: [], concepts: [] }),
+      ],
     });
     const app = ctx.app as unknown as {
       metadataCache: { getFirstLinkpathDest: (target: string, sourcePath: string) => { path: string } | null };
-      vault: { adapter: { readBinary: (path: string) => Promise<ArrayBuffer> } };
+      vault: { adapter: { readBinary: (path: string) => Promise<ArrayBuffer>; stat: (path: string) => Promise<{ size: number } | null> } };
     };
     app.metadataCache.getFirstLinkpathDest = (target, sourcePath) =>
       target === 'assets/chart.png' && sourcePath === TEST_PATH ? { path: target } : null;
-    app.vault.adapter = { readBinary: async () => new Uint8Array([1, 2, 3]).buffer };
+    app.vault.adapter = { readBinary: async () => new Uint8Array([1, 2, 3]).buffer, stat: async () => ({ size: 3 }) };
     const client = ctx.getClient()!;
     const spy = vi.spyOn(client, 'createMessage');
 
     await run(new SourceAnalyzer(ctx), TEST_PATH);
 
-    const content = spy.mock.calls[0][0].messages[0].content;
-    expect(content).toEqual([
+    const visionContent = spy.mock.calls[0][0].messages[0].content;
+    expect(visionContent).toEqual([
       expect.objectContaining({ type: 'text' }),
       { type: 'image', image: 'AQID', mediaType: 'image/png' },
     ]);
-    expect(spy.mock.calls[0][0].cacheBreakpoint).toBeUndefined();
+    const extractionContent = spy.mock.calls[1][0].messages[0].content;
+    expect(extractionContent).toContain('## Embedded Image Visual Evidence');
+    expect(extractionContent).toContain('Chart title');
+    expect(spy.mock.calls[1][0].cacheBreakpoint).toBeDefined();
+  });
+
+  it('continues with text extraction when the endpoint rejects image input', async () => {
+    const { ctx } = createMockContext({
+      vaultFiles: { [TEST_PATH]: '# Test\n![[assets/chart.png]]' },
+      settings: { analyzeEmbeddedImages: true },
+    });
+    const app = ctx.app as unknown as {
+      metadataCache: { getFirstLinkpathDest: () => { path: string } | null };
+      vault: { adapter: { readBinary: () => Promise<ArrayBuffer>; stat: () => Promise<{ size: number }> } };
+    };
+    app.metadataCache.getFirstLinkpathDest = () => ({ path: 'assets/chart.png' });
+    app.vault.adapter = { readBinary: async () => new Uint8Array([1]).buffer, stat: async () => ({ size: 1 }) };
+    const client = ctx.getClient()!;
+    const spy = vi.spyOn(client, 'createMessage')
+      .mockRejectedValueOnce(new Error('400 image input not supported'))
+      .mockResolvedValueOnce(JSON.stringify({ entities: [], concepts: [] }));
+
+    const result = await run(new SourceAnalyzer(ctx), TEST_PATH);
+
+    expect(result?.embedded_image_analysis?.failedPackages).toBe(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[1][0].messages[0].content).not.toContain('Embedded Image Visual Evidence');
+  });
+
+  it('propagates non-vision image-analysis errors', async () => {
+    const { ctx } = createMockContext({
+      vaultFiles: { [TEST_PATH]: '# Test\n![[assets/chart.png]]' },
+      settings: { analyzeEmbeddedImages: true },
+    });
+    const app = ctx.app as unknown as {
+      metadataCache: { getFirstLinkpathDest: () => { path: string } | null };
+      vault: { adapter: { readBinary: () => Promise<ArrayBuffer>; stat: () => Promise<{ size: number }> } };
+    };
+    app.metadataCache.getFirstLinkpathDest = () => ({ path: 'assets/chart.png' });
+    app.vault.adapter = { readBinary: async () => new Uint8Array([1]).buffer, stat: async () => ({ size: 1 }) };
+    vi.spyOn(ctx.getClient()!, 'createMessage').mockRejectedValueOnce(new Error('network unavailable'));
+
+    await expect(run(new SourceAnalyzer(ctx), TEST_PATH)).rejects.toThrow('network unavailable');
   });
 
   it('returns null when first batch is unusable (no entities/concepts)', async () => {

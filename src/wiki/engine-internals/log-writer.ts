@@ -26,7 +26,7 @@
  *     inject a custom writeFile and reuse the append-only invariants.
  */
 
-import type { SourceAnalysis } from '../../types';
+import type { EmbeddedImageAnalysisReport, SourceAnalysis } from '../../types';
 import { TEXTS } from '../../texts';
 import { dedupPages } from './dedup-pages';
 import { buildLogHeader } from '../../core/log-header';
@@ -37,6 +37,7 @@ export interface IngestMetrics {
   durationSec?: number;
   model?: string;
   sourceBytes?: number;
+  embeddedImageAnalysis?: EmbeddedImageAnalysisReport;
 }
 
 export interface LogWriterOptions {
@@ -84,6 +85,10 @@ export class LogWriter {
       .map(p => `[[${p.replace(this.wikiFolder + '/', '')}]]`)
       .join(', ')}\n\n`;
     entry += `**${labels.updatedPages}**：${analysis.updated_pages.map(p => `[[${p}]]`).join(', ')}\n\n`;
+    if (metrics?.embeddedImageAnalysis) {
+      const image = metrics.embeddedImageAnalysis;
+      entry += `**Embedded images**: ${image.analyzed}/${image.discovered} analyzed; ${image.sent} sent from ${image.queued} queued in ${image.packages} package(s); ${image.convertedGifs} GIF first frame(s) converted; ${image.skipped.length} skipped; ${image.failedPackages} package(s) failed\n\n`;
+    }
 
     if (analysis.contradictions.length > 0) {
       entry += `**${labels.contradictionsFound}**：\n`;
