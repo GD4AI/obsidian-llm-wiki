@@ -140,9 +140,7 @@ export function bumpSchemaMetadata(content: string, now: Date, suggestionTimesta
   const fm = parseFrontmatter(content);
   if (!fm) return content;
 
-  const rawCount = fm.auto_suggestion_count;
-  const countStr = typeof rawCount === 'string' || typeof rawCount === 'number' ? String(rawCount) : '0';
-  const nextCount = (parseInt(countStr, 10) || 0) + 1;
+  const nextCount = (parseInt(String(fm.auto_suggestion_count ?? '0'), 10) || 0) + 1;
 
   let next = upsertFrontmatterField(content, 'updated', localDateStamp(now));
   next = upsertFrontmatterField(next, 'auto_suggestion_count', String(nextCount));
