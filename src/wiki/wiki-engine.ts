@@ -43,11 +43,13 @@ import { buildStubIdentityResolver, createDissentStubs, stubPath } from './page-
 import { selectDomains, collectActiveVocabulary } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
 import { getSourceLanguage, isCrossLanguage } from '../core/source-language';
 import { cleanMarkdownResponse } from '../core/markdown';
+import { stampSourcePageHead } from '../core/source-page-head';
 import { injectMentionsSection } from '../core/mentions-injector';
 import { SchemaManager, SchemaTask } from '../schema/schema-manager';
 import {
   buildSystemPrompt,
   getSectionLabels,
+  getSourcePageHeadLabels,
   applySectionLabels,
 } from './system-prompts';
 import { getExistingWikiPages } from './lint/get-existing-pages';
@@ -1729,13 +1731,14 @@ export class WikiEngine {
         '\n' +
         analysis.concepts.map(c => `- [[concepts/${slugify(c.name, preserveCase)}|${c.name}]]`).join('\n');
 
+    const ingestDate = localDateStamp();
     const prompt = renderTemplate(PROMPTS.generateSummaryPage, {
       source_title: analysis.source_title,
       content: content.substring(0, 500),
       analysis: JSON.stringify(analysis),
       created_pages_list: createdPagesList || '(none)',
       source_file: file.path,
-      date: localDateStamp(),
+      date: ingestDate,
       tags: tagsValue,
       constraints: UNIVERSAL_LINK_CONSTRAINTS,
     });
@@ -1755,6 +1758,13 @@ export class WikiEngine {
     // #164: stamp a content fingerprint so future ingests can detect duplicates.
     // Injected programmatically — the LLM can't be trusted to emit it.
     let finalContent = upsertFrontmatterField(cleanedContent, 'contentHash', hashBody(extractBody(content)));
+    // The page head — H1 and Source section — from the title, the note path
+    // and the date the code knows; the model's copies of them came back wrong.
+    finalContent = stampSourcePageHead(
+      finalContent,
+      { title: analysis.source_title, sourcePath: file.path, date: ingestDate },
+      getSourcePageHeadLabels(this.settings),
+    );
 
     // Issue #185: append the source note's curated frontmatter `aliases:`
     // to the generated `sources/<slug>` page. Merged inline (BEFORE the
