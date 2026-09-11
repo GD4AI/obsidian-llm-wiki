@@ -69,7 +69,7 @@ export const schemaCommands = {
               app: this.app,
               currentPath: `${this.settings.wikiFolder}/schema/config.md`,
               newBody: suggestion.newSchemaBody ?? '',
-              // The exact timestamp already written to this suggestion's suggestions.md entry, not a date derived from whenever the user happens to click Apply — lets the two files be cross-referenced by an exact string match even same-day.
+              // The exact timestamp already written to this suggestion's suggestions.md entry. Becomes `applied_suggestion:` verbatim, letting the two files be cross-referenced by an exact string match even same-day; `updated:` is unaffected and is always the apply-time local date.
               suggestionTimestamp: suggestion.timestamp,
               onCacheInvalidate: () => this.schemaManager.invalidateCache(),
             });
