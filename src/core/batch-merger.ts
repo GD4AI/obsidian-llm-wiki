@@ -2,13 +2,12 @@
 // Extracted from source-analyzer.ts::analyzeSource()
 // Zero side effects, fully unit-testable
 
-import { EntityInfo, ConceptInfo, ContradictionInfo, SourceAnalysis, MentionWithProvenance } from '../types';
+import { EntityInfo, ConceptInfo, SourceAnalysis, MentionWithProvenance } from '../types';
 import { unionDomains } from './domain-axis';
 
 export interface BatchAccumulation {
   entities: EntityInfo[];
   concepts: ConceptInfo[];
-  contradictions: ContradictionInfo[];
   relatedPages: string[];
   keyPoints: string[];
   extractedNames: Set<string>;
@@ -126,7 +125,6 @@ export function createEmptyAccumulation(): BatchAccumulation {
   return {
     entities: [],
     concepts: [],
-    contradictions: [],
     relatedPages: [],
     keyPoints: [],
     extractedNames: new Set<string>()
@@ -146,7 +144,6 @@ export function mergeBatchResults(
   newBatch: {
     entities: EntityInfo[];
     concepts: ConceptInfo[];
-    contradictions?: ContradictionInfo[];
     relatedPages?: string[];
     keyPoints?: string[];
   },
@@ -249,7 +246,6 @@ export function buildSourceAnalysis(
   firstBatchData?: {
     sourceTitle?: string | null;
     summary?: string | null;
-    contradictions?: ContradictionInfo[];
     relatedPages?: string[];
     keyPoints?: string[];
   },
@@ -296,7 +292,6 @@ export function buildSourceAnalysis(
     summary: firstBatchData?.summary || '',
     entities: accumulation.entities,
     concepts: accumulation.concepts,
-    contradictions: accumulation.contradictions,
     related_pages: accumulation.relatedPages,
     key_points: accumulation.keyPoints,
     created_pages: [],

@@ -218,8 +218,8 @@ export const SourceAnalysisLLMSchema = z.object({
   // Mirrors the existing pattern in `LemmaClassifyLLMSchema` (`kind`
   // is required; extras pass through).
   //
-  // `source_title`, `summary`, `key_points`, `related_pages`,
-  // `contradictions` remain `.optional()` because
+  // `source_title`, `summary`, `key_points`, `related_pages`
+  // remain `.optional()` because
   // `normalizeBatchResponse` does not consult them for batch-validity
   // (only entities + concepts do), and the runtime has explicit
   // fallbacks for missing source_title (filename) and missing summary
@@ -228,12 +228,6 @@ export const SourceAnalysisLLMSchema = z.object({
   // these changes satisfy.
   entities: z.array(EntityItem),
   concepts: z.array(ConceptItem),
-  contradictions: z.array(z.object({
-    claim: z.string(),
-    source_page: z.string(),
-    contradicted_by: z.string(),
-    resolution: z.string(),
-  }).passthrough()).optional(),
   related_pages: z.array(z.string()).optional(),
   key_points: z.array(z.string()).optional(),
 }).passthrough();

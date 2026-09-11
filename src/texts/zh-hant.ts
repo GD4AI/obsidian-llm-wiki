@@ -608,7 +608,6 @@ export const ZH_HANT_TEXTS = {
     lintDeadLinkMore: '- ... 共 {count} 處斷鏈',
     lintEmptyPageItem: '- [[{page}]] — 內容不足 50 字元',
     lintOrphanItem: '- [[{page}]] — 無其他 Wiki 頁面連結至此{dupFlag}',
-    lintContradictionAutoFixed: '（本次自動修復 {count} 個）',
     lintDeadLinkAffectedByDup: ' （⚠️ 涉及重複頁面）',
     lintOrphanIsDuplicate: ' （⚠️ 重複頁面）',
     lintHubLinkDensitySection: '樞紐頁面連結密度問題（Issue #157 / #175）[{count}]',
@@ -628,7 +627,6 @@ export const ZH_HANT_TEXTS = {
     lintContradictionOpen: '未解決的矛盾：{count} 個',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: '待處理',
-    lintContradictionStatusPendingFix: '待修復',
 
     // 维护分析 Prompt
 

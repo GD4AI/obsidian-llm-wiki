@@ -632,10 +632,8 @@ export const JA_TEXTS = {
     lintHubLinkDensitySummary: '要約：削除推奨 {strip} ページ、確認推奨 {review} ページ。',
     lintHubLinkDensityNoRelated: ' （## Related セクションが見つかりません）',
     lintContradictionOpen: '未解決の矛盾：{count}件',
-    lintContradictionAutoFixed: '（今回{count}件を自動修復）',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: '検出済み',
-    lintContradictionStatusPendingFix: '修復待ち',
 
     // Lint Analysis Prompt
 

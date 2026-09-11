@@ -4,7 +4,6 @@ import {
   TOKENS_PAGE_GENERATION,
   TOKENS_APPEND_REVIEWED,
   TOKENS_COMPLEMENTARY_APPEND,
-  TOKENS_CONTRADICTION,
   TOKENS_CONVERSATION_EXTRACTION,
   TOKENS_CONVERSATION_PAGE,
   TOKENS_DEDUP_RESOLUTION,
@@ -64,12 +63,11 @@ describe('Token budget constants (Issue #75)', () => {
     expect(TOKENS_LINT_DEDUP_LLM).toBe(8000);
   });
 
-  it('contradiction + append-reviewed constants remain 4000 (thinking-mode insurance unrelated)', () => {
-    // These two paths don't have the same thinking-budget issue
-    // because their prompts are short (single pair / single review
-    // item) and the LLM call is already at minimum viable size.
+  it('append-reviewed constant remains 4000 (thinking-mode insurance unrelated)', () => {
+    // This path doesn't have the same thinking-budget issue because its
+    // prompt is short (single review item) and the LLM call is already
+    // at minimum viable size.
     expect(TOKENS_APPEND_REVIEWED).toBe(4000);
-    expect(TOKENS_CONTRADICTION).toBe(4000);
   });
 
   it('query constants are 2000 (Phase 5.5.0 thinking-model insurance)', () => {

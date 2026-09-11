@@ -174,11 +174,6 @@ export const TOKENS_PAGE_GENERATION = 8000;
 export const TOKENS_APPEND_REVIEWED = 4000;
 
 /**
- * Token budget for contradiction recording output.
- */
-export const TOKENS_CONTRADICTION = 4000;
-
-/**
  * Token budget for conversation summary extraction.
  */
 export const TOKENS_CONVERSATION_EXTRACTION = 5000;

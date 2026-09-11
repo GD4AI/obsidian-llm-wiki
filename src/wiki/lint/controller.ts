@@ -6,7 +6,7 @@
 //   - lint/phases/preparation.ts: page read + double-nested fix + sources normalize
 //   - lint/phases/programmatic.ts: alias/empty/orphan/tag/polluted/dead links/quote grounding
 //   - lint/llm-phases/dedup-phase.ts: LLM-assisted duplicate detection (extracted v1.24.0)
-//   - lint/llm-phases/contradiction-phase.ts: review_ok auto-resolve + report (extracted v1.24.0)
+//   - lint/llm-phases/contradiction-phase.ts: open-record report (extracted v1.24.0)
 //   - lint/llm-phases/analysis-phase.ts: LLM health analysis (extracted v1.24.0)
 //   - lint/report-builder.ts: pure-function report markdown builder
 //   - lint/fix-runners.ts: per-phase fix executors
@@ -175,7 +175,7 @@ export async function runLintWiki(
     //
     // v1.24.0: extracted to lint/llm-phases/contradiction-phase.ts.
     // Behavior is identical to the previous inline implementation; see
-    // that file for the review_ok auto-resolve + report-render details.
+    // that file for the report-render details.
     //
     // v1.27.x audit (Phase 3 T3-1): the contradiction phase now runs
     // BEFORE the report is built. Historically it ran after a throwaway

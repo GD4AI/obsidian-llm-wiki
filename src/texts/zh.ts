@@ -616,7 +616,6 @@ export const ZH_TEXTS = {
     lintDeadLinkMore: '- ... 共 {count} 处断链',
     lintEmptyPageItem: '- [[{page}]] — 内容不足 50 字符',
     lintOrphanItem: '- [[{page}]] — 无其他 Wiki 页面链接至此{dupFlag}',
-    lintContradictionAutoFixed: '（本次自动修复 {count} 个）',
     lintDeadLinkAffectedByDup: ' （⚠️ 涉及重复页面）',
     lintOrphanIsDuplicate: ' （⚠️ 重复页面）',
     lintHubLinkDensitySection: '枢纽页面链接密度问题（Issue #157 / #175）[{count}]',
@@ -636,7 +635,6 @@ export const ZH_TEXTS = {
     lintContradictionOpen: '未解决的矛盾：{count} 个',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: '待处理',
-    lintContradictionStatusPendingFix: '待修复',
 
     // 维护分析 Prompt
 

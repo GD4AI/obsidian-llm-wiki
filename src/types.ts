@@ -64,7 +64,6 @@ export interface SourceAnalysis {
   summary: string;
   entities: EntityInfo[];
   concepts: ConceptInfo[];
-  contradictions: ContradictionInfo[];
   related_pages: string[];
   key_points: string[];
   created_pages: string[];
@@ -1012,9 +1011,8 @@ export interface EngineContext {
   /**
    * Fired for every contradiction the merge triage records against an
    * existing page (item-level `kind: 'contradictory'` and the page-level
-   * `strategy: 'contradictory'`). The extraction lane's contradictions
-   * live in `analysis.contradictions`; without this callback the triage
-   * lane's records are invisible to the ingest log and the report count.
+   * `strategy: 'contradictory'`). Without this callback the records are
+   * invisible to the ingest log and the report count.
    */
   onContradiction?: (contradiction: ContradictionInfo) => void;
   onProgress?: (message: string) => void;

@@ -246,7 +246,7 @@ export class WikiEngine {
       ensureWikiStructure: () => this.ensureWikiStructure(),
       apiDelay: ms => this.apiDelay(ms),
       generateIndex: () => this.generateIndexFromEngine(),
-      updateLog: (op, analysis) => this.updateLog(op, analysis),
+      updateLog: (op, analysis, contradictions) => this.updateLog(op, analysis, contradictions),
     };
     this.conversationIngestor = new ConversationIngestor(ctx, this.pageFactory, orch);
 
@@ -1011,10 +1011,9 @@ export class WikiEngine {
 
     const failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }> = [];
     let analysis: SourceAnalysis | null = null;
-    // The merge triage records contradictions of its own (item-level and
-    // page-level) that never appear in `analysis.contradictions` — the
-    // extraction lane's list. Collect them here so the log entry and the
-    // report count what was actually recorded, not only what extraction saw.
+    // The merge triage records the run's contradictions (item-level and
+    // page-level). Collect them here so the log entry and the report count
+    // what was actually recorded.
     const triageContradictions: ContradictionInfo[] = [];
     this.triageContradictions = triageContradictions;
     // Path of the summary page written in Stage 2, tracked outside the try so
@@ -1464,17 +1463,6 @@ export class WikiEngine {
       await this.repointLinksAfterRun([...analysis.created_pages, ...analysis.updated_pages]);
       console.debug(`[Time] Link re-point pass: ${Date.now() - repointStart}ms`);
 
-      const contradictionStart = Date.now();
-      for (const contradiction of analysis.contradictions) {
-        try {
-          await this.noteContradiction(contradiction, file.path);
-        } catch {
-          // non-critical
-        }
-      }
-      const contradictionTime = Date.now() - contradictionStart;
-      console.debug(`[Time] Contradiction recording phase: ${contradictionTime}ms (${analysis.contradictions.length} items)`);
-
       // Stage 6: Index & Log Update
       const indexStart = Date.now();
       step++;
@@ -1488,9 +1476,7 @@ export class WikiEngine {
       // log entry can record both (issue #122 v3.1: ingest history needs timing).
       const totalTime = Date.now() - totalStartTime;
       const sourceSize = fileContent?.length ?? 0;
-      // Both lanes, one count: extraction (Stage 5 above) and merge triage.
-      const contradictionsRecorded = [...analysis.contradictions, ...triageContradictions];
-      await this.updateLog('ingest', { ...analysis, contradictions: contradictionsRecorded }, {
+      await this.updateLog('ingest', analysis, triageContradictions, {
         durationSec: Math.round(totalTime / 1000),
         model: this.settings.model,
         sourceBytes: sourceSize,
@@ -1516,7 +1502,6 @@ export class WikiEngine {
       console.debug(`  - Summary page generation: ${summaryTime}ms`);
       console.debug(`  - Page gen (${concurrency}concurrency): ${pageGenTime}ms`);
       console.debug(`  - Related page update: ${relatedTime}ms`);
-      console.debug(`  - Contradiction recording: ${contradictionTime}ms`);
       console.debug(`  - Index & log: ${indexTime}ms`);
       // Inside the phases, per step. Page generation is the phase this exists
       // for: one interval above, four steps below it — path resolution's dedup
@@ -1534,7 +1519,7 @@ export class WikiEngine {
         entitiesCreated,
         conceptsCreated,
         failedItems,
-        contradictionsFound: contradictionsRecorded.length,
+        contradictionsFound: triageContradictions.length,
         success: true,
         elapsedSeconds: Math.round(totalTime / 1000),
         // v1.22.6 #204: Propagate trigger so completion can route UI.
@@ -1572,7 +1557,7 @@ export class WikiEngine {
           entitiesCreated: reportedCreated.filter(p => p.includes('/entities/')).length,
           conceptsCreated: reportedCreated.filter(p => p.includes('/concepts/')).length,
           failedItems,
-          contradictionsFound: (analysis?.contradictions?.length || 0) + triageContradictions.length,
+          contradictionsFound: triageContradictions.length,
           success: false,
           cancelled: true,
           errorMessage: 'Cancelled by user',
@@ -1594,7 +1579,7 @@ export class WikiEngine {
         entitiesCreated: createdPages.filter(p => p.includes('/entities/')).length,
         conceptsCreated: createdPages.filter(p => p.includes('/concepts/')).length,
         failedItems,
-        contradictionsFound: (analysis?.contradictions?.length || 0) + triageContradictions.length,
+        contradictionsFound: triageContradictions.length,
         success: false,
         errorMessage: errorMsg,
         elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
@@ -2098,20 +2083,8 @@ export class WikiEngine {
 
   // ---- Contradiction delegation ----
 
-  async noteContradiction(contradiction: ContradictionInfo, sourceNotePath: string) {
-    return this.contradictionManager.noteContradiction(contradiction, sourceNotePath);
-  }
-
   async getOpenContradictions(): Promise<Array<{ path: string; status: string; claim: string; sourcePage: string }>> {
     return this.contradictionManager.getOpenContradictions();
-  }
-
-  async updateContradictionStatus(filePath: string, newStatus: string): Promise<void> {
-    return this.contradictionManager.updateContradictionStatus(filePath, newStatus);
-  }
-
-  async resolveContradiction(contradictionPath: string): Promise<void> {
-    return this.contradictionManager.resolveContradiction(contradictionPath);
   }
 
   // ---- Conversation ingestion delegation ----
@@ -2160,9 +2133,10 @@ export class WikiEngine {
   async updateLog(
     operation: string,
     analysis: SourceAnalysis,
+    contradictions: ContradictionInfo[],
     metrics?: { durationSec?: number; model?: string; sourceBytes?: number },
   ) {
-    return this.logWriter.appendIngest(operation, analysis, metrics);
+    return this.logWriter.appendIngest(operation, analysis, contradictions, metrics);
   }
 
   /** Append a lint-fix entry to the operation log. */

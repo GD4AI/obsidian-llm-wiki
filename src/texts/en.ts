@@ -690,10 +690,8 @@ export const EN_TEXTS = {
     lintHubLinkDensitySummary: 'Summary: {strip} page(s) recommended for strip, {review} page(s) recommended for review.',
     lintHubLinkDensityNoRelated: ' (no ## Related section found)',
     lintContradictionOpen: 'Open contradictions: {count}',
-    lintContradictionAutoFixed: '({count} auto-fixed this run)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Detected',
-    lintContradictionStatusPendingFix: 'Pending fix',
 
     // Lint Analysis Prompt
 

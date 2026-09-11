@@ -94,7 +94,6 @@ function makeAnalysis(matchingName?: string): SourceAnalysis {
     summary: '',
     entities,
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],

@@ -24,7 +24,6 @@ function makeAnalysis(overrides: Partial<SourceAnalysis> = {}): SourceAnalysis {
     key_points: [],
     created_pages: ['wiki/sources/test.md'],
     updated_pages: ['wiki/concepts/c1.md'],
-    contradictions: [],
     source_note_aliases: [],
     ...overrides,
   };
@@ -41,7 +40,7 @@ describe('LogWriter', () => {
       writeFile,
     });
 
-    await writer.appendIngest('ingest', makeAnalysis({ source_title: 'Paper X' }), {
+    await writer.appendIngest('ingest', makeAnalysis({ source_title: 'Paper X' }), [], {
       durationSec: 28,
       model: 'claude-sonnet-4-5-20250929',
       sourceBytes: 4400,
@@ -70,7 +69,7 @@ describe('LogWriter', () => {
         readFile: vi.fn().mockResolvedValue('# Wiki Operation Log\n'),
         writeFile,
       });
-      await writer.appendIngest('ingest', makeAnalysis(), {});
+      await writer.appendIngest('ingest', makeAnalysis(), [], {});
       const [, content] = writeFile.mock.calls[0] as [string, string];
       expect(content).toContain('## [2026-09-03 00:30] ingest');
     } finally {
@@ -88,7 +87,7 @@ describe('LogWriter', () => {
       writeFile,
     });
 
-    await writer.appendIngest('ingest', makeAnalysis({ source_title: 'X' }));
+    await writer.appendIngest('ingest', makeAnalysis({ source_title: 'X' }), []);
 
     const content = (writeFile.mock.calls[0] as [string, string])[1];
     expect(content).toContain('ingest | X\n');
@@ -107,7 +106,7 @@ describe('LogWriter', () => {
 
     await writer.appendIngest('ingest', makeAnalysis({
       created_pages: ['wiki/sources/p.md', 'wiki/sources/p.md', 'wiki/sources/q.md'],
-    }));
+    }), []);
 
     const content = (writeFile.mock.calls[0] as [string, string])[1];
     // LogWriter strips the `wiki/` prefix; the wiki link keeps the `.md`
@@ -129,12 +128,10 @@ describe('LogWriter', () => {
       writeFile,
     });
 
-    await writer.appendIngest('ingest', makeAnalysis({
-      contradictions: [
-        { claim: 'Sky is blue', source_page: 'page-a', contradicted_by: 'page-b', resolution: '' },
-        { claim: 'Sky is green', source_page: 'page-c', contradicted_by: 'page-d', resolution: '' },
-      ],
-    }));
+    await writer.appendIngest('ingest', makeAnalysis(), [
+      { claim: 'Sky is blue', source_page: 'page-a', contradicted_by: 'page-b', resolution: '' },
+      { claim: 'Sky is green', source_page: 'page-c', contradicted_by: 'page-d', resolution: '' },
+    ]);
 
     const content = (writeFile.mock.calls[0] as [string, string])[1];
     expect(content).toContain('Contradictions found');
@@ -152,7 +149,7 @@ describe('LogWriter', () => {
       writeFile,
     });
 
-    await writer.appendIngest('ingest', makeAnalysis());
+    await writer.appendIngest('ingest', makeAnalysis(), []);
     const content = (writeFile.mock.calls[0] as [string, string])[1];
     // buildLogHeader produces a header line; we just verify it doesn't crash
     // and the entry is appended after the header

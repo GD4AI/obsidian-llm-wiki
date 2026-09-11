@@ -26,7 +26,7 @@
  *     inject a custom writeFile and reuse the append-only invariants.
  */
 
-import type { SourceAnalysis } from '../../types';
+import type { ContradictionInfo, SourceAnalysis } from '../../types';
 import { TEXTS } from '../../texts';
 import { dedupPages } from './dedup-pages';
 import { buildLogHeader } from '../../core/log-header';
@@ -68,10 +68,14 @@ export class LogWriter {
    *   **Updated pages**: [[c]]
    *   **Contradictions found**:
    *   - claim1 vs page1
+   *
+   * `contradictions` are what the run recorded — the merge triage's, via
+   * `EngineContext.onContradiction` — not a field of the analysis.
    */
   async appendIngest(
     operation: string,
     analysis: SourceAnalysis,
+    contradictions: ContradictionInfo[],
     metrics?: IngestMetrics,
   ): Promise<void> {
     const logPath = `${this.wikiFolder}/log.md`;
@@ -85,9 +89,9 @@ export class LogWriter {
       .join(', ')}\n\n`;
     entry += `**${labels.updatedPages}**：${analysis.updated_pages.map(p => `[[${p}]]`).join(', ')}\n\n`;
 
-    if (analysis.contradictions.length > 0) {
+    if (contradictions.length > 0) {
       entry += `**${labels.contradictionsFound}**：\n`;
-      for (const c of analysis.contradictions) {
+      for (const c of contradictions) {
         entry += `- ${c.claim} vs ${c.source_page}\n`;
       }
     }

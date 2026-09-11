@@ -636,10 +636,8 @@ export const FR_TEXTS = {
     lintHubLinkDensitySummary: 'Résumé : {strip} page(s) recommandée(s) pour suppression, {review} page(s) recommandée(s) pour examen.',
     lintHubLinkDensityNoRelated: ' (aucune section ## Related trouvée)',
     lintContradictionOpen: 'Contradictions non résolues : {count}',
-    lintContradictionAutoFixed: '({count} corrigé(s) automatiquement cette exécution)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Détecté',
-    lintContradictionStatusPendingFix: 'Correction en attente',
 
     // Lint Analysis Prompt
 
