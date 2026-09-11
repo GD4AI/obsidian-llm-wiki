@@ -265,6 +265,13 @@ describe('Dead Link Detector — Pure Functions', () => {
       expect(result).toBe('First bare [[entities/cot|Chain of Thought]] then aliased [[entities/cot|receptors]].');
     });
 
+    it('leaves an aliased occurrence untouched instead of throwing when replacement is malformed', () => {
+      const linkWithDisplay = 'See [[wrong-target|thinking chain]] for more.';
+      const result = () => replaceDeadLink(linkWithDisplay, 'wrong-target', '[[]]');
+      expect(result).not.toThrow();
+      expect(result()).toBe(linkWithDisplay);
+    });
+
     it('handles links with section anchors', () => {
       const linkWithAnchor = 'See [[思维链#section]] for details.';
       const result = replaceDeadLink(linkWithAnchor, '思维链', '[[entities/cot|Chain of Thought]]');

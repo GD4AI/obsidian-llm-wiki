@@ -113,7 +113,10 @@ export function buildDeadLinkReplacement(
  *
  * @param content - Source page content
  * @param targetName - Dead link target to find
- * @param replacement - Replacement wiki link, used verbatim for an occurrence with no alias of its own
+ * @param replacement - Replacement wiki link, used verbatim for an occurrence with no alias of its own. Must itself
+ * be a well-formed `[[path...]]`; an occurrence that has its own alias to preserve falls back to leaving that
+ * occurrence untouched if `replacement`'s own path can't be parsed out, rather than trusting a caller-supplied
+ * value that could be malformed.
  * @returns Updated content with link replaced
  *
  * @example
@@ -131,8 +134,9 @@ export function replaceDeadLink(
     (fullMatch: string, capturedTarget: string, capturedAlias?: string) => {
       if (capturedTarget.trim() !== targetName) return fullMatch;
       if (!capturedAlias) return replacement;
-      const relPath = replacement.match(/^\[\[([^\]|]+)/)![1];
-      return `[[${relPath}|${capturedAlias.trim()}]]`;
+      const relPathMatch = replacement.match(/^\[\[([^\]|]+)/);
+      if (!relPathMatch) return fullMatch;
+      return `[[${relPathMatch[1]}|${capturedAlias.trim()}]]`;
     }
   );
 }
