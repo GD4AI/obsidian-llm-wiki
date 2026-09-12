@@ -158,9 +158,17 @@ For contributor PRs that need rebase after base-branch move: use `gh pr update-b
 **Mandatory merge sequence (added 2026-08-18):** every merge MUST follow this exact order. Skipping any step is a procedural miss even when content review passed:
 
 ```
+gh pr view <N> --json title,body --jq '.title, .body' | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'   # ← scan FIRST; every hit must be an issue you mean to close
 gh pr review <N> --body "<file>"   # ← MANDATORY. Formal review event lands on the PR.
 gh pr merge <N> --admin --squash --delete-branch   # ← ONLY after user said "merge it"
 ```
+
+- **Scan the body before merging.** A closing keyword needs no intent and does
+  not have to aim at an issue. Writing the fix reference as prose — "its fix
+  #684" — parsed as `fix #684` and closed **PR #684** one second after the PR
+  carrying that sentence merged. The author never touched it, and the ROI
+  board merged in that same PR listed #684 as an unblock-first item. Recover
+  with `gh pr reopen <N>`; see MEMORY.md §"Issue close keyword".
 
 - **`gh pr review --approve` (or `--request-changes`) MUST be posted BEFORE `gh pr merge`.** This lands the formal review verdict on the PR timeline; downstream tooling (release notes, contributor credit, audit trail) reads from that event, not from comments.
 - For architect-level contributor PRs (e.g. @DocTpoint), per [[feedback_reply_brevity_for_architect_contributors]]: review body should be **decision + ≤5 sentences** + concrete `file:line` findings, not a long-form audit.
