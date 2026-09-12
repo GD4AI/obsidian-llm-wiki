@@ -63,6 +63,11 @@ export function fixDoubleNestedWikiLinks(content: string): { fixed: number; cont
 
 export const EMPTY_CONTENT_STRIP = /[#*\-_>\s\n[\]|—]/g;
 export const MIN_SUBSTANTIVE_CHARS = 50;
+/** The stub sentence written before #197 (d53caab) replaced it with the
+ *  "Stub created by Fix Dead Links — …" placeholder. Kept so a page written by
+ *  an older version is still recognised as empty; nothing writes it any more,
+ *  and a current stub is recognised by its `stub: true` frontmatter instead
+ *  (`isStubPage`, used by deleteEmptyStubs for #678). */
 export const STUB_MARKER = 'Auto-generated stub page';
 
 export function isPageEmpty(content: string): boolean {
