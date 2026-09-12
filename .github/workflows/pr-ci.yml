@@ -46,6 +46,21 @@ jobs:
       - name: Install (lockfile-pinned)
         run: pnpm install --frozen-lockfile
 
+      - name: Lockfile sync (package.json against package-lock.json)
+        # The npm-side lockfile has no other gate: `pnpm install
+        # --frozen-lockfile` above and `pnpm audit` below both read *pnpm's*
+        # lockfile, so package-lock.json can drift from package.json for a
+        # whole release cycle without anything noticing. That is what happened
+        # in #652 — vitest moved to 5.0.0 in package.json and pnpm-lock.yaml
+        # while package-lock.json stayed on 4.1.10, and it surfaced later as
+        # two Dependabot advisories filed against the stale copy.
+        #
+        # Offline and exact by construction: it compares the specifiers the
+        # lockfile recorded against the ones package.json declares. No npm
+        # resolution, so a legitimate newer patch inside a range cannot read
+        # as drift.
+        run: pnpm lockfile-check
+
       - name: Audit (dev + prod, high+)
         # Dependency security gate: fail the PR the day a vulnerable transitive
         # dep lands, not when a human notices the Dependabot alert. `--audit-level
