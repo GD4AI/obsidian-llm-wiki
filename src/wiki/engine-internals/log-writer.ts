@@ -15,7 +15,7 @@
  *   - The actual `vault.read` and `vault.process` calls live in WikiEngine's
  *     tryReadFile / createOrUpdateFile. LogWriter receives these as injected
  *     closures so it stays unit-testable.
- *   - Localized log label translation lives in TEXTS (per-locale logLabels table).
+ *   - The section labels live in `core/log-labels.ts`, shared with the parser.
  *
  * Why extracted:
  *   - updateLog + logLintFix + formatIngestMetricsSuffix + formatBytes together
@@ -27,7 +27,7 @@
  */
 
 import type { SourceAnalysis } from '../../types';
-import { TEXTS } from '../../texts';
+import { getLogLabels } from '../../core/log-labels';
 import { dedupPages } from './dedup-pages';
 import { buildLogHeader } from '../../core/log-header';
 import { formatBytes, localDateStamp } from '../../core/format';
@@ -76,7 +76,7 @@ export class LogWriter {
   ): Promise<void> {
     const logPath = `${this.wikiFolder}/log.md`;
     const { date, time } = this.timestamp();
-    const labels = this.labels();
+    const labels = getLogLabels(this.wikiLanguage);
 
     const h2Suffix = metrics ? this.formatIngestMetricsSuffix(metrics) : '';
     let entry = `\n\n## [${date} ${time}] ${operation} | ${analysis.source_title}${h2Suffix}\n\n`;
@@ -167,13 +167,6 @@ export class LogWriter {
       date: localDateStamp(now),
       time: now.toTimeString().slice(0, 5), // HH:MM
     };
-  }
-
-  private labels(): { createdPages: string; updatedPages: string; contradictionsFound: string } {
-    const lang = this.wikiLanguage || 'en';
-    type LogLangKey = keyof typeof TEXTS.en.logLabels;
-    const langKey: LogLangKey = (lang in TEXTS.en.logLabels) ? lang as LogLangKey : 'en';
-    return TEXTS.en.logLabels[langKey];
   }
 }
 

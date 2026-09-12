@@ -115,9 +115,9 @@ export function parseFrontmatter(content: string): FrontmatterData | null {
  * paths.
  *
  * Two fields can name them and they are not interchangeable. The scalar
- * `source_file:` is the canonical owner, written by the generation
- * template. The `sources:` list records the multi-source merge: the other
- * ingests that later extended this page. It holds `[[sources/X]]`
+ * `source_file:` is the canonical owner, stamped from the note path by
+ * `createSummaryPage` (#679). The `sources:` list records the multi-source
+ * merge: the other ingests that later extended this page. It holds `[[sources/X]]`
  * wikilinks by contract — the Issue #81 normalizer removes or remaps any
  * external `[[Notizen/X.md]]` entry that lands there — so a note path
  * found in it is the exception, not the rule. Read the scalar first and

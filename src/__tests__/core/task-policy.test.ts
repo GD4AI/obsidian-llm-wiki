@@ -206,3 +206,10 @@ describe('parseTaskPolicySpec — bounded thinking', () => {
     expect(thinkingEffort('default')).toBeUndefined();
   });
 });
+
+describe('json_schema_strict as a pinnable mode (Issue #658)', () => {
+  it('parses `strict` and `json_schema_strict` to the strict tier', () => {
+    expect(parseTaskPolicySpec('extract=strict:off').extract?.outputMode).toBe('json_schema_strict');
+    expect(parseTaskPolicySpec('*=json_schema_strict:default')['*']?.outputMode).toBe('json_schema_strict');
+  });
+});

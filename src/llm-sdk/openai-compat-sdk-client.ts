@@ -182,7 +182,7 @@ export class OpenAICompatSdkClient implements LLMClient {
    */
   private getCurrentOutputMode(model: string): OutputMode {
     const cached = this.outputModeProber.getMode(this.baseURL, model);
-    if (cached === 'json_schema' && !this.supportsStructuredOutputs) {
+    if ((cached === 'json_schema' || cached === 'json_schema_strict') && !this.supportsStructuredOutputs) {
       this.outputModeProber.markMode(this.baseURL, model, 'json_object');
       return 'json_object';
     }
@@ -689,13 +689,16 @@ export class OpenAICompatSdkClient implements LLMClient {
       //   iterate so that a retry's error can re-trigger the demotion
       //   branch with the (now-updated) mode.
       let tentativeDemotion: OutputMode | null = null;
-      // Up to 2 demotions: Tier 0→1, then Tier 1→2.
-      for (let chainAttempt = 0; chainAttempt < 2; chainAttempt++) {
+      // Up to 3 demotions: Tier 0 → 0-strict (#658), then → 1, then → 2.
+      for (let chainAttempt = 0; chainAttempt < 3; chainAttempt++) {
         const currentMode = this.outputModeProber.getMode(this.baseURL, model);
 
         // Determine target tier based on current mode and last error body.
         let demotedMode: OutputMode | null = null;
-        if (currentMode === 'json_schema' && OutputModeProber.isJsonSchemaFieldError(lastErrBody)) {
+        if (currentMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
+          // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
+          demotedMode = 'json_schema_strict';
+        } else if ((currentMode === 'json_schema' || currentMode === 'json_schema_strict') && OutputModeProber.isJsonSchemaFieldError(lastErrBody)) {
           demotedMode = 'json_object';
         } else if (currentMode === 'json_object' && OutputModeProber.isJsonObjectFieldError(lastErrBody)) {
           demotedMode = 'text_prompt';
@@ -1168,10 +1171,13 @@ export class OpenAICompatSdkClient implements LLMClient {
       ) {
         let lastErrBody: string = err.responseBody ?? err.message ?? '';
         let tentativeDemotion: OutputMode | null = null;
-        for (let chainAttempt = 0; chainAttempt < 2; chainAttempt++) {
+        for (let chainAttempt = 0; chainAttempt < 3; chainAttempt++) {
           const iterMode = this.outputModeProber.getMode(this.baseURL, model);
           let demotedMode: OutputMode | null = null;
-          if (iterMode === 'json_schema' && OutputModeProber.isJsonSchemaFieldError(lastErrBody)) {
+          if (iterMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
+            // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
+            demotedMode = 'json_schema_strict';
+          } else if ((iterMode === 'json_schema' || iterMode === 'json_schema_strict') && OutputModeProber.isJsonSchemaFieldError(lastErrBody)) {
             demotedMode = 'json_object';
           } else if (iterMode === 'json_object' && OutputModeProber.isJsonObjectFieldError(lastErrBody)) {
             demotedMode = 'text_prompt';

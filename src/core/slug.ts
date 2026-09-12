@@ -132,7 +132,12 @@ export function slugKeys(
 // a composed alias from the model must meet, and `İstanbul`/`istanbul` must
 // be one alias, not two — `toLowerCase()` turns `İ` into `i` + COMBINING DOT
 // ABOVE, so without the fold the uniqueness gate never fires on that pair.
-function aliasKey(raw: string): string {
+//
+// Exported because the comparison must be the same wherever two aliases are
+// asked whether they are one alias. `filterRedundantAliases` folds; the
+// append path used to compare the page's OWN existing aliases with a plain
+// `Array.includes`, which let "NAC" and "NAc" stand side by side on a page.
+export function aliasKey(raw: string): string {
   return turkishCaseFold(raw.trim().normalize('NFC'));
 }
 

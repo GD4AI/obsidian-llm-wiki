@@ -1775,6 +1775,10 @@ export class WikiEngine {
     // #164: stamp a content fingerprint so future ingests can detect duplicates.
     // Injected programmatically — the LLM can't be trusted to emit it.
     let finalContent = upsertFrontmatterField(cleanedContent, 'contentHash', hashBody(extractBody(content)));
+    // #679: `source_file` is the canonical owner (`originNoteRefs`), read by the
+    // ingest skip and the drift scan — the same kind of field as `contentHash`.
+    // The model copied it from the template; a copy came back misspelled.
+    finalContent = upsertFrontmatterField(finalContent, 'source_file', `"[[${file.path}]]"`);
 
     // Issue #185: append the source note's curated frontmatter `aliases:`
     // to the generated `sources/<slug>` page. Merged inline (BEFORE the
