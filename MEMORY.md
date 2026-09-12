@@ -173,6 +173,50 @@ contributor as *rejected*. Rules that follow:
   `actor=green-dalii, commit=-`, which ruled out a commit keyword and pointed
   at the merge that had happened one second earlier.
 
+### Declined PRs are closed, not left open
+
+A PR that has been decided against is **closed** once the contributor has
+had a fair window to answer the decision — roughly two weeks of silence is
+enough. An open pull request states that merging is still possible, which is
+exactly what a decline says is not the case; a closed one cannot collect a
+stray review at all. Closing loses nothing: the branch, the diff and the
+whole thread stay readable and linkable, which is all "preserved as a
+reference implementation" requires.
+
+A close means "not now", not "never", so the **decision comment names what
+would reopen it, in one line**. That is what keeps the door open without
+keeping the PR open.
+
+`#570` (2026-09-12) carried three signals of one decision — a `wontfix`
+label, a decision comment, and draft status — while staying open. None of
+them is the place every tool and every reader agrees on, so a
+`CHANGES_REQUESTED` review landed on it anyway, contradicting the decision
+and inviting the contributor to do work that was already declined.
+Recovered by dismissing the review (`PUT .../reviews/<id>/dismissals`),
+posting a correction comment, and converting to draft via
+`convertPullRequestToDraft` (`gh` has no `pr draft`; REST's `draft` field is
+GitHub-App-only).
+
+**Before any review, read the signals.** Two ways to get that check wrong,
+both caught in review of its first version:
+
+- **Latest, not first.** Decisions arrive late on a thread that opened with
+a greeting. `.[0:1]` returns the *oldest* comment — which on #570 happened
+to be the decision, so the check looked right on the one case it was built
+against and would hide the decision everywhere else.
+- **Any maintainer, not one account.** Keying on `.author.login ==
+"green-dalii"` makes a decision written by anyone else invisible, and the
+rule quietly stops matching the moment a second person records one.
+
+```
+gh pr view <N> --json labels,comments \
+  --jq '{labels: [.labels[].name], last_comments: [.comments[] | "\(.author.login) \(.createdAt[0:10]): \(.body[0:120])"][-3:]}'
+```
+
+Any `wontfix` / `duplicate` / `do not merge` label, or a maintainer comment
+recording a decision, means the PR is decided — **stop** and post a short
+comment asking rather than a review.
+
 ---
 
 ## Key design decisions (canonical references)
