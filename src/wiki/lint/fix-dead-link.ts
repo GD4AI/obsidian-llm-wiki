@@ -1,4 +1,5 @@
 import { EngineContext } from '../../types';
+import { activeVocabularyLists } from '../../core/vocabulary';
 import { PROMPTS } from '../../prompts';
 import { TOKENS_LINT_PAGE_FIX, WIKI_SUBFOLDERS, CANDIDATE_WINDOW_TOP_K } from '../../constants';
 import { buildSystemPrompt } from '../system-prompts';
@@ -185,7 +186,8 @@ export async function fixDeadLink(
   const systemPrompt = await buildSystemPrompt(
     ctx.settings,
     ctx.getSchemaContext,
-    'lint'
+    'lint',
+    activeVocabularyLists(ctx.app, ctx.settings)
   );
   const disableThinking = ctx.settings.disableThinking;
 

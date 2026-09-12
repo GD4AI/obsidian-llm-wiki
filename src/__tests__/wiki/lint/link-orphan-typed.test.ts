@@ -34,6 +34,8 @@ function makeCtx(client: LLMClient, files: Record<string, string>): EngineContex
       wikiLanguage: 'en',
       disableThinking: false,
     },
+    // the one vocabulary (vocabulary.ts) is harvested from the vault before every system prompt
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } },
     getClient: () => client,
     getSchemaContext: () => ({}),
     tryReadFile: async (path: string): Promise<string | null> => files[path] ?? null,

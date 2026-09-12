@@ -29,7 +29,8 @@ function makeTypedClient(createMessageWithOutput: (p: Record<string, unknown>) =
 
 function makeCtx(client: LLMClient, sourceContent: string): EngineContext {
   const ctx = {
-    app: {},
+    // the one vocabulary (vocabulary.ts) is harvested from the vault before every system prompt
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as never,
     settings: {
       wikiFolder: 'wiki',
       wikiLanguage: 'en',

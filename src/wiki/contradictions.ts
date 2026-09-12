@@ -1,6 +1,7 @@
 // Contradiction detection, tracking, and resolution — extracted from WikiEngine.
 
 import { EngineContext, ContradictionInfo } from '../types';
+import { activeVocabularyLists } from '../core/vocabulary';
 import { parseFrontmatter } from '../core/frontmatter';
 import { cleanMarkdownResponse } from '../core/markdown';
 import { renderTemplate } from '../core/template-renderer';
@@ -219,7 +220,8 @@ export class ContradictionManager {
       system: await buildSystemPrompt(
         this.ctx.settings,
         this.ctx.getSchemaContext,
-        'full'
+        'full',
+        activeVocabularyLists(this.ctx.app, this.ctx.settings)
       ),
       messages: [{ role: 'user', content: finalPrompt }],
       ...(this.ctx.settings.disableThinking ? { enableThinking: false } : {}),

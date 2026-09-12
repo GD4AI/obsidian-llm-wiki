@@ -21,7 +21,7 @@ import { resolveModelForTask } from '../../core/model-resolver';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { mergeFrontmatter, parseFrontmatter } from '../../core/frontmatter';
 import { incomingTypeTag } from '../../core/tag-vocab';
-import { collectActiveVocabulary } from '../../core/domain-axis';
+import { activeVocabulary } from '../../core/vocabulary';
 import { stripMentionsSection } from '../../core/mentions-parser';
 import { guardBodyRewrite } from '../../core/paragraph-provenance';
 import { renderTemplate } from '../../core/template-renderer';
@@ -108,7 +108,7 @@ export async function updateRelatedPage(
   const { frontmatter, body: existingBody } = mergeFrontmatter(
     existingContent,
     sourceSlug ? `sources/${sourceSlug}` : sourceFile.path,
-    incomingTypeTag(ctx.settings, asEntity ? 'entity' : 'concept', newInfo?.type, collectActiveVocabulary(ctx.app as never, ctx.settings)),
+    incomingTypeTag(ctx.settings, asEntity ? 'entity' : 'concept', newInfo?.type, activeVocabulary(ctx.app as never, ctx.settings, asEntity ? 'entity' : 'concept')),
   );
 
   // Issue #131: when the source extracted nothing matching this page, skip the

@@ -27,7 +27,7 @@ import { shapeRelatedLists, kindOf } from '../core/related-shaping';
 import { withAbortSignal } from '../core/llm-abort';
 import { isIngestableSource } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
-import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody } from '../core/frontmatter';
+import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody, enforceFrontmatterConstraints } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
 import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from '../core/pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
@@ -40,7 +40,8 @@ import { extractSourceTags } from '../core/arrays';
 import { buildVaultResolver } from '../core/related-link-corrector';
 import { gateCandidates, applyCoverageThreshold, applyOutcomeTable, type StubCandidate } from '../core/candidate-gate';
 import { buildStubIdentityResolver, createDissentStubs, stubPath } from './page-factory/stub-page';
-import { selectDomains, collectActiveVocabulary } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
+import { selectDomains } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
+import { activeVocabulary, activeVocabularyLists, domainVocabulary as domainVocabularyOf } from '../core/vocabulary';
 import { getSourceLanguage, isCrossLanguage } from '../core/source-language';
 import { cleanMarkdownResponse } from '../core/markdown';
 import { injectMentionsSection } from '../core/mentions-injector';
@@ -224,7 +225,7 @@ export class WikiEngine {
       deleteFile: p => this.deleteFile(p),
       tryReadFile: p => this.tryReadFile(p),
       buildSystemPrompt: task =>
-        buildSystemPrompt(this.settings, t => this.schemaManager.getSchemaContext(t as SchemaTask), task),
+        buildSystemPrompt(this.settings, t => this.schemaManager.getSchemaContext(t as SchemaTask), task, activeVocabularyLists(this.app, this.settings)),
       getSectionLabels: () => getSectionLabels(this.settings),
       getExistingWikiPages: () =>
         getExistingWikiPages(this.app, this.settings.wikiFolder),
@@ -517,7 +518,7 @@ export class WikiEngine {
    * fix-runners. Lint phases call this instead of raw getSchemaContext.
    */
   async buildSystemPrompt(task: SchemaTask): Promise<string | undefined> {
-    return buildSystemPrompt(this.settings, t => this.schemaManager.getSchemaContext(t as SchemaTask), task);
+    return buildSystemPrompt(this.settings, t => this.schemaManager.getSchemaContext(t as SchemaTask), task, activeVocabularyLists(this.app, this.settings));
   }
 
   /**
@@ -1191,10 +1192,10 @@ export class WikiEngine {
             analysis.concepts = covered.concepts;
           }
         }
-        // Stage 5 (#568): validation accepts exactly what the declared source
-        // folders and the wiki's own pages carry — new values are born by
-        // tagging a note or a page, not by editing a settings list.
-        domainVocabulary = collectActiveVocabulary(this.app, this.settings);
+        // Stage 5 (#568): validation accepts exactly what the prompt offered —
+        // the one vocabulary of vocabulary.ts (settings list + note tags + page
+        // tags). A value outside it is dropped, not written.
+        domainVocabulary = domainVocabularyOf(this.app, this.settings);
         for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
           const selection = selectDomains(item.domains, domainVocabulary);
           if (selection.rejected.length > 0) {
@@ -1279,9 +1280,11 @@ export class WikiEngine {
             normalizePath,
             fileExists: (p) => this.app.vault.getAbstractFileByPath(p) !== null,
             createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
-            // S142: the stub's identity tag faces the harvest like every
-            // other writer's tags (the domains were validated above).
-            vocabulary: collectActiveVocabulary(this.app, this.settings),
+            // S142: the stub's identity tag faces the same list every other
+            // identity writer's tags do (create/merge/related) — the full
+            // vocabulary, not the domains view: `item.type` is an identity
+            // value and may be a flat settings term.
+            vocabulary: activeVocabulary(this.app, this.settings),
           },
           stubPlan,
           sourceSlug,
@@ -1717,26 +1720,32 @@ export class WikiEngine {
 
     // Issue #114: if the source page already exists with manually-set tags,
     // preserve them — re-ingesting a note must not overwrite corrections.
-    // Priority: existing source-page tags > source-note tags > LLM concept names.
+    // Priority: existing source-page tags > source-note tags > default. A
+    // hand-set nested tag is part of the vocabulary by construction (the
+    // harvest reads `sources/` pages), so it passes the gate below; a flat
+    // value outside the form list is not a legal source-page tag anywhere.
     const existingSource = await this.tryReadFile(path);
     const existingFm = existingSource ? parseFrontmatter(existingSource) : null;
     const existingTags = Array.isArray(existingFm?.tags) && existingFm.tags.length > 0
       ? existingFm.tags
       : null;
 
-    // Issue #90: inherit tags from source note frontmatter when available,
-    // so the generated summary page doesn't pollute the tag vocabulary with
-    // LLM-derived concept names. Source pages use the closed VALID_SOURCE_TAGS
-    // taxonomy, so inherited tags are filtered to it and the documented default
-    // is the last resort — concept names are not a legal value here.
-    const sourceTags = extractSourceTags(content).filter(t =>
-      (VALID_SOURCE_TAGS as readonly string[]).includes(t)
-    );
+    // Issue #90 / one vocabulary: the source page's `tags:` carries two axes.
+    // The form values come from the closed VALID_SOURCE_TAGS list (inherited
+    // from the note when it names any, else the default). The domain axis is
+    // the `Group/Value` view of the vocabulary — not the flat identity types
+    // (`theory`, `person`), which belong to entity and concept pages and are
+    // exactly what the model wrote here instead of `other`. The note's own
+    // domain tags are the seed; the model may add domain values that describe
+    // the summary, and the constraints pass below drops everything else — the
+    // model never mints a term.
+    const vocabulary = domainVocabularyOf(this.app, this.settings);
+    const noteTags = extractSourceTags(content);
+    const formTags = noteTags.filter(t => (VALID_SOURCE_TAGS as readonly string[]).includes(t));
+    const noteDomains = selectDomains(noteTags, vocabulary).kept;
     const tagsValue = existingTags
       ? existingTags.join(', ')
-      : sourceTags.length > 0
-        ? sourceTags.join(', ')
-        : DEFAULT_SOURCE_TAG;
+      : [...(formTags.length > 0 ? formTags : [DEFAULT_SOURCE_TAG]), ...noteDomains].join(', ');
 
     const createdPagesList = plannedPaths.length > 0
       ? plannedPaths.map(p => {
@@ -1750,7 +1759,10 @@ export class WikiEngine {
 
     const prompt = renderTemplate(PROMPTS.generateSummaryPage, {
       source_title: analysis.source_title,
-      content: content.substring(0, 500),
+      // The window starts at the body: the note's frontmatter carries the very
+      // tags the seed above already decided about, and shown raw it was copied
+      // back into `tags:` verbatim (4 of 5 vocabulary violations on one vault).
+      content: extractBody(content).substring(0, 500),
       analysis: JSON.stringify(analysis),
       created_pages_list: createdPagesList || '(none)',
       source_file: file.path,
@@ -1770,7 +1782,15 @@ export class WikiEngine {
       ...(this.settings.disableThinking ? { enableThinking: false } : {}),
     });
 
-    const cleanedContent = cleanMarkdownResponse(pageContent);
+    // The same gate the entity and concept pages pass, for the same reason:
+    // the model writes this frontmatter, and until here nothing checked it —
+    // `theory` and copied note tags reached disk. Form values stay legal next
+    // to the vocabulary; `created:` of a re-ingested page is preserved.
+    const cleanedContent = enforceFrontmatterConstraints(cleanMarkdownResponse(pageContent), 'source', this.settings, {
+      pagePath: path,
+      preserveCreated: typeof existingFm?.created === 'string' ? existingFm.created : undefined,
+      domainVocabulary: vocabulary,
+    });
     // #164: stamp a content fingerprint so future ingests can detect duplicates.
     // Injected programmatically — the LLM can't be trusted to emit it.
     let finalContent = upsertFrontmatterField(cleanedContent, 'contentHash', hashBody(extractBody(content)));
@@ -1802,12 +1822,11 @@ export class WikiEngine {
     }
 
     // The alias floor the other two writers of this field already apply.
-    // `resolveMinAliasLength` exists so both of them resolve the same floor
-    // from the same place; this is a third writer that resolved none. The
-    // model's `aliases:` arrive verbatim inside `cleanedContent` and the
-    // curated note aliases merge on top of them, so the filter belongs here,
-    // after both, on the finished list — filtering either input alone leaves
-    // the other unchecked.
+    // `resolveMinAliasLength` exists so all of them resolve the same floor
+    // from the same place. The constraints pass above has already applied it
+    // to the model's list; the curated note aliases merge on top of that, so
+    // the finished list is checked here once more — filtering either input
+    // alone leaves the other unchecked.
     //
     // Rewrites the block only when something is actually dropped: a page
     // whose aliases already pass keeps the bytes the model wrote.

@@ -6,7 +6,8 @@ import type { Graph } from '../../../core/monte-carlo-ppr';
 
 function makeContext(settings?: Partial<LLMWikiSettings>): LintPhaseContext {
   return {
-    app: {} as LintPhaseContext['app'],
+    // the one vocabulary (vocabulary.ts) is harvested before the tag scan
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as unknown as LintPhaseContext['app'],
     settings: {
       wikiFolder: 'wiki',
       language: 'en',
@@ -140,6 +141,7 @@ describe('runProgrammaticPhase', () => {
   function makeContextWithVault(files: Record<string, string>): LintPhaseContext {
     const ctx = makeContext();
     (ctx as { app: Record<string, unknown> }).app = {
+      metadataCache: { getFileCache: () => null },
       vault: {
         getMarkdownFiles: () => Object.keys(files).map((p) => ({ path: p, basename: p })),
         getAbstractFileByPath: (p: string) => (files[p] !== undefined ? { path: p } : null),

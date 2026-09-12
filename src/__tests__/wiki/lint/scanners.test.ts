@@ -416,11 +416,17 @@ describe('scanTagViolations', () => {
     expect(scanTagViolations(pm, baseSettings)).toEqual([]);
   });
 
-  it('does not flag pages with empty tags array', () => {
+  // An empty list is what the write gate leaves behind when it stripped every
+  // tag the model wrote; skipping it made the gate's output invisible and left
+  // the retag runner — the only repair without a re-ingest — nothing to do.
+  it('flags pages with an empty tags array', () => {
     const pm = new Map<string, ScannerPage>([
       ['wiki/entities/Empty.md', makeEntityPage('Empty.md', [])],
     ]);
-    expect(scanTagViolations(pm, baseSettings)).toEqual([]);
+    const v = scanTagViolations(pm, baseSettings);
+    expect(v).toHaveLength(1);
+    expect(v[0].currentTags).toEqual([]);
+    expect(v[0].invalidTags).toEqual([]);
   });
 
   it('skips pages whose type is not entity / concept / source', () => {
@@ -626,5 +632,32 @@ describe('scanContradictionMarkers', () => {
       page('wiki/entities/nofm.md', 'Body without frontmatter'),
     ]);
     expect(scanContradictionMarkers(pageMap)).toHaveLength(0);
+  });
+});
+
+describe('scanTagViolations — judges against the one vocabulary when given', () => {
+  const settings: LLMWikiSettings = {
+    tagVocabularyMode: 'custom',
+    customEntityTags: 'Sorte/Erkrankung',
+    customConceptTags: 'Sorte/Mechanismus',
+  } as unknown as LLMWikiSettings;
+  const harvested = { entities: ['Sorte/Erkrankung', 'Sorte/Organisation'], concepts: ['Sorte/Mechanismus'] };
+  const page = (type: string, tags: string[], path: string): ScannerPage => ({
+    path,
+    content: `---\ntype: ${type}\ntags: [${tags.join(', ')}]\n---\n\nBody`,
+    basename: path.split('/').pop() || '',
+  });
+
+  it('a harvested term the settings list lacks is valid — the same list the gate enforced', () => {
+    const pm = new Map([['wiki/entities/WHO.md', page('entity', ['Sorte/Organisation'], 'wiki/entities/WHO.md')]]);
+    expect(scanTagViolations(pm, settings)).toHaveLength(1);
+    expect(scanTagViolations(pm, settings, harvested)).toEqual([]);
+  });
+
+  it('a source page may carry a vocabulary term next to its form value', () => {
+    const pm = new Map([['wiki/sources/S.md', page('source', ['other', 'Sorte/Erkrankung'], 'wiki/sources/S.md')]]);
+    expect(scanTagViolations(pm, settings, harvested)).toEqual([]);
+    const bad = new Map([['wiki/sources/T.md', page('source', ['other', 'theory'], 'wiki/sources/T.md')]]);
+    expect(scanTagViolations(bad, settings, harvested)[0]?.invalidTags).toEqual(['theory']);
   });
 });

@@ -29,6 +29,11 @@ export function fold(s: string): string {
   return s.normalize('NFC').trim().toLowerCase();
 }
 
+/** A domain value is written `Group/Value`; the flat identity types are not domains. */
+export function isDomainTag(value: string): boolean {
+  return value.includes('/');
+}
+
 /**
  * Union two domain lists the way `selectDomains` compares them: keyed on
  * `fold` (NFC + trim + lowercase), first spelling wins, insertion order
@@ -108,23 +113,24 @@ export function collectDomainVocabulary(app: App, watchedFolders: readonly strin
  * writes exclusively validated values, any wiki tag outside the current offer
  * is by construction a human edit.
  *
- * `sources/` pages are excluded: they are auto-generated ingest protocols
- * whose frontmatter lands without the constraints pass, and nobody edits
- * them by hand — they carry no human signal, only whatever the summary
- * model wrote, which must not be able to mint vocabulary.
+ * Only the three page folders are read. Everything else under `wikiFolder`
+ * (schema, archives, scratch) is not a page and must not mint vocabulary: on
+ * one vault a term no note carried reached the offer from archived copies
+ * under `wiki/schema/` and then stood on 102 pages. `sources/` is included
+ * since the summary page passes the same gate as the other two types.
  */
 export function collectWikiVocabulary(app: App, wikiFolder: string): string[] {
   const seen = new Map<string, string>();
-  const sourcesFolder = `${wikiFolder.replace(/\/+$/, '')}/sources`;
+  const root = wikiFolder.replace(/\/+$/, '');
+  const pageFolders = ['entities', 'concepts', 'sources'].map(f => `${root}/${f}`);
   for (const f of app.vault.getMarkdownFiles()) {
-    if (!isInFolderScope(f.path, wikiFolder, false)) continue;
-    if (isInFolderScope(f.path, sourcesFolder, false)) continue;
+    if (!pageFolders.some(p => isInFolderScope(f.path, p, false))) continue;
     const raw = (app.metadataCache.getFileCache(f)?.frontmatter as { tags?: unknown } | undefined)?.tags;
     if (!Array.isArray(raw)) continue;
     for (const t of raw) {
       if (typeof t !== 'string') continue;
       const v = t.trim();
-      if (!v || !v.includes('/')) continue;
+      if (!v || !isDomainTag(v)) continue;
       const k = fold(v);
       if (!seen.has(k)) seen.set(k, v);
     }
@@ -133,9 +139,10 @@ export function collectWikiVocabulary(app: App, wikiFolder: string): string[] {
 }
 
 /**
- * The full offer: everything the declared source folders carry, plus the
- * nested tags of existing wiki pages. Fold-deduped, source-folder spelling
- * wins, sorted for a stable prompt.
+ * The vault harvest: everything the declared source folders carry, plus the
+ * nested tags of existing pages. Fold-deduped, source-folder spelling wins,
+ * sorted. Not the full offer — that is `activeVocabulary` in `vocabulary.ts`,
+ * which adds the settings list; every reader goes through it.
  */
 export function collectActiveVocabulary(
   app: App,
