@@ -29,8 +29,9 @@ import { dedupMentionsByProvenanceKey } from './batch-merger';
  * `preserveRaw` non-null so the caller preserves it verbatim rather than
  * risk dropping curated quotes.
  *
- * `defaultSourcePath` fills any blank `source_path` (structured LLM output
- * leaves them blank) and any `.md` suffix is stripped so legacy paths match
+ * `defaultSourcePath` fills any blank `source_path` (new mentions carry the
+ * note path from `normalizeBatchResponse`, #679; the fallback serves mentions
+ * handed in without one) and any `.md` suffix is stripped so legacy paths match
  * the rendered on-page form — callers can hand raw mentions.
  */
 export interface ReingestMentionsResult {

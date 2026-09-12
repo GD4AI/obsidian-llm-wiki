@@ -343,7 +343,7 @@ describe('normalizeBatchResponse — fillMentionsWithProvenance (#244)', () => {
       }],
       concepts: [],
     };
-    const { data } = normalizeBatchResponse(raw);
+    const { data } = normalizeBatchResponse(raw, 'note.md');
     expect(data.entities[0].mentions_with_provenance).toHaveLength(1);
     expect(data.entities[0].mentions_with_provenance![0].quote).toBe('structured quote');
     // Manual-test fix: when both fields are present, legacy is cleared to avoid
@@ -361,7 +361,7 @@ describe('normalizeBatchResponse — fillMentionsWithProvenance (#244)', () => {
       }],
       concepts: [],
     };
-    const { data } = normalizeBatchResponse(raw);
+    const { data } = normalizeBatchResponse(raw, 'note.md');
     expect(data.entities[0].mentions_with_provenance).toHaveLength(2);
     expect(data.entities[0].mentions_with_provenance![0].quote).toBe('quote A');
     expect(data.entities[0].mentions_with_provenance![1].quote).toBe('quote B');
@@ -374,7 +374,7 @@ describe('normalizeBatchResponse — fillMentionsWithProvenance (#244)', () => {
       entities: [{ name: 'Entity X', type: 'person' as const, summary: '', mentions_in_source: [] }],
       concepts: [],
     };
-    const { data } = normalizeBatchResponse(raw);
+    const { data } = normalizeBatchResponse(raw, 'note.md');
     expect(data.entities[0].mentions_with_provenance).toBeUndefined();
   });
 
@@ -389,9 +389,44 @@ describe('normalizeBatchResponse — fillMentionsWithProvenance (#244)', () => {
         related_concepts: [],
       }],
     };
-    const { data } = normalizeBatchResponse(raw);
+    const { data } = normalizeBatchResponse(raw, 'note.md');
     expect(data.concepts[0].mentions_with_provenance).toHaveLength(1);
     expect(data.concepts[0].mentions_with_provenance![0].quote).toBe('concept quote');
+  });
+
+  // Issue #679: the prompt asks the model to copy the note path into every
+  // quote, and downstream `m.source_path || defaultSourcePath` let the copy
+  // win. Measured copies: a typo (`Zytokines`), a control character for `α`,
+  // a translation (`Omega-3-Fatty-Acids`). Every quote of a batch comes from
+  // the note being ingested, and the code knows its path.
+  it('replaces a model-copied source_path with the note path the code passes', () => {
+    const raw = {
+      entities: [],
+      concepts: [{
+        name: 'JAK-STAT',
+        type: 'phenomenon' as const,
+        summary: 'Test',
+        mentions_in_source: [],
+        mentions_with_provenance: [
+          { quote: 'fördert Th17-Differenzierung', source_path: 'Notizen/Zytokines.md', source_slug: 'zytokines', extracted_at: '2026-09-11T00:00:00Z' },
+          { quote: 'Akute-Phase-Proteine', source_path: '', source_slug: '', extracted_at: '2026-09-11T00:00:00Z' },
+        ],
+        related_concepts: [],
+      }],
+    };
+    const { data } = normalizeBatchResponse(raw, 'Notizen/Zytokine.md');
+    const paths = data.concepts[0].mentions_with_provenance!.map(m => m.source_path);
+    expect(paths).toEqual(['Notizen/Zytokine.md', 'Notizen/Zytokine.md']);
+    expect(data.concepts[0].mentions_with_provenance![0].quote).toBe('fördert Th17-Differenzierung');
+  });
+
+  it('gives synthesized provenance the note path as well', () => {
+    const raw = {
+      entities: [{ name: 'TNF-α', type: 'other' as const, summary: 'Test', mentions_in_source: ['TNF-α treibt die Entzündung'] }],
+      concepts: [],
+    };
+    const { data } = normalizeBatchResponse(raw, 'Notizen/TNF-α.md');
+    expect(data.entities[0].mentions_with_provenance![0].source_path).toBe('Notizen/TNF-α.md');
   });
 });
 
