@@ -361,8 +361,8 @@ Click the status bar (shows "Ingesting… click to cancel") or `Cmd+P/Ctrl+P` �
 
 This plugin is listed on the Obsidian Community Plugin Market and undergoes automated review for security and permissions.
 
-- **🚫 No backend, no server, no data collection.** Pure local software running inside Obsidian. The plugin cannot and does not collect, store, or transmit your data to any server — because no such server exists.
-- **🔐 Network access is opt-in.** Used only to communicate with the LLM provider you configure. You choose the provider, you enter the API key, you decide where your data goes.
+- **🚫 No backend of its own, no telemetry, no data collection.** Pure local software running inside Obsidian. The plugin operates no server and reports nothing anywhere.
+- **🔐 Network access is opt-in and explicit.** It exists only to reach services *you* configure: your LLM provider, and — if you turn on the MinerU document backend — `mineru.net`. That second one is the exception worth naming: it uploads the document to a jurisdiction you did not choose and that publishes no retention statement. [Where your document is processed](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) lists every path and where the file goes.
 - **📁 Vault file access** is used for wiki management (reading notes, generating pages, scanning dead links, detecting duplicates). The plugin never modifies your source files.
 - **📋 Clipboard access** is used exclusively by the "Copy" button in the Query modal — and only when you click it.
 

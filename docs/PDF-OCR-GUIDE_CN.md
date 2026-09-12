@@ -1,10 +1,27 @@
 # 📄 PDF 摄入与 OCR 指南
 
-**最后更新：** 2026-08-27
+**最后更新：** 2026-09-12
 
 Karpathy LLM Wiki 插件通过四条路径摄入文档，四条路径共享同一个 Markdown 输出缓存 —— 区别在于**由谁来跑模型**。插件可以：(a) 把 PDF 直接发送到云端 provider 的 `/v1/chat/completions` 或（Anthropic 的）`/v1/messages` 端点作为文件部分，(b) 把 PDF / 图片 / Office 文档路由到**内置的 MinerU 后端**（v1.27.0+，零额外配置），(c) 在 Apple Silicon 上通过 [oMLX](https://github.com/jundot/omlx) + Markitdown 跑完全本地流水线，或 (d) 接受外部转换好的 Markdown（MinerU 在线 extractor —— 适合偏好 UI 而非 API token 的用户）作为普通文本源摄入。本页面按"最简单 → 最灵活"的顺序覆盖全部四条路径。
 
 > 📖 快速配置引导在 [README → PDF 摄入](../README.md#-pdf-ingest-v1250-mineru-backend-v1270) 章节。本页面是详细版。
+
+---
+
+## 🌍 你的文档在哪里被处理
+
+插件自身没有服务器，但上面四条路径并非把文件发往同一处 —— 而且其中一处**不是你选的**。下表就是完整答案；如何选择路径见后续章节。
+
+| 路径 | 文件会发生什么 |
+|------|----------------|
+| **云端 provider，原生 PDF** | PDF 字节从你的仓库读出，作为*文件部分*发往**你配置的**聊天 provider —— Anthropic、OpenAI、Google 或 AWS Bedrock。它在该 provider 的区域内处理：Anthropic、OpenAI、Google **默认在美国**；Bedrock 则是**你配置的区域**（`eu-central-1` 法兰克福可服务同款模型）。OpenAI 另对 API 客户按需提供 EU 数据驻留。 |
+| **内置 MinerU 后端** | 文档被上传到 `https://mineru.net/api/v4`，由 OpenDataLab（上海人工智能实验室）运营，跑在阿里云基础设施上。 |
+| **本地 OCR**（Apple Silicon 上的 oMLX + Markitdown） | 不出你的机器。这是唯一一条文档从不跨网络边界的路径。 |
+| **外部转好的 Markdown** | 插件只看到你交给它的文本；产出该 Markdown 的环节不在插件范围内。 |
+
+**MinerU 的留存条款。** `mineru.net` 公布了 API 文档，但我们**未能找到**其隐私政策、数据留存声明或数据处理协议（DPA）。在自建端点发布之前（[Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404)），请把向该处的上传视为脱离你的控制。
+
+**provider 路径由你选择，这正是重点。** 插件从不自行挑选 provider —— 它把文件发往你配置的那一家，走你的账号、适用对方的条款。若你的文档涉及法律、医疗或受司法辖区约束，请用本地 OCR，或使用你已与其签有 DPA 的 provider 走云端路径。
 
 ---
 
@@ -66,7 +83,9 @@ Obsidian 的支持文件类型清单（[file-formats](https://obsidian.md/help/f
 
 ### 隐私敏感用户：自建 MinerU
 
-如果不能把文档发到 MinerU 云端，按 [MinerU GitHub 仓库](https://github.com/opendatalab/mineru) 自己部署 MinerU，让插件指向自建端点（env 覆盖在 `karpathywiki-mineru-base-url` SecretStorage key）。v1.27.0 发布云端路径；自建端点是计划中的后续 —— 见 [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404) 跟踪路线图状态。
+插件**目前不支持**自建 MinerU 端点。基础 URL 固定为 `https://mineru.net/api/v4`（`src/constants.ts` 中的 `MINERU_API_BASE_URL`），没有任何设置或密钥可以覆盖它，因此自行部署 MinerU 目前不是可行路径。该项由 [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404) 跟踪。
+
+在它落地之前，能让文档留在你控制下的两个选项是 **本地 OCR**（Apple Silicon 上的 oMLX + Markitdown）与**云端 provider 路径**（使用你已持有条款的 provider）—— 两者均见上文，逐路径对比见 [你的文档在哪里被处理](#-你的文档在哪里被处理)。
 
 ---
 
@@ -165,4 +184,4 @@ LRU-by-mtime 驱逐在插件启动时和每次批量摄入开始时运行。缓�
 | Linux/Windows + 消费级 GPU | 本地 llama.cpp 多模态 + Force PDF Support |
 
 插件对所有路径处理方式一致。本地 vs 云端 vs MinerU vs 第三方的选择，只是"指向哪个 Base URL"、"翻哪个后端开关"、"从 vault 里摄入哪些 `.md` 文件"的差别。
-**最后更新：** 2026-08-27 — 新增内置 MinerU 后端（v1.27.0+，#404），一个后端开关覆盖 PDF + 图片 + Office 摄入；更新路径决策表把 MinerU 提升为一等选项；按"最简单 → 最灵活"重排四条摄入路径的顺序。
+**最后更新：** 2026-09-12 —— 新增 *你的文档在哪里被处理*（逐路径说明：原生路径下 provider 的**区域**——三家默认美国、Bedrock 为你配置的区域、OpenAI 可申请 EU 驻留；MinerU 路径下的 `mineru.net` 及其缺失的留存声明；以及唯一完全本地的路径）；修正自建 MinerU 说明 —— 其中指向的 `karpathywiki-mineru-base-url` SecretStorage 键在源码中并不存在。（2026-08-27：新增内置 MinerU 后端（#404）；更新路径决策表；按“最简单 → 最灵活”重排四条摄入路径。）
