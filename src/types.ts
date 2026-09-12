@@ -989,6 +989,20 @@ export const DEFAULT_SOURCE_TAG = 'other';
 //   onFileWrite — notifies file watcher of writes for change detection
 //   onProgress / onDone — ingestion progress → UI modal
 
+// Shape returned by wiki/lint/get-existing-pages.ts's getExistingWikiPages, shared
+// with EngineContext's and WikiEngine's own accessors so the three don't drift
+// out of sync with each other or with the field the implementation actually sets.
+export interface WikiPageRef {
+  path: string;
+  title: string;
+  displayTitle?: string;
+  wikiLink: string;
+  aliases?: string[];
+  tags?: string[];
+  ctime?: number;
+  text?: string;
+}
+
 export interface EngineContext {
   app: App;
   settings: LLMWikiSettings;
@@ -998,7 +1012,7 @@ export interface EngineContext {
   deleteFile: (path: string) => Promise<void>;
   buildSystemPrompt: (task: string) => Promise<string | undefined>;
   getSectionLabels: () => Record<string, string>;
-  getExistingWikiPages: () => Promise<Array<{ path: string; title: string; wikiLink: string; aliases?: string[] }>>;
+  getExistingWikiPages: () => Promise<WikiPageRef[]>;
   getSchemaContext: (task: string) => Promise<string | undefined>;
   /**
    * SubtleCrypto from Obsidian's popout-window-aware `activeWindow.crypto`.

@@ -12,6 +12,7 @@ import {
   IngestOptions,
   BatchRequirementsContext,
   EngineContext,
+  WikiPageRef,
   VALID_SOURCE_TAGS,
   DEFAULT_SOURCE_TAG,
 } from '../types';
@@ -174,7 +175,7 @@ export class WikiEngine {
   private onLintStart: (() => void) | null = null;
   private onLintEnd: (() => void) | null = null;
   private onStatusBarUpdate: ((text: string) => void) | null = null;
-  private pagesCache: Array<{path: string; title: string; wikiLink: string; aliases?: string[]}> | null = null;
+  private pagesCache: WikiPageRef[] | null = null;
   private pagesCacheTime = 0;
   private readonly PAGES_CACHE_TTL_MS = PAGES_CACHE_TTL_MS;
   // #164: ingested content-hash snapshot, cached on the same TTL/lifecycle as
@@ -2111,7 +2112,7 @@ export class WikiEngine {
 
   // ---- Lint-fix delegation ----
 
-  getExistingWikiPages(): Promise<Array<{path: string; title: string; wikiLink: string; aliases?: string[]}>> {
+  getExistingWikiPages(): Promise<WikiPageRef[]> {
     const now = Date.now();
     if (this.pagesCache && (now - this.pagesCacheTime) < this.PAGES_CACHE_TTL_MS) {
       return Promise.resolve(this.pagesCache);

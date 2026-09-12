@@ -202,6 +202,26 @@ describe('Dead Link Detector — Pure Functions', () => {
       const result = buildDeadLinkReplacement(nestedPage, 'wiki');
       expect(result).toBe('[[concepts/deep/learning|Deep Learning]]');
     });
+
+    // Issue #592: `title` is the filename slug — prefer `displayTitle` (the page's real H1) when set, since title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
+    it('prefers displayTitle over title when set', () => {
+      const page: PageRef = {
+        path: 'wiki/entities/haem-a3.md',
+        title: 'haem-a3',
+        displayTitle: 'Haem A₃',
+      };
+      const result = buildDeadLinkReplacement(page, 'wiki');
+      expect(result).toBe('[[entities/haem-a3|Haem A₃]]');
+    });
+
+    it('falls back to title when displayTitle is absent', () => {
+      const page: PageRef = {
+        path: 'wiki/entities/haem-a3.md',
+        title: 'haem-a3',
+      };
+      const result = buildDeadLinkReplacement(page, 'wiki');
+      expect(result).toBe('[[entities/haem-a3|haem-a3]]');
+    });
   });
 
   describe('replaceDeadLink', () => {
@@ -220,11 +240,36 @@ describe('Dead Link Detector — Pure Functions', () => {
       expect(result).toContain('[[entities/cot|Chain of Thought]]');
     });
 
-    it('handles links with display text', () => {
-      const linkWithDisplay = 'See [[思维链|thinking chain]] for more.';
-      const result = replaceDeadLink(linkWithDisplay, '思维链', '[[entities/cot|Chain of Thought]]');
-      expect(result).toContain('[[entities/cot|Chain of Thought]]');
-      expect(result).not.toContain('[[思维链|thinking chain]]');
+    // Issue #653 follow-up: an occurrence that already has its own alias keeps it — the
+    // reader already saw that name — only the path is corrected to the resolved target.
+    it('keeps the existing alias on an occurrence that already has one', () => {
+      const linkWithDisplay = 'See [[wrong-target|thinking chain]] for more.';
+      const result = replaceDeadLink(linkWithDisplay, 'wrong-target', '[[entities/cot|Chain of Thought]]');
+      expect(result).toContain('[[entities/cot|thinking chain]]');
+      expect(result).not.toContain('[[wrong-target|thinking chain]]');
+      expect(result).not.toContain('Chain of Thought');
+    });
+
+    it('preserves each occurrence\'s own alias independently, not just the first one\'s', () => {
+      const twoAliases = 'See [[wrong-target|first name]] and later [[wrong-target|second name]] again.';
+      const result = replaceDeadLink(twoAliases, 'wrong-target', '[[entities/cot|Chain of Thought]]');
+      expect(result).toBe('See [[entities/cot|first name]] and later [[entities/cot|second name]] again.');
+    });
+
+    // DocTpoint's #653 review: a bare occurrence and an aliased occurrence of the same
+    // target on one page must not cross-contaminate — the bare one gets the fallback
+    // replacement (i.e. displayTitle), the aliased one keeps its own alias, independently.
+    it('gives the fallback replacement to a bare occurrence while a sibling occurrence keeps its own alias', () => {
+      const mixed = 'First bare [[wrong-target]] then aliased [[wrong-target|receptors]].';
+      const result = replaceDeadLink(mixed, 'wrong-target', '[[entities/cot|Chain of Thought]]');
+      expect(result).toBe('First bare [[entities/cot|Chain of Thought]] then aliased [[entities/cot|receptors]].');
+    });
+
+    it('leaves an aliased occurrence untouched instead of throwing when replacement is malformed', () => {
+      const linkWithDisplay = 'See [[wrong-target|thinking chain]] for more.';
+      const result = () => replaceDeadLink(linkWithDisplay, 'wrong-target', '[[]]');
+      expect(result).not.toThrow();
+      expect(result()).toBe(linkWithDisplay);
     });
 
     it('handles links with section anchors', () => {

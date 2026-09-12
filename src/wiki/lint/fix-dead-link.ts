@@ -28,17 +28,6 @@ function makeRelPath(path: string, wikiFolder: string): string {
   return path.replace(wikiFolder + '/', '').replace(/\.md$/i, '');
 }
 
-function replaceTargetLink(sourceContent: string, targetName: string, newLink: string): string {
-  const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
-  return sourceContent.replace(
-    linkRegex,
-    (fullMatch: string, capturedTarget: string) => {
-      if (capturedTarget.trim() === targetName) return newLink;
-      return fullMatch;
-    }
-  );
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // #197 stub-content builders — honest placeholders, NOT LLM-filled stubs.
 //
@@ -248,9 +237,15 @@ export async function fixDeadLink(
       newLink = `[[${newLink}]]`;
     }
 
-    const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
-    await ctx.createOrUpdateFile(sourcePath, updatedContent);
-    return `corrected: ${newLink}`;
+    // A hallucinated/empty/unclosed correct_link (e.g. "[[]]", or "[[foo" left open because it already
+    // started with "[[" and skipped the wrap above) has no path replaceDeadLink can pair with a preserved
+    // alias, or would write broken markdown outright — treat it as no usable answer and fall through to the
+    // create_stub / deterministic-stub branches below instead.
+    if (/^\[\[[^\]|]+.*\]\]$/.test(newLink)) {
+      const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
+      await ctx.createOrUpdateFile(sourcePath, updatedContent);
+      return `corrected: ${newLink}`;
+    }
   }
 
   if (result?.action === 'create_stub' && result.stub_title) {
@@ -266,8 +261,8 @@ export async function fixDeadLink(
       p.aliases?.some(a => slugify(a).toLowerCase() === safetySlug)
     );
     if (aliasMatch) {
-      const newLink = `[[${makeRelPath(aliasMatch.path, ctx.settings.wikiFolder)}|${aliasMatch.title}]]`;
-      const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
+      const newLink = `[[${makeRelPath(aliasMatch.path, ctx.settings.wikiFolder)}|${aliasMatch.displayTitle || aliasMatch.title}]]`;
+      const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
       await ctx.createOrUpdateFile(sourcePath, updatedContent);
       return `safety-net corrected (alias match for stub): ${newLink}`;
     }
@@ -299,35 +294,12 @@ export async function fixDeadLink(
     // shouldFabricateStubForUnresolvableLink for the policy gate.
 
     const newLink = `[[${stubDir}/${stubSlug}|${sanitizedTitle}]]`;
-    const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
+    const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
     await ctx.createOrUpdateFile(sourcePath, updatedContent);
     return `stub created (unfilled): ${stubPath} — will be filled by next ingest of a real source`;
   }
 
-  // ---- Deterministic fallback when LLM fails ----
-  const lowerTarget = targetBasename.toLowerCase();
-  const targetSlug = slugify(targetBasename).toLowerCase();
-  let match = existingPages.find(p =>
-    p.title.toLowerCase() === lowerTarget ||
-    slugify(p.title).toLowerCase() === targetSlug
-  );
-
-  if (!match) {
-    match = existingPages.find(p =>
-      p.aliases?.some(a =>
-        a.toLowerCase() === lowerTarget ||
-        slugify(a).toLowerCase() === targetSlug
-      )
-    );
-  }
-
-  if (match) {
-    const newLink = `[[${makeRelPath(match.path, ctx.settings.wikiFolder)}|${match.title}]]`;
-    const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
-    await ctx.createOrUpdateFile(sourcePath, updatedContent);
-    return `fallback corrected: ${newLink}`;
-  }
-
+  // findDeadLinkTarget's pre-check above already ruled out every existing-page match.
   // No match — create an honest placeholder stub. Do NOT expand it via LLM.
   // #485: same leave-it gate as the LLM create_stub branch above.
   if (!shouldCreateStubForUnresolvableLink(ctx.settings)) {
@@ -356,7 +328,7 @@ await ctx.createOrUpdateFile(stubPath, stubContent);
 // #197: deliberately do NOT call fillEmptyPage here.
 
 const newLink = `[[${stubDir}/${stubSlug}|${cleanBasename}]]`;
-const updatedContent = replaceTargetLink(sourceContent, targetName, newLink);
+const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
 await ctx.createOrUpdateFile(sourcePath, updatedContent);
 return `fallback stub created (unfilled): ${stubPath} — will be filled by next ingest of a real source`;
 }

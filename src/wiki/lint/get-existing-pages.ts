@@ -2,11 +2,12 @@ import { App } from 'obsidian';
 import { parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { CANDIDATE_WINDOW_TEXT_CHARS } from '../../constants';
 import { isInFolderScope } from '../../core/folder-scope';
+import type { WikiPageRef } from '../../types';
 
 export async function getExistingWikiPages(
   app: App,
   wikiFolder: string
-): Promise<Array<{ path: string; title: string; wikiLink: string; aliases?: string[]; tags?: string[]; ctime?: number; text?: string }>> {
+): Promise<WikiPageRef[]> {
   const wikiFiles = app.vault
     .getMarkdownFiles()
     .filter(
@@ -18,11 +19,12 @@ export async function getExistingWikiPages(
         !f.path.includes('/contradictions/')
     );
 
-  const pages: Array<{ path: string; title: string; wikiLink: string; aliases?: string[]; tags?: string[]; ctime?: number; text?: string }> = [];
+  const pages: WikiPageRef[] = [];
   for (const f of wikiFiles) {
     const relPath = f.path.replace(wikiFolder + '/', '').replace('.md', '');
     const content = await app.vault.read(f);
     const fm = parseFrontmatter(content);
+    const body = extractBody(content);
 
     // v1.23.0 P0-2 follow-up: skip Welcome notes. They have
     // `type: welcome` frontmatter and a localized filename
@@ -42,9 +44,16 @@ export async function getExistingWikiPages(
       continue;
     }
 
+    // Issue #592: `title` (below) is the filename slug, not a display name — title-casing a slug can't recover punctuation, spacing, or subscripts a real heading has.
+    // Prefer the page's actual H1; when there's no parseable heading, leave it unset so callers fall back to `title` — frontmatter aliases are unordered abbreviations/variants, not necessarily what the page is called.
+    // Costs no extra read — `body` is already produced above for the candidate-window text below.
+    const h1Match = body.trim().match(/^#\s+(.+?)(?:\n|$)/);
+    const displayTitle = h1Match ? h1Match[1].trim() : undefined;
+
     pages.push({
       path: f.path,
       title: f.basename,
+      displayTitle,
       wikiLink: `[[${relPath}|${f.basename}]]`,
       aliases: Array.isArray(fm?.aliases) ? fm.aliases : undefined,
       // Issue #446: ranking signal for designators that match more than one
@@ -56,7 +65,7 @@ export async function getExistingWikiPages(
       // bounded, lower-cased slice of the body costs no second read and lets
       // the dedup and dead-link prompts rank pages by what they say, not only
       // by what they are called.
-      text: extractBody(content).toLowerCase().slice(0, CANDIDATE_WINDOW_TEXT_CHARS),
+      text: body.toLowerCase().slice(0, CANDIDATE_WINDOW_TEXT_CHARS),
     });
   }
   return pages;
