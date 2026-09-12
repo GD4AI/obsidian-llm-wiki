@@ -50,7 +50,7 @@ export interface KeywordGenClient {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     response_format?: { type: 'json_object'; schema?: Record<string, unknown> | z.ZodType };
     enableThinking?: boolean;
-  }): Promise<{ text: string; output?: T; outputMode: 'json_schema' | 'json_object' | 'text_prompt' }>;
+  }): Promise<{ text: string; output?: T; outputMode: 'json_schema' | 'json_schema_strict' | 'json_object' | 'text_prompt' }>;
 }
 
 /** Settings surface — model + disableThinking only. */

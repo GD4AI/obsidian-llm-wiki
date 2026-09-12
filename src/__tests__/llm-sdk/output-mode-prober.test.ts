@@ -180,3 +180,26 @@ describe('Classifier input contract: responseBody vs message', () => {
     expect(OutputModeProber.isJsonObjectFieldError(err.responseBody ?? '')).toBe(true);
   });
 });
+describe('OutputModeProber.isStrictSchemaRejection — Tier 0 → Tier 0-strict (Issue #658)', () => {
+  it('matches the #658 endpoint body verbatim (no REJECTION_VERBS phrase in it)', () => {
+    expect(
+      OutputModeProber.isStrictSchemaRejection(
+        `Invalid schema for response_format 'response': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'action'.`,
+      ),
+    ).toBe(true);
+  });
+
+  it('matches an additionalProperties complaint', () => {
+    expect(OutputModeProber.isStrictSchemaRejection('additionalProperties must be false in strict mode')).toBe(true);
+  });
+
+  it('does NOT match the field rejections that drive Tier 1 / Tier 2', () => {
+    expect(OutputModeProber.isStrictSchemaRejection(`'response_format.type' must be 'json_schema' or 'text'`)).toBe(false);
+    expect(OutputModeProber.isStrictSchemaRejection("Unsupported parameter: 'response_format.json_schema'")).toBe(false);
+  });
+
+  it('does NOT match an unrelated 400', () => {
+    expect(OutputModeProber.isStrictSchemaRejection('model not found')).toBe(false);
+    expect(OutputModeProber.isStrictSchemaRejection('')).toBe(false);
+  });
+});

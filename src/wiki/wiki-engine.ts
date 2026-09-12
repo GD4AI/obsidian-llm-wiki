@@ -22,12 +22,12 @@ import { buildRepetitionPenaltyHint } from '../core/repetition-penalty-hint';
 import { formatTaskUsage, snapshotTaskUsage, taskUsageSince } from '../core/llm-task-usage';
 import { TEXTS } from '../texts';
 import { renderTemplate } from '../core/template-renderer';
-import { slugify } from '../core/slug';
+import { slugify, filterRedundantAliases, resolveMinAliasLength } from '../core/slug';
 import { shapeRelatedLists, kindOf } from '../core/related-shaping';
 import { withAbortSignal } from '../core/llm-abort';
 import { isIngestableSource } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
-import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, extractBody } from '../core/frontmatter';
+import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
 import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from '../core/pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
@@ -1758,6 +1758,10 @@ export class WikiEngine {
     // #164: stamp a content fingerprint so future ingests can detect duplicates.
     // Injected programmatically — the LLM can't be trusted to emit it.
     let finalContent = upsertFrontmatterField(cleanedContent, 'contentHash', hashBody(extractBody(content)));
+    // #679: `source_file` is the canonical owner (`originNoteRefs`), read by the
+    // ingest skip and the drift scan — the same kind of field as `contentHash`.
+    // The model copied it from the template; a copy came back misspelled.
+    finalContent = upsertFrontmatterField(finalContent, 'source_file', `"[[${file.path}]]"`);
     // The page head — H1 and Source section — from the title, the note path
     // and the date the code knows; the model's copies of them came back wrong.
     finalContent = stampSourcePageHead(
@@ -1785,6 +1789,32 @@ export class WikiEngine {
           `[Issue #185] Propagated ${analysis.source_note_aliases.length} alias(es) to ${path}`
         );
         finalContent = withAliases;
+      }
+    }
+
+    // The alias floor the other two writers of this field already apply.
+    // `resolveMinAliasLength` exists so both of them resolve the same floor
+    // from the same place; this is a third writer that resolved none. The
+    // model's `aliases:` arrive verbatim inside `cleanedContent` and the
+    // curated note aliases merge on top of them, so the filter belongs here,
+    // after both, on the finished list — filtering either input alone leaves
+    // the other unchecked.
+    //
+    // Rewrites the block only when something is actually dropped: a page
+    // whose aliases already pass keeps the bytes the model wrote.
+    const writtenAliases = parseFrontmatter(finalContent)?.aliases;
+    if (Array.isArray(writtenAliases)) {
+      const kept = filterRedundantAliases(
+        path,
+        writtenAliases,
+        undefined,
+        resolveMinAliasLength(this.settings),
+      );
+      if (kept.length !== writtenAliases.length) {
+        console.debug(
+          `[aliases] dropped ${writtenAliases.length - kept.length} alias(es) below the floor or redundant with the page name on ${path}`
+        );
+        finalContent = replaceFrontmatterArrayField(finalContent, 'aliases', kept);
       }
     }
 
