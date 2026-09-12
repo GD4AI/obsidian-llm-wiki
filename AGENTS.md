@@ -188,7 +188,7 @@ pnpm lint && pnpm test && pnpm typecheck && pnpm build && pnpm css-lint   # WRON
 
 ### Gate 1 CI (added 2026-08-18)
 
-`.github/workflows/pr-ci.yml` runs the full Five-Gate on every PR to `main`. Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: true`).
+`.github/workflows/pr-ci.yml` runs the full Five-Gate on every PR to `main` and on every push to `main` (the second trigger added 2026-09-12: a PR is green against the base it branched from, so a break that exists only in the merged pair is invisible until a later PR reports it). Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: true`).
 
 CI is a **defense-in-depth** layer on top of the per-fix E2E handoff manual Gate 1 (which is still required before `git push`). CI does NOT enable auto-merge — explicit "merge it" / "合并" still required per §"⚠️ Git Safety Protocol".
 
