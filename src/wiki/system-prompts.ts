@@ -152,6 +152,36 @@ export function getSectionLabels(settings: LLMWikiSettings): Record<string, stri
   return SECTION_LABELS[lang] || SECTION_LABELS.en;
 }
 
+export interface SourcePageHeadLabels {
+  /** H1 suffix: `# <title> - <summary>`. */
+  summary: string;
+  original_file: string;
+  /** Same word as the file picker's `multiFileRowIngested`. */
+  ingested: string;
+}
+
+// Kept out of SECTION_LABELS on purpose: its values are the list of known
+// section headings (canonicalizeSectionHeaders / stripUnknownSections, the
+// merge-triage prompt), and none of these is a section.
+export const SOURCE_PAGE_HEAD_LABELS: Record<string, SourcePageHeadLabels> = {
+  en: { summary: 'Summary', original_file: 'Original file', ingested: 'Ingested' },
+  zh: { summary: '摘要', original_file: '原始文件', ingested: '已摄入' },
+  'zh-Hant': { summary: '摘要', original_file: '原始檔案', ingested: '已攝入' },
+  ja: { summary: '要約', original_file: '元ファイル', ingested: '取り込み済み' },
+  ko: { summary: '요약', original_file: '원본 파일', ingested: '수집됨' },
+  de: { summary: 'Zusammenfassung', original_file: 'Originaldatei', ingested: 'Importiert' },
+  fr: { summary: 'Résumé', original_file: 'Fichier original', ingested: 'Importé' },
+  es: { summary: 'Resumen', original_file: 'Archivo original', ingested: 'Ingerido' },
+  pt: { summary: 'Resumo', original_file: 'Arquivo original', ingested: 'Ingerido' },
+  it: { summary: 'Riepilogo', original_file: 'File originale', ingested: 'Acquisito' },
+  ru: { summary: 'Сводка', original_file: 'Исходный файл', ingested: 'Импортировано' },
+};
+
+export function getSourcePageHeadLabels(settings: LLMWikiSettings): SourcePageHeadLabels & { source: string } {
+  const lang = settings.wikiLanguage || 'en';
+  return { source: getSectionLabels(settings).source, ...(SOURCE_PAGE_HEAD_LABELS[lang] || SOURCE_PAGE_HEAD_LABELS.en) };
+}
+
 // Granularity instruction text for extraction prompts.
 // custom is generated dynamically (injects concrete entity/concept limit numbers from settings).
 const GRANULARITY_INSTRUCTIONS: Record<ExtractionGranularity, string> = {

@@ -19,7 +19,7 @@ import { renderTemplate } from '../core/template-renderer';
 import { matchExtractedToExisting } from '../core/index-search';
 import { coerceToArray } from '../core/arrays';
 import { buildDomainContext, collectActiveVocabulary } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
-import { isBlankSource } from '../core/frontmatter';
+import { isBlankSource, extractBody } from '../core/frontmatter';
 import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
 import { getExistingWikiPages } from './lint/get-existing-pages';
 import { getGranularityInstruction } from './system-prompts';
@@ -769,13 +769,22 @@ export class SourceAnalyzer {
       if (accumulation.concepts.length > cCap) accumulation.concepts = accumulation.concepts.slice(0, cCap);
     }
 
+    // A note's title is its own: its H1 on the first body line (the #592 rule
+    // `getExistingWikiPages` uses) or its file name. The prompt shows the
+    // model the note path, and for notes without an H1 it returned that path
+    // as the title (21 of 105 measured, `Notizen/Carrageenan.md`). Only a PDF
+    // keeps the title the model read off the document.
+    const noteTitle = file.extension?.toLowerCase() === 'pdf'
+      ? null
+      : extractBody(content).match(/^#\s+(.+?)(?:\n|$)/)?.[1].trim() || file.basename;
+
     // Build final SourceAnalysis using pure function (Phase 3)
     const analysis = buildSourceAnalysis(
       file.path,
       file.basename,
       accumulation,
       firstBatchData ? {
-        sourceTitle: firstBatchData.sourceTitle,
+        sourceTitle: noteTitle ?? firstBatchData.sourceTitle,
         summary: firstBatchData.summary
       } : undefined,
       // Issue #185: forward curated source-note aliases so the
