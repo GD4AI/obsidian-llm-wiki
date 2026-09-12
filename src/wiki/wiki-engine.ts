@@ -572,6 +572,24 @@ export class WikiEngine {
     return 'sourceRejectedEmpty';
   }
 
+  /**
+   * Release the ingest lifecycle: drop the shared controller and fire the end
+   * hook, which is what takes the status bar down.
+   *
+   * Extracted in #688. The requirements gate's skip returns above the method's
+   * main `try`, so the teardown that lives there never ran for a skipped file.
+   * The visible half was a status bar stuck on "extracting…" until restart; the
+   * half nobody reported is worse — `abortController` stayed non-null, and the
+   * guard at the top of `ingestSource` only builds a controller and calls
+   * `onIngestionStart` when it finds none. So every later file in the same
+   * batch inherited the skipped file's controller: no fresh signal to cancel,
+   * no start hook, and `wasCancelled` never reset.
+   */
+  private endIngestion(): void {
+    this.abortController = null;
+    this.onIngestionEnd?.();
+  }
+
   /** Log + (interactive only) notify + report a gate skip without creating any pages. */
   private reportSkip(file: TFile, rejection: SourceRejection, opts?: IngestOptions): void {
     console.warn(`[Ingest skipped] ${file.path}: ${rejection.reason}${rejection.detail ? ` — ${rejection.detail}` : ''}`);
@@ -955,17 +973,18 @@ export class WikiEngine {
       } finally {
         // Successful conversion re-enters this method and clears the shared
         // controller in the main finally block. Pre-conversion exits do not.
-        if (this.abortController !== null) {
-          this.abortController = null;
-          this.onIngestionEnd?.();
-        }
+        if (this.abortController !== null) this.endIngestion();
       }
       }
     }
 
-    // #164 pre-ingest requirements gate — runs BEFORE any cancellation/UI setup so
-    // a rejected file returns cleanly with nothing to tear down. Empty/type are
-    // hard skips; a duplicate auto-skips, except interactive ingest prompts first.
+    // #164 pre-ingest requirements gate. Empty/type are hard skips; a duplicate
+    // auto-skips, except interactive ingest prompts first.
+    //
+    // #688: this gate no longer runs "BEFORE any cancellation/UI setup" — the
+    // controller and the start hook were moved above it in v1.25.0, because the
+    // PDF branch needs them. A skip here therefore has something to tear down,
+    // and the return below sits above the main `try`, so it must do it itself.
     const fileContent = opts?.contentOverride ?? await this.app.vault.read(file);
     const rejection = opts?.forceReingest ? null : await this.checkRequirements(file, fileContent, opts?.batchCtx);
     if (rejection) {
@@ -974,6 +993,7 @@ export class WikiEngine {
         : false;
       if (!confirmed) {
         this.reportSkip(file, rejection, opts);
+        this.endIngestion();
         return;
       }
     }
@@ -1604,8 +1624,7 @@ export class WikiEngine {
       throw error;
     } finally {
       this.triageContradictions = null;
-      this.abortController = null;
-      this.onIngestionEnd?.();
+      this.endIngestion();
     }
   }
 

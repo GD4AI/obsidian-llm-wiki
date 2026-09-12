@@ -31,6 +31,10 @@ export interface WikiEngineHarness {
   stats: { llmCalls: number; vaultMarkdownScans: number };
   /** Filenames delivered to `onIngestionStart` (status-bar text hooks). */
   startedFilenames: string[];
+  /** How many times `onIngestionEnd` fired — the status-bar teardown hook.
+   *  Paired with `startedFilenames` it exposes a teardown that never ran (#688).
+   *  A live getter on the returned object, not a captured number. */
+  endedCount: number;
   /** Paths handed to fileManager.trashFile, in order. */
   trashedPaths: string[];
   /** Progress messages delivered to `onProgress` (PDF "Reading PDF: …"). */
@@ -67,6 +71,7 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
   const reports: IngestReport[] = [];
   const stats = { llmCalls: 0, vaultMarkdownScans: 0 };
   const trashedPaths: string[] = [];
+  let endedCount = 0;
   let llmIdx = 0;
 
   const app = {
@@ -150,10 +155,15 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
   // can read `startedFilenames` to assert the status bar text was set.
   engine.setIngestionCallbacks(
     (filename?: string) => { if (filename) startedFilenames.push(filename); },
-    () => { /* onEnd: nothing to capture */ },
+    () => { endedCount += 1; },
   );
 
-  return { engine, llmRequests, writtenPaths, reports, files, stats, startedFilenames, progressMessages, trashedPaths };
+  return {
+    engine, llmRequests, writtenPaths, reports, files, stats, startedFilenames, progressMessages, trashedPaths,
+    // Getter, not a field: a bare number is copied by value at construction and
+    // would stay 0 however often the hook fires (the arrays above are references).
+    get endedCount() { return endedCount; },
+  };
 }
 
 /** True if any written path is a wiki entity/concept/source page (the #164 symptom). */
