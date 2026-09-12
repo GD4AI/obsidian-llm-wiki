@@ -25,7 +25,6 @@ const ANALYSIS = JSON.stringify({
     { name: 'Phosphocreatin', type: 'person', summary: 'y', mentions_in_source: [] },
   ],
   concepts: [],
-  contradictions: [],
   related_pages: [],
   key_points: [],
 });

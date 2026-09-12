@@ -43,7 +43,6 @@ const EXTRACTION = JSON.stringify({
     { name: 'ATP', type: 'other', summary: 'Energy carrier; CCO may not be the primary photoacceptor.', mentions_in_source: ['CCO sei nicht der primäre Photoakzeptor'] },
   ],
   concepts: [],
-  contradictions: [],
   related_pages: [],
 });
 
