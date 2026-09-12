@@ -7,7 +7,6 @@ import {
   SourceAnalysis,
   EntityInfo,
   ConceptInfo,
-  ContradictionInfo,
   MentionWithProvenance,
   LLMFinishReason,
   LLMUsage,
@@ -88,7 +87,6 @@ export interface NormalizedBatch {
   concepts: ConceptInfo[];
   sourceTitle: string | null;
   summary: string | null;
-  contradictions: ContradictionInfo[];
   relatedPages: string[];
   keyPoints: string[];
 }
@@ -124,7 +122,6 @@ export function normalizeBatchResponse(
     concepts,
     sourceTitle: typeof raw.source_title === 'string' ? raw.source_title : null,
     summary: typeof raw.summary === 'string' ? raw.summary : null,
-    contradictions: coerceToArray<ContradictionInfo>(raw.contradictions),
     relatedPages,
     keyPoints: coerceToArray<string>(raw.key_points),
   };
@@ -144,7 +141,6 @@ function emptyBatch(): NormalizedBatch {
     concepts: [],
     sourceTitle: null,
     summary: null,
-    contradictions: [],
     relatedPages: [],
     keyPoints: [],
   };
@@ -621,7 +617,6 @@ export class SourceAnalyzer {
           // whose yield says most about the response regime.
           console.debug(`[Batch 1] items: entities=${norm.entities.length} concepts=${norm.concepts.length} (batch_size=${currentBatchSize})`);
           firstBatchData = norm;
-          accumulation.contradictions = norm.contradictions;
           accumulation.relatedPages = norm.relatedPages;
           accumulation.keyPoints = norm.keyPoints;
 

@@ -661,10 +661,8 @@ export const RU_TEXTS = {
     lintHubLinkDensitySummary: 'Сводка: {strip} стр. рекомендовано для удаления, {review} стр. рекомендовано для проверки.',
     lintHubLinkDensityNoRelated: ' (раздел ## Related не найден)',
     lintContradictionOpen: 'Открытые противоречия: {count}',
-    lintContradictionAutoFixed: '({count} авто-исправлено в этом запуске)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Обнаружено',
-    lintContradictionStatusPendingFix: 'Ожидает исправления',
 
     // Промпт Lint-анализа
 

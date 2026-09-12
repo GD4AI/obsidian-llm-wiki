@@ -133,7 +133,6 @@ src/
 │   ├── source-lemma.ts         # Source-slug = page-lemma deterministic merge (#348, v1.26.0 PR #357 DocTpoint)
 │   ├── link-retarget.ts        # Vault-wide link retarget for mergeDuplicates (#386, v1.26.0 PR #392 DocTpoint)
 │   ├── llm-task-usage.ts       # Per-step LLM call + wall-time ledger (PR #409, v1.26.1 eucher)
-│   ├── clamp-page-sections.ts  # Section-shaped page clamp + withhold/restore for contradiction rewrite (#287 follow-on, v1.26.4 PR #492)
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
 │   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
 ├── wiki/                # Wiki engine modules

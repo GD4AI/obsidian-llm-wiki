@@ -4,6 +4,7 @@
 import {
   EngineContext,
   SourceAnalysis,
+  ContradictionInfo,
   IngestReport,
 } from '../types';
 import { PROMPTS } from '../prompts';
@@ -25,7 +26,7 @@ export interface ConversationOrchestration {
   ensureWikiStructure: () => Promise<void>;
   apiDelay: (ms?: number) => Promise<void>;
   generateIndex: () => Promise<void>;
-  updateLog: (operation: string, analysis: SourceAnalysis) => Promise<void>;
+  updateLog: (operation: string, analysis: SourceAnalysis, contradictions: ContradictionInfo[]) => Promise<void>;
 }
 
 export interface ConversationHistory {
@@ -296,8 +297,9 @@ CRITICAL RULES:
 
     this.ctx.onProgress?.(getText(this.ctx.settings.language, 'convGeneratingIndex'));
     await this.orch.generateIndex();
-    parsed.contradictions = parsed.contradictions || [];
-    await this.orch.updateLog('conversation', parsed);
+    // The merge triage fires `onContradiction` here too, but nothing collects
+    // it for a conversation run yet — the entry and the report say zero.
+    await this.orch.updateLog('conversation', parsed, []);
 
     const entitiesCreated = parsed.created_pages.filter(p => p.includes('/entities/')).length;
     const conceptsCreated = parsed.created_pages.filter(p => p.includes('/concepts/')).length;
@@ -309,7 +311,7 @@ CRITICAL RULES:
       entitiesCreated,
       conceptsCreated,
       failedItems,
-      contradictionsFound: parsed.contradictions?.length || 0,
+      contradictionsFound: 0,
       success: true,
       elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
     };

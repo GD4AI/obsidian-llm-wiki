@@ -670,10 +670,8 @@ export const ES_TEXTS = {
     lintHubLinkDensitySummary: 'Resumen: {strip} página(s) recomendada(s) para eliminar, {review} página(s) recomendada(s) para revisar.',
     lintHubLinkDensityNoRelated: ' (no se encontró la sección ## Related)',
     lintContradictionOpen: 'Contradicciones abiertas: {count}',
-    lintContradictionAutoFixed: '({count} autocorregidas en esta ejecución)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Detectada',
-    lintContradictionStatusPendingFix: 'Pendiente de corrección',
 
     // Lint Analysis Prompt
 

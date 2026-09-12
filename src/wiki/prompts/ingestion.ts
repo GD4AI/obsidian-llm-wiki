@@ -27,7 +27,6 @@ export const INGESTION_PROMPTS = {
 5. For related_entities and related_concepts: identify entities/concepts mentioned in the same context as this item. These should be other items extracted from this same source file
 5b. For coverage: report how the source treats this item — "defined" when the source says what it is, "discussed" when the source says something substantive about it (properties, effects, relationships), "named" when it appears only as an example, in an enumeration, or as a passing mention. Report what the text does; do not decide whether that is enough
 5c. For domains (only when a "Domain tag vocabulary of this vault" list is given above): output the subset of that list that describes what this item itself is or belongs to — not merely the context it appears in. Copy the exact spelling from the list, including the part before the "/". Use [] when none applies. Never add a tag that is not in the list; omit the field when no list is given
-6. Identify contradictions or conflicts with the existing Wiki (only output contradictions in the first round)
 7. Generate key points from the source file (only output key_points in the first round)
 
 **Output Format (strict JSON, output only JSON, no explanatory text):**
@@ -60,14 +59,6 @@ export const INGESTION_PROMPTS = {
       "related_entities": ["Related entity names from this source"],
       "coverage": "defined|discussed|named",
       "domains": ["Subset of the vault's domain-tag vocabulary that describes this item itself; [] when none"]
-    }
-  ],
-  "contradictions": [
-    {
-      "claim": "What the source file claims",
-      "source_page": "Conflicting existing Wiki page [[page-name]]",
-      "contradicted_by": "What that page claims",
-      "resolution": "Suggested resolution"
     }
   ],
   "key_points": ["Key point 1", "Key point 2"]
@@ -103,7 +94,6 @@ export const INGESTION_PROMPTS = {
 - **CRITICAL: Entity and concept "name" MUST use the ORIGINAL language from the source file. NEVER translate names.** If the source says "Yinmin Zhong", the name MUST be "Yinmin Zhong", NOT "钟胤敏". If the source says "Conditional Memory", the name MUST be "Conditional Memory", NOT "条件记忆". If the source says "Cache-Compute Ratio", the name MUST be "Cache-Compute Ratio". Translation of names is FORBIDDEN. Summaries and descriptions may use the wiki language, but the name field is inviolable
 - "mentions_in_source" MUST contain 2-4 verbatim quotes from the source text. Do NOT paraphrase — copy the actual sentences where the entity/concept appears. Include full sentences with context, not fragments
 - Each entity and concept should have its own independent Wiki page
-- Carefully compare against existing content when detecting contradictions
 - Output must be valid JSON format
 - Do NOT repeat any item already in the "extracted list". If no unextracted items remain in the source, return empty arrays [] for entities and concepts
 - Apply the wiki-link test to every candidate: if an entity/concept would not be linked from other notes, do not extract it. Knowledge claims and findings are more valuable than evidence containers`,

@@ -670,10 +670,8 @@ export const PT_TEXTS = {
     lintHubLinkDensitySummary: 'Resumo: {strip} página(s) recomendada(s) para remoção, {review} página(s) recomendada(s) para revisão.',
     lintHubLinkDensityNoRelated: ' (seção ## Related não encontrada)',
     lintContradictionOpen: 'Contradições abertas: {count}',
-    lintContradictionAutoFixed: '({count} auto-corrigido(s) nesta execução)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Detectado',
-    lintContradictionStatusPendingFix: 'Aguardando correção',
 
     // Lint Analysis Prompt
 

@@ -672,10 +672,8 @@ export const DE_TEXTS = {
     lintHubLinkDensitySummary: 'Zusammenfassung: {strip} Seite(n) zum Entfernen empfohlen, {review} Seite(n) zur Prüfung.',
     lintHubLinkDensityNoRelated: ' (kein ## Related-Abschnitt gefunden)',
     lintContradictionOpen: 'Offene Widersprüche: {count}',
-    lintContradictionAutoFixed: '({count} in diesem Durchlauf automatisch behoben)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Erkannt',
-    lintContradictionStatusPendingFix: 'Behebung ausstehend',
 
     // Lint Analysis Prompt
 

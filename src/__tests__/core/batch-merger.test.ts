@@ -15,7 +15,6 @@ describe('Batch Merger — Pure Functions', () => {
 
       expect(result.entities).toEqual([]);
       expect(result.concepts).toEqual([]);
-      expect(result.contradictions).toEqual([]);
       expect(result.relatedPages).toEqual([]);
       expect(result.keyPoints).toEqual([]);
       expect(result.extractedNames).toEqual(new Set<string>());
@@ -482,12 +481,6 @@ describe('Batch Merger — Pure Functions', () => {
         mentions_in_source: ['test'],
         related_concepts: []
       });
-      accumulation.contradictions.push({
-        claim: 'test claim',
-        source_page: 'test.md',
-        contradicted_by: 'source2.md',
-        resolution: 'test resolution'
-      });
       accumulation.relatedPages.push('related1', 'related2');
       accumulation.keyPoints.push('point1', 'point2');
 
@@ -506,7 +499,6 @@ describe('Batch Merger — Pure Functions', () => {
       expect(result.summary).toBe('Test summary');
       expect(result.entities).toHaveLength(1);
       expect(result.concepts).toHaveLength(1);
-      expect(result.contradictions).toHaveLength(1);
       expect(result.related_pages).toHaveLength(2);
       expect(result.key_points).toHaveLength(2);
       expect(result.created_pages).toEqual([]);
@@ -548,24 +540,6 @@ describe('Batch Merger — Pure Functions', () => {
 
       expect(result.source_title).toBe('Title Only');
       expect(result.summary).toBe('');
-    });
-
-    it('uses accumulation contradictions when firstBatchData missing', () => {
-      const accumulation = createEmptyAccumulation();
-      accumulation.contradictions.push({
-        claim: 'test claim',
-        source_page: 'test.md',
-        contradicted_by: 'source2.md',
-        resolution: 'test resolution'
-      });
-
-      const result = buildSourceAnalysis(
-        '/path/to/test.md',
-        'test.md',
-        accumulation
-      );
-
-      expect(result.contradictions).toHaveLength(1);
     });
   });
 

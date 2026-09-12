@@ -673,10 +673,8 @@ export const KO_TEXTS = {
     lintHubLinkDensitySummary: '요약: 제거 권장 {strip}페이지, 검토 권장 {review}페이지.',
     lintHubLinkDensityNoRelated: ' (## Related 섹션을 찾을 수 없음)',
     lintContradictionOpen: '해결되지 않은 모순: {count}개',
-    lintContradictionAutoFixed: '(이번 실행에서 {count}개 자동 수정)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: '감지됨',
-    lintContradictionStatusPendingFix: '수정 대기 중',
 
     // Lint Analysis Prompt
 

@@ -70,8 +70,6 @@ export interface LintPhaseContext {
     getExistingWikiPages: () => Promise<Array<{ path: string }>>;
     tryReadFile: (path: string) => Promise<string | null>;
     getOpenContradictions: () => Promise<Array<{ path: string; status: string; claim: string }>>;
-    resolveContradiction: (path: string) => Promise<void>;
-    updateContradictionStatus: (path: string, status: string) => Promise<void>;
   };
   checkCancelled: () => void;
   stageNotice: {

@@ -44,7 +44,6 @@ function makeAnalysis(fields: {
     summary: 'Cognitive control processes.',
     entities: [{ name: 'Prefrontal Cortex', type: 'place', summary: 'brain region', mentions_in_source: [] }],
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],

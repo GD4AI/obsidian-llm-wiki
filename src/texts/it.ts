@@ -680,10 +680,8 @@ export const IT_TEXTS = {
     lintHubLinkDensitySummary: 'Riepilogo: {strip} pagina/e consigliate per la rimozione, {review} pagina/e consigliate per la revisione.',
     lintHubLinkDensityNoRelated: ' (nessuna sezione ## Related trovata)',
     lintContradictionOpen: 'Contraddizioni aperte: {count}',
-    lintContradictionAutoFixed: '({count} corrette automaticamente in questa esecuzione)',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
     lintContradictionStatusDetected: 'Rilevata',
-    lintContradictionStatusPendingFix: 'Correzione in attesa',
 
     // Prompt di analisi Lint
 

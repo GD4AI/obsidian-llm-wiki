@@ -336,7 +336,7 @@ describe('output-schemas (Phase B expanded scope)', () => {
 
     it('Issue #463: wire schema source_title / summary / key_points / etc remain optional (no scope creep)', async () => {
       // The fix is narrow on purpose. `source_title`, `summary`,
-      // `key_points`, `related_pages`, `contradictions` stay
+      // `key_points`, `related_pages` stay
       // `.optional()` because:
       //   1. `normalizeBatchResponse` does not consult them for
       //      batch-loop validity (only `entities` + `concepts` do).
@@ -355,7 +355,6 @@ describe('output-schemas (Phase B expanded scope)', () => {
       expect(required).not.toContain('summary');
       expect(required).not.toContain('key_points');
       expect(required).not.toContain('related_pages');
-      expect(required).not.toContain('contradictions');
     });
   });
 

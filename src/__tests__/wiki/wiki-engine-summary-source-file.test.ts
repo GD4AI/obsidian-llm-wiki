@@ -28,7 +28,6 @@ function makeAnalysis(): SourceAnalysis {
     summary: 'Signal proteins.',
     entities: [],
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],

@@ -46,7 +46,6 @@ describe('writer and parser share the table', () => {
     summary: '',
     entities: [],
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: ['wiki/entities/Foo'],
@@ -64,7 +63,7 @@ describe('writer and parser share the table', () => {
       readFile: vi.fn().mockResolvedValue(''),
       writeFile: vi.fn(async (_p: string, c: string) => { written = c; }),
     });
-    await writer.appendIngest('ingest', analysis);
+    await writer.appendIngest('ingest', analysis, []);
 
     expect(written).toContain(`**${LOG_LABELS[lang].createdPages}**`);
     expect(written).not.toContain('**Created pages**');

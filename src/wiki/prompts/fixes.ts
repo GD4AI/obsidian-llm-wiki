@@ -63,25 +63,4 @@ Task:
 
 Output JSON format:
 {"related_pages": [{"page_path": "{{wikiFolder}}/entities/xxx.md", "link_text": "One sentence describing this connection", "link_target": "[[entities/orphan-name]]"}], "reason": "Connection rationale"}`,
-
-  resolveContradiction: `You are a Wiki contradiction resolution assistant. Generate a repaired page based on the contradiction record and affected page content.
-
-Affected Page Content:
-{{existing_content}}
-
-Contradiction Record:
-{{contradiction_content}}
-
-Task:
-1. Analyze both sides of the contradiction
-2. Reconcile: preserve correct information, annotate suspected incorrect information
-3. For factual contradictions, choose the more reliable or newer source
-4. For perspective differences, preserve both viewpoints and note the different standpoints
-
-Important Rules:
-- Do NOT delete any existing content
-- Add a "## {{section_resolved_contradictions}}" section at the end of the affected page, explaining the resolution approach and reasoning
-- Keep the overall page structure intact; only adjust contradiction-related parts
-- Output the complete repaired page content (not just the modified parts)
-- Do NOT output any explanatory text; directly output Markdown-formatted page content`,
 };

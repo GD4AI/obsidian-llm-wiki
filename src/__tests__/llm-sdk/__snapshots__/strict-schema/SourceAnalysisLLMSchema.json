@@ -286,36 +286,6 @@
       },
       "type": "array"
     },
-    "contradictions": {
-      "items": {
-        "additionalProperties": false,
-        "properties": {
-          "claim": {
-            "type": "string"
-          },
-          "source_page": {
-            "type": "string"
-          },
-          "contradicted_by": {
-            "type": "string"
-          },
-          "resolution": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "claim",
-          "source_page",
-          "contradicted_by",
-          "resolution"
-        ],
-        "type": "object"
-      },
-      "type": [
-        "array",
-        "null"
-      ]
-    },
     "related_pages": {
       "items": {
         "type": "string"
@@ -340,7 +310,6 @@
     "summary",
     "entities",
     "concepts",
-    "contradictions",
     "related_pages",
     "key_points"
   ],
