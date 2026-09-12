@@ -113,6 +113,32 @@ Deterministic-related-lists + dependency-security root fix, the final wave befor
 
 3993 tests (Gate 1 green). #636 closes #635; #637 closes 8 Dependabot alerts (open=0). v1.27.1 release notes carry both.
 
+### Shipped into v1.27.x PATCH — wave E (2026-09-10 → 09-12, 17 PRs, main `6b543bf`)
+
+Post-v1.27.1 correctness wave: @DocTpoint's issue→PR pairs (each bug filed with measurements, then fixed with tests in the same window), @Jan-Heldal's first two PRs, and dependency/CI hygiene. All review-approved (`gh pr review` event precedes every `gh pr merge`) and squash-merged; 3993 → **4115 tests**.
+
+| PR | Issue | What | Class |
+|----|-------|------|-------|
+| **#645** | #644 | sibling edges only rescue an orphan, capped at `SIBLING_CAP = 3` — 8562 of 8673 live edges were siblings, cliques up to 20 pages/note | graph-integrity |
+| **#647** | #646 | `withAbortSignal` Proxy puts the engine's cancel on every model call + `checkCancelled()` at the write gate — cancel only reached `convertPdfToMarkdown` before, so #583's cleanup could be skipped | correctness |
+| **#649** | #648 | `mergeFrontmatter` skips empty `sources:` entries — a bare `sources:` line became a stray `[[]]` | hygiene |
+| **#651** | #650 | create path drops model-invented `sources:` before stamping the true one (5 of 8 "multi-source" pages named a note that does not exist) | data-correctness |
+| **#660** | #659 | Related sections rendered after a complementary append, gated by a cheap `relatedListLines` string compare | content-loss |
+| **#663** | #661 | a name below `MIN_DEDUP_NAME_LENGTH` (3, Latin/Greek/Cyrillic only) is created, not asked about — `Cr` was merged into `Kreatinin` | correctness |
+| **#654** | #593 | schema diff modal builds cells on the parent Element — a `Document` holds one child, so the second cell threw `HierarchyRequestError` | **P0 UI** |
+| **#655** | #594 | schema-suggestion prompt reads as a proposal, not as already applied | prompt |
+| **#671** | #670 | alias floor reaches the third writer (`createSummaryPage`); also fixes a latent `replaceFrontmatterArrayField` blank-line seam | data-correctness |
+| **#680** | #679 | `source_file` / `source_path` set from the code, never the model's copy (1 of 103 pages, 8 of 2334 mention lines were dead links **and** wrong ownership answers) | data-correctness |
+| **#675** | #674 | `appendAliases` folds case against the page's own list — the one comparison that did not | hygiene |
+| **#683** | #682 | one-token JSON defects repaired locally before spending a model call (198 of 3893 responses reached repair; 11 hit the 32,767-token cap at ~8 min each) | perf / cost |
+| **#685** | #667 | one `core/log-labels.ts` table read by writer **and** parser — closes `zh-Hant`/`it`/`ru` English fallback plus a second drift site in the Operation History parser | i18n |
+| **#686** | #658 | `json_schema_strict` negotiated tier — strict OpenAI-compatible endpoints rejected `FixDeadLinkSchema` (all four properties optional); 12 of 17 schemas carry optional fields | interop |
+| **#638** | — | `actions/setup-node` 4 → 7 | CI |
+| **#642** | — | `yaml` 2.8.3 → 2.9.0 | deps |
+| **#652** | — | `vitest` 4.1.10 → 5.0.0, verified locally in an isolated worktree (4028/284 identical to the v4 baseline; the one `ENOENT: main.js` failure was the documented build-before-test ordering, not a v5 regression) | deps |
+
+Issues auto-closed by their PRs: #593 #594 #644 #646 #648 #650 #659 #661. Gate 1 green at `6b543bf`.
+
 ### Shipped into v1.27.x PATCH — wave B (2026-09-04, 9 PRs, main `8feb5fd`)
 
 DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one pass (09-04):
@@ -147,6 +173,14 @@ DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one 
 
 **Removed from backlog as shipped (wave A/B):** #543 (PR #571) · #542-adjacent repetition-loop (PR #572) · #595/#598/#601/#588/#590/#605/#609/#611/#613/#614/#617/#620 (all closed by PRs #596/#600/#602/#589/#591/#606/#610/#612/#615/#616/#618/#621)
 
+**Removed from backlog as shipped (wave E):** #542 (PR #572) · #593/#594 (PRs #654/#655, Jan-Heldal series)
+
+**Re-homed off the PATCH backlog:** #603 / #604 → `v1.28.0 MINOR`. Both are design calls, not patch-shaped, and #604's fix (#684) closes it from the PATCH side — see the milestone reconciliation in the ROI board below.
+
+**Stale rows to read with care:** row 7's #407 was closed on `v1.26.x PATCH`; rows 8–9 name merged PRs (#528, #539) whose *follow-up items* are the open work, not the PRs themselves.
+
+**The ROI board below is the single source for milestone-scoped remaining work.** This table is the wider backlog, including items that carry no milestone.
+
 ### Recently shipped into v1.27.x PATCH (2026-08-27, pre-triage batch)
 
 | PR | Issue | What | Why |
@@ -168,14 +202,37 @@ DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one 
 - **#479** Coverage measurement denominator — "no edge" readability (DocTpoint, 2026-08-18): 30.1% omission rate measured; on `v1.27.0+ research` milestone 2026-08-28; reopen when LLM-side probe ready
 - **#480** "PPR ≈ kNN" is a property of co-occurrence edges — depends on typed relations #285 emitting before re-test meaningful; on `v1.27.0+ research` milestone 2026-08-28
 
-### Recommended cycle cadence (updated 2026-09-04)
+### ROI board — remaining v1.27.x PATCH work (2026-09-12)
 
-| Phase | Items | ETA |
-|-------|-------|-----|
-| **Next** (design) | decide #603/#604 + #567 contract + Jan-Heldal PRs + #542/#407-Stage-2 | ~1-2 days |
-| **Mid PATCH** (community + consolidation) | Jan-Heldal #592/#593/#594/#597 PRs (if submitted) + #542 + first PR of #407 Stage 2 + #539 follow-ups | ~3 days |
-| **Late PATCH** (research-grade) | #528 type-repair chunking + #521 zh/ja measurement | ~5 days |
-| **Future MINOR** (v1.28.0, not yet a milestone) | #608 image-embed ingest + #317/#326/#295 design-track | — |
+**Supersedes the 2026-09-04 cadence.** 18 open items in the milestone; zero are merge-ready today, which is the single most useful fact about this board. ROI = user value × probability of landing soon ÷ (remaining effort).
+
+**Tier 1 — unblock, then merge (work ~90 % done; only a mechanical action remains).** Highest ROI on the board: the code and tests already exist, CI is green on all three, and each has a conflict resolution written out on the PR.
+
+| # | Item | Why it matters | Remaining work | Owner |
+|---|------|----------------|----------------|-------|
+| 1 | **#673** (PR) → closes #672 | 7.6 % of pages born tagless (69/903); prompt offered one vocabulary, write gate enforced another | rebase `wiki-engine.ts` — import union + take the author's comment (both hunks specified) | DocTpoint |
+| 2 | **#684** (PR) → closes #604 + #666 | removes the contradiction requirement the prompt cannot answer, and the `review_ok` loop nothing feeds. Zero-reference trace run by maintainer: 6 deleted symbols at 0 refs, `review_ok` only in comments; `page-factory/` untouched so detection survives | rebase `log-writer.ts` — keep `getLogLabels`, add `ContradictionInfo`, drop stale-base `TEXTS` | DocTpoint |
+| 3 | **#681** (PR) → completes #679/#680 | source-page head from the code (21 of 105 titles were paths the model copied back, all on notes without an H1) | rebase `wiki-engine.ts` — keep **both** lines, upsert before stamp | DocTpoint |
+| 4 | **#653** (PR) → closes #592 | dead-link repair discards author-written aliases — data-destroying on user text | 3 review items + rebase (test file was moved by #634) | Jan-Heldal |
+| 5 | **#656** (PR) → closes #597 | `config.md` audit trail never updated on Apply | 3 review items (`upsertFrontmatterField`, `updated` semantics, `localDateStamp`) | Jan-Heldal |
+
+**Tier 2 — start now, no external dependency.** Best ROI per unit of *maintainer* effort, because none of these waits on a contributor.
+
+| # | Item | Why it matters | Remaining work |
+|---|------|----------------|----------------|
+| 6 | **#688** | status bar stuck after Skip/Cancel until restart, Notice also undismissed | **root cause located**: the Skip path returns at `wiki-engine.ts:972`, above the main `try/finally` at `:1605` that calls `onIngestionEnd`. Small — move the teardown to cover the early return |
+| 7 | **#678** | every stub Fix Dead Links creates is never collected — `STUB_MARKER` is `'Auto-generated stub page'` while `fix-dead-link.ts:95` writes a different sentence, so `isPageEmpty` is always false | needs a dedicated predicate, **not** a constant update (`isPageEmpty` is read beyond stub collection) |
+| 8 | **#657** | README's GDPR claim is scoped to the model path only; `native` sends the PDF to a US provider, `mineru` to Aliyun with no published retention statement | docs only — the cheap half; EU-hosted OCR stays a roadmap entry |
+| 9 | **#676** | Fix Dead Links can resolve a dead link to the page it lives on, turning a known gap into a false "resolved" (24 pages / 27 list items measured) | needs a minimal reproduction first; **shares `fix-dead-link.ts` with #653**, so land them together |
+| 10 | **#665** | Codex browser sign-in fails ("Failed to fetch dynamically imported module") for a community user | blocked on reporter diagnostics; note the existing test only asserts the *bundle shape* and never executes the dynamic import — a real coverage hole at the failing line |
+
+**Tier 3 — reconcile the milestone, not the code.**
+
+- **#604** sits on `v1.28.0 MINOR` while its fix **#684** sits on `v1.27.x PATCH`. An issue and the PR that closes it must ship in the same window — move #604 to `v1.27.x PATCH` when #684 lands, or move #684 with it.
+- **#467 / #468 / #568** are enhancements/refactors parked in a PATCH milestone (created 2026-08-15 / 08-27). They are not patch-shaped; re-home to `v1.28.0 MINOR` rather than carrying them through another PATCH.
+- **#567** is a real bug but needs a contract decision (ceiling-only vs denominator coupling) before it is patch-shaped.
+
+**Sequencing constraint worth stating once:** #653 and #676 both edit `fix-dead-link.ts`, and #592's fix has already been reviewed on #653. Landing them in one pass avoids editing the same function twice and re-reviewing the alias logic.
 
 ### Triage discipline notes (post-triage 2026-08-28)
 
