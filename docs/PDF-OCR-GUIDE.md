@@ -1,10 +1,27 @@
 # 📄 PDF Ingest & OCR Guide
 
-**Last updated:** 2026-08-27
+**Last updated:** 2026-09-12
 
 The Karpathy LLM Wiki plugin ingests documents through four paths that share the same Markdown output cache — what differs is **what runs the model**. The plugin can (a) send a PDF straight to a cloud provider's `/v1/chat/completions` or `/v1/messages` (Anthropic) endpoint as a file part, (b) route PDF / images / Office documents through the **built-in MinerU backend** (v1.27.0+, no extra setup), (c) run a fully local pipeline on Apple Silicon via [oMLX](https://github.com/jundot/omlx) + Markitdown, or (d) accept Markdown converted elsewhere (MinerU's online extractor for users who prefer a UI over an API token) as a regular text source. This page covers all four paths in the order: simplest → most flexible.
 
 > 📖 Quick setup walkthroughs are in the [README → PDF ingest](../README.md#-pdf-ingest-v1250-mineru-backend-v1270) section. This page is the long form.
+
+---
+
+## 🌍 Where your document is processed
+
+The plugin runs no server of its own, but the paths above do not all send your file to the same place — and one of them is not a place you choose. This table is the whole answer; the sections below cover how to pick a path.
+
+| Path | What happens to the file |
+|------|--------------------------|
+| **Cloud provider, native PDF** | The PDF bytes are read from your vault and sent as a *file part* to the chat provider **you configured** — Anthropic, OpenAI, Google, or AWS Bedrock. It is processed in that provider's region: **the United States by default** for Anthropic, OpenAI and Google, and **the region you configured** for Bedrock, where `eu-central-1` (Frankfurt) serves the same models. OpenAI also offers EU data residency for API customers on request. |
+| **Built-in MinerU backend** | The document is uploaded to `https://mineru.net/api/v4`, operated by OpenDataLab (Shanghai AI Lab) on Aliyun infrastructure. |
+| **Local OCR** (oMLX + Markitdown on Apple Silicon) | Nothing leaves your machine. This is the only path where the document never crosses a network boundary. |
+| **Markdown from elsewhere** | The plugin sees only the text you hand it; whatever produced that Markdown is outside its scope. |
+
+**MinerU's retention terms.** `mineru.net` publishes API documentation but no privacy policy, retention statement, or data-processing agreement that we were able to find. Until a self-hosted endpoint ships ([Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404)), treat an upload there as leaving your control.
+
+**The provider path is yours to choose, and that is the point.** The plugin never picks a provider on its own — it sends the file to whichever one you configured, under your account and their terms. If your documents are legal, medical, or otherwise jurisdiction-bound, use local OCR, or the cloud path with a provider you already hold a DPA with.
 
 ---
 
@@ -66,7 +83,9 @@ If you only ingest plain-text PDFs and care most about cost, **cloud providers w
 
 ### Privacy-sensitive users: self-host MinerU
 
-If you can't send documents to the MinerU cloud, deploy MinerU yourself per the [MinerU GitHub repository](https://github.com/opendatalab/mineru) and point the plugin at the self-hosted endpoint (env var override at the `karpathywiki-mineru-base-url` SecretStorage key). v1.27.0 ships the cloud path; self-host endpoint is a planned follow-up — see [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404) for roadmap status.
+The plugin does **not** currently support a self-hosted MinerU endpoint. The base URL is fixed at `https://mineru.net/api/v4` (`MINERU_API_BASE_URL` in `src/constants.ts`) and no setting or secret overrides it, so deploying MinerU yourself is not a path you can take today. It is tracked as [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404).
+
+Until it lands, the two options that keep a document under your control are **local OCR** (oMLX + Markitdown on Apple Silicon) and the **cloud provider path** against a provider you hold terms with — both described above, and compared per path in [Where your document is processed](#-where-your-document-is-processed).
 
 ---
 
@@ -166,4 +185,4 @@ Turn on **Write PDF Markdown to Vault** in Settings → Wiki Configuration → W
 | Linux/Windows with consumer GPU | Local llama.cpp multimodal + Force PDF Support |
 
 The plugin handles all paths identically. The local-vs-cloud-vs-MinerU-vs-third-party decision is just which `Base URL` you point at, which backend setting you flip, or which `.md` files you ingest from your vault.
-**Last updated:** 2026-08-27 — added Built-in MinerU backend (v1.27.0+, #404) covering PDF + images + Office ingest through one backend setting; updated path-decision table to surface MinerU as a first-class option; reordered the four ingest paths to surface the simplest option first.
+**Last updated:** 2026-09-12 — added *Where your document is processed* (per-path residency: the provider's **region** on the native path — US by default for Anthropic, OpenAI and Google, the region you configured for Bedrock, and EU residency available from OpenAI; `mineru.net` on the MinerU path and its missing retention statement; and the one fully local path); corrected the self-host MinerU note, which pointed at a `karpathywiki-mineru-base-url` SecretStorage key that does not exist in the source. (2026-08-27: Built-in MinerU backend added with #404; path-decision table updated; four ingest paths reordered simplest-first.)
