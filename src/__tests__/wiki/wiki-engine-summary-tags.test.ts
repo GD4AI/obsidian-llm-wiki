@@ -41,7 +41,6 @@ function makeAnalysis(): SourceAnalysis {
       { name: 'Jnana Yoga', type: 'philosophy', summary: 'path of knowledge', mentions_in_source: [] },
       { name: 'Karma Yoga', type: 'philosophy', summary: 'path of action', mentions_in_source: [] },
     ],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],

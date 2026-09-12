@@ -35,7 +35,6 @@ function analysis(): SourceAnalysis {
     summary: 'Signalproteine.',
     entities: [],
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],

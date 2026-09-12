@@ -28,7 +28,6 @@ const ANALYSIS_RESPONSE = JSON.stringify({
   summary: 'Acceptance and Commitment Therapy.',
   entities: [{ name: 'Steven Hayes', type: 'person', summary: 'founder', mentions_in_source: [] }],
   concepts: [{ name: 'Psychological Flexibility', summary: 'core construct', mentions_in_source: [] }],
-  contradictions: [],
   related_pages: [],
   key_points: [],
 });

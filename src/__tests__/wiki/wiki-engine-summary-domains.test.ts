@@ -31,7 +31,6 @@ function makeAnalysis(): SourceAnalysis {
     summary: 'Iron store.',
     entities: [],
     concepts: [],
-    contradictions: [],
     related_pages: [],
     key_points: [],
     created_pages: [],
