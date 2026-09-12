@@ -144,6 +144,35 @@ auto-close. Squash-merge must preserve the keyword in the squash commit
 body. Verified 2026-08-07: the v1.26.0 MINOR batch had 5 state-drift issues
 because PRs #401/#406/#410/#411 used non-closing keywords.
 
+**The inverse hazard — a keyword in prose closes a PR (2026-09-12):** the
+keyword does not have to be deliberate and it does not have to aim at an
+issue. PR #689's body described the milestone in prose:
+
+> #604 sits on `v1.28.0 MINOR` while its **fix #684** sits on the PATCH line
+
+GitHub parsed `fix #684` as a closing directive ⇒ merging #689 **closed PR
+#684** one second after it landed. `ClosedEvent.closer` = PullRequest #689;
+the author had not touched it, and the ROI board merged in that same PR
+listed #684 as its second unblock-first item. A closed PR reads to the
+contributor as *rejected*. Rules that follow:
+
+- Never let `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` sit immediately
+  before `#N` in prose. Write "the fix for #604 is PR #684" — the article
+  breaks the match — or just "PR #684".
+- **The target decides the damage.** A keyword aimed at an issue closes the
+  issue (intended). Aimed at a PR it closes the PR.
+- **Before merging, scan the title + body and confirm every hit is an issue
+  you mean to close:**
+  `gh pr view <N> --json title,body --jq '.title, .body' | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'`
+  Open PRs at the time of writing are clean — the other matches
+  (`Fixes #592` / `#597` / `#672` / `#666` / `#688` / `#678` / `#657`) all
+  point at issues.
+- **Recover with `gh pr reopen <N>`**, and read the closer before assuming
+  the mechanism: a `closed` event carries `commit_id` when a commit message
+  did it, and leaves it empty for an API/PR-level close. This one was
+  `actor=green-dalii, commit=-`, which ruled out a commit keyword and pointed
+  at the merge that had happened one second earlier.
+
 ---
 
 ## Key design decisions (canonical references)
