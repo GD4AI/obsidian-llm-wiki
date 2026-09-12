@@ -12,11 +12,16 @@
 //
 // Frontmatter handling: we keep the existing frontmatter (date/version),
 // only the body changes. This way, every apply leaves an audit trail in
-// the frontmatter (updated: <today>, auto_suggestion_count: N) without
-// the LLM having to know anything about frontmatter format.
+// the frontmatter: `updated:` is always the apply-time local date,
+// `auto_suggestion_count:` increments by 1, and `applied_suggestion:` (when
+// the suggestion's own timestamp is known) records that raw UTC ISO
+// timestamp verbatim — without the LLM having to know anything about
+// frontmatter format.
 
 import { App, TFile } from 'obsidian';
 import { backupFilename, rotateBackups } from '../core/backup-rotation';
+import { upsertFrontmatterField, parseFrontmatter } from '../core/frontmatter';
+import { localDateStamp } from '../core/format';
 
 export interface ApplySchemaSuggestionParams {
   app: App;
@@ -24,6 +29,10 @@ export interface ApplySchemaSuggestionParams {
   newBody: string;
   /** Override Date.now() for deterministic tests. */
   now?: () => Date;
+  /**
+   * The exact timestamp string already written to the corresponding suggestions.md entry (`SchemaSuggestion.timestamp`, stamped when the LLM generated the proposal — not when the user clicks Apply, which can be arbitrarily later). When given, `bumpSchemaMetadata` writes this verbatim to a new `applied_suggestion:` field, so the two files can be cross-referenced by an exact string match. `updated:` is unaffected by this value either way — it is always the apply-time local date. Omitted entirely (no `applied_suggestion:` field at all) when this is not given (e.g. existing callers/tests with no suggestion object in scope).
+   */
+  suggestionTimestamp?: string;
   /** Called once after a successful write so the SchemaManager can drop
    *  its in-memory cache (the next loadSchema() will return the new body). */
   onCacheInvalidate?: () => void;
@@ -36,7 +45,7 @@ export type ApplySchemaResult =
 export async function applySchemaSuggestion(
   params: ApplySchemaSuggestionParams
 ): Promise<ApplySchemaResult> {
-  const { app, currentPath, newBody, onCacheInvalidate } = params;
+  const { app, currentPath, newBody, suggestionTimestamp, onCacheInvalidate } = params;
   const now = params.now ?? (() => new Date());
   const file = app.vault.getAbstractFileByPath(currentPath);
   if (!(file instanceof TFile)) {
@@ -79,8 +88,9 @@ export async function applySchemaSuggestion(
     if (f instanceof TFile) await app.fileManager.trashFile(f);
   }
 
-  // 4. Write the new body, preserving the existing frontmatter
-  const newContent = spliceBody(originalContent, newBody);
+  // 4. Write the new body, preserving the existing frontmatter, then bump the audit-trail fields separately — spliceBody keeps the frontmatter verbatim, it doesn't touch `updated`/`auto_suggestion_count`/`applied_suggestion`.
+  const splicedContent = spliceBody(originalContent, newBody);
+  const newContent = bumpSchemaMetadata(splicedContent, now(), suggestionTimestamp);
   await app.vault.modify(file, newContent);
 
   // 5. Notify the cache to drop
@@ -111,4 +121,31 @@ export function spliceBody(originalContent: string, newBody: string): string {
   const frontmatter = originalContent.substring(0, end + 3);
   // Ensure exactly one blank line between frontmatter and body
   return `${frontmatter}\n\n${newBody}`;
+}
+
+/**
+ * Bumps the three audit-trail fields in the frontmatter block, in place;
+ * leaves every other line (including `version` and any user-added field)
+ * untouched:
+ *   - `updated:` is always `localDateStamp(now)` — the apply-time LOCAL
+ *     calendar date, regardless of whether `suggestionTimestamp` is given.
+ *   - `auto_suggestion_count:` always increments by 1.
+ *   - `applied_suggestion:` is written verbatim from `suggestionTimestamp`
+ *     (a raw UTC ISO string, unchanged — it must exact-string-match the
+ *     corresponding wiki/schema/suggestions.md log entry) only when given;
+ *     omitted entirely otherwise.
+ * A no-op on content with no frontmatter or an unterminated one.
+ */
+export function bumpSchemaMetadata(content: string, now: Date, suggestionTimestamp?: string): string {
+  const fm = parseFrontmatter(content);
+  if (!fm) return content;
+
+  const nextCount = (parseInt(String(fm.auto_suggestion_count ?? '0'), 10) || 0) + 1;
+
+  let next = upsertFrontmatterField(content, 'updated', localDateStamp(now));
+  next = upsertFrontmatterField(next, 'auto_suggestion_count', String(nextCount));
+  if (suggestionTimestamp) {
+    next = upsertFrontmatterField(next, 'applied_suggestion', suggestionTimestamp);
+  }
+  return next;
 }
