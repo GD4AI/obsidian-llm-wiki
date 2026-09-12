@@ -59,7 +59,13 @@ import { classifyFieldError } from './shared-rejection-verbs';
  * with Tier N's rejection demotes to Tier N+1. The order is encoded in
  * the literal union (kept in sync with the prober's demotion chain).
  */
-export type OutputMode = 'json_schema' | 'json_object' | 'text_prompt';
+// Issue #658: `json_schema_strict` sits between `json_schema` and
+// `json_object`. It is the same wire shape with the schema rewritten into the
+// strict structured-output dialect (`strict-schema.ts`); a backend reaches it
+// only by rejecting the plain schema with a strict-mode complaint, so
+// backends that accept today's body never see it. Task policies can pin it
+// (`extract=strict:off`).
+export type OutputMode = 'json_schema' | 'json_schema_strict' | 'json_object' | 'text_prompt';
 
 /**
  * Field markers for the Tier 1 demotion classifier (json_object /
@@ -87,6 +93,25 @@ const JSON_SCHEMA_FIELD_MARKERS = [
   'json-schema',
   'response_format.json_schema',
   'response-format.json-schema',
+] as const;
+
+/**
+ * Issue #658: phrases a strict structured-output validator emits when the
+ * schema itself is accepted but its dialect is not — `required` missing a
+ * property, `additionalProperties` not `false`. Verbatim from the endpoint in
+ * #658: `Invalid schema for response_format 'response': In context=(),
+ * 'required' is required to be supplied and to be an array including every
+ * key in properties. Missing 'action'.` No rejection verb from
+ * `REJECTION_VERBS` appears in it, so this classifier matches on the phrase
+ * alone; the phrases are specific enough not to collide with a field
+ * rejection (`json_schema` unsupported → Tier 1) or an unrelated 400.
+ */
+const STRICT_SCHEMA_MARKERS = [
+  'required to be supplied',
+  "'required' is required",
+  'must be required',
+  'additionalproperties',
+  'invalid schema for response_format',
 ] as const;
 
 export class OutputModeProber {
@@ -142,6 +167,12 @@ export class OutputModeProber {
    * IMPORTANT — input MUST be the response body, not the APICallError
    * message (same contract as isJsonSchemaFieldError above).
    */
+  /** Issue #658: the plain schema was accepted as a field but rejected as a dialect. */
+  static isStrictSchemaRejection(body: string): boolean {
+    const lower = body.toLowerCase();
+    return STRICT_SCHEMA_MARKERS.some((m) => lower.includes(m));
+  }
+
   static isJsonObjectFieldError(body: string): boolean {
     return classifyFieldError(body, JSON_OBJECT_FIELD_MARKERS);
   }

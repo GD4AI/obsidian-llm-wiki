@@ -80,8 +80,10 @@
 //   });
 
 import { jsonSchema, Output, zodSchema } from 'ai';
+import type { Schema } from 'ai';
 import type { z } from 'zod';
 import type { OutputMode } from './output-mode-prober';
+import { strictSchemaFor } from './strict-schema';
 
 /**
  * v1.26.3 PATCH simplify round: Output.json() is a no-arg factory that
@@ -142,6 +144,8 @@ export interface ResponseFormatWithSchema {
  * |-----------------|--------------|---------------------------------------------|
  * | undefined       | any          | `{}` (caller has no JSON intent)            |
  * | {schema}        | json_schema  | `{output: Output.object({schema, name})}`   |
+ * | {schema}        | json_schema_strict | same, schema rewritten into the strict |
+ * |                 |              | dialect (Issue #658, `strict-schema.ts`)    |
  * | {no schema}     | json_schema  | `{output: Output.json()}` (fallback — no    |
  * |                 |              | schema to constrain; SDK encodes json_object)|
  * | any             | json_object  | `{output: Output.json()}` (schema silently  |
@@ -203,8 +207,12 @@ export function buildOutputArgs(
   // via `zodSchema()`; a raw JSON Schema (legacy callers) via
   // `jsonSchema()`. Both return a `Schema` the AI SDK accepts on
   // `Output.object`. `isZodSchema` narrows the union.
-  const adapted = isZodSchema(schema)
-    ? zodSchema(schema)
-    : jsonSchema(schema);
+  const adapt = (): Schema => (isZodSchema(schema) ? zodSchema(schema) : jsonSchema(schema));
+  // Issue #658: at the strict tier the schema is rewritten into the strict
+  // structured-output dialect — once per schema object, regardless of which
+  // adapter produced it; see `strict-schema.ts` for what changes and why the
+  // validator is wrapped alongside. The plain tier sends the adapter's own
+  // body, so a backend that accepts it (measured: LM Studio) is unaffected.
+  const adapted = mode === 'json_schema_strict' ? strictSchemaFor(schema, adapt) : adapt();
   return { output: Output.object({ schema: adapted, name }) };
 }

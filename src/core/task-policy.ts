@@ -122,6 +122,8 @@ const MODE_ALIASES: Readonly<Record<string, TaskOutputMode>> = {
   'default': 'default',
   'schema': 'json_schema',
   'json_schema': 'json_schema',
+  'strict': 'json_schema_strict',
+  'json_schema_strict': 'json_schema_strict',
   'json': 'json_object',
   'json_object': 'json_object',
   'text': 'text_prompt',
