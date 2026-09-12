@@ -181,6 +181,48 @@ describe('appendAliases — cross-page uniqueness gate', () => {
   });
 });
 
+// The page's own aliases are the one list compared byte-exactly.
+//
+// `filterRedundantAliases` folds case for all three of its rules, and the
+// cross-page gate above is pinned as case-insensitive. The dedup against the
+// aliases already on THIS page is a plain `Array.includes`, so a candidate
+// that differs from an existing entry only in case passes both stages and
+// lands on the page next to it.
+//
+// Measured over 802 entity/concept pages: 3 carry such a pair — "NAC"/"NAc",
+// "obstruktive Schlafapnoe"/"Obstruktive Schlafapnoe", "sustained
+// attention"/"Sustained Attention".
+describe('appendAliases — dedup against the page\'s own aliases', () => {
+  it('does not add an alias that differs from an existing one only in case', async () => {
+    const ctx = makeContext({ [PAGE]: makePage(['NAC']) });
+    await appendAliases(ctx, PAGE, ['NAc']);
+    expect(ctx.written.get(PAGE)!).toBe(makePage(['NAC']));
+  });
+
+  it('matches the own-page list with the same fold the cross-page gate uses', async () => {
+    const ctx = makeContext({ [PAGE]: makePage(['sustained attention']) });
+    await appendAliases(ctx, PAGE, ['Sustained Attention', 'Wachheit']);
+    const written = ctx.written.get(PAGE)!;
+    expect(written).toContain('  - "Wachheit"');
+    expect(written).not.toContain('  - "Sustained Attention"');
+  });
+
+  it('keeps the spelling already on the page, not the incoming one', async () => {
+    const ctx = makeContext({ [PAGE]: makePage(['Obstruktive Schlafapnoe']) });
+    await appendAliases(ctx, PAGE, ['obstruktive Schlafapnoe']);
+    expect(ctx.written.get(PAGE)!).toContain('  - "Obstruktive Schlafapnoe"');
+    expect(ctx.written.get(PAGE)!).not.toContain('  - "obstruktive Schlafapnoe"');
+  });
+
+  it('still drops a batch-internal case variant (unchanged behaviour)', async () => {
+    const ctx = makeContext({ [PAGE]: makePage(['existing']) });
+    await appendAliases(ctx, PAGE, ['Wachheit', 'wachheit']);
+    const written = ctx.written.get(PAGE)!;
+    expect(written).toContain('  - "Wachheit"');
+    expect(written).not.toContain('  - "wachheit"');
+  });
+});
+
 describe('aliasClaimsFromPages', () => {
   const pages = [
     { path: 'wiki/entities/a.md', title: 'Alpha', aliases: ['A-Zeichen', ''] },
