@@ -914,7 +914,7 @@ export interface LLMClient {
   }): Promise<{
     text: string;
     output?: T;
-    outputMode: 'json_schema' | 'json_object' | 'text_prompt';
+    outputMode: 'json_schema' | 'json_schema_strict' | 'json_object' | 'text_prompt';
     finishReason: LLMFinishReason;
     usage?: LLMUsage;
   }>;

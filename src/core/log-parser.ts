@@ -26,6 +26,8 @@
 // Operation kinds are inferred from the H2 text (no separate marker field), so
 // the parser must be tolerant: if it can't classify, it falls back to 'other'.
 
+import { logLabelLineRe } from './log-labels';
+
 /** Ingest-specific metadata parsed from the H2 line suffix. */
 export interface IngestMetrics {
   /** Ingest duration in seconds (HH:MM timestamp in H2 also drives `date`+`time`). */
@@ -150,8 +152,11 @@ export type LogEntry = {
 // ── Regex patterns ───────────────────────────────────────────────
 
 const H2_RE = /^## \[([0-9]{4}-[0-9]{2}-[0-9]{2})(?: ([0-9]{2}:[0-9]{2}))?\] (.+)$/;
-const CREATED_RE = /^\*\*(?:Created pages|创建页面|作成ページ|생성 페이지|Erstellte Seiten|Pages créées|Páginas criadas|Páginas criadas|Pagine create)\*\*[：:]\s*(.*)$/;
-const UPDATED_RE = /^\*\*(?:Updated pages|更新页面|更新ページ|업데이트 페이지|Aktualisierte Seiten|Pages mises à jour|Páginas actualizadas|Páginas atualizadas|Pagine aggiornate)\*\*[：:]\s*(.*)$/;
+// Built from the writer's own table, so a language the writer can produce
+// is one the parser reads. The hand-typed alternation that stood here had
+// lost Spanish (`Páginas creadas`) and never gained ru or zh-Hant (#667).
+const CREATED_RE = logLabelLineRe('createdPages');
+const UPDATED_RE = logLabelLineRe('updatedPages');
 const BLOCKQUOTE_RE = /^>\s?(.*)$/;
 const H3_SECTION_RE = /^###\s+(.+)$/;
 const BULLET_RE = /^\s*[-*+]\s+(.+)$/;

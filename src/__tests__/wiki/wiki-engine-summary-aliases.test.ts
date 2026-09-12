@@ -75,12 +75,17 @@ function harnessFor(extraFiles: Record<string, string> = {}) {
 
 describe('WikiEngine.createSummaryPage — Issue #185 aliases propagation', () => {
   it('appends source-note aliases to the generated sources/<slug> page frontmatter', async () => {
+    // 'exekutive Funktionen' is deliberately absent from the expectation:
+    // it differs from 'Exekutive Funktionen' by case only, and both readers
+    // of this pool compare case-folded (fix-dead-link.ts:264
+    // `a.toLowerCase()` / `slugify(a).toLowerCase()`, scanners.ts:146
+    // `knownTargetsLower`). Carrying both retargets nothing extra and only
+    // widens the alias line in the fix-dead-link prompt. Pinned below.
     const curatedAliases = [
       'Exekutive Funktionen',
       'Executive Function',
       'Exekutiv Funktionen',
       'Exekutiven Funktionen',
-      'exekutive Funktionen',
     ];
     const h = harnessFor();
 
@@ -103,6 +108,19 @@ describe('WikiEngine.createSummaryPage — Issue #185 aliases propagation', () =
     for (const a of curatedAliases) {
       expect((fm.aliases as string[])).toContain(a);
     }
+  });
+
+  it('keeps one of two aliases that differ by case only', async () => {
+    const h = harnessFor();
+    const writtenPath: string = await h.engine.createSummaryPage(
+      sourceFile(),
+      makeAnalysis(['Exekutive Funktionen', 'exekutive Funktionen']),
+      [],
+    );
+    const fm = parseFrontmatter(h.files.get(writtenPath)!) ?? {};
+    const aliases = (fm.aliases ?? []) as string[];
+    expect(aliases).toContain('Exekutive Funktionen');
+    expect(aliases).not.toContain('exekutive Funktionen');
   });
 
   it('skips injection when the source note has no frontmatter aliases (no regression)', async () => {
@@ -160,5 +178,102 @@ Existing summary.
     ]);
     // No duplicates
     expect(new Set(aliases).size).toBe(aliases.length);
+  });
+});
+
+// The floor the other two writers of `aliases:` already apply.
+//
+// `resolveMinAliasLength`'s own doc comment names two writers — the append
+// path in page-factory/aliases.ts and `enforceFrontmatterConstraints` on the
+// create path — and exists so both resolve the same floor from the same
+// place. `createSummaryPage` is a third writer of the same field and applies
+// no floor at all: the model's `aliases:` reach disk verbatim and the curated
+// note aliases are merged on top of them unfiltered.
+//
+// Measured on a 131-page sources/ folder (288 aliases): 2 below a configured
+// floor of 3 ("MD", "IR"), 1 that only differs from the page name by case
+// ("ARNi" on ARNI.md). The same vault's 757 entity/concept pages (965
+// aliases) carry none of either — that is the difference this fix removes.
+describe('WikiEngine.createSummaryPage — the alias floor the create path applies', () => {
+  // createSummaryPage issues exactly one model call, so this is the response
+  // it consumes. The summary path expects markdown, not JSON.
+  const SUMMARY_PAGE = `---
+type: source
+source_file: "[[${SOURCE_NOTE_PATH}]]"
+tags:
+  - "other"
+generation_complete: true
+aliases:
+  - "Executive Function"
+  - "EF"
+  - "Exekutive-Funktionen"
+---
+
+# Exekutive Funktionen - Summary
+
+## Zusammenfassung
+
+Kognitive Kontrolle.
+`;
+
+  function harnessWithModelAliases() {
+    return createWikiEngineHarness({
+      files: { [SOURCE_NOTE_PATH]: SAMPLE_BODY },
+      llmResponses: [SUMMARY_PAGE],
+      settings: { minAliasLength: 3 },
+    });
+  }
+
+  async function aliasesOnDisk(noteAliases: string[]) {
+    const h = harnessWithModelAliases();
+    const writtenPath: string = await h.engine.createSummaryPage(sourceFile(), makeAnalysis(noteAliases), []);
+    const fm = parseFrontmatter(h.files.get(writtenPath)!) ?? {};
+    return (fm.aliases ?? []) as string[];
+  }
+
+  it('drops a model-written alias shorter than the configured floor', async () => {
+    const aliases = await aliasesOnDisk([]);
+    expect(aliases).toContain('Executive Function');
+    expect(aliases).not.toContain('EF');
+  });
+
+  it('drops a model-written alias that only differs from the page name by case', async () => {
+    const aliases = await aliasesOnDisk([]);
+    expect(aliases).not.toContain('Exekutive-Funktionen');
+  });
+
+  it('applies the floor to curated note aliases merged on top, not only to the model list', async () => {
+    const aliases = await aliasesOnDisk(['Kognitive Kontrolle', 'KK']);
+    expect(aliases).toContain('Kognitive Kontrolle');
+    expect(aliases).not.toContain('KK');
+  });
+
+  // The rewrite goes through replaceFrontmatterArrayField, which rebuilds the
+  // whole block. A source page carries three keys that are not in
+  // FrontmatterData — they survive as passthrough lines, and this pins that.
+  it('preserves the source page\'s non-canonical frontmatter across the rewrite', async () => {
+    const h = harnessWithModelAliases();
+    const writtenPath: string = await h.engine.createSummaryPage(sourceFile(), makeAnalysis([]), []);
+    const written = h.files.get(writtenPath)!;
+
+    expect(written).toContain('source_file:');
+    expect(written).toContain('generation_complete: true');
+    expect(written).toContain('contentHash:');
+    expect(parseFrontmatter(written)?.type).toBe('source');
+    expect(parseFrontmatter(written)?.tags).toEqual(['other']);
+  });
+
+  // The narrowing that keeps this off the 128 of 131 pages whose aliases
+  // already pass: nothing is dropped, so nothing is rewritten.
+  it('leaves the frontmatter byte-identical when every alias already passes', async () => {
+    const clean = createWikiEngineHarness({
+      files: { [SOURCE_NOTE_PATH]: SAMPLE_BODY },
+      llmResponses: [SUMMARY_PAGE.replace('  - "EF"\n', '').replace('  - "Exekutive-Funktionen"\n', '')],
+      settings: { minAliasLength: 3 },
+    });
+    const writtenPath: string = await clean.engine.createSummaryPage(sourceFile(), makeAnalysis([]), []);
+    const written = clean.files.get(writtenPath)!;
+
+    expect(written).toContain('aliases:\n  - "Executive Function"');
   });
 });

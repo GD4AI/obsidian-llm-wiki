@@ -52,15 +52,22 @@ export type BatchValidity = 'valid' | 'empty' | 'unusable';
  * legacy `mentions_in_source` field so the LLM doesn't see both arrays in
  * the analysis log (and so downstream code that prefers the structured form
  * never accidentally falls back to a stale legacy array).
+ *
+ * Issue #679: every quote of a batch comes from the note being ingested, so
+ * `source_path` is that note's path — set here, not copied by the model.
+ * Downstream `m.source_path || defaultSourcePath` let a model copy win, and
+ * measured copies were a typo, a control character for `α`, and a
+ * translation of the file name.
  */
-function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T): T {
-  // If the LLM already returned structured provenance, keep it as-is
+function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T, sourcePath: string): T {
+  // If the LLM already returned structured provenance, keep its quotes
   // but clear the legacy field when both are present (avoids duplicate output).
   if (item.mentions_with_provenance?.length) {
-    if (item.mentions_in_source?.length) {
-      return { ...item, mentions_in_source: undefined };
-    }
-    return item;
+    return {
+      ...item,
+      mentions_with_provenance: item.mentions_with_provenance.map(m => ({ ...m, source_path: sourcePath })),
+      ...(item.mentions_in_source?.length ? { mentions_in_source: undefined } : {}),
+    };
   }
   // Otherwise, synthesize provenance from the legacy string[].
   const quotes = item.mentions_in_source?.filter(q => q?.trim()) ?? [];
@@ -68,7 +75,7 @@ function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T)
   const now = new Date().toISOString();
   const provenance: MentionWithProvenance[] = quotes.map(quote => ({
     quote,
-    source_path: '',      // filled by page-factory at write time
+    source_path: sourcePath,
     source_slug: '',      // filled by page-factory at write time
     extracted_at: now,
   }));
@@ -90,7 +97,8 @@ export interface NormalizedBatch {
 //   'empty'    — both arrays present but zero items ⟹ signal to stop iteration
 //   'valid'    — at least one extractable item found ⟹ continue processing
 export function normalizeBatchResponse(
-  raw: Partial<SourceAnalysis> | null
+  raw: Partial<SourceAnalysis> | null,
+  sourcePath: string,
 ): { validity: BatchValidity; data: NormalizedBatch } {
   if (!raw) {
     return { validity: 'unusable', data: emptyBatch() };
@@ -98,10 +106,10 @@ export function normalizeBatchResponse(
 
   const entities = coerceToArray<EntityInfo>(raw.entities)
     .filter(e => e?.name?.trim())
-    .map(e => fillMentionsWithProvenance(e));
+    .map(e => fillMentionsWithProvenance(e, sourcePath));
   const concepts = coerceToArray<ConceptInfo>(raw.concepts)
     .filter(c => c?.name?.trim())
-    .map(c => fillMentionsWithProvenance(c));
+    .map(c => fillMentionsWithProvenance(c, sourcePath));
 
   // Strip wiki-link formatting if LLM outputs [[path|name]] instead of plain name
   const relatedPages = coerceToArray<string>(raw.related_pages).map(p => {
@@ -591,7 +599,7 @@ export class SourceAnalyzer {
         retryingBatch = false;
         escalateMaxTokens = false;
 
-        const { validity, data: norm } = normalizeBatchResponse(analysisData);
+        const { validity, data: norm } = normalizeBatchResponse(analysisData, file.path);
 
         if (isFirstBatch) {
           if (validity === 'unusable') {

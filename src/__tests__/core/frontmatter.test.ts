@@ -989,6 +989,42 @@ source_url: https://example.com/spec
     expect(result).toContain('z');
   });
 
+  // The seam between the rebuilt block and the body: `serializeFrontmatter`
+  // ends on `---` without a trailing newline and the retained slice starts
+  // with whatever followed the old closing delimiter, so joining them with a
+  // `\n` used to add one blank line per call. Two consecutive calls made it
+  // two. Both directions are pinned here.
+  it('replaceFrontmatterArrayField keeps exactly one blank line between frontmatter and body', () => {
+    const content = `---
+type: entity
+tags: [x]
+---
+
+# Body
+
+Text.
+`;
+    const once = replaceFrontmatterArrayField(content, 'tags', ['y']);
+    expect(once).toContain('---\n\n# Body');
+    expect(once).not.toContain('---\n\n\n');
+
+    const twice = replaceFrontmatterArrayField(once, 'tags', ['z']);
+    expect(twice).toContain('---\n\n# Body');
+    expect(twice).not.toContain('---\n\n\n');
+    // The seam is the only thing under test here, so compare the bodies.
+    expect(twice.slice(twice.indexOf('\n---\n') + 5)).toBe(once.slice(once.indexOf('\n---\n') + 5));
+  });
+
+  it('replaceFrontmatterArrayField inserts the blank line when the body followed on the next line', () => {
+    const content = `---
+type: entity
+tags: [x]
+---
+# Body`;
+    const result = replaceFrontmatterArrayField(content, 'tags', ['y']);
+    expect(result).toContain('---\n\n# Body');
+  });
+
   it('mergeFrontmatterArrayField on a page with only canonical fields is byte-identical to v1.25.9', () => {
     // Backward-compat: when no unknown fields exist, the writer must not
     // invent a `---\n---` line just to "have a passthrough section".
