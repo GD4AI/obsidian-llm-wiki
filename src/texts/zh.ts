@@ -690,6 +690,7 @@ export const ZH_TEXTS = {
     ingestReportCreatedPages: '创建页面：{count}',
     ingestReportUpdatedPages: '更新页面：{count}',
     ingestReportEmbeddedImages: '内嵌图片：发现 {discovered} 张，排队 {queued} 张，发送 {sent} 张，成功分析 {analyzed} 张；共 {packages} 包，GIF 首帧转换 {gifs} 张，失败 {failed} 包',
+    ingestReportEmbeddedEvidenceSaved: '图片视觉证据已保存到来源页',
     ingestReportEmbeddedImageSkipped: '已跳过的内嵌图片',
     embeddedImagesVisionUnsupported: '当前端点拒绝图片分析。文字摄入将继续；请改用支持视觉的模型或关闭内嵌图片分析。',
     // v1.22.2: log.md header content (Operation History Panel hint)
@@ -726,6 +727,8 @@ export const ZH_TEXTS = {
     writePdfMarkdownToVaultName: '将转换后的 Markdown 写入 Vault',
     analyzeEmbeddedImagesName: '在 Markdown 摄入时分析嵌入图片',
     analyzeEmbeddedImagesDesc: '默认关闭。开启后会分包分析全部符合条件的本地图片，每包最多 20 MiB、单张最大 10 MiB；绝不下载远程图片。',
+    saveEmbeddedImageEvidenceName: '将内嵌图片视觉证据保存到来源页',
+    saveEmbeddedImageEvidenceDesc: '默认关闭。开启后会在来源页的折叠章节保存每张图片的邻近文本和视觉模型证据，便于核对。',
     writePdfMarkdownToVaultDesc: '默认关闭。开启后，每次 PDF 转换的结果会写入源 PDF 旁边的 “<原名>.pdf.md” 文件。关闭时，转换结果仅保存在插件缓存，不在你的 Vault 中留下实现产物。',
     markdownConversionBackendName: 'Markdown 转换后端',
     markdownConversionBackendDesc: 'Native 使用 provider 自带的 PDF 支持（范围有限，并非所有 provider/model 都支持 PDF，消耗 LLM tokens）。MinerU 是在线服务——速度快、按日配额免费、支持 PDF/图片/Office——但需要 API Token（在下方字段填写）。',

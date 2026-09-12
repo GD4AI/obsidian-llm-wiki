@@ -108,6 +108,20 @@ export interface EmbeddedImageAnalysisReport {
   convertedGifs: number;
   failedPackages: number;
   skipped: Array<{ path: string; reason: string }>;
+  evidence: EmbeddedImageEvidence[];
+  evidenceSaved: boolean;
+}
+
+export interface EmbeddedImageEvidence {
+  index: number;
+  path: string;
+  contextBefore: string;
+  contextAfter: string;
+  visibleText?: string;
+  description?: string;
+  contextRelevance?: string;
+  status: 'analyzed' | 'no-evidence' | 'skipped' | 'failed';
+  reason?: string;
 }
 
 export interface EntityInfo {
@@ -426,6 +440,8 @@ export interface LLMWikiSettings {
 
   /** Opt-in local-image analysis for Markdown source embeds. */
   analyzeEmbeddedImages?: boolean;
+  /** Opt-in audit trail for the visual evidence produced during image analysis. */
+  saveEmbeddedImageEvidence?: boolean;
 
   // Issue #128: per-task sampling temperature. Leave undefined to use the
   // provider's default. Low values (e.g. 0.15) improve fidelity for extraction
@@ -1322,6 +1338,7 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   forcePdfSupport: false,
   writePdfMarkdownToVault: false,
   analyzeEmbeddedImages: false,
+  saveEmbeddedImageEvidence: false,
   // v1.26.0 (#382 item 2): dedup threshold overrides — undefined = use the
   // LINT_DEDUP_* constants in src/constants.ts. The UI renders them only
   // when showAdvancedSettings is on (Advanced Settings panel, bottom of the

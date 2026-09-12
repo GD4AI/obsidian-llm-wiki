@@ -683,6 +683,7 @@ export const JA_TEXTS = {
     ingestReportCreatedPages: '作成ページ：{count}',
     ingestReportUpdatedPages: '更新ページ：{count}',
     ingestReportEmbeddedImages: '埋め込み画像: {discovered} 枚を検出、{queued} 枚を待機列へ、{sent} 枚を送信、{analyzed} 枚を分析。{packages} パッケージ、GIF先頭フレーム変換 {gifs} 枚、失敗 {failed} パッケージ',
+    ingestReportEmbeddedEvidenceSaved: '視覚的証拠をソースページに保存しました',
     ingestReportEmbeddedImageSkipped: 'スキップされた埋め込み画像',
     embeddedImagesVisionUnsupported: 'このエンドポイントは画像分析を拒否しました。テキスト取り込みは継続します。視覚対応モデルに切り替えるか、埋め込み画像分析を無効にしてください。',
     // v1.22.2: log.md header content (Operation History Panel hint)
@@ -718,6 +719,8 @@ export const JA_TEXTS = {
     writePdfMarkdownToVaultName: '変換後の Markdown を Vault に書き込む',
     analyzeEmbeddedImagesName: 'Markdown 取り込み中に埋め込み画像を解析',
     analyzeEmbeddedImagesDesc: '既定ではオフです。有効にすると、対象のローカル画像をすべて 20 MiB ごとのパッケージで分析します。各画像は 10 MiB までで、リモート画像は取得しません。',
+    saveEmbeddedImageEvidenceName: '埋め込み画像の視覚的証拠をソースページに保存',
+    saveEmbeddedImageEvidenceDesc: '既定ではオフです。有効にすると、確認用に各画像の近接テキストと視覚モデルの証拠をソースページの折りたたみ部分に保存します。',
     markdownConversionBackendName: 'Markdown 変換バックエンド',
     markdownConversionBackendDesc: 'Native はプロバイダーの組み込み PDF サポートを使用します（範囲が限られ、すべてのプロバイダー/モデルが PDF に対応するわけではなく、LLM トークンを消費します）。MinerU はオンラインサービスで、高速・日次クォータまで無料・PDF/画像/Office に対応しますが、API トークンが必要です（下のフィールドに設定）。',
     markdownConversionBackendNative: 'プロバイダーの PDF/画像 対応',

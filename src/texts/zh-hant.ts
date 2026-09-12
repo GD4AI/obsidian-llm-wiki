@@ -682,6 +682,7 @@ export const ZH_HANT_TEXTS = {
     ingestReportCreatedPages: '建立頁面：{count}',
     ingestReportUpdatedPages: '更新頁面：{count}',
     ingestReportEmbeddedImages: '內嵌圖片：發現 {discovered} 張，排隊 {queued} 張，傳送 {sent} 張，成功分析 {analyzed} 張；共 {packages} 包，GIF 首幀轉換 {gifs} 張，失敗 {failed} 包',
+    ingestReportEmbeddedEvidenceSaved: '圖片視覺證據已儲存到來源頁',
     ingestReportEmbeddedImageSkipped: '已略過的內嵌圖片',
     embeddedImagesVisionUnsupported: '目前端點拒絕圖片分析。文字攝入將繼續；請改用支援視覺的模型或關閉內嵌圖片分析。',
     // v1.22.2: log.md header content (Operation History Panel hint)
@@ -718,6 +719,8 @@ export const ZH_HANT_TEXTS = {
     writePdfMarkdownToVaultName: '將轉換後的 Markdown 寫入 Vault',
     analyzeEmbeddedImagesName: '在 Markdown 攝入時分析嵌入圖片',
     analyzeEmbeddedImagesDesc: '預設關閉。開啟後會分包分析所有符合條件的本地圖片，每包最多 20 MiB、單張最大 10 MiB；絕不下載遠端圖片。',
+    saveEmbeddedImageEvidenceName: '將內嵌圖片視覺證據儲存到來源頁',
+    saveEmbeddedImageEvidenceDesc: '預設關閉。開啟後會在來源頁的摺疊章節儲存每張圖片的鄰近文字和視覺模型證據，方便核對。',
     markdownConversionBackendName: 'Markdown 轉換後端',
     markdownConversionBackendDesc: 'Native 使用 provider 自帶的 PDF 支援（範圍有限，並非所有 provider/model 都支援 PDF，消耗 LLM tokens）。MinerU 是線上服務——速度快、按日配額免費、支援 PDF/圖片/Office——但需要 API Token（於下方欄位填寫）。',
     markdownConversionBackendNative: 'Provider PDF/圖片 支援',

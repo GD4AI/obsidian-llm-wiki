@@ -360,6 +360,7 @@ export const EmbeddedImageEvidenceSchema = z.object({
     index: z.number(),
     visible_text: z.string().optional(),
     description: z.string().optional(),
+    context_relevance: z.string().optional(),
   }).passthrough()),
 }).passthrough();
 export type EmbeddedImageEvidence = z.infer<typeof EmbeddedImageEvidenceSchema>;

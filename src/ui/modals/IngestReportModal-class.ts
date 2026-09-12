@@ -89,6 +89,9 @@ export class IngestReportModal extends Modal {
         .replace('{packages}', String(embeddedImageAnalysis.packages))
         .replace('{gifs}', String(embeddedImageAnalysis.convertedGifs))
         .replace('{failed}', String(embeddedImageAnalysis.failedPackages)) });
+      if (embeddedImageAnalysis.evidenceSaved) {
+        statsEl.createEl('p', { text: this.t('ingestReportEmbeddedEvidenceSaved') });
+      }
     }
     if (contradictionsFound > 0) {
       statsEl.createEl('p', { text: this.t('ingestReportContradictionsFound').replace('{count}', String(contradictionsFound)) });

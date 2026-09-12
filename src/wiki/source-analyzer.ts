@@ -12,6 +12,7 @@ import {
   LLMFinishReason,
   LLMUsage,
   EmbeddedImageAnalysisReport,
+  EmbeddedImageEvidence,
   LLMClient,
 } from '../types';
 import { PROMPTS } from '../prompts';
@@ -831,8 +832,17 @@ export class SourceAnalyzer {
       convertedGifs: 0,
       failedPackages: 0,
       skipped: [...discovery.skipped],
+      evidence: discovery.candidates.map(image => ({
+        index: image.index,
+        path: image.path,
+        contextBefore: image.contextBefore,
+        contextAfter: image.contextAfter,
+        status: 'no-evidence',
+      })),
+      evidenceSaved: this.ctx.settings.saveEmbeddedImageEvidence === true && discovery.discovered > 0,
     };
     const evidence: Array<{ index: number; text: string }> = [];
+    const evidenceByIndex = new Map<number, EmbeddedImageEvidence>(report.evidence.map(item => [item.index, item]));
     const packages = packageEmbeddedImages(discovery.candidates);
     const model = resolveModelForTask(this.ctx.settings, 'ingest');
     const system = await this.ctx.buildSystemPrompt('analyze');
@@ -853,6 +863,11 @@ export class SourceAnalyzer {
           parts.push({ image, part });
         } catch (error) {
           report.skipped.push({ path: image.path, reason: image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing' });
+          const audit = evidenceByIndex.get(image.index);
+          if (audit) {
+            audit.status = 'skipped';
+            audit.reason = image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing';
+          }
           console.warn('[embedded-images] unable to read image:', image.path, error);
         }
       }
@@ -860,7 +875,12 @@ export class SourceAnalyzer {
       report.packages++;
       report.sent += parts.length;
       console.debug(`[embedded-images] package ${packageIndex + 1}/${packages.length}: ${parts.length} image(s), ${byteLength} bytes`);
-      const positions = parts.map(({ image }) => `Image ${image.index}: ${image.path}`).join('\n');
+      const positions = parts.map(({ image }) => [
+        `Image ${image.index}`,
+        `Path: ${image.path}`,
+        `Text before image: ${image.contextBefore || '(none)'}`,
+        `Text after image: ${image.contextAfter || '(none)'}`,
+      ].join('\n')).join('\n\n');
       try {
         const response = await client.createMessage({
           task: 'embedded-image-analysis',
@@ -880,8 +900,16 @@ export class SourceAnalyzer {
           if (!packageIndexes.has(item.index)) continue;
           const visibleText = (item.visible_text ?? '').trim();
           const description = (item.description ?? '').trim();
+          const contextRelevance = (item.context_relevance ?? '').trim();
           if (visibleText || description) {
-            evidence.push({ index: item.index, text: [visibleText && `Visible text: ${visibleText}`, description && `Description: ${description}`].filter(Boolean).join('\n') });
+            evidence.push({ index: item.index, text: [visibleText && `Visible text: ${visibleText}`, description && `Description: ${description}`, contextRelevance && `Context relevance: ${contextRelevance}`].filter(Boolean).join('\n') });
+            const audit = evidenceByIndex.get(item.index);
+            if (audit) {
+              audit.status = 'analyzed';
+              audit.visibleText = visibleText || undefined;
+              audit.description = description || undefined;
+              audit.contextRelevance = contextRelevance || undefined;
+            }
             analyzedIndexes.add(item.index);
           }
         }
@@ -890,6 +918,13 @@ export class SourceAnalyzer {
         if (error instanceof DOMException && error.name === 'AbortError') throw error;
         if (!isVisionInputRejected(error)) throw error;
         report.failedPackages++;
+        for (const { image } of parts) {
+          const audit = evidenceByIndex.get(image.index);
+          if (audit) {
+            audit.status = 'failed';
+            audit.reason = 'vision-input-rejected';
+          }
+        }
         console.warn('[embedded-images] provider rejected image input; text ingestion will continue:', error);
         this.ctx.onProgress?.(getText(this.ctx.settings.language, 'embeddedImagesVisionUnsupported'));
       }

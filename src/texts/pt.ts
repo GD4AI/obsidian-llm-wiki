@@ -516,6 +516,8 @@ export const PT_TEXTS = {
     forcePdfSupportDesc: 'Desativado por padrão. Ative esta opção se o seu provedor não está na lista nativa, mas mesmo assim consegue processar PDFs. Ao ativar, o PDF será enviado ao seu provedor atual; se for rejeitado, você verá um aviso. Provedores PDF nativos (Anthropic / OpenAI / Bedrock) não precisam desta opção.',
     writePdfMarkdownToVaultName: 'Gravar o Markdown convertido no Vault',
     analyzeEmbeddedImagesName: 'Analisar imagens incorporadas durante a ingestão Markdown',
+    saveEmbeddedImageEvidenceName: 'Salvar evidências visuais de imagens incorporadas na página de origem',
+    saveEmbeddedImageEvidenceDesc: 'Desativado por padrão. Salva o texto próximo e as evidências do modelo visual de cada imagem em uma seção recolhível da página de origem.',
     analyzeEmbeddedImagesDesc: 'Desativado por padrão. Analisa todas as imagens locais elegíveis em pacotes de 20 MiB; cada imagem é limitada a 10 MiB. Imagens remotas nunca são baixadas.',
     markdownConversionBackendName: 'Backend de conversão Markdown',
     markdownConversionBackendDesc: 'Use o suporte nativo a PDF do seu provedor (escopo limitado, nem todo provedor/modelo processa PDF, consome tokens LLM). MinerU é um serviço online — rápido, gratuito até a cota diária, aceita PDF/imagens/Office — mas requer um token de API (defina no campo abaixo).',
@@ -733,6 +735,7 @@ export const PT_TEXTS = {
     ingestReportCreatedPages: 'Páginas criadas: {count}',
     ingestReportUpdatedPages: 'Páginas atualizadas: {count}',
     ingestReportEmbeddedImages: 'Imagens incorporadas: {discovered} encontradas, {queued} na fila, {sent} enviadas, {analyzed} analisadas; {packages} pacote(s), {gifs} primeiro(s) quadro(s) GIF convertido(s), {failed} pacote(s) falharam',
+    ingestReportEmbeddedEvidenceSaved: 'Evidências visuais salvas na página de origem',
     ingestReportEmbeddedImageSkipped: 'Imagens incorporadas ignoradas',
     embeddedImagesVisionUnsupported: 'Este endpoint recusou a análise de imagens. A ingestão de texto continuará; use um modelo com visão ou desative a análise de imagens incorporadas.',
     // v1.22.2: log.md header content (Operation History Panel hint)

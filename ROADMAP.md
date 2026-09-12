@@ -4,7 +4,7 @@
 
 **Latest shipped:** v1.27.1 PATCH (2026-09-06, 46 commits / 3993 tests). See [CHANGELOG.md §1.27.1](./CHANGELOG.md#1271---2026-09-06) for the canonical composition record. | **Updated:** 2026-09-06 (v1.27.1 release prep — wave C/D + audit trio + #636/#637 all SHIPPED)
 
-**Next MINOR candidate:** Issue #608 — opt-in local Markdown-image analysis. The implementation resolves vault-local Obsidian and Markdown image embeds into 20 MiB visual-evidence packages with no per-note image-count limit; individual images stay capped at 10 MiB and GIFs use their first frame. Remote images, OCR, and caching remain out of scope.
+**Next MINOR candidate:** Issue #608 — opt-in local Markdown-image analysis. The implementation resolves vault-local Obsidian and Markdown image embeds into 20 MiB visual-evidence packages with no per-note image-count limit; individual images stay capped at 10 MiB and GIFs use their first frame. Images carry their nearest Markdown paragraphs for context, and a default-off source-page audit section can retain the resulting evidence. Remote images, OCR, and caching remain out of scope.
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 

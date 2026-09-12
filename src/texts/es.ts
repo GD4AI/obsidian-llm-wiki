@@ -516,6 +516,8 @@ export const ES_TEXTS = {
     forcePdfSupportDesc: 'Desactivado por defecto. Activa esta opción si tu proveedor no está en la lista nativa pero puede procesar PDF. Al activarla, el PDF se enviará a tu proveedor actual; si lo rechaza, se te avisará con un mensaje. Los proveedores nativos de PDF (Anthropic / OpenAI / Bedrock) no necesitan esta opción.',
     writePdfMarkdownToVaultName: 'Escribir el Markdown convertido en el Vault',
     analyzeEmbeddedImagesName: 'Analizar imágenes incrustadas durante la ingesta Markdown',
+    saveEmbeddedImageEvidenceName: 'Guardar evidencia visual de imágenes incrustadas en la página de origen',
+    saveEmbeddedImageEvidenceDesc: 'Desactivado por defecto. Guarda el texto cercano y la evidencia del modelo visual de cada imagen en una sección plegable de la página de origen.',
     analyzeEmbeddedImagesDesc: 'Desactivado por defecto. Analiza todas las imágenes locales compatibles en paquetes de 20 MiB; cada imagen se limita a 10 MiB. Nunca descarga imágenes remotas.',
     markdownConversionBackendName: 'Backend de conversión Markdown',
     markdownConversionBackendDesc: 'Usa la compatibilidad nativa con PDF de tu proveedor (alcance limitado, no todos los proveedores/modelos manejan PDF, consume tokens LLM). MinerU es un servicio online — rápido, gratis hasta la cuota diaria, acepta PDF/imágenes/Office — pero requiere un token de API (configúralo en el campo de abajo).',
@@ -733,6 +735,7 @@ export const ES_TEXTS = {
     ingestReportCreatedPages: 'Páginas creadas: {count}',
     ingestReportUpdatedPages: 'Páginas actualizadas: {count}',
     ingestReportEmbeddedImages: 'Imágenes incrustadas: {discovered} encontradas, {queued} en cola, {sent} enviadas, {analyzed} analizadas; {packages} paquete(s), {gifs} primer(os) fotograma(s) GIF convertido(s), {failed} paquete(s) fallidos',
+    ingestReportEmbeddedEvidenceSaved: 'Evidencia visual guardada en la página de origen',
     ingestReportEmbeddedImageSkipped: 'Imágenes incrustadas omitidas',
     embeddedImagesVisionUnsupported: 'Este endpoint rechazó el análisis de imágenes. La ingesta de texto continuará; usa un modelo con visión o desactiva el análisis de imágenes incrustadas.',
     // v1.22.2: log.md header content (Operation History Panel hint)

@@ -3,10 +3,10 @@
 export const INGESTION_PROMPTS = {
   analyzeEmbeddedImages: `Analyze the supplied local images from one Markdown source. Return JSON only.
 
-For every supplied image, return its numeric source position, visible text (when legible), and concise factual visual evidence. Do not invent details. The evidence will be combined with the source Markdown for later wiki extraction; do not create entities or concepts here.
+For every supplied image, use its nearby Markdown text only to understand the image's role in the source. Return its numeric source position, visible text (when legible), concise factual visual evidence, and the image's relation to that nearby text. Do not invent details. The evidence will be combined with the source Markdown for later wiki extraction; do not create entities or concepts here.
 
 Output format:
-{"images":[{"index":0,"visible_text":"exact visible text or empty string","description":"concise factual description"}]}`,
+{"images":[{"index":0,"visible_text":"exact visible text or empty string","description":"concise factual description","context_relevance":"relation to nearby Markdown text"}]}`,
 
   analyzeSource: `You are a Wiki knowledge base maintainer. Analyze the following source file and output structured JSON.
 

@@ -59,6 +59,7 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
           tempSettings.lintBigramThreshold = undefined;
           tempSettings.writePdfMarkdownToVault = undefined;
           tempSettings.analyzeEmbeddedImages = false;
+          tempSettings.saveEmbeddedImageEvidence = false;
           tempSettings.slugCase = 'lower';
           // v1.26.0 (#382 item 1, Batch 2): sources participate in dedup
           // by default; reset to default-on when this panel closes so a
@@ -125,6 +126,13 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
     .addToggle(toggle => toggle
       .setValue(tempSettings.analyzeEmbeddedImages === true)
       .onChange((value) => { tempSettings.analyzeEmbeddedImages = value; }));
+
+  new Setting(containerEl)
+    .setName(tab.getText('saveEmbeddedImageEvidenceName'))
+    .setDesc(tab.getText('saveEmbeddedImageEvidenceDesc'))
+    .addToggle(toggle => toggle
+      .setValue(tempSettings.saveEmbeddedImageEvidence === true)
+      .onChange((value) => { tempSettings.saveEmbeddedImageEvidence = value; }));
 
   // Slug Case (filename casing for generated wiki pages). Moved here from
   // Wiki Configuration in v1.26.0 — a one-time naming-policy choice.

@@ -6,6 +6,7 @@ const IMAGE_MEDIA_TYPES = {
 
 export const EMBEDDED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const EMBEDDED_IMAGE_PACKAGE_MAX_BYTES = 20 * 1024 * 1024;
+export const EMBEDDED_IMAGE_CONTEXT_MAX_CHARS = 500;
 
 export type EmbeddedImageSkipReason = 'duplicate' | 'missing' | 'oversized' | 'remote' | 'unsupported' | 'gif-decode-failed';
 
@@ -14,6 +15,9 @@ export interface EmbeddedImageCandidate {
   path: string;
   mediaType: ImageContentPart['mediaType'];
   byteLength: number;
+  sourceOffset: number;
+  contextBefore: string;
+  contextAfter: string;
 }
 
 export interface EmbeddedImageSkip {
@@ -40,13 +44,45 @@ export interface ImagePartReadContext {
   gifFirstFrame?: (bytes: Uint8Array) => Promise<Uint8Array>;
 }
 
-function imageTargets(markdown: string): Array<{ index: number; target: string }> {
-  const matches: Array<{ index: number; target: string }> = [];
+function imageTargets(markdown: string): Array<{ sourceOffset: number; endOffset: number; target: string }> {
+  const matches: Array<{ sourceOffset: number; endOffset: number; target: string }> = [];
   const obsidian = /!\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|[^\]]*)?\]\]/g;
   const markdownImage = /!\[[^\]]*\]\(([^\s)]+)(?:\s+[^)]*)?\)/g;
-  for (const match of markdown.matchAll(obsidian)) matches.push({ index: match.index ?? 0, target: match[1].trim() });
-  for (const match of markdown.matchAll(markdownImage)) matches.push({ index: match.index ?? 0, target: decodeTarget(match[1]) });
-  return matches.sort((a, b) => a.index - b.index);
+  for (const match of markdown.matchAll(obsidian)) {
+    const sourceOffset = match.index ?? 0;
+    matches.push({ sourceOffset, endOffset: sourceOffset + match[0].length, target: match[1].trim() });
+  }
+  for (const match of markdown.matchAll(markdownImage)) {
+    const sourceOffset = match.index ?? 0;
+    matches.push({ sourceOffset, endOffset: sourceOffset + match[0].length, target: decodeTarget(match[1]) });
+  }
+  return matches.sort((a, b) => a.sourceOffset - b.sourceOffset);
+}
+
+function cleanContext(text: string): string {
+  return text
+    .replace(/!\[\[[^\]]+\]\]/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function contextBefore(markdown: string, offset: number, maxChars: number): string {
+  const paragraphs = markdown.slice(0, offset).split(/\n\s*\n/);
+  for (let index = paragraphs.length - 1; index >= 0; index--) {
+    const paragraph = cleanContext(paragraphs[index]);
+    if (paragraph) return paragraph.slice(-maxChars);
+  }
+  return '';
+}
+
+function contextAfter(markdown: string, offset: number, maxChars: number): string {
+  const paragraphs = markdown.slice(offset).split(/\n\s*\n/);
+  for (const raw of paragraphs) {
+    const paragraph = cleanContext(raw);
+    if (paragraph) return paragraph.slice(0, maxChars);
+  }
+  return '';
 }
 
 function decodeTarget(target: string): string {
@@ -88,7 +124,15 @@ export async function discoverEmbeddedImages(ctx: EmbeddedImageDiscoveryContext)
     if (!stat) { skipped.push({ path, reason: 'missing' }); continue; }
     if (stat.size > maxBytes) { skipped.push({ path, reason: 'oversized' }); continue; }
     seen.add(path);
-    candidates.push({ index: candidates.length + 1, path, mediaType, byteLength: stat.size });
+    candidates.push({
+      index: candidates.length + 1,
+      path,
+      mediaType,
+      byteLength: stat.size,
+      sourceOffset: target.sourceOffset,
+      contextBefore: contextBefore(ctx.markdown, target.sourceOffset, EMBEDDED_IMAGE_CONTEXT_MAX_CHARS),
+      contextAfter: contextAfter(ctx.markdown, target.endOffset, EMBEDDED_IMAGE_CONTEXT_MAX_CHARS),
+    });
   }
   return { candidates, discovered: targets.length, skipped };
 }

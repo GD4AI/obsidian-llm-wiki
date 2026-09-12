@@ -35,10 +35,10 @@ function run(
 describe('SourceAnalyzer', () => {
   it('analyzes resolved local embeds before text extraction without re-uploading images', async () => {
     const { ctx } = createMockContext({
-      vaultFiles: { [TEST_PATH]: '# Test\n![[assets/chart.png]]' },
+      vaultFiles: { [TEST_PATH]: 'Before chart\n\n![[assets/chart.png]]\n\nAfter chart' },
       settings: { analyzeEmbeddedImages: true },
       llmResponses: [
-        JSON.stringify({ images: [{ index: 1, visible_text: 'Chart title', description: 'A line chart.' }] }),
+        JSON.stringify({ images: [{ index: 1, visible_text: 'Chart title', description: 'A line chart.', context_relevance: 'Explains the surrounding chart discussion.' }] }),
         JSON.stringify({ entities: [], concepts: [] }),
       ],
     });
@@ -59,9 +59,12 @@ describe('SourceAnalyzer', () => {
       expect.objectContaining({ type: 'text' }),
       { type: 'image', image: 'AQID', mediaType: 'image/png' },
     ]);
+    expect((visionContent[0] as { text: string }).text).toContain('Text before image: Before chart');
+    expect((visionContent[0] as { text: string }).text).toContain('Text after image: After chart');
     const extractionContent = spy.mock.calls[1][0].messages[0].content;
     expect(extractionContent).toContain('## Embedded Image Visual Evidence');
     expect(extractionContent).toContain('Chart title');
+    expect(extractionContent).toContain('Context relevance: Explains the surrounding chart discussion.');
     expect(spy.mock.calls[1][0].cacheBreakpoint).toBeDefined();
   });
 
@@ -84,6 +87,7 @@ describe('SourceAnalyzer', () => {
     const result = await run(new SourceAnalyzer(ctx), TEST_PATH);
 
     expect(result?.embedded_image_analysis?.failedPackages).toBe(1);
+    expect(result?.embedded_image_analysis?.evidence[0]).toMatchObject({ status: 'failed', reason: 'vision-input-rejected' });
     expect(spy).toHaveBeenCalledTimes(2);
     expect(spy.mock.calls[1][0].messages[0].content).not.toContain('Embedded Image Visual Evidence');
   });

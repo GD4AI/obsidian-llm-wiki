@@ -290,6 +290,8 @@ export const ingestCommands = {
         convertedGifs: imageReports.reduce((sum, r) => sum + r.convertedGifs, 0),
         failedPackages: imageReports.reduce((sum, r) => sum + r.failedPackages, 0),
         skipped: imageReports.flatMap(r => r.skipped),
+        evidence: imageReports.flatMap(r => r.evidence),
+        evidenceSaved: imageReports.some(r => r.evidenceSaved),
       } : undefined;
 
       const aggregated: IngestReport = {
