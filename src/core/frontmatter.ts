@@ -430,8 +430,14 @@ export function replaceFrontmatterArrayField(
   if (content.startsWith('---')) {
     const endIdx = content.indexOf('\n---', 3);
     if (endIdx !== -1) {
-      const body = content.substring(endIdx + 4);
-      return `${fmBlock}\n${body}`;
+      // Normalize the seam instead of carrying it over. `fmBlock` ends on
+      // `---` with no trailing newline and the slice begins with whatever
+      // followed the old closing delimiter, so pasting the two together with
+      // a `\n` grew the gap by one blank line on every call. One blank line
+      // is the shape `enforceFrontmatterConstraints` and the branch below
+      // already produce, which also makes this idempotent.
+      const body = content.substring(endIdx + 4).replace(/^\n+/, '');
+      return `${fmBlock}\n\n${body}`;
     }
   }
   return `${fmBlock}\n\n${content}`;
