@@ -175,6 +175,19 @@ gh pr merge <N> --admin --squash --delete-branch   # ← ONLY after user said "m
 - **Post-merge audit trail:** if a `gh pr merge` was executed without the matching `--approve` event (procedural miss, not content miss), immediately post `gh pr comment <N> --body <audit-note>` recording what was skipped. Don't rebase, don't re-merge, don't amend — the merge commit hash stands; only the audit trail is patched. Incident reference: PR #478 (2026-08-18, merge `2806d24`).
 - Anti-pattern: "`gh pr merge --admin` doesn't enforce reviews, so I can skip --approve." Wrong — `--admin` bypasses the **requirement** rule, not the **review event** rule. Two separate audit surfaces.
 
+**Reviewing PRs (added 2026-09-12, after #570):** a PR decided against is **closed** once the contributor has had a fair window to answer (roughly two weeks of silence), with the decision comment naming in one line what would reopen it. An open PR states that merging is still possible — a closed one cannot collect a stray review at all.
+
+Every review submission MUST begin with the signal check:
+
+```
+gh pr view <N> --json labels,comments --jq '{labels: [.labels[].name], last_comments: [.comments[] | "\(.author.login) \(.createdAt[0:10]): \(.body[0:120])"][-3:]}'   # ← check FIRST
+gh pr review <N> --body "<file>"   # ← ONLY when the check above returned no signal
+```
+
+Two ways to get that check wrong, both caught in review of its first version: `.[0:1]` returns the **oldest** comment rather than the latest — decisions arrive late, so it hides exactly what it is looking for — and filtering on one account's login makes a decision written by any other maintainer invisible. Take the last few comments from **any** author.
+
+If a signal is present, post a short comment asking instead of a review. To undo a misfired review: dismiss it (`PUT .../pulls/<N>/reviews/<id>/dismissals`) and, if the PR is `wontfix`, convert it to draft via `convertPullRequestToDraft` (REST's `draft` field is GitHub-App-only; `gh` has no `pr draft`). MEMORY.md §"Declined PRs are closed, not left open".
+
 ---
 
 ## 📦 Development Workflow
