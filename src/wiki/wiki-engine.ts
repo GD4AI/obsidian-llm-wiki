@@ -32,6 +32,7 @@ import { setGenerationComplete } from '../core/incomplete-page-cleaner';
 import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from '../core/pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
 import { hashBody, checkContentRequirements } from '../core/source-requirements';
+import { normalizeProvenanceMarkers } from '../core/provenance-marker';
 import { resolveModelForTask } from '../core/model-resolver';
 import type { SourceRejection } from '../core/source-requirements';
 // v1.25.1 Phase C-PR1: detectRateLimitFailures is invoked exclusively by runBatchedWithRetry (engine-internals/page-batch-runner.ts).
@@ -1936,6 +1937,10 @@ export class WikiEngine {
     // log/schema writes pass through untouched.
     if (this.isInWikiContentFolder(path, this.settings.wikiFolder)) {
       content = normalizeHeadingSpacing(content);
+      // Repair the provenance footnote's brackets on the same pass. The model
+      // gets them wrong often enough that paragraph-provenance.ts stops seeing
+      // the marker, and a marker it cannot see is a paragraph with no owner.
+      content = normalizeProvenanceMarkers(content);
     }
 
     for (let attempt = 0; attempt < 3; attempt++) {
