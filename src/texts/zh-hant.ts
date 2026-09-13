@@ -179,6 +179,8 @@ export const ZH_HANT_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C): 漸進式遷移通知
     queryHistoryMigrationNotice: 'Query Wiki 歷史紀錄中含有舊 wiki 目錄的連結。新的對話已自動使用最新目錄。如需重整所有歷史訊息，請開啟 Query Wiki 面板並點選其中的「清除紀錄」按鈕。',
 
+    wikiIngestedMarkerFailed: '無法為「{filename}」寫入 wiki-ingested 標記。攝入已成功，但之後再次執行不會被跳過——請使用強制重新攝入或手動補寫該標記。',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] 啟動修復：已為 {count} 篇已攝入筆記補寫 wiki-ingested 標記。',
     // v1.24.0 Issue #251: 自訂 Query 指令（可折疊面板）
     customInstructionsTitle: '自訂 Query 指令',
     customInstructionsDesc: '每次 Query Wiki 對話都會在系統提示字串末尾附加這些指令。僅影響 Query Wiki 聊天；不會影響擷取、lint 與頁面生成。',

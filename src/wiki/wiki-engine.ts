@@ -548,6 +548,12 @@ export class WikiEngine {
     });
     if (contentRejection) return contentRejection;
 
+    // wiki-ingested marker gate: a source that already carries the marker
+    // was ingested successfully before. Cheapest check first — no hashing.
+    if (this.settings.skipWikiIngested !== false && this.hasWikiIngestedMarker(content)) {
+      return { reason: 'duplicate', detail: 'wiki-ingested marker present' };
+    }
+
     const hash = hashBody(extractBody(content));
     if (batch?.seen.has(hash)) return { reason: 'duplicate', detail: 'duplicate of another file in this batch' };
     const ingested = batch?.ingested ?? this.buildIngestedHashes();
@@ -555,6 +561,39 @@ export class WikiEngine {
 
     batch?.seen.add(hash);
     return null;
+  }
+
+  /** Read the `wiki-ingested` frontmatter value from raw note text (null = absent). */
+  private readWikiIngestedMarker(content: string): string | null {
+    if (!content.startsWith('---')) return null;
+    const fmEnd = content.indexOf('\n---', 3);
+    if (fmEnd === -1) return null;
+    const match = content.substring(3, fmEnd).match(/^wiki-ingested:[ \t]*(.+?)[ \t]*$/m);
+    return match ? match[1] : null;
+  }
+
+  private hasWikiIngestedMarker(content: string): boolean {
+    return this.readWikiIngestedMarker(content) !== null;
+  }
+
+  /**
+   * Stamp the source with today's date on a fully successful ingest.
+   * Best-effort: a failure is logged and noticed, never fails the run —
+   * the pages are already on disk (same contract as the index write).
+   */
+  private async markSourceAsIngested(file: TFile): Promise<void> {
+    try {
+      await this.app.fileManager.processFrontMatter(file, fm => {
+        (fm as Record<string, unknown>)['wiki-ingested'] = new Date().toISOString().slice(0, 10);
+      });
+      console.debug('[wiki-marker] marked source as ingested:', file.path);
+    } catch (markError) {
+      console.warn('[wiki-marker] could not write wiki-ingested marker:', markError);
+      new Notice(
+        getText(this.settings.language, 'wikiIngestedMarkerFailed').replace('{filename}', file.basename),
+        NOTICE_ABORT
+      );
+    }
   }
 
   /**
@@ -1532,6 +1571,12 @@ export class WikiEngine {
       if (llmByTask.length > 0) {
         console.debug('[LLM time by step] (summed per call; concurrent steps overlap)');
         for (const line of llmByTask) console.debug(line);
+      }
+
+      // Stamp the source after everything else succeeded — the marker is the
+      // durable "this run fully landed" record, so it must be the last write.
+      if (file.extension === 'md') {
+        await this.markSourceAsIngested(file);
       }
 
       this.onDone?.({

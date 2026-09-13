@@ -179,6 +179,8 @@ export const JA_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C): 段階的移行の通知
     queryHistoryMigrationNotice: 'Query Wiki の履歴に以前の wiki フォルダーのリンクが含まれています。新しい会話は自動的に最新のフォルダーを使用します。すべての履歴メッセージをリフレッシュするには、Query Wiki パネルを開き、その中の「履歴をクリア」ボタンをクリックしてください。',
 
+    wikiIngestedMarkerFailed: '「{filename}」に wiki-ingested マーカーを書き込めませんでした。取り込みは成功しましたが、再実行してもスキップされません。強制再取り込みを使うか、マーカーを手動で追加してください。',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] 起動時修復：取り込み済み {count} 件のノートに wiki-ingested マーカーを再書き込みしました。',
     // v1.24.0 Issue #251: カスタム Query 命令（折りたたみ可能パネル）
     customInstructionsTitle: 'カスタム Query 命令',
     customInstructionsDesc: 'Query Wiki のすべてのチャット応答のシステムプロンプト末尾に追記される命令です。Query Wiki チャットのみに影響し、取り込み・lint・ページ生成には影響しません。',
