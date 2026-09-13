@@ -23,6 +23,13 @@ name: Gate 1 (Five-Gate)
 on:
   pull_request:
     branches: [main]
+  # Also on `main` itself. Until 2026-09-12 nothing ran Gate 1 after a merge,
+  # so the state of `main` was only ever observable through some later PR's
+  # CI. That is how #681 and #684 broke it: each was green against the `main`
+  # it branched from, the break existed only in the pair, and it surfaced
+  # when an unrelated PR (#696) reported a TS2353 that was not its own.
+  push:
+    branches: [main]
 
 permissions:
   contents: read
