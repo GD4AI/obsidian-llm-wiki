@@ -557,6 +557,17 @@ export interface LLMWikiSettings {
   customQueryInstructions?: string;
 
   /**
+   * Skip sources that already carry a `wiki-ingested` frontmatter marker
+   * (written on every successful ingest). Guards against true double
+   * ingests — e.g. a folder re-run after the batch cache was reset —
+   * while force-reingest paths bypass the gate entirely.
+   *
+   * Undefined = on (JSON.stringify drops the key for pre-feature
+   * data.json); explicit `false` is the only way to turn it off.
+   */
+  skipWikiIngested?: boolean;
+
+  /**
    * v1.24.0 #208: per-task model overrides. Each field is the MODEL
    * string ONLY (same shape as `model`). Provider / apiKey / baseUrl /
    * thinking-control stay shared — per-provider split would 4× the
@@ -1336,4 +1347,6 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // bearer wire shape for every existing user.
   bedrockAuthMethod: 'api-key',
   bedrockSsoStartUrl: '',
+  // Wiki-ingested marker: on by default (see LLMWikiSettings.skipWikiIngested).
+  skipWikiIngested: true,
 };

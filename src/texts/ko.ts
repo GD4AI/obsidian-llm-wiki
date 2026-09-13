@@ -179,6 +179,8 @@ export const KO_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C): 점진적 마이그레이션 알림
     queryHistoryMigrationNotice: 'Query Wiki 기록에 이전 wiki 폴더의 링크가 포함되어 있습니다. 새 대화는 자동으로 최신 폴더를 사용합니다. 모든 기록 메시지를 새로 고치려면 Query Wiki 패널을 열고 그 안의 "기록 지우기" 버튼을 클릭하세요.',
 
+    wikiIngestedMarkerFailed: '\'{filename}\'에 wiki-ingested 마커를 쓸 수 없습니다. 수집은 성공했지만 다시 실행해도 건너뛰지 않습니다. 강제 재수집을 사용하거나 마커를 직접 추가하세요.',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] 시작 시 복구: 수집된 {count}개 노트에 wiki-ingested 마커를 다시 기록했습니다.',
     // v1.24.0 Issue #251: 사용자 지정 Query 지시문 (접을 수 있는 패널)
     customInstructionsTitle: '사용자 지정 Query 지시문',
     customInstructionsDesc: '모든 Query Wiki 시스템 프롬프트 끝에 추가되는 영구 지시문입니다. Query Wiki 채팅에만 영향을 주며, 수집·lint·페이지 생성에는 영향을 주지 않습니다.',

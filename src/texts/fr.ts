@@ -179,6 +179,8 @@ export const FR_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C) : notification de migration progressive
     queryHistoryMigrationNotice: 'L\'historique de Query Wiki contient des liens d\'un ancien dossier wiki. Les nouvelles requêtes utilisent automatiquement le dernier dossier. Pour actualiser tous les messages enregistrés, ouvrez le panneau Query Wiki et cliquez sur le bouton « Effacer l\'historique » qui s\'y trouve.',
 
+    wikiIngestedMarkerFailed: 'Impossible d\'écrire le marqueur wiki-ingested pour « {filename} ». L\'ingestion a réussi, mais une nouvelle exécution ne sera pas ignorée ; utilisez la réingestion forcée ou ajoutez le marqueur manuellement.',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] Réparation au démarrage : marqueur wiki-ingested réécrit sur {count} note(s) ingérée(s).',
     // v1.24.0 Issue #251 : instructions Query personnalisées (panneau pliable)
     customInstructionsTitle: 'Instructions Query personnalisées',
     customInstructionsDesc: 'Instructions persistantes ajoutées à chaque invite système de Query Wiki. Affectent uniquement le chat Query Wiki ; l\'ingestion, le lint et la génération de pages ne sont pas concernés.',
