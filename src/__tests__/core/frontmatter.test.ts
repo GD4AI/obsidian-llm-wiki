@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { LLMWikiSettings } from '../../types';
-import { enforceFrontmatterConstraints, isBlankSource, mergeFrontmatter, mergeFrontmatterArrayField, parseFrontmatter, preserveFrontmatterReviewTag, replaceFrontmatterArrayField, serializeFrontmatter, upsertFrontmatterField } from '../../core/frontmatter';
+import { enforceFrontmatterConstraints, isBlankSource, mergeFrontmatter, mergeFrontmatterArrayField, normalizeFrontmatterOpening, parseFrontmatter, preserveFrontmatterReviewTag, replaceFrontmatterArrayField, serializeFrontmatter, upsertFrontmatterField } from '../../core/frontmatter';
 import { localDateStamp } from '../../core/format';
 
 describe('isBlankSource', () => {
@@ -51,6 +51,48 @@ describe('upsertFrontmatterField', () => {
     expect(parseFrontmatter(result)?.contentHash).toBe('5-1a2b3c4d');
   });
 });
+describe('normalizeFrontmatterOpening', () => {
+  it('strips a leading BOM before ---', () => {
+    const result = normalizeFrontmatterOpening('\uFEFF---\ntype: entity\n---\nBody');
+    expect(result).toBe('---\ntype: entity\n---\nBody');
+  });
+
+  it('strips leading whitespace/blank lines before ---', () => {
+    const result = normalizeFrontmatterOpening('  \n\n---\ntype: entity\n---\nBody');
+    expect(result).toBe('---\ntype: entity\n---\nBody');
+  });
+
+  it('fixes a first line of the wrong dash count (too few or too many) to ---', () => {
+    expect(normalizeFrontmatterOpening('--\ntype: entity\n---\nBody')).toBe('---\ntype: entity\n---\nBody');
+    expect(normalizeFrontmatterOpening('----\ntype: entity\n---\nBody')).toBe('---\ntype: entity\n---\nBody');
+  });
+
+  it('fixes a BOM, leading whitespace, and wrong dash count all at once', () => {
+    const result = normalizeFrontmatterOpening('\uFEFF  \n----\ntype: entity\n---\nBody');
+    expect(result).toBe('---\ntype: entity\n---\nBody');
+  });
+
+  it('returns content completely unchanged when it already starts with ---', () => {
+    const input = '---\ntype: entity\n---\nBody';
+    expect(normalizeFrontmatterOpening(input)).toBe(input);
+  });
+
+  it('returns content unchanged when the first line is not dash-only at all', () => {
+    const input = '# Just a body\n';
+    expect(normalizeFrontmatterOpening(input)).toBe(input);
+  });
+
+  it('returns a valid CRLF-terminated opening completely unchanged', () => {
+    const input = '---\r\nversion: 1\r\n---\r\nBody';
+    expect(normalizeFrontmatterOpening(input)).toBe(input);
+  });
+
+  it('fixes a malformed CRLF opening while preserving the CRLF line ending', () => {
+    const result = normalizeFrontmatterOpening('--\r\nversion: 1\r\n---\r\nBody');
+    expect(result).toBe('---\r\nversion: 1\r\n---\r\nBody');
+  });
+});
+
 describe('parseFrontmatter', () => {
   it('returns null for content without frontmatter', () => {
     expect(parseFrontmatter('# Just a heading\nSome content')).toBeNull();

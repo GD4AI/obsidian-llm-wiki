@@ -314,4 +314,37 @@ describe('bumpSchemaMetadata (#597)', () => {
     const unterminated = '---\nversion: 1\n\n# Body with no closing delimiter\n';
     expect(bumpSchemaMetadata(unterminated, new Date('2026-06-22T10:30:00.000Z'))).toBe(unterminated);
   });
+
+  it('bumps fields and drops a leading BOM before an otherwise-valid, terminated block', () => {
+    const withBom = '\uFEFF' + CURRENT_FILE;
+    const result = bumpSchemaMetadata(withBom, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).not.toContain('\uFEFF');
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('bumps fields and drops leading whitespace before an otherwise-valid, terminated block', () => {
+    const withLeadingWs = '  \n\n' + CURRENT_FILE;
+    const result = bumpSchemaMetadata(withLeadingWs, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result.startsWith('---')).toBe(true);
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('bumps fields and fixes a wrong dash-count opening on an otherwise-valid, terminated block', () => {
+    const wrongDashes = CURRENT_FILE.replace(/^---/, '----');
+    const result = bumpSchemaMetadata(wrongDashes, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result.startsWith('---\n')).toBe(true);
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('does not let normalization rescue a block that is still unterminated afterward', () => {
+    const bomButUnterminated = '\uFEFF---\nversion: 1\n\n# Body with no closing delimiter\n';
+    const result = bumpSchemaMetadata(bomButUnterminated, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toBe(bomButUnterminated);
+  });
 });

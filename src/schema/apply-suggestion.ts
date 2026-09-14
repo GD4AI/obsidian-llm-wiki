@@ -20,7 +20,7 @@
 
 import { App, TFile } from 'obsidian';
 import { backupFilename, rotateBackups } from '../core/backup-rotation';
-import { upsertFrontmatterField, parseFrontmatter } from '../core/frontmatter';
+import { upsertFrontmatterField, parseFrontmatter, normalizeFrontmatterOpening, FrontmatterData } from '../core/frontmatter';
 import { localDateStamp } from '../core/format';
 
 export interface ApplySchemaSuggestionParams {
@@ -134,19 +134,27 @@ export function spliceBody(originalContent: string, newBody: string): string {
  *     (a raw UTC ISO string, unchanged — it must exact-string-match the
  *     corresponding wiki/schema/suggestions.md log entry) only when given;
  *     omitted entirely otherwise.
- * A no-op on content with unterminated frontmatter. Content with no
- * frontmatter at all gets a fresh `---\n...\n---` block created (via
- * `upsertFrontmatterField`, called below on `content`/`next`).
+ * Before any of that, `normalizeFrontmatterOpening` repairs a recoverable damaged opening
+ * delimiter (leading BOM, leading whitespace, or a wrong dash count) in place, so a pre-existing
+ * block is recognized rather than treated as absent. A no-op returning the original, un-normalized
+ * content unchanged when frontmatter is still unterminated even after that repair. Content with no
+ * frontmatter marker at all gets a fresh `---\n...\n---` block created (via
+ * `upsertFrontmatterField`, called below on `normalized`/`next`).
  */
 export function bumpSchemaMetadata(content: string, now: Date, suggestionTimestamp?: string): string {
-  if (content.startsWith('---') && !parseFrontmatter(content)) return content;
-  const fm = parseFrontmatter(content) ?? {};
+  const normalized = normalizeFrontmatterOpening(content);
+  let fm: FrontmatterData = {};
+  if (normalized.startsWith('---')) {
+    const parsed = parseFrontmatter(normalized);
+    if (!parsed) return content;
+    fm = parsed;
+  }
 
   const rawCount = fm.auto_suggestion_count;
   const countStr = typeof rawCount === 'string' || typeof rawCount === 'number' ? String(rawCount) : '0';
   const nextCount = (parseInt(countStr, 10) || 0) + 1;
 
-  let next = upsertFrontmatterField(content, 'updated', localDateStamp(now));
+  let next = upsertFrontmatterField(normalized, 'updated', localDateStamp(now));
   next = upsertFrontmatterField(next, 'auto_suggestion_count', String(nextCount));
   if (suggestionTimestamp) {
     next = upsertFrontmatterField(next, 'applied_suggestion', suggestionTimestamp);
