@@ -302,9 +302,12 @@ describe('bumpSchemaMetadata (#597)', () => {
     expect(result).toContain('applied_suggestion: 2026-06-21T08:00:00.000Z');
   });
 
-  it('is a no-op on content with no frontmatter', () => {
+  it('creates a fresh frontmatter block when content has none', () => {
     const noFm = '# Just a body\n';
-    expect(bumpSchemaMetadata(noFm, new Date('2026-06-22T10:30:00.000Z'))).toBe(noFm);
+    const result = bumpSchemaMetadata(noFm, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).toContain('# Just a body');
   });
 
   it('is a no-op on content with unterminated frontmatter', () => {
