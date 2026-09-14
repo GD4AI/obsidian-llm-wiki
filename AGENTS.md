@@ -151,6 +151,19 @@ main (protected) ────► tag → release
 - **Mandatory pre-merge workflow:** (1) user explicit "merge it" / "合并" required before `gh pr merge` / cherry-pick / PR-creation; (2) `simplify` skill runs on PR diff (4 angles); (3) `code-review` skill runs (8 angles, max effort); (4) report findings as `file:line + concrete issue + suggested fix` — do NOT modify the PR; (5) wait for approval before any destructive action.
 - **Anti-patterns:** "the PR is small, let me cherry-pick to local main first while we discuss" (violates workflow, creates commits ahead of approval); "Gate 1 passes, so I can `git push` + `gh pr create` immediately" (skips E2E handoff — see #456 incident above).
 
+### Maintainer tooling: two failure modes that read as something else (2026-09-13)
+
+**`gh auth refresh` needs `--hostname` when not running interactively.** Without it the command prints **usage text** — the real error (`--hostname required when not running interactively`) sits above the flags list and is easy to read as "the flags were wrong". Correct form, safe to background so the device code can be surfaced before the browser step:
+
+```bash
+nohup gh auth refresh --hostname github.com -s workflow > /tmp/ghauth.log 2>&1 &
+sleep 10 && cat /tmp/ghauth.log   # → one-time code + https://github.com/login/device
+```
+
+The device flow needs the human; the code expires in ~15 min. Once authorised, `gh auth status` shows the added scope and the merge can proceed.
+
+**A workflow-file merge reports branch policy, not the scope problem.** Merging a PR that touches `.github/workflows/*` fails with `the base branch policy prohibits the merge`, which reads as "a requirement is still missing" — it isn't. Adding `--admin` (or using the REST `PUT /pulls/<N>/merge` endpoint) surfaces the actual cause: `refusing to allow an OAuth App to create or update workflow ... without 'workflow' scope`, HTTP 403. The ruleset has no bypass actors (`rulesets/16884813`, "Protect main branch", active — one call re-checks the claim), so `--admin` does **not** bypass it — it only stops masking it. The variable is **whether the token carried `workflow` at that moment**, not the shape of the change: #693 added a step and merged, #639 changed a step and sat on the wall, #698 added a trigger and sat on the wall. Same shape, opposite outcomes — and the two that failed were merged nine seconds apart, six hours after the one that did not, which is the signature of one unblocking event. So the error is the only reliable signal. Do not report a PR as merge-ready until one of the two paths has returned a merge commit.
+
 ### Per-PR discipline
 
 For contributor PRs that need rebase after base-branch move: use `gh pr update-branch --rebase` — NEVER locally fork + push + create a new PR. See [[feedback_pr_merge_credit_preservation]].
