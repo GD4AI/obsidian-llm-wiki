@@ -93,6 +93,18 @@ const JSON_SCHEMA_FIELD_MARKERS = [
   'json-schema',
   'response_format.json_schema',
   'response-format.json-schema',
+  // Some gateways reject the response_format *envelope* without naming
+  // the structured-output dialect: "This response_format type is
+  // unavailable now" (internal Venus-style proxy). Tier 0's request
+  // carries response_format on the wire, so a body that names it is a
+  // field rejection even without the json_schema token — demote and
+  // let the chain find the strongest tier the backend accepts.
+  // The Tier 1 classifier (isJsonObjectFieldError) also matches
+  // response_format, so a json_object-mode 400 keeps its own path;
+  // the outer guard (currentMode === 'json_schema' || 'json_schema_strict')
+  // keeps the two tiers from cross-firing.
+  'response_format',
+  'response-format',
 ] as const;
 
 /**

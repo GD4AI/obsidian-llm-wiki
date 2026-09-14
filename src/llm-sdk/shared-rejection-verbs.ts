@@ -29,6 +29,18 @@ export const REJECTION_VERBS = [
   'not supported',
   'must be',
   'should be',
+  // Corporate LLM gateways phrase the complaint as an availability /
+  // validity verdict on the response_format *type* rather than a
+  // value complaint: "This response_format type is unavailable now"
+  // (internal Venus-style proxy), "... is invalid for this model".
+  // Both previously fell through every verb, so the demotion chain
+  // never engaged and the 400 surfaced to the user. Deliberately
+  // narrow phrases: bare 'invalid' would also match the #658
+  // strict-dialect body ("Invalid schema for response_format ...")
+  // and value complaints about unrelated fields, widening the
+  // false-positive surface for the permanent mode cache.
+  'unavailable',
+  'is invalid',
 ] as const;
 
 /**

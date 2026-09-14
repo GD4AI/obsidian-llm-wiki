@@ -89,9 +89,33 @@ describe('OutputModeProber.isJsonSchemaFieldError — two-marker classifier for 
     ).toBe(true);
   });
 
+  it('matches Venus-style gateway 400 verbatim: unavailable + response_format envelope (no dialect token)', () => {
+    // Corporate gateway that rejects the whole response_format envelope
+    // without naming json_schema. Verbatim from a live internal proxy.
+    expect(
+      OutputModeProber.isJsonSchemaFieldError(
+        'This response_format type is unavailable now',
+      ),
+    ).toBe(true);
+  });
+
+  it('does NOT match "Invalid schema for response_format" strict-dialect body (Issue #658 path)', () => {
+    // The #658 body is a strict-dialect complaint, not a field rejection:
+    // it carries the (now bare) response_format marker but NO rejection
+    // verb — "Invalid schema" does not contain "is invalid". The strict
+    // classifier (isStrictSchemaRejection) must keep owning this body.
+    expect(
+      OutputModeProber.isJsonSchemaFieldError(
+        "Invalid schema for response_format 'response': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'action'.",
+      ),
+    ).toBe(false);
+  });
+
   it('does NOT match when only the verb is present (no field marker)', () => {
     expect(OutputModeProber.isJsonSchemaFieldError('Invalid value for max_tokens')).toBe(false);
     expect(OutputModeProber.isJsonSchemaFieldError('Unsupported model')).toBe(false);
+    expect(OutputModeProber.isJsonSchemaFieldError('This feature is unavailable now')).toBe(false);
+    expect(OutputModeProber.isJsonSchemaFieldError('max_tokens is invalid')).toBe(false);
   });
 
   it('does NOT match when only the field marker is present (no rejection verb)', () => {
