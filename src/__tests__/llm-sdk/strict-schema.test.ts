@@ -200,12 +200,13 @@ describe('toStrictSchema — the Schema object Output.object() receives', () => 
 describe('every exported output schema reaches the wire in the strict dialect', () => {
   const exported = Object.entries(OutputSchemas).filter(([name]) => name.endsWith('Schema'));
 
-  it('covers the 17 schemas at the boundary', () => {
+  it('covers the 18 schemas at the boundary', () => {
     expect(exported.map(([name]) => name).sort()).toMatchInlineSnapshot(`
       [
         "AliasGenerationLLMSchema",
         "ConversationDedupStatusLLMSchema",
         "DedupResultLLMSchema",
+        "EmbeddedImageEvidenceSchema",
         "FixDeadLinkSchema",
         "LemmaClassifyLLMSchema",
         "LinkOrphanSchema",

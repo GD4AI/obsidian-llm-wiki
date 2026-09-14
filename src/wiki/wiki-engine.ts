@@ -45,6 +45,7 @@ import { getSourceLanguage, isCrossLanguage } from '../core/source-language';
 import { cleanMarkdownResponse } from '../core/markdown';
 import { stampSourcePageHead } from '../core/source-page-head';
 import { injectMentionsSection } from '../core/mentions-injector';
+import { injectEmbeddedImageEvidenceSection } from '../core/embedded-image-evidence';
 import { SchemaManager, SchemaTask } from '../schema/schema-manager';
 import {
   buildSystemPrompt,
@@ -231,6 +232,7 @@ export class WikiEngine {
       getExistingWikiPages: () =>
         getExistingWikiPages(this.app, this.settings.wikiFolder),
       getSchemaContext: t => this.schemaManager.getSchemaContext(t as SchemaTask),
+      getAbortSignal: () => this.abortController?.signal,
       ...(this.subtle ? { subtle: this.subtle } : {}),
       onFileWrite: path => this.onFileWrite?.(path),
       onContradiction: c => this.triageContradictions?.push(c),
@@ -1502,6 +1504,7 @@ export class WikiEngine {
         durationSec: Math.round(totalTime / 1000),
         model: this.settings.model,
         sourceBytes: sourceSize,
+        ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
       });
       const indexTime = Date.now() - indexStart;
       console.debug(`[Time] Index Index & log update: ${indexTime}ms`);
@@ -1544,6 +1547,7 @@ export class WikiEngine {
         contradictionsFound: triageContradictions.length,
         success: true,
         elapsedSeconds: Math.round(totalTime / 1000),
+        ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
         // v1.22.6 #204: Propagate trigger so completion can route UI.
         trigger: opts?.trigger,
       });
@@ -1839,6 +1843,11 @@ export class WikiEngine {
         sectionLabel: getSectionLabels(this.settings).mentions_in_source,
         maxChars: SOURCE_PAGE_MENTIONS_MAX_CHARS,
       },
+    );
+    finalContent = injectEmbeddedImageEvidenceSection(
+      finalContent,
+      this.settings.saveEmbeddedImageEvidence ? analysis.embedded_image_analysis : undefined,
+      getSectionLabels(this.settings).embedded_image_evidence,
     );
 
     // Stage 4 (#568): the source page no longer mirrors the note's tags into
