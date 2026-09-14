@@ -134,13 +134,17 @@ export function spliceBody(originalContent: string, newBody: string): string {
  *     (a raw UTC ISO string, unchanged — it must exact-string-match the
  *     corresponding wiki/schema/suggestions.md log entry) only when given;
  *     omitted entirely otherwise.
- * A no-op on content with no frontmatter or an unterminated one.
+ * A no-op on content with unterminated frontmatter. Content with no
+ * frontmatter at all gets a fresh `---\n...\n---` block created (via
+ * `upsertFrontmatterField`, called below on `content`/`next`).
  */
 export function bumpSchemaMetadata(content: string, now: Date, suggestionTimestamp?: string): string {
-  const fm = parseFrontmatter(content);
-  if (!fm) return content;
+  if (content.startsWith('---') && !parseFrontmatter(content)) return content;
+  const fm = parseFrontmatter(content) ?? {};
 
-  const nextCount = (parseInt(String(fm.auto_suggestion_count ?? '0'), 10) || 0) + 1;
+  const rawCount = fm.auto_suggestion_count;
+  const countStr = typeof rawCount === 'string' || typeof rawCount === 'number' ? String(rawCount) : '0';
+  const nextCount = (parseInt(countStr, 10) || 0) + 1;
 
   let next = upsertFrontmatterField(content, 'updated', localDateStamp(now));
   next = upsertFrontmatterField(next, 'auto_suggestion_count', String(nextCount));
