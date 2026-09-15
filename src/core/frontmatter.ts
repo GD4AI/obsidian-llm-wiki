@@ -111,6 +111,31 @@ export function parseFrontmatter(content: string): FrontmatterData | null {
 }
 
 /**
+ * Repairs a recoverable, damaged frontmatter *opening* delimiter in place: a leading BOM or other
+ * leading whitespace before the `---` (both stripped as leading Unicode whitespace via
+ * `trimStart()`), or a first line of the wrong dash count (e.g. `--`/`----`). A no-op (returns
+ * content unchanged) once the content already starts with `---`. Deliberately does not
+ * detect frontmatter missing its opening delimiter entirely — that's ambiguous with plain body text.
+ * A CRLF-terminated delimiter is recognized and left alone (or correctly repaired preserving the
+ * CRLF), never flipped to LF.
+ */
+export function normalizeFrontmatterOpening(content: string): string {
+  let result = content.trimStart();
+
+  const newlineIdx = result.indexOf('\n');
+  const firstLine = newlineIdx === -1 ? result : result.slice(0, newlineIdx);
+  const hasTrailingCr = firstLine.endsWith('\r');
+  const firstLineNoCr = hasTrailingCr ? firstLine.slice(0, -1) : firstLine;
+
+  if (/^-{2,}\s*$/.test(firstLineNoCr) && firstLineNoCr !== '---') {
+    const openingLine = '---' + (hasTrailingCr ? '\r' : '');
+    result = newlineIdx === -1 ? openingLine : openingLine + result.slice(newlineIdx);
+  }
+
+  return result;
+}
+
+/**
  * The origin notes a `sources/` page was built from, normalized to vault
  * paths.
  *
