@@ -28,6 +28,48 @@ function makeRelPath(path: string, wikiFolder: string): string {
   return path.replace(wikiFolder + '/', '').replace(/\.md$/i, '');
 }
 
+/**
+ * Turns a raw correct_link from the LLM into a clean `[[target]]` /
+ * `[[target|alias]]`, or null if it's unusable. Trims the raw value, then strips
+ * any leading `[` run and trailing `]` run (however many, including zero) —
+ * safe because brackets are never valid content inside a target/alias, so a
+ * bracket run at either edge is always delimiter noise. This repairs a
+ * dropped or doubled bracket (`[[foo]`, `[foo]]`, `foo]]`, `[[[foo]]`, a fully
+ * unclosed `[[foo`) the same way a bare `foo|Alias` with no brackets at all
+ * already gets wrapped. What remains is split at the *first* `|` (via
+ * `indexOf`, not a regex) into a target part and an optional alias part, each
+ * validated independently: neither may contain a bracket (delimiter syntax,
+ * never content) or a raw `\r`/`\n`, and neither may be blank once trimmed.
+ * Interior brackets in the target are still disqualifying, so two
+ * concatenated links (`[[foo]] and [[bar]]`) still correctly fail.
+ */
+function normalizeCorrectLink(rawLink: string): string | null {
+  const core = rawLink.trim()
+    .replace(/^\[+/, '')  // drop any leading "[" run — delimiter noise, never content
+    .replace(/\]+$/, ''); // drop any trailing "]" run — same
+
+  const pipeIdx = core.indexOf('|');
+  const rawTarget = pipeIdx === -1 ? core : core.slice(0, pipeIdx);
+  const rawAlias = pipeIdx === -1 ? undefined : core.slice(pipeIdx + 1);
+
+  // Neither may contain a bracket (delimiter syntax, never content) or a raw \r/\n,
+  // which must stay disqualifying rather than be silently treated as padding.
+  const targetRe = /^[^[\]\r\n]+$/;
+  const aliasRe = /^[^[\]\r\n]+$/;
+
+  if (!targetRe.test(rawTarget)) return null;
+  const target = rawTarget.trim();
+  if (!target) return null;
+
+  if (rawAlias === undefined) return `[[${target}]]`;
+
+  if (!aliasRe.test(rawAlias)) return null;
+  const alias = rawAlias.trim();
+  if (!alias) return null;
+
+  return `[[${target}|${alias}]]`;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // #197 stub-content builders — honest placeholders, NOT LLM-filled stubs.
 //
@@ -232,20 +274,19 @@ export async function fixDeadLink(
   }
 
   if (result?.action === 'correct' && result.correct_link) {
-    let newLink = result.correct_link.trim();
-    if (!newLink.startsWith('[[')) {
-      newLink = `[[${newLink}]]`;
+    // The LLM chose to correct the link but the result is unusable (hallucinated,
+    // blank target/alias, or two links concatenated together) — the LLM already
+    // tried and failed, so leave the link dead rather than silently creating a
+    // stub it never asked for. A dropped/doubled bracket is repaired instead of
+    // rejected — see normalizeCorrectLink.
+    const usableLink = normalizeCorrectLink(result.correct_link);
+    if (usableLink) {
+      const updatedContent = replaceDeadLink(sourceContent, targetName, usableLink);
+      await ctx.createOrUpdateFile(sourcePath, updatedContent);
+      return `corrected: ${usableLink}`;
     }
 
-    // A hallucinated/empty/unclosed correct_link (e.g. "[[]]", or "[[foo" left open because it already
-    // started with "[[" and skipped the wrap above) has no path replaceDeadLink can pair with a preserved
-    // alias, or would write broken markdown outright — treat it as no usable answer and fall through to the
-    // create_stub / deterministic-stub branches below instead.
-    if (/^\[\[[^\]|]+.*\]\]$/.test(newLink)) {
-      const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
-      await ctx.createOrUpdateFile(sourcePath, updatedContent);
-      return `corrected: ${newLink}`;
-    }
+    return `no action taken (unusable correct_link: ${result.correct_link})`;
   }
 
   if (result?.action === 'create_stub' && result.stub_title) {

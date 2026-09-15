@@ -1,9 +1,12 @@
 // Issue #653 review: an LLM `action: 'correct'` reply with an empty/garbage `correct_link` (e.g. whitespace, or
 // "]"/"|" leading) used to be trusted verbatim, and replaceDeadLink's per-match alias-preservation would throw
-// trying to parse a path out of it. An unclosed one (e.g. "[[foo" — already starts with "[[" so the wrap step
-// below skips it) used to be written straight into the page as broken markdown.
-// A malformed correct_link now falls through to the deterministic stub fallback instead — same as if the LLM
-// hadn't returned a usable action at all.
+// trying to parse a path out of it.
+//
+// normalizeCorrectLink now splits malformed corrections into two buckets: a dropped or doubled bracket at the
+// edges (unclosed, single-bracket, extra-bracket) is delimiter noise, never content, so it gets repaired into a
+// clean `[[target]]`/`[[target|alias]]` and applied. A blank target/alias, two concatenated links, or an
+// embedded carriage return isn't safely reconstructable, so those still leave the link dead — no stub, no file
+// write of any kind — since the LLM already tried and failed to produce a usable correction.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fixDeadLink } from '../../../wiki/lint/fix-dead-link';
@@ -57,37 +60,103 @@ describe('fixDeadLink — malformed LLM correct_link', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not throw on a whitespace-only correct_link, and falls through to the stub fallback', async () => {
+  it('leaves the link dead on a whitespace-only correct_link (does not create a stub)', async () => {
     const client = typedClient({ action: 'correct', correct_link: '   ' });
     const { ctx, writes } = makeCtx(client);
 
     const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
 
-    expect(out).toContain('fallback stub created');
-    expect(writes).toHaveLength(2);
+    expect(out).toContain('no action taken');
+    expect(writes).toHaveLength(0);
   });
 
-  it('preserves the source link\'s own alias in the fallback stub link', async () => {
-    const client = typedClient({ action: 'correct', correct_link: '   ' });
+  it('preserves the source link\'s own alias when the deterministic fallback creates a stub', async () => {
+    // {} → no usable action → deterministic fallback → creates a stub and rewrites the
+    // referring page's link; the alias already on that link must survive the rewrite.
+    const client = typedClient({});
     const { ctx, writes } = makeCtx(client);
 
-    await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
 
+    expect(out).toContain('fallback stub created');
     const referringWrite = writes.find(w => w.path === 'wiki/concepts/MyPage.md')!;
     expect(referringWrite.content).toContain('|My Alias]]');
   });
 
-  it('does not write an unclosed link on a bare (no-alias) dead link, and falls through to the stub fallback', async () => {
-    // Already starts with "[[", so the wrap-if-missing step below is skipped, leaving it unclosed. On a bare
-    // dead link (no alias), replaceDeadLink would have spliced this straight in as broken markdown.
+  it('repairs a fully unclosed correct_link by adding the missing closing brackets', async () => {
+    // No closing brackets at all — normalizeCorrectLink strips the (zero-length) trailing "]" run the same
+    // way it would strip a non-empty one, then re-wraps, so this repairs to "[[real-target]]" and is applied.
     const client = typedClient({ action: 'correct', correct_link: '[[real-target' });
     const { ctx, writes } = makeCtx(client, BARE_SOURCE_CONTENT);
 
     const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
 
-    expect(out).toContain('fallback stub created');
-    const referringWrite = writes.find(w => w.path === 'wiki/concepts/MyPage.md')!;
-    expect(referringWrite.content).not.toContain('[[real-target');
+    expect(out).toContain('corrected: [[real-target]]');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.content).toContain('[[real-target]]');
+  });
+
+  it('repairs a correct_link missing its opening brackets (doubled closing)', async () => {
+    const client = typedClient({ action: 'correct', correct_link: 'real-target]]' });
+    const { ctx, writes } = makeCtx(client, BARE_SOURCE_CONTENT);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('corrected: [[real-target]]');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.content).toContain('[[real-target]]');
+  });
+
+  it('repairs a correct_link with a single bracket on each side', async () => {
+    const client = typedClient({ action: 'correct', correct_link: '[real-target]' });
+    const { ctx, writes } = makeCtx(client, BARE_SOURCE_CONTENT);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('corrected: [[real-target]]');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.content).toContain('[[real-target]]');
+  });
+
+  it('repairs a correct_link with an extra opening bracket', async () => {
+    const client = typedClient({ action: 'correct', correct_link: '[[[real-target]]' });
+    const { ctx, writes } = makeCtx(client, BARE_SOURCE_CONTENT);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('corrected: [[real-target]]');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.content).toContain('[[real-target]]');
+  });
+
+  it('leaves the link dead on a blank-alias correct_link (does not create a stub)', async () => {
+    const client = typedClient({ action: 'correct', correct_link: '[[foo|]]' });
+    const { ctx, writes } = makeCtx(client);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('no action taken');
+    expect(writes).toHaveLength(0);
+  });
+
+  it('leaves the link dead on two concatenated correct_links (does not create a stub)', async () => {
+    const client = typedClient({ action: 'correct', correct_link: '[[foo]] and [[bar]]' });
+    const { ctx, writes } = makeCtx(client);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('no action taken');
+    expect(writes).toHaveLength(0);
+  });
+
+  it('leaves the link dead on a correct_link with an embedded carriage return (does not create a stub)', async () => {
+    const client = typedClient({ action: 'correct', correct_link: '[[foo\r]]' });
+    const { ctx, writes } = makeCtx(client);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('no action taken');
+    expect(writes).toHaveLength(0);
   });
 
   it('still applies a well-formed correct_link as before', async () => {
@@ -99,5 +168,19 @@ describe('fixDeadLink — malformed LLM correct_link', () => {
     expect(out).toContain('corrected: [[real-target|Real Target]]');
     expect(writes).toHaveLength(1);
     expect(writes[0]!.content).toContain('[[real-target|My Alias]]');
+  });
+
+  it('trims accidental padding inside the brackets before writing the link', async () => {
+    // Uses BARE_SOURCE_CONTENT (no author-written alias on the dead link) so replaceDeadLink's
+    // per-occurrence alias-preservation (see dead-link-detector.ts) doesn't mask the rebuilt
+    // link behind an existing alias — this test is about the trim, not that preservation rule.
+    const client = typedClient({ action: 'correct', correct_link: '[[ real-target | Real Target ]]' });
+    const { ctx, writes } = makeCtx(client, BARE_SOURCE_CONTENT);
+
+    const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
+
+    expect(out).toContain('corrected: [[real-target|Real Target]]');
+    expect(writes[0]!.content).toContain('[[real-target|Real Target]]');
+    expect(writes[0]!.content).not.toContain(' real-target ');
   });
 });
