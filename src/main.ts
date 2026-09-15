@@ -1,4 +1,4 @@
-import { Plugin, Notice } from 'obsidian';
+import { Plugin, Notice, TFolder, TFile, normalizePath } from 'obsidian';
 
 import {
   LLMWikiSettings,
@@ -167,7 +167,64 @@ export class LLMWikiPlugin extends Plugin {
 
     this.checkQueryHistoryForStaleFolders();
 
+    // Startup self-heal: sources under wiki/sources record which note they
+    // came from; a source missing its wiki-ingested marker means a past run
+    // succeeded but the stamp was lost (older version, crash between page
+    // write and marker write). Re-stamp so skipWikiIngested sees the truth.
+    this.app.workspace.onLayoutReady(() => {
+      void this.repairMissingWikiMarkers();
+    });
+
     console.debug('LLM Wiki Plugin loaded - Karpathy implementation');
+  }
+
+  private async repairMissingWikiMarkers(): Promise<void> {
+    const sourcesFolder = this.app.vault.getAbstractFileByPath(
+      normalizePath(`${this.settings.wikiFolder}/sources`)
+    );
+    if (!(sourcesFolder instanceof TFolder)) return;
+
+    const repaired: string[] = [];
+    for (const child of sourcesFolder.children) {
+      if (!(child instanceof TFile) || child.extension !== 'md') continue;
+      try {
+        const page = await this.app.vault.read(child);
+        // source_file frontmatter references the originating note (wikilink
+        // or bare path — Obsidian has written both shapes historically).
+        const fmEnd = page.startsWith('---') ? page.indexOf('\n---', 3) : -1;
+        if (fmEnd === -1) continue;
+        const fmText = page.substring(3, fmEnd);
+        const sourceMatch =
+          fmText.match(/^source_file:[ \t]*"\[\[(.+?)\]\]"/m) ??
+          fmText.match(/^source_file:[ \t]*\[\[(.+?)\]\]/m) ??
+          fmText.match(/^source_file:[ \t]*"?([^"\n]+?)"?[ \t]*$/m);
+        if (!sourceMatch) continue;
+
+        const sourcePath = sourceMatch[1].trim();
+        const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath) ??
+          this.app.vault.getAbstractFileByPath(`${sourcePath}.md`);
+        if (!(sourceFile instanceof TFile) || sourceFile.extension !== 'md') continue;
+
+        const sourceContent = await this.app.vault.read(sourceFile);
+        if (!sourceContent.startsWith('---')) continue;
+        if (/^wiki-ingested:/m.test(sourceContent.substring(3, sourceContent.indexOf('\n---', 3)))) continue;
+
+        await this.app.fileManager.processFrontMatter(sourceFile, fm => {
+          (fm as Record<string, unknown>)['wiki-ingested'] = new Date().toISOString().slice(0, 10);
+        });
+        repaired.push(sourceFile.path);
+      } catch (error) {
+        // One unreadable page must not block the rest of the sweep.
+        console.warn('[wiki-marker-repair] failed on', child.path, error);
+      }
+    }
+    if (repaired.length > 0) {
+      console.debug(`[wiki-marker-repair] re-stamped ${repaired.length} source marker(s):`, repaired);
+      new Notice(
+        getText(this.settings.language, 'wikiIngestedMarkerRepaired').replace('{count}', String(repaired.length)),
+        NOTICE_NORMAL
+      );
+    }
   }
 
   private checkQueryHistoryForStaleFolders(): void {

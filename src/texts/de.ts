@@ -179,6 +179,8 @@ export const DE_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C): Schrittweise Migrations-Benachrichtigung
     queryHistoryMigrationNotice: 'Der Query-Wiki-Verlauf enthält Links aus einem früheren Wiki-Ordner. Neue Anfragen verwenden automatisch den aktuellen Ordner. Um alle gespeicherten Nachrichten zu aktualisieren, öffnen Sie das Query-Wiki-Panel und klicken Sie dort auf „Verlauf löschen".',
 
+    wikiIngestedMarkerFailed: 'Das wiki-ingested-Marker für \'{filename}\' konnte nicht geschrieben werden. Die Aufnahme war erfolgreich, aber ein erneuter Lauf wird nicht übersprungen — bitte erzwungene Neuaufnahme verwenden oder den Marker manuell ergänzen.',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] Startreparatur: Der wiki-ingested-Marker wurde für {count} aufgenommene Notiz(en) neu gesetzt.',
     // v1.24.0 Issue #251: Benutzerdefinierte Query-Anweisungen (einklappbares Panel)
     customInstructionsTitle: 'Benutzerdefinierte Query-Anweisungen',
     customInstructionsDesc: 'Persistente Anweisungen, die an jede Query-Wiki-Systemaufforderung angehängt werden. Betrifft nur den Query-Wiki-Chat; Ingestion, Lint und Seitengenerierung sind nicht betroffen.',

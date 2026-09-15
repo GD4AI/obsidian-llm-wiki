@@ -150,6 +150,8 @@ export const EN_TEXTS = {
     // contains links from a previous wiki folder.
     queryHistoryMigrationNotice: 'Query Wiki history contains links from a previous wiki folder. New queries now use the latest folder automatically. To refresh all stored messages, open the Query Wiki panel and click the Clear history button there.',
 
+    wikiIngestedMarkerFailed: 'Wiki-ingested marker could not be written for \'{filename}\'. The ingest succeeded, but re-running it later will not be skipped — use force re-ingest or add the marker manually.',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] Startup repair: re-stamped the wiki-ingested marker on {count} ingested note(s).',
     // v1.24.0 Issue #251: Custom Query Instructions collapsible panel
     customInstructionsTitle: 'Custom Query Instructions',
     customInstructionsDesc: 'Persistent instructions appended to every Query Wiki system prompt. Only affects Query Wiki chat; ingest, lint, and page generation are unaffected.',

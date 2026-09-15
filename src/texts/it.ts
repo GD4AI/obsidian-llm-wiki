@@ -148,6 +148,8 @@ export const IT_TEXTS = {
     // v1.24.0 (Bug C 3.4 / plan C): notifica di migrazione graduale
     queryHistoryMigrationNotice: 'La cronologia di Query Wiki contiene link da una cartella wiki precedente. Le nuove query usano automaticamente la cartella più recente. Per aggiornare tutti i messaggi memorizzati, apri il pannello Query Wiki e fai clic sul pulsante "Cancella cronologia" al suo interno.',
 
+    wikiIngestedMarkerFailed: 'Impossibile scrivere il marcatore wiki-ingested per \'{filename}\'. L\'ingestione è riuscita, ma una nuova esecuzione non verrà saltata; usa la re-ingestione forzata o aggiungi il marcatore manualmente.',
+    wikiIngestedMarkerRepaired: '[LLM Wiki] Riparazione all\'avvio: marcatore wiki-ingested riscritto su {count} nota/e ingerita/e.',
     // v1.24.0 Issue #251: istruzioni Query personalizzate (pannello richiudibile)
     customInstructionsTitle: 'Istruzioni Query personalizzate',
     customInstructionsDesc: 'Istruzioni persistenti aggiunte alla fine del prompt di sistema di Query Wiki. Riguardano solo la chat di Query Wiki; ingestione, lint e generazione pagine non sono interessati.',
