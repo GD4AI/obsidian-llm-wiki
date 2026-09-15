@@ -45,7 +45,7 @@ import { applyRelatedLinks } from './related-links';
 import { relatedListLines } from '../../core/related-sections';
 import { mergeFrontmatter, parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { incomingTypeTag } from '../../core/tag-vocab';
-import { collectActiveVocabulary } from '../../core/domain-axis';
+import { activeVocabulary } from '../../core/vocabulary';
 import { appendContradictedByMarker } from '../../core/contradicted-marker';
 import { buildContradictionRecord } from '../../core/contradiction-record';
 import { describeDemotion } from './contradiction-gates';
@@ -104,7 +104,7 @@ export async function mergePage(
     const { frontmatter, body: existingBody } = mergeFrontmatter(
       existingContent,
       sourceSlug ? `sources/${sourceSlug}` : sourceFile.path,
-      incomingTypeTag(ctx.settings, pageType, info.type, collectActiveVocabulary(ctx.app as never, ctx.settings)),
+      incomingTypeTag(ctx.settings, pageType, info.type, activeVocabulary(ctx.app as never, ctx.settings, pageType)),
       info.domains, // domain axis stage 3 (#568): union the extraction's domain subset
     );
 
@@ -470,7 +470,7 @@ export async function appendToReviewedPage(
     const { frontmatter, body: existingBody } = mergeFrontmatter(
       existingContent,
       sourceSlug ? `sources/${sourceSlug}` : sourceFile.path,
-      incomingTypeTag(ctx.settings, pageKind, info.type, collectActiveVocabulary(ctx.app as never, ctx.settings)),
+      incomingTypeTag(ctx.settings, pageKind, info.type, activeVocabulary(ctx.app as never, ctx.settings, pageKind)),
       info.domains, // domain axis stage 3 (#568): union the extraction's domain subset
     );
 

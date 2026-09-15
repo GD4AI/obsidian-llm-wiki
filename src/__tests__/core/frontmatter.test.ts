@@ -1207,3 +1207,38 @@ describe('mergeFrontmatterArrayField after a full strip (S140)', () => {
     expect(result).not.toContain('- ""');
   });
 });
+
+describe('enforceFrontmatterConstraints: source pages carry the form list next to the vocabulary', () => {
+  const page = (tags: string) => [
+    '---',
+    'type: source',
+    `tags: [${tags}]`,
+    'source_file: "[[Notizen/X.md]]"',
+    '---',
+    '',
+    '# X - Summary',
+  ].join('\n');
+
+  it('keeps a form value and a vocabulary value, drops the model\'s third option', () => {
+    // `theory` is what the summary model wrote on one vault instead of `other`
+    // — a built-in concept type, legal nowhere on a source page.
+    const out = enforceFrontmatterConstraints(page('other, theory, Thema/Schlaf, Thema/Erfunden'), 'source', undefined, {
+      domainVocabulary: ['Thema/Schlaf'],
+    });
+    expect(out).toMatch(/^tags: \[other, Thema\/Schlaf\]$/m);
+    expect(out).not.toContain('theory');
+    expect(out).not.toContain('Thema/Erfunden');
+  });
+
+  it('keeps the unknown source-page fields through the pass', () => {
+    const out = enforceFrontmatterConstraints(page('other'), 'source', undefined, { domainVocabulary: [] });
+    expect(out).toMatch(/^source_file: "\[\[Notizen\/X\.md\]\]"$/m);
+    expect(out).toMatch(/^type: source$/m);
+  });
+
+  it('a form value is not legal on an entity page', () => {
+    const entity = '---\ntype: entity\ntags: [paper, Sorte/Erkrankung]\n---\n\n# X';
+    const out = enforceFrontmatterConstraints(entity, 'entity', undefined, { domainVocabulary: ['Sorte/Erkrankung'] });
+    expect(out).toMatch(/^tags: \[Sorte\/Erkrankung\]$/m);
+  });
+});

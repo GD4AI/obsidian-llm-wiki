@@ -153,14 +153,19 @@ describe('domain-axis — collectWikiVocabulary / collectActiveVocabulary (S138)
     expect(collectWikiVocabulary(app, 'wiki')).toEqual(['Sorte/Vitalparameter']);
   });
 
-  // Source pages are auto-generated and their frontmatter lands without the
-  // constraints pass — the summary model must not be able to mint vocabulary.
-  it('does not harvest sources/ pages', () => {
+  // Only the three page folders are pages. Everything else under the wiki
+  // folder — schema, archives, scratch — must not mint vocabulary: on one
+  // vault a term no note carried reached the offer from archived copies under
+  // wiki/schema/ and then stood on 102 pages. sources/ is a page folder since
+  // the summary page passes the same gate as the other two types.
+  it('harvests the three page folders and nothing else under the wiki folder', () => {
     const app = fakeApp({
       'wiki/entities/X.md': ['Sorte/Vitalparameter'],
-      'wiki/sources/S.md': ['Thema/Erfunden'],
+      'wiki/sources/S.md': ['Thema/Schlaf'],
+      'wiki/schema/belege-s154/restore-backup/wiki__sources__Old.md': ['Sorte/Archiv'],
+      'wiki/index.md': ['Thema/Index'],
     });
-    expect(collectWikiVocabulary(app, 'wiki')).toEqual(['Sorte/Vitalparameter']);
+    expect(collectWikiVocabulary(app, 'wiki')).toEqual(['Sorte/Vitalparameter', 'Thema/Schlaf']);
   });
 
   it('unions folder harvest and wiki nested tags, folder spelling wins, sorted', () => {

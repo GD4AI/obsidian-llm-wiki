@@ -59,3 +59,18 @@ describe('SourceAnalyzer — domain context in the extraction prompt (domain axi
     expect(prompt).toContain('For coverage:');
   });
 });
+
+describe('SourceAnalyzer — the type slot names the vocabulary, not the built-in taxonomy', () => {
+  // The system prompt said "use one of the vocabulary values" while the JSON
+  // example at the very slot the model fills still read
+  // `"type": "theory|method|field|phenomenon|standard|term|other"`. Measured:
+  // 259 of 444 concept pages of one rebuild carried no vocabulary type — the
+  // model took the enum it was shown where it wrote the value.
+  it('shows no hard-coded English type enum in the extraction prompt', async () => {
+    const { prompt } = await requestFor('# Zink\n\nZink ist ein Spurenelement.\n');
+    expect(prompt).not.toContain('theory|method|field|phenomenon|standard|term|other');
+    expect(prompt).not.toContain('person|organization|project|product|event|place|other');
+    expect(prompt).toContain('Concept types listed in the Active Tag Vocabulary section');
+    expect(prompt).toContain('Entity types listed in the Active Tag Vocabulary section');
+  });
+});

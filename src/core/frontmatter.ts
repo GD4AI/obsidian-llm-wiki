@@ -774,8 +774,15 @@ export function enforceFrontmatterConstraints(
         : pageType === 'source'
           ? (settings ? getActiveSourceTags(settings) : VALID_SOURCE_TAGS)
           : [];
+    // With a vocabulary, the allow-set is the vocabulary — plus, on a source
+    // page, the closed form list (`paper`, `article`, …): that page carries
+    // two axes in one field, and the model's third option (`theory`, a copied
+    // note tag outside the vocabulary) is legal on neither.
     const domainAllowed = options?.domainVocabulary
-      ? new Set(options.domainVocabulary.map(fold))
+      ? new Set([
+          ...options.domainVocabulary.map(fold),
+          ...(pageType === 'source' ? validSubtypes.map(fold) : []),
+        ])
       : undefined;
     const outOfVocab: string[] = [];
     const strippedTags: string[] = [];

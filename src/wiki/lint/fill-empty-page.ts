@@ -7,7 +7,7 @@ import {
   getGranularityFixLimits,
 } from '../system-prompts';
 import { enforceFrontmatterConstraints, parseFrontmatter } from '../../core/frontmatter';
-import { collectActiveVocabulary } from '../../core/domain-axis'; // local patch (Tag-Achse S138)
+import { activeVocabulary, activeVocabularyLists, vocabularyKindFor } from '../../core/vocabulary';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { resolveModelForTask } from '../../core/model-resolver';
 import {
@@ -65,7 +65,8 @@ export async function fillEmptyPage(
     system: await buildSystemPrompt(
       ctx.settings,
       ctx.getSchemaContext,
-      'full'
+      'full',
+      activeVocabularyLists(ctx.app, ctx.settings)
     ),
     messages: [{ role: 'user', content: finalPrompt }],
     ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
@@ -101,7 +102,7 @@ export async function fillEmptyPage(
   const enforced = enforceFrontmatterConstraints(withDates, pageTypeSingular, ctx.settings, {
     preserveCreated: parseFrontmatter(content)?.created,
     pagePath,
-    domainVocabulary: collectActiveVocabulary(ctx.app, ctx.settings), // local patch (Tag-Achse S138)
+    domainVocabulary: activeVocabulary(ctx.app, ctx.settings, vocabularyKindFor(pageTypeSingular)),
   });
 
   await ctx.createOrUpdateFile(pagePath, enforced);
