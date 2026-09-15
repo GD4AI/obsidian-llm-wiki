@@ -1,7 +1,7 @@
 # `tools/dev-instrument/` — UPSTREAM DEV-ONLY INSTRUMENT
 
 This is **not** a user-facing CLI. It is the dev-only headless measurement
-instrument for the [Karpathy LLM Wiki plugin](https://github.com/green-dalii/obsidian-llm-wiki)
+instrument for the [Karpathy LLM Wiki plugin](https://github.com/GD4AI/obsidian-llm-wiki)
 engine. For production ingest, use [`karpathywiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli)
 via `npx karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
 
@@ -88,7 +88,7 @@ findings**. The single local-only `no-unsanitized/method` warning on
 not in the Bot's `obsidianmd/recommended` ruleset and is therefore out
 of scope for submission review.
 
-See issue [#507](https://github.com/green-dalii/obsidian-llm-wiki/issues/507)
+See issue [#507](https://github.com/GD4AI/obsidian-llm-wiki/issues/507)
 for the full migration plan.
 
 ## Layout

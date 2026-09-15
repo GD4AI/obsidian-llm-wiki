@@ -216,6 +216,6 @@ function renderQuickStartSection(): string {
     '3. **Try a query.** Open the right-side Query Wiki panel (chat-bubble ribbon icon) and ask something about your content.',
     '4. **Tune settings if needed.** Settings → Karpathy LLM Wiki: language, wiki folder, schema, tag vocabulary, auto-watch. Defaults are sensible for new vaults.',
     '',
-    '> Full guide in the README: github.com/green-dalii/obsidian-llm-wiki',
+    '> Full guide in the README: github.com/GD4AI/obsidian-llm-wiki',
   ].join('\n');
 }

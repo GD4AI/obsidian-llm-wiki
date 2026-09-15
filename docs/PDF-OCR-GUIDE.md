@@ -19,7 +19,7 @@ The plugin runs no server of its own, but the paths above do not all send your f
 | **Local OCR** (oMLX + Markitdown on Apple Silicon) | Nothing leaves your machine. This is the only path where the document never crosses a network boundary. |
 | **Markdown from elsewhere** | The plugin sees only the text you hand it; whatever produced that Markdown is outside its scope. |
 
-**MinerU's retention terms.** `mineru.net` publishes API documentation but no privacy policy, retention statement, or data-processing agreement that we were able to find. Until a self-hosted endpoint ships ([Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404)), treat an upload there as leaving your control.
+**MinerU's retention terms.** `mineru.net` publishes API documentation but no privacy policy, retention statement, or data-processing agreement that we were able to find. Until a self-hosted endpoint ships ([Issue #404](https://github.com/GD4AI/obsidian-llm-wiki/issues/404)), treat an upload there as leaving your control.
 
 **The provider path is yours to choose, and that is the point.** The plugin never picks a provider on its own — it sends the file to whichever one you configured, under your account and their terms. If your documents are legal, medical, or otherwise jurisdiction-bound, use local OCR, or the cloud path with a provider you already hold a DPA with.
 
@@ -83,7 +83,7 @@ If you only ingest plain-text PDFs and care most about cost, **cloud providers w
 
 ### Privacy-sensitive users: self-host MinerU
 
-The plugin does **not** currently support a self-hosted MinerU endpoint. The base URL is fixed at `https://mineru.net/api/v4` (`MINERU_API_BASE_URL` in `src/constants.ts`) and no setting or secret overrides it, so deploying MinerU yourself is not a path you can take today. It is tracked as [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404).
+The plugin does **not** currently support a self-hosted MinerU endpoint. The base URL is fixed at `https://mineru.net/api/v4` (`MINERU_API_BASE_URL` in `src/constants.ts`) and no setting or secret overrides it, so deploying MinerU yourself is not a path you can take today. It is tracked as [Issue #404](https://github.com/GD4AI/obsidian-llm-wiki/issues/404).
 
 Until it lands, the two options that keep a document under your control are **local OCR** (oMLX + Markitdown on Apple Silicon) and the **cloud provider path** against a provider you hold terms with — both described above, and compared per path in [Where your document is processed](#-where-your-document-is-processed).
 

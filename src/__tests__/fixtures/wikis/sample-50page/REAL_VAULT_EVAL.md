@@ -76,7 +76,7 @@ The parameter set `damping=0.05, numWalks=3000, walkLength=20` is recommended as
 
 ## knn Baseline Control (sample-50page, @DocTpoint 2026-06-30)
 
-To separate "PPR cascade is good" from "graph structure tracks semantics", a knn baseline (bge-m3 embeddings, no graph) was run on the same `sample-50page` fixture by @DocTpoint ([#198 comment 4843838...](https://github.com/green-dalii/obsidian-llm-wiki/issues/198)).
+To separate "PPR cascade is good" from "graph structure tracks semantics", a knn baseline (bge-m3 embeddings, no graph) was run on the same `sample-50page` fixture by @DocTpoint ([#198 comment 4843838...](https://github.com/GD4AI/obsidian-llm-wiki/issues/198)).
 
 | Strategy | R@5 | R@10 |
 |----------|-----|------|

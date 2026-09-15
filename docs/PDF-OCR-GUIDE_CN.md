@@ -19,7 +19,7 @@ Karpathy LLM Wiki 插件通过四条路径摄入文档，四条路径共享同�
 | **本地 OCR**（Apple Silicon 上的 oMLX + Markitdown） | 不出你的机器。这是唯一一条文档从不跨网络边界的路径。 |
 | **外部转好的 Markdown** | 插件只看到你交给它的文本；产出该 Markdown 的环节不在插件范围内。 |
 
-**MinerU 的留存条款。** `mineru.net` 公布了 API 文档，但我们**未能找到**其隐私政策、数据留存声明或数据处理协议（DPA）。在自建端点发布之前（[Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404)），请把向该处的上传视为脱离你的控制。
+**MinerU 的留存条款。** `mineru.net` 公布了 API 文档，但我们**未能找到**其隐私政策、数据留存声明或数据处理协议（DPA）。在自建端点发布之前（[Issue #404](https://github.com/GD4AI/obsidian-llm-wiki/issues/404)），请把向该处的上传视为脱离你的控制。
 
 **provider 路径由你选择，这正是重点。** 插件从不自行挑选 provider —— 它把文件发往你配置的那一家，走你的账号、适用对方的条款。若你的文档涉及法律、医疗或受司法辖区约束，请用本地 OCR，或使用你已与其签有 DPA 的 provider 走云端路径。
 
@@ -83,7 +83,7 @@ Obsidian 的支持文件类型清单（[file-formats](https://obsidian.md/help/f
 
 ### 隐私敏感用户：自建 MinerU
 
-插件**目前不支持**自建 MinerU 端点。基础 URL 固定为 `https://mineru.net/api/v4`（`src/constants.ts` 中的 `MINERU_API_BASE_URL`），没有任何设置或密钥可以覆盖它，因此自行部署 MinerU 目前不是可行路径。该项由 [Issue #404](https://github.com/green-dalii/obsidian-llm-wiki/issues/404) 跟踪。
+插件**目前不支持**自建 MinerU 端点。基础 URL 固定为 `https://mineru.net/api/v4`（`src/constants.ts` 中的 `MINERU_API_BASE_URL`），没有任何设置或密钥可以覆盖它，因此自行部署 MinerU 目前不是可行路径。该项由 [Issue #404](https://github.com/GD4AI/obsidian-llm-wiki/issues/404) 跟踪。
 
 在它落地之前，能让文档留在你控制下的两个选项是 **本地 OCR**（Apple Silicon 上的 oMLX + Markitdown）与**云端 provider 路径**（使用你已持有条款的 provider）—— 两者均见上文，逐路径对比见 [你的文档在哪里被处理](#-你的文档在哪里被处理)。
 

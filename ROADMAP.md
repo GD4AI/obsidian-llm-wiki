@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.27.1 PATCH (2026-09-06, 46 commits / 3993 tests). See [CHANGELOG.md §1.27.1](./CHANGELOG.md#1271---2026-09-06) for the canonical composition record. | **Updated:** 2026-09-06 (v1.27.1 release prep — wave C/D + audit trio + #636/#637 all SHIPPED)
+**Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-15 (v1.27.2 release prep — wave F shipped, incl. the main-is-red regression fix #722)
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -75,7 +75,7 @@ Open follow-ups from review threads: alias-floor unification (#537×#532), bound
 
 ---
 
-## v1.27.x PATCH cycle — SHIPPED 2026-09-06 as v1.27.1
+## v1.27.x PATCH cycle — SHIPPED 2026-09-06 as v1.27.1, and 2026-09-15 as v1.27.2
 
 **Triggered by:** v1.27.0 MINOR shipped 2026-08-27 (`3464cce`). PATCH backlog is the union of (a) v1.27.0 ship-day bugs from architect-level triage, (b) deferred items from v1.27.0 review threads, (c) post-MINOR new Issues filed by @DocTpoint (2026-08-28 onwards: #567 / #568 / #605–#620 series).
 
@@ -87,75 +87,30 @@ Architect + community correctness wave merged 09-02: repetition-loop echo (#572)
 
 ### Shipped into v1.27.x PATCH — wave C (2026-09-04/05, 5 PRs + 3 audit cleanups, main `ddf392d`)
 
-DocTpoint query/ingest/LLM correctness wave + maintainer three-phase repo-audit cleanup, review-approved and squash-merged 09-05 in one pass (order #630 → #629 → #625 → #626 → #631; audits #632 → #633 → #634 merge-first as the base):
+Composition record: [CHANGELOG §1.27.1](./CHANGELOG.md#1271---2026-09-06). DocTpoint query/ingest/LLM correctness wave (merge order #630 → #629 → #625 → #626 → #631) + maintainer three-phase repo-audit cleanup (#632 → #633 → #634, merge-first as the base). 3975 tests (Gate 1 green); issues #623/#624/#627/#628 auto-closed by their PRs.
 
-| PR | Issue | What | Severity class |
-|----|-------|------|----------------|
-| **#630** | #628 | concept page reaches the answer prompt as its Description, not its one-line Definition (`extractSummaryFromPage` Description-first for both types; 183/241 measured) | query-quality |
-| **#629** | #627 | per-step thinking policy applied on the stream path (`*=default:off` reached every step except the one the user waits for; 43/55s measured) — root cause of the "streamed answer thinks" report, not `b302aab` | correctness |
-| **#625** | #623 | `\p{L}\p{N}\p{M}` tokenizer + word-start `needleHits` + PPR-ranked `mergeWithPPR` (Creatin page hidden by Kahneman/Salbei noise on a 3K-page German vault) | query-quality |
-| **#626** | #624 | folder-wrong links re-pointed vault-wide + source page + new Stage 4.5 `repointLinksAfterRun` (314 measured; folder decided at dedup #589) | graph-integrity |
-| **#631** | — | sourced-paragraph guard `guardBodyRewrite` — footnoted paragraphs another source owns survive rewrites (571-pair replay: 120 restored, 164 footnotes re-attached) | **content-loss** |
-| **#632** | — | audit phase 1: 8 no-op changes (UTC-day site, `ru` locale gaps, 2 dead code, test dedupe) | hygiene |
-| **#633** | — | audit phase 2: openai-sdk-client onto canonical `wrapReasoningContent` (one wrap contract) | hygiene |
-| **#634** | — | audit phase 3: T1 dedupe+relocation + T3 controller round-trip collapse (−82 net, 3932→3932) | hygiene |
-
-3975 tests (Gate 1 green). Issues #623/#624/#627/#628 auto-closed by their PRs. Open design calls unchanged: #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract). #631 follow-up recorded: `mergeDuplicatePages`/`resolveContradiction` stay unguarded (2-guarded/1-unguarded until the follow-up note).
+Planning residue: #631's follow-up stands — `mergeDuplicatePages`/`resolveContradiction` stay unguarded (2-guarded/1-unguarded until the follow-up note is acted on). Open design calls unchanged: #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract).
 
 ### Shipped into v1.27.x PATCH — wave D (2026-09-05/06, 2 PRs, main `f1f2936`)
 
-Deterministic-related-lists + dependency-security root fix, the final wave before v1.27.1 shipped:
-
-| PR | Issue | What | Severity class |
-|----|-------|------|----------------|
-| **#636** | #635 | related lists deterministic end to end: siblings link each other, vault-known names keep title+kind, Related sections rendered from the lists not the model (dead related 24%→1%, 0 pages without a live link was 103) | content-loss / graph-integrity |
-| **#637** | — | 8 fast-uri Dependabot alerts closed at the root: `^3.1.7`, redundant override dropped, CI `pnpm audit` gate, `.github/dependabot.yml` auto-PR (weekly npm + actions) | security |
-
-3993 tests (Gate 1 green). #636 closes #635; #637 closes 8 Dependabot alerts (open=0). v1.27.1 release notes carry both.
+Composition record: [CHANGELOG §1.27.1](./CHANGELOG.md#1271---2026-09-06). Deterministic related lists end to end (#636, closes #635) + the fast-uri dependency-security root fix (#637, closes 8 Dependabot alerts, open=0) — the final wave before v1.27.1 shipped. 3993 tests (Gate 1 green).
 
 ### Shipped into v1.27.x PATCH — wave E (2026-09-10 → 09-12, 17 PRs, main `6b543bf`)
 
-Post-v1.27.1 correctness wave: @DocTpoint's issue→PR pairs (each bug filed with measurements, then fixed with tests in the same window), @Jan-Heldal's first two PRs, and dependency/CI hygiene. All review-approved (`gh pr review` event precedes every `gh pr merge`) and squash-merged; 3993 → **4115 tests**.
-
-| PR | Issue | What | Class |
-|----|-------|------|-------|
-| **#645** | #644 | sibling edges only rescue an orphan, capped at `SIBLING_CAP = 3` — 8562 of 8673 live edges were siblings, cliques up to 20 pages/note | graph-integrity |
-| **#647** | #646 | `withAbortSignal` Proxy puts the engine's cancel on every model call + `checkCancelled()` at the write gate — cancel only reached `convertPdfToMarkdown` before, so #583's cleanup could be skipped | correctness |
-| **#649** | #648 | `mergeFrontmatter` skips empty `sources:` entries — a bare `sources:` line became a stray `[[]]` | hygiene |
-| **#651** | #650 | create path drops model-invented `sources:` before stamping the true one (5 of 8 "multi-source" pages named a note that does not exist) | data-correctness |
-| **#660** | #659 | Related sections rendered after a complementary append, gated by a cheap `relatedListLines` string compare | content-loss |
-| **#663** | #661 | a name below `MIN_DEDUP_NAME_LENGTH` (3, Latin/Greek/Cyrillic only) is created, not asked about — `Cr` was merged into `Kreatinin` | correctness |
-| **#654** | #593 | schema diff modal builds cells on the parent Element — a `Document` holds one child, so the second cell threw `HierarchyRequestError` | **P0 UI** |
-| **#655** | #594 | schema-suggestion prompt reads as a proposal, not as already applied | prompt |
-| **#671** | #670 | alias floor reaches the third writer (`createSummaryPage`); also fixes a latent `replaceFrontmatterArrayField` blank-line seam | data-correctness |
-| **#680** | #679 | `source_file` / `source_path` set from the code, never the model's copy (1 of 103 pages, 8 of 2334 mention lines were dead links **and** wrong ownership answers) | data-correctness |
-| **#675** | #674 | `appendAliases` folds case against the page's own list — the one comparison that did not | hygiene |
-| **#683** | #682 | one-token JSON defects repaired locally before spending a model call (198 of 3893 responses reached repair; 11 hit the 32,767-token cap at ~8 min each) | perf / cost |
-| **#685** | #667 | one `core/log-labels.ts` table read by writer **and** parser — closes `zh-Hant`/`it`/`ru` English fallback plus a second drift site in the Operation History parser | i18n |
-| **#686** | #658 | `json_schema_strict` negotiated tier — strict OpenAI-compatible endpoints rejected `FixDeadLinkSchema` (all four properties optional); 12 of 17 schemas carry optional fields | interop |
-| **#638** | — | `actions/setup-node` 4 → 7 | CI |
-| **#642** | — | `yaml` 2.8.3 → 2.9.0 | deps |
-| **#652** | — | `vitest` 4.1.10 → 5.0.0, verified locally in an isolated worktree (4028/284 identical to the v4 baseline; the one `ENOENT: main.js` failure was the documented build-before-test ordering, not a v5 regression) | deps |
-
-Issues auto-closed by their PRs: #593 #594 #644 #646 #648 #650 #659 #661. Gate 1 green at `6b543bf`.
+Composition record: [CHANGELOG §1.27.2](./CHANGELOG.md#1272---2026-09-15). Post-v1.27.1 correctness wave: @DocTpoint's issue→PR pairs (each bug filed with measurements, then fixed with tests in the same window), @Jan-Heldal's first two PRs, and dependency/CI hygiene. All review-approved (`gh pr review` event precedes every `gh pr merge`) and squash-merged; 3993 → **4115 tests**. Issues auto-closed by their PRs: #593 #594 #644 #646 #648 #650 #659 #661.
 
 ### Shipped into v1.27.x PATCH — wave B (2026-09-04, 9 PRs, main `8feb5fd`)
 
-DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one pass (09-04):
+Composition record: [CHANGELOG §1.27.1](./CHANGELOG.md#1271---2026-09-06). DocTpoint rewrite-safety audit wave, all merge-ready and review-approved in one pass (09-04). 3830 tests (Gate 1 green); issues #605/#609/#611/#613/#614/#617/#620 auto-closed by their PRs.
 
-| PR | Issue | What | Severity class |
-|----|-------|------|----------------|
-| **#612** | #611 | `localDateStamp()` replaces `toISOString().split('T')` at all 17 date-write sites — vault dates now local, not UTC | data-correctness |
-| **#615** | #613 | related-page rewrite scoped to `entities/`+`concepts/` — 573 misdirected source-page rewrites stop | **data-corruption** |
-| **#616** | #614 | Mentions re-emit uses existing block length as floor — no more 500-char capping of accumulated quotes | content-loss |
-| **#618** | #617 | kept-but-collapsed sections (below `SECTION_SHRINK_FLOOR`) restored — closes the #419 guard hole | **content-loss** |
-| **#621** | #620 | candidate gate keeps edges to pages the vault already has (`isKnownPage`) — no vault-blind pruning | graph-integrity |
-| **#606** | #605 | merge-triage contradictions reach the log/report via `onContradiction` callback | reporting |
-| **#610** | #609 | two gates before a contradiction record — page sentence exists + source holds the claim (7/9 false-positive rate measured) | correctness |
-| **#622** | — | README Marp URL + LICENSE relative links fixed (community first PR, NotAFlightRisk) | docs |
-| **#619** | — | DocTpoint listed as co-maintainer in manifest/NOTICE/README (owner-approved) | credit |
+### Shipped into v1.27.x PATCH — wave F (2026-09-13 → 09-15) — SHIPPED 2026-09-15 as v1.27.2
 
-3830 tests (Gate 1 green). Issues #605/#609/#611/#613/#614/#617/#620 auto-closed by their PRs.
+Composition record: [CHANGELOG §1.27.2](./CHANGELOG.md#1272---2026-09-15) — 39 commits, 3993 → **4144 tests**. Per-PR detail lives there, not here; this section keeps only what changes the planning picture:
+
+- **Deferred to `v1.28.0 MINOR` (decided 2026-09-15):** **#701** writes `wiki-ingested:` into the user's *source notes* with the write on by default — contradicts the Quick Start promise at `README.md:114` in all eleven locales and the old-default-behaviour-preserved rule. Two design options on the table (opt-in write + 11-README update, or keep the record in plugin data keyed by path). **#706** (`@ai-sdk/openai-compatible` 2→3 MAJOR) changes the request-body shape — MINOR material, not PATCH.
+- **#703 does not block a release:** no fix PR exists to wait for, no destructive effect, workaround available (exclude the file) — ships as a Release Notes Known Issue.
+- **Process debt (unfixed):** a push-triggered CI failure on `main` has no PR page to carry a red mark, so the regression that #722 fixed sat red for five commits that nobody read. #698 bought the coverage, not the visibility. Candidate fix: a CI-failure notification path, or a per-session `gh run list --branch main` verification step.
+- **Review rule recorded (MEMORY, 2026-09-15):** two PRs touching the same file must be diffed against each other before merge — #705 and #714 each passed Gate 1 alone and broke `main` together.
 
 ### Active backlog (priority × ROI)
 

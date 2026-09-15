@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-08-27
 
-**Current state pointer:** see [ROADMAP.md](./ROADMAP.md#current-status) for active development phase + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.27.0 MINOR (2026-08-27, 3677 tests / 260 files).
+**Current state pointer:** see [ROADMAP.md](./ROADMAP.md#current-status) for active development phase + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.27.2 PATCH (2026-09-15, 4144 tests / 294 files).
 
 ---
 
@@ -411,4 +411,4 @@ See [MEMORY.md §"Architect-level contributors"](./MEMORY.md#architect-level-con
 
 ---
 
-**Maintainer:** Greener-Dalii | **Repository:** green-dalii/obsidian-llm-wiki
+**Maintainer:** Greener-Dalii | **Repository:** GD4AI/obsidian-llm-wiki

@@ -5,7 +5,7 @@ Thanks for your interest in contributing! This plugin follows Obsidian's plugin 
 ## Development Setup
 
 ```bash
-git clone https://github.com/green-dalii/obsidian-llm-wiki.git
+git clone https://github.com/GD4AI/obsidian-llm-wiki.git
 cd obsidian-llm-wiki
 pnpm install
 ```
@@ -221,22 +221,22 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 3993 tests / 282 files; v1.27.1 PATCH 2026-09-06)
+└── __tests__/           # Unit tests (vitest, 4144 tests / 294 files; v1.27.2 PATCH 2026-09-15)
 
-tools/                  # CLI toolchain (in-tree, ships via package.json bin) — see also the standalone sibling repo
-└── llm-wiki-cli/       # Headless ingest CLI (v1.26.0, PRs #372 + #387)
-    ├── run-llm-wiki.mjs # Executable entry point (`pnpm llm-wiki`)
-    ├── README.md        # CLI flag reference (deprecated path — see obsidian-llm-wiki-cli)
+tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
+└── dev-instrument/     # UPSTREAM DEV-ONLY INSTRUMENT (v1.27.0, PR #511) — engine contributors only
+    ├── run-instrument.mjs # Entry point: `node tools/dev-instrument/run-instrument.mjs <vault> <source>`
+    ├── README.md        # Measurement-arm reference (WIKI_THINKING_MODE / WIKI_TEMP / WIKI_TOP_P)
     ├── tsconfig.json    # Separate tsconfig (@types/node@22)
     └── src/
-        ├── main.ts          # dispatchCli + parseCliOptions + runIngest (v1.26.0, 671 LOC)
-        ├── node-globals.ts  # dynamic `node:module` + createRequire guard (Platform.isDesktop-style boundary)
-        ├── node-util.d.ts   # Ambient @types/node@22 module declarations
-        ├── obsidian.ts      # Obsidian API shim used by the CLI (vault + app stubs)
-        └── vault.ts         # Node `fs/promises` vault adapter (read/write/list)
+        ├── engine-runner.ts     # Runs the real WikiEngine headless against real LLM spend
+        ├── measurement-arms.ts  # Environment-driven measurement arms (fail-fast validated)
+        ├── vault-fs.ts          # Node `fs/promises` vault adapter + link cache
+        ├── shim.ts              # Obsidian API shim (vault + app stubs)
+        └── exit-code.ts         # Exit-code mapping
 ```
 
-> **Note on `tools/llm-wiki-cli/` (current authoritative CLI, scheduled to move):** The in-tree CLI is the **current user-facing install path** — `pnpm llm-wiki` (or `node tools/llm-wiki-cli/run-llm-wiki.mjs ingest ...`) is the only way to run the ingest pipeline headlessly until the v1.27.0 Coexist phase ships. It is scheduled to move to a standalone sibling repo ([`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli)) under npm package name `karpathywiki-cli` (see [SPEC v2.0](https://github.com/green-dalii/obsidian-llm-wiki-cli/blob/main/SPEC.md) and [ROADMAP v1.27.0 CLI split](ROADMAP.md#v1270-minor-design-track)). The sibling repo is at **v0.1.0-dev, NOT yet published to npm** as of 2026-08-13. After the v1.28.0 Demote phase, the in-tree `tools/llm-wiki-cli/` becomes a **dev-only test harness** referencing `../../src/` — not a user-facing CLI. Until then, `tools/llm-wiki-cli/` is the canonical CLI source.
+> **Note on `tools/`:** since v1.27.0 (PR #511) the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors: it runs the real `WikiEngine` against real LLM spend and keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
 
 ## Internationalization
 
@@ -277,7 +277,7 @@ graph TD
     WikiEngine -->|analyze| SourceAnalyzer
     WikiEngine -->|CRUD + merge| PageFactory
     WikiEngine -->|write| Vault
-    WikiEngine -->|headless ingest| llmWikiCli["tools/llm-wiki-cli/ (v1.26.0 PR #387)"]
+    WikiEngine -->|headless measurement| devInstrument["tools/dev-instrument/ (v1.27.0 PR #511, dev-only)"]
 
     QueryEngine -->|4-phase pipeline: read-index / select-seeds / load-pages / assemble-context| Vault
     QueryEngine -->|streaming + render| LLMClient
@@ -352,4 +352,4 @@ Maintainers may ask for clarification if a commit lacks a sign-off. We do not re
 
 ## Questions?
 
-Open a [Discussion](https://github.com/green-dalii/obsidian-llm-wiki/discussions) or [Issue](https://github.com/green-dalii/obsidian-llm-wiki/issues).
+Open a [Discussion](https://github.com/GD4AI/obsidian-llm-wiki/discussions) or [Issue](https://github.com/GD4AI/obsidian-llm-wiki/issues).

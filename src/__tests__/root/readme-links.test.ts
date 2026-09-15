@@ -5,14 +5,14 @@
 // stripped during the marketplace render, so users lose navigation between
 // locales and to the companion PDF-OCR / MODEL guides. The fix is to
 // rewrite every cross-file URL in every README into an absolute
-// `https://github.com/green-dalii/obsidian-llm-wiki/blob/main/<path>`
+// `https://github.com/GD4AI/obsidian-llm-wiki/blob/main/<path>`
 // anchor. Local `#-anchor` references (same-page TOC) stay relative —
 // GitHub GFM still resolves them.
 //
 // What this guard pins:
 //   1. Every link of the form `](docs/...)` or `](README_*.md)` in every
 //      locale README is rejected — the only absolute-shape allowed is the
-//      `https://github.com/green-dalii/obsidian-llm-wiki/blob/main/...`
+//      `https://github.com/GD4AI/obsidian-llm-wiki/blob/main/...`
 //      form.
 //   2. Image refs may stay as relative paths because Obsidian renders
 //      those correctly (the plugin's banner and side-panel figures appear
@@ -166,14 +166,23 @@ describe('v1.25.11 PATCH #375 — README links are absolute https:// or known-sa
     }
   });
 
-  it('every locale switcher entry is pinned to https://github.com/green-dalii/obsidian-llm-wiki/blob/main/', () => {
+  it('every locale switcher entry is pinned to https://github.com/GD4AI/obsidian-llm-wiki/blob/main/', () => {
     for (const { label, path } of README_FILES) {
       const body = readFileSync(path, 'utf8');
       // Each switcher entry MUST use the canonical blob/main URL prefix.
       // Pin this so a future link-shape experiment (tag, branch ref, etc.)
       // fails loudly.
-      const wrongPrefix = body.match(/https:\/\/(?!github\.com\/green-dalii\/obsidian-llm-wiki\/blob\/main\/)[a-z]+\//i);
-      expect(wrongPrefix, `non-canonical absolute prefix in ${label}: ${wrongPrefix?.[0]}`).toBeNull();
+      //
+      // Assert the prefix positively. The previous form was a negative
+      // lookahead followed by `[a-z]+/`, which cannot match `github.com`
+      // (a letter run is followed by `.`, not `/`), so it only ever
+      // rejected non-github hosts — a stale repository owner passed it.
+      // That is exactly how the green-dalii -> GD4AI move went unnoticed
+      // until the Obsidian review bot flagged the README.
+      const anchors: string[] = body.match(/https:\/\/[^\s)"'<>]*\/blob\/main\/(README\.md|docs\/README_)/g) ?? [];
+      expect(anchors.length, `no switcher anchors found in ${label}`).toBeGreaterThan(0);
+      const wrongPrefix = anchors.find((url) => !url.startsWith('https://github.com/GD4AI/obsidian-llm-wiki/blob/main/'));
+      expect(wrongPrefix, `non-canonical absolute prefix in ${label}: ${wrongPrefix}`).toBeUndefined();
     }
   });
 });

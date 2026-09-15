@@ -8,6 +8,32 @@
 
 ---
 
+## Current state (2026-09-15)
+
+**Latest shipped:** **v1.27.2 PATCH** (2026-09-15) — 39 merge commits since
+v1.27.1, 128 files, +4243/−1802 LOC, **4144 tests / 294 files** (see CHANGELOG
+§1.27.2). Content: a body rewrite cut off at the token limit is no longer
+adopted (#704, PR #705), one shape for `updated_pages` (#713, PR #714),
+provenance footnote brackets repaired (#702), corporate-gateway
+`response_format` demotion (#711, PR #712), strict structured output as a
+negotiated tier (#658, PR #686), source page head stamped from code
+(#679/#670/#661, PR #681), two contradiction dead paths removed (#604/#666, PR
+#684), ingest lifecycle released on skip (#688, PR #690), plus the regression
+fix that made `main` red (#722). All Gate-1 green.
+
+**Next:** #653/#656 (Jan-Heldal, CHANGES_REQUESTED — #656 also carries its own
+lint failure at `src/schema/apply-suggestion.ts:143`), #673 (DocTpoint,
+CHANGES_REQUESTED on the 9-locale blocker), #687 (Chase07, draft WIP).
+`v1.28.0 MINOR` holds **#701** (it writes `wiki-ingested:` into the user's
+source notes and defaults the write on — contradicts the `README.md:114`
+promise in all eleven locales) and **#706** (`@ai-sdk/openai-compatible` 2→3
+MAJOR, request-body shape). Open design calls: #603 (write-gate contract) /
+#567 (limit contract); #604 is closed by #684.
+
+> **Superseded 2026-09-15 (v1.27.2 shipped):** the 2026-09-06 block below is
+the pre-release snapshot (3993 tests, main at v1.27.1). Kept for archaeology —
+do not update the old block.
+
 ## Current state (2026-09-06)
 
 **Latest shipped:** **v1.27.1 PATCH** (2026-09-06) — 46 merge commits since
@@ -421,6 +447,30 @@ workflow".
 
 ---
 
+## Lessons learned (2026-09-15 session — v1.27.2 release prep, main-is-red regression forensics)
+
+**Trigger:** user "梳理本patch阶段所有工作，按skill执行发布流程". Gate 1 failed 12 seconds into Step 1 on a clean `main` — before any release change had been made.
+
+### Durable lessons
+
+1. **Two PRs touching the same file must be reviewed for interaction, not only individually.** #705 added the token-limit guard to `related-page.ts` as `return true` (the function returned `boolean`); #714 changed that function's return type to `string | null`. Each passed Gate 1 on its own branch. Merged, they left `main` failing `error TS2322` for **five consecutive commits** (`c05d89a0` → `4c3e6ecc`). Per-PR CI cannot see this class at all, and I had read both diffs in review — each verified against its own base, never against the other. **Before merging into a file another queued PR also touches, diff the two against each other, not just against `main`.**
+2. **The runtime half of a type error is often worse than the type error.** `updatedPath` became the boolean `true`, so `updated_pages` gained an entry that `repointLinksAfterRun`'s `p.endsWith('.md')` filter drops **silently** — precisely the #713 shape, reintroduced by the fix for #713's sibling. A red type check is the *lucky* outcome; the same mistake in an untyped position ships unnoticed.
+3. **A push-triggered CI failure on `main` has no surface.** #698 added `push: branches: [main]` and it worked exactly as designed — five runs reported `failure`. There is no PR page to carry a red mark, so nobody saw them. **Coverage ≠ visibility.** Until a notification path exists, "main is green" must be verified by query, not assumed: `gh run list --branch main --limit 5 --json headSha,conclusion`.
+4. **`return page.path` was correct semantically, not merely type-correct.** The guard runs *after* `createOrUpdateFile`, so the frontmatter had landed and the page genuinely was updated — recording it in `updated_pages` is what the link-repoint pass needs. Choosing whichever value satisfies the type checker would have been a coin flip; asking what the call chain does with it decides the question.
+5. **Gate 1 finding a blocker at Step 1 is the gate working.** The alternative was cutting tag `1.27.2` from a five-commit-red `main`. The release flow's order (Gate 1 before any version bump) is what made the failure cheap — no tag to retract, no release to unpublish, no published artifact to amend.
+6. **`pnpm-lock.yaml` had been stale since #692.** #692 regenerated `package-lock.json` for the vitest 5 bump and did not regenerate `pnpm-lock.yaml`; the drift surfaced only at release time (491 → 495 entries). `pnpm install --frozen-lockfile` is the decisive check that the pair now agrees with `package.json`. Regenerating **both** is the rule; regenerating one is a half-measure that hides until the next release.
+7. **`AGENTS.md`'s "Latest shipped" pointer was two releases behind** (still v1.27.0 / 3677 tests) while v1.27.1 had shipped. It is the first line of the file every agent reads, so it needs the same update pass as CHANGELOG/ROADMAP — not a "docs" afterthought.
+8. **CONTRIBUTING.md carried a whole stale section, not just stale numbers.** Its `tools/llm-wiki-cli/` tree — described as "the current user-facing install path" — had been deleted in v1.27.0 by #511, and its Mermaid diagram still pointed at the removed directory. **Numerical drift is visible; structural drift is not.** Sweep the tree and the diagram, not only the counts.
+
+### State pointers (2026-09-15)
+
+- **Open PRs:** #653/#656 (Jan-Heldal, CHANGES_REQUESTED), #673 (DocTpoint, CHANGES_REQUESTED), #687 (Chase07, draft), #701 (deferred to `v1.28.0 MINOR`), #706/#707/#708 (dependabot, CI red — #706 is a MAJOR).
+- **Open design calls:** #603 (write-gate contract), #567 (limit contract). #604 closed by #684.
+- **Milestones:** `v1.27.x PATCH` (15 open), `v1.28.0 MINOR` (new), `v1.27.0 MINOR` closed.
+- **Repository links point to `GD4AI/obsidian-llm-wiki`** — the org move made every `green-dalii/obsidian-llm-wiki` URL stale, and the Obsidian review bot caught it ("README links to another repository with the same name"). 376 repo links across 25 files were updated; the substitution used a negative lookahead so `green-dalii/obsidian-llm-wiki-cli` was protected (the sibling CLI repo did **not** move). The #375 locale-switcher guard now asserts the prefix positively — its previous lookahead-plus-`[a-z]+/` form could not match any `github.com` URL, so a stale owner passed it, which is why this drift survived two releases.
+- **Ruleset `16884813`:** `bypass_actors: []` restored after the #722 merge — a temporary `bypass_mode: "pull_request"` actor was added and reverted **in the same command chain**, and `updated_at` 2026-09-15T08:28:50+08:00 proves the revert was the last write.
+- **Docs synced:** CHANGELOG §1.27.2 · ROADMAP wave F + header · MEMORY current-state + this block · CONTRIBUTING (counts + tree + Mermaid) · AGENTS.md latest-shipped pointer · 11 READMEs (`latest:` + `last-updated:`).
+
 ## Lessons learned (2026-09-05 session — wave-C 5-PR merge + audit-trio + doc sync)
 
 **Trigger:** user "按你建议执行 review+Approve+Merge，然后更新 CHANGELOG、ROADMAP、MEMORY、CONTRIBUTING". Merged #630 → #629 → #625 → #626 → #631 (small-to-large; audits #632/#633/#634 already on main as base); main `bf3cd3d` → `ddf392d`; 3932 → 3975 tests (279 files). Labels `bug` + milestone `v1.27.x PATCH` applied to all five post-merge (verify showed 630/629/625 first, 626/631 needed a retry pass). Linked issues #623/#624/#627/#628 auto-closed via `Closes`.
@@ -551,4 +601,4 @@ next moves — are captured here for retrieval.
 ---
 
 **Maintainer:** [@green-dalii](https://github.com/green-dalii) ·
-**Repository:** [green-dalii/obsidian-llm-wiki](https://github.com/green-dalii/obsidian-llm-wiki)
+**Repository:** [GD4AI/obsidian-llm-wiki](https://github.com/GD4AI/obsidian-llm-wiki)

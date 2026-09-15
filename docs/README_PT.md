@@ -8,12 +8,12 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - dependencies: zero runtime dependencies (Vercel AI SDK v6 bundled)
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
-- repo: https://github.com/green-dalii/obsidian-llm-wiki
+- repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.1 (PATCH — 46 commits since v1.27.0: deterministic related lists, sourced-paragraph rewrite guard, vault-wide link repoint, stream-path thinking policy, local-date stamps, contradiction gates, deterministic shaping; 3993 tests)
-- last-updated: 2026-09-06
+- latest: v1.27.2 (PATCH — uma reescrita truncada no limite de tokens não sobrescreve mais a página, uma forma única para `updated_pages` para que o re-pointamento de links veja cada página, colchetes de notas de proveniência reparados, fallback de saída estruturada de gateways corporativos, ciclo de vida de ingestão liberado ao pular, o cancelamento alcança a chamada ao modelo; 39 commits, 4144 tests)
+- last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -21,7 +21,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (project corpus, only published number in this open-source LLM-wiki space)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
-- canonical: https://github.com/green-dalii/obsidian-llm-wiki/blob/main/README.md
+- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
 -->
 
 ![Banner do plugin Karpathy LLM Wiki — uma rede de páginas wiki interconectadas, construída a partir das suas notas Obsidian](assets/llm_wiki_banner.webp)
@@ -32,13 +32,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Pontuação perfeita na revisão da Obsidian • Recuperação por grafo sem embeddings • 11 idiomas nativos • Ingestão nativa de PDF + imagens + Office • Funciona com qualquer provedor • Local primeiro • Sem backend • Compatível com RGPD**
 
-![Version](https://img.shields.io/github/v/release/green-dalii/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
-![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/green-dalii/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
-![GitHub Stars](https://img.shields.io/github/stars/green-dalii/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/green-dalii/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/green-dalii/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/green-dalii/obsidian-llm-wiki)
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
+![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
-[English](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_ES.md) | **Português** | [Italiano](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_RU.md)
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | **Português** | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md)
 
-[Site oficial](https://llmwiki.greenerai.top/) | [Mercado Obsidian](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Discussões](https://github.com/green-dalii/obsidian-llm-wiki/discussions)
+[Site oficial](https://llmwiki.greenerai.top/) | [Mercado Obsidian](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Discussões](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
 🤔 [Por que este plugin?](#-por-que-este-plugin) | 🚀 [Início rápido](#-início-rápido) | ✨ [Funcionalidades](#-funcionalidades) | 🌐 [Ecossistema](#-ecossistema) | 🔍 [Como funciona a recuperação](#-como-funciona-a-recuperação) | 🤖 [Modelos](#-modelos) | ❓ [FAQ](#-faq)
 
@@ -131,7 +131,7 @@ Você escreve notas. Elas ficam em pastas. Encontrar o que se relaciona com o qu
 |-------|--------|
 | `notes/machine-learning.md` (um arquivo simples) | `wiki/concepts/supervised-learning.md` com `[[bidirectional links]]`, aliases, atribuição de fonte e uma entrada em `wiki/index.md` |
 
-> 📖 Tutoriais em [GitHub Discussions → Guides](https://github.com/green-dalii/obsidian-llm-wiki/discussions/categories/guides). Achou útil? [Dê uma estrela no repo](https://github.com/green-dalii/obsidian-llm-wiki) para acompanhar as releases.
+> 📖 Tutoriais em [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Achou útil? [Dê uma estrela no repo](https://github.com/GD4AI/obsidian-llm-wiki) para acompanhar as releases.
 
 ---
 
@@ -143,7 +143,7 @@ Você escreve notas. Elas ficam em pastas. Encontrar o que se relaciona com o qu
 - **🏷️ Aliases Obrigatórios** — Cada página gerada inclui pelo menos um alias (tradução, abreviatura, variante) para que a deteção de duplicados entre idiomas funcione.
 - **🔄 Deteção de Duplicados por Camadas** — Camada 1 (correspondência direta de nome: entre idiomas, abreviatura, títulos de alta similaridade) sempre verificada; Camada 2 (links compartilhados, similaridade média) preenche o orçamento de tokens restante.
 - **🧩 Fusão Inteligente e Estado de Contradição** — Duplicados são mesclados preservando aliases; contradições são sinalizadas com atribuição de fonte; páginas `reviewed: true` são protegidas contra sobrescrita.
-- **🎨 Vocabulário de Tags Personalizável** — Defina suas próprias listas de tags de tipo de entidade e conceito em Configurações → Wiki → Vocabulário de Tags → *Personalizado*. O vocabulário é uma dica de injeção de esquema para a LLM, não uma barreira de escrita — modelos pequenos/locais ainda podem derivar (cerca de um em dez devolve a taxonomia interna do modelo). Lint sinaliza o restante. Âncora de design para aplicação do esquema: [Issue #328](https://github.com/green-dalii/obsidian-llm-wiki/issues/328).
+- **🎨 Vocabulário de Tags Personalizável** — Defina suas próprias listas de tags de tipo de entidade e conceito em Configurações → Wiki → Vocabulário de Tags → *Personalizado*. O vocabulário é uma dica de injeção de esquema para a LLM, não uma barreira de escrita — modelos pequenos/locais ainda podem derivar (cerca de um em dez devolve a taxonomia interna do modelo). Lint sinaliza o restante. Âncora de design para aplicação do esquema: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 ### 📄 Ingestão de Documentos / PDF / Imagens
 
@@ -164,7 +164,7 @@ Cinco caminhos, alternáveis por ingestão:
 - **🛡️ Prompt de Transcrição Literal** — conversão estilo OCR com marcadores `[illegible]` / `[figure: ...]` anti-alucinação; o encapsulamento em fences markdown de modelos locais pequenos é limpo automaticamente antes da escrita no cache.
 - **🔁 Citações verbatim na página de origem (v1.27.0, #496)** — cada página gerada `sources/<slug>.md` agora traz uma seção `Menções na Fonte` construída a partir das mesmas citações verbatim que a extração capturou por entidade/conceito (a prosa que o modelo provou que consegue ver); assim, o documento de origem é a única página wiki com um rastro real e fundamentado até o texto fonte.
 
-📖 **Tutoriais de configuração completos** para todos os caminhos (provedores cloud, tiers de hardware oMLX, instalação do MinerU, manutenção do cache) → [docs/PDF-OCR-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md)
+📖 **Tutoriais de configuração completos** para todos os caminhos (provedores cloud, tiers de hardware oMLX, instalação do MinerU, manutenção do cache) → [docs/PDF-OCR-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md)
 
 ### 💬 Consulta e Manutenção
 
@@ -189,7 +189,7 @@ Cinco caminhos, alternáveis por ingestão:
 
 - **🖥️ Ollama, LM Studio, OpenRouter, endpoint customizado** — funcionam imediatamente. Modelos locais funcionam para consulta (janelas de contexto menores); a ingestão de um vault de 2000 páginas geralmente precisa de um modelo cloud de contexto longo.
 - **📄 O caminho OCR PDF é totalmente local no Apple Silicon** — veja [Ingestão de Documentos / PDF / Imagens](#-ingestão-de-documentos--pdf--imagens) acima.
-- **🔐 ChatGPT Plan (Codex OAuth)** — loopback desktop ou código de dispositivo mobile; as credenciais vivem apenas no Obsidian SecretStorage. (Veja [Anthropic vs OpenAI vs Codex OAuth](#-anthropic-vs-openai-vs-codex-oauth--são-provedores-distintos) abaixo para a explicação completa dos limites entre provedores.)
+- **🔐 ChatGPT Plan (Codex OAuth)** — loopback desktop ou código de dispositivo mobile; as credenciais vivem apenas no Obsidian SecretStorage. (Veja [Anthropic vs OpenAI vs Codex OAuth](#anthropic-vs-openai-vs-codex-oauth--são-provedores-distintos) abaixo para a explicação completa dos limites entre provedores.)
 
 ### 🌐 Idioma
 
@@ -216,7 +216,7 @@ O plugin compõe-se com o restante do seu stack Obsidian — cada ferramenta aba
 
 **A maioria dos utilizadores deve ignorar esta secção.** A CLI voltada para o utilizador do plugin vive no repositório irmão [green-dalii/obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli) — instale com `npm i -g karpathywiki-cli` e execute `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
 
-O que vem neste repositório em `tools/dev-instrument/` é o **instrumento de medição headless só-dev** para contribuidores do motor — executa o verdadeiro `WikiEngine.ingestSource` contra um cofre em disco sem runtime Obsidian, imprime a contabilidade de tokens e wall-clock por tarefa — os mesmos números que conduzem a evidência de desempenho em `CLAUDE.md` e nas notas de versão. Veja [`tools/dev-instrument/README.md`](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md) para o comando de entrada, variáveis de ambiente, modos de medição e especificação do código de saída.
+O que vem neste repositório em `tools/dev-instrument/` é o **instrumento de medição headless só-dev** para contribuidores do motor — executa o verdadeiro `WikiEngine.ingestSource` contra um cofre em disco sem runtime Obsidian, imprime a contabilidade de tokens e wall-clock por tarefa — os mesmos números que conduzem a evidência de desempenho em `CLAUDE.md` e nas notas de versão. Veja [`tools/dev-instrument/README.md`](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md) para o comando de entrada, variáveis de ambiente, modos de medição e especificação do código de saída.
 
 ## 🔍 Como funciona a recuperação
 
@@ -242,7 +242,7 @@ Usamos Monte Carlo PPR (Fogaras 2005) — 3.000 caminhadas aleatórias × 50 pas
 
 ### Por que nenhum embedding
 
-Rejeitamos deliberadamente o caminho de embedding na [Issue #175](https://github.com/green-dalii/obsidian-llm-wiki/issues/175). O sinal do grafo já está lá — cada `[[wiki-link]]` é uma aresta "estes estão relacionados" curada manualmente, e a maioria dos provedores que suportamos (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) não têm endpoint `/v1/embeddings`. Adicionar um modelo de embedding significaria download por página, um adaptador por provedor e zero benefício na qualidade da recuperação.
+Rejeitamos deliberadamente o caminho de embedding na [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175). O sinal do grafo já está lá — cada `[[wiki-link]]` é uma aresta "estes estão relacionados" curada manualmente, e a maioria dos provedores que suportamos (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) não têm endpoint `/v1/embeddings`. Adicionar um modelo de embedding significaria download por página, um adaptador por provedor e zero benefício na qualidade da recuperação.
 
 ---
 
@@ -269,7 +269,7 @@ Rejeitamos deliberadamente o caminho de embedding na [Issue #175](https://github
 | **ChatGPT Plan (Codex OAuth)** | Codex Responses API | Login por navegador/código de dispositivo; SecretStorage |
 | **Local: Ollama, LM Studio, OpenRouter, Anthropic-Compatible** | Qualquer modelo de protocolo OpenAI-/Anthropic | Custom OpenAI-Compatible + Anthropic-Compatible (Token Plan / Coding Plan) |
 
-Este plugin alimenta o LLM com o contexto completo da sua Wiki por consulta — então **modelos de contexto longo vencem**. A tabela completa por níveis (cloud + local) está em [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md), verificada no [models.dev](https://models.dev/) para que as escolhas se mantenham atuais.
+Este plugin alimenta o LLM com o contexto completo da sua Wiki por consulta — então **modelos de contexto longo vencem**. A tabela completa por níveis (cloud + local) está em [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md), verificada no [models.dev](https://models.dev/) para que as escolhas se mantenham atuais.
 
 ### O que importa
 
@@ -296,7 +296,7 @@ Configurações → Provedor → Bedrock (Anthropic / OpenAI) agora escolhe um d
 
 Os três modos compartilham a mesma disciplina do Obsidian SecretStorage (nenhuma credencial em `data.json`, logs ou docs) e o mesmo caminho SigV4 + OIDC feito à mão, sem AWS SDK. A região do Bedrock é independente do modo de autenticação e é configurada na mesma linha do provedor.
 
-> 📖 **Tabela de escolha completa** (cloud + local + PDF OCR + Codex OAuth + quantização + tiers de hardware) → [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)
+> 📖 **Tabela de escolha completa** (cloud + local + PDF OCR + Codex OAuth + quantização + tiers de hardware) → [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)
 
 ## ❓ FAQ
 
@@ -310,7 +310,7 @@ Instale dos Community Plugins do Obsidian → escolha um provedor → **Test Con
 
 ### Posso ingerir PDFs, imagens e documentos Office?
 
-✅ Sim. Anthropic, OpenAI, Bedrock e Gemini leem PDFs imediatamente; o backend multi-formato MinerU integrado (v1.27.0) cobre tudo o mais (PDF + imagens + Office). Tutorial completo — provedores cloud, OCR no Apple Silicon, Force PDF Support, manutenção de cache — em [docs/PDF-OCR-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md).
+✅ Sim. Anthropic, OpenAI, Bedrock e Gemini leem PDFs imediatamente; o backend multi-formato MinerU integrado (v1.27.0) cobre tudo o mais (PDF + imagens + Office). Tutorial completo — provedores cloud, OCR no Apple Silicon, Force PDF Support, manutenção de cache — em [docs/PDF-OCR-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md).
 
 ### Minha wiki existente está segura?
 
@@ -330,7 +330,7 @@ Instale dos Community Plugins do Obsidian → escolha um provedor → **Test Con
 
 ### Qual LLM devo usar?
 
-Modelos de contexto longo (≥200K tokens) funcionam melhor. A [seção Modelos](#-modelos) cobre os princípios; a tabela completa por níveis está em [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md).
+Modelos de contexto longo (≥200K tokens) funcionam melhor. A [seção Modelos](#-modelos) cobre os princípios; a tabela completa por níveis está em [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md).
 
 ### Existe um benchmark publicado?
 
@@ -346,7 +346,7 @@ Clique na barra de status (mostra "Ingerindo… clique para cancelar") ou `Cmd+P
 
 ### Onde obtenho ajuda?
 
-[GitHub Issues](https://github.com/green-dalii/obsidian-llm-wiki/issues) para relatar bugs · [GitHub Discussions](https://github.com/green-dalii/obsidian-llm-wiki/discussions) para perguntas e pedidos de funcionalidades · Console do Desenvolvedor (`Ctrl+Shift+I` / `Cmd+Option+I`) para logs do plugin.
+[GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues) para relatar bugs · [GitHub Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions) para perguntas e pedidos de funcionalidades · Console do Desenvolvedor (`Ctrl+Shift+I` / `Cmd+Option+I`) para logs do plugin.
 
 ---
 
@@ -398,4 +398,4 @@ Licença Apache, Versão 2.0 — veja [LICENSE](../LICENSE) e [NOTICE](../NOTICE
 **Mantenedor:** [@green-dalii](https://github.com/green-dalii)
 
 
-[![Star History Chart](https://api.star-history.com/chart?repos=green-dalii/obsidian-llm-wiki&type=timeline&legend=bottom-right&sealed_token=Xa2Oeo4ZXfP48muFa_nEj7wrUaENRLnE0bXSZM7EKTUhHHlmnDFmmxSW80NS8-kXm4kDDMbdzkrZ0MtcqUcmAxB1a1FVVmIIimncTWL9Zg7Ms7j8gnjdCpd0-SyvSc5ubCtUB2zkqtn_V4alrEi7UbBpTlNTdHPva_Vuar5lx9d-ousGG-zhpUk3cGaw)](https://www.star-history.com/?repos=green-dalii%2Fobsidian-llm-wiki&type=timeline&legend=bottom-right)
+[![Star History Chart](https://api.star-history.com/chart?repos=GD4AI/obsidian-llm-wiki&type=timeline&legend=bottom-right&sealed_token=Xa2Oeo4ZXfP48muFa_nEj7wrUaENRLnE0bXSZM7EKTUhHHlmnDFmmxSW80NS8-kXm4kDDMbdzkrZ0MtcqUcmAxB1a1FVVmIIimncTWL9Zg7Ms7j8gnjdCpd0-SyvSc5ubCtUB2zkqtn_V4alrEi7UbBpTlNTdHPva_Vuar5lx9d-ousGG-zhpUk3cGaw)](https://www.star-history.com/?repos=green-dalii%2Fobsidian-llm-wiki&type=timeline&legend=bottom-right)

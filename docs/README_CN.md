@@ -8,19 +8,19 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - dependencies: 零运行时依赖（Vercel AI SDK v6 已打包）
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
-- repo: https://github.com/green-dalii/obsidian-llm-wiki
+- repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.1（PATCH — 确定性相关列表、脚注段落保留守卫、全库链接重定向、流式思维策略、本地日期；46 commits, 3993 tests）
-- last-updated: 2026-09-06
+- latest: v1.27.2（PATCH — 被 token 上限截断的重写不再覆盖页面、`updated_pages` 统一形状使链接重指向看见每一页、provenance 脚注括号修复、企业网关结构化输出降级、跳过文件释放摄入生命周期、取消抵达模型调用；39 commits, 4144 tests）
+- last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
 - features: 基于图谱的检索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 级种子选择级联, Tier 1/Tier 2 重复检测, 11 语言界面 + 11 语言 Wiki 输出（独立设置）, 16+ LLM 提供商（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-兼容, Codex OAuth）,MinerU 多格式导入（PDF + 图像 + Office）, PDF 摄入（仅缓存、OCR 路径）, Lint 健康扫描, 一键智能修复, 源页原句引用, 摄入候选门, 按步骤任务策略 UI, Obsidian 图谱视图集成, 零嵌入零向量数据库架构, 本地优先模式
 - direct-competitors: nashsu/llm_wiki（Tauri 桌面应用）, SamurAIGPT/llm-wiki-agent（Claude Code 技能）, sdyckjq/llm-wiki-skill（Codex 技能）, atomicstrata/llm-wiki-compiler（Python 管线）
 - retrieval-benchmark: PPR @5 = 27.1% vs 纯 kNN 24.1%（项目自有语料，开源 LLM-wiki 领域唯一已发布数字）
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
-- canonical: https://github.com/green-dalii/obsidian-llm-wiki/blob/main/README.md
+- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
 -->
 
 ![Karpathy LLM Wiki 插件横幅——由你的 Obsidian 笔记生成的互联 Wiki 页面网络](assets/llm_wiki_banner.webp)
@@ -31,13 +31,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 **Obsidian 官方市场满分评分 • 零嵌入图谱检索 • 原生 11 种语言 • 原生 PDF + 图片 + Office 摄入 • 兼容所有 LLM 提供商 • 本地优先 • 无后端 • GDPR 友好**
 
-![Version](https://img.shields.io/github/v/release/green-dalii/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
-![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/green-dalii/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
-![GitHub Stars](https://img.shields.io/github/stars/green-dalii/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/green-dalii/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/green-dalii/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/green-dalii/obsidian-llm-wiki)
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
+![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
-[English](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/README.md) | **简体中文** | [繁體中文](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/README_RU.md)
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | **简体中文** | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md)
 
-[官网](https://llmwiki.greenerai.top/) | [Obsidian 插件市场](https://community.obsidian.md/plugins/karpathywiki) | [博客](https://llmwiki.greenerai.top/zh/blog/) | [反馈讨论](https://github.com/green-dalii/obsidian-llm-wiki/discussions)
+[官网](https://llmwiki.greenerai.top/) | [Obsidian 插件市场](https://community.obsidian.md/plugins/karpathywiki) | [博客](https://llmwiki.greenerai.top/zh/blog/) | [反馈讨论](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
 🤔 [为什么使用此插件？](#-为什么使用此插件) | 🚀 [快速开始](#-快速开始) | ✨ [核心特性](#-核心特性) | 🌐 [生态](#-生态) | 🔍 [检索工作原理](#-检索工作原理) | 🤖 [模型推荐](#-模型推荐) | ❓ [常见问题](#-常见问题)
 
@@ -138,7 +138,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 |------|------|
 | `notes/machine-learning.md`（一个扁平文件） | `wiki/concepts/supervised-learning.md` 带 `[[双向链接]]`、别名、来源归属，以及 `wiki/index.md` 中的索引条目 |
 
-> 📖 详细教程（安装、PDF 配置、多 Provider 说明、升级指南）见 [GitHub Discussions → 指南](https://github.com/green-dalii/obsidian-llm-wiki/discussions/categories/guides)。觉得好用？欢迎 [点亮 Star](https://github.com/green-dalii/obsidian-llm-wiki) 以便跟进后续发布。
+> 📖 详细教程（安装、PDF 配置、多 Provider 说明、升级指南）见 [GitHub Discussions → 指南](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides)。觉得好用？欢迎 [点亮 Star](https://github.com/GD4AI/obsidian-llm-wiki) 以便跟进后续发布。
 
 ---
 
@@ -150,7 +150,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - **🏷️ 强制别名** — 每个页面至少包含一个别名（翻译、缩写、变体名），使跨语言重复检测得以工作。
 - **🔄 分级重复检测** — 第 1 级（直接名称匹配：跨语言、缩写、高相似度标题）全部验证；第 2 级（共享链接、中等相似度）填充剩余 token 预算。
 - **🧩 智能合并与矛盾状态** — 重复页面合并时保留别名；矛盾被标记并注明来源归属；`reviewed: true` 的页面受保护不被覆盖。
-- **🎨 自定义标签词汇表** — 在设置 → Wiki → 标签词汇表 → *自定义* 中定义自己的实体类型与概念类型标签列表。词表是注入 LLM 的提示（schema injection hint），而非写入时的强制闸门——小型/本地模型仍可能漂移（约十次中有一次返回模型内置分类）。Lint 会把其余问题暴露出来。Schema 强校验的设计锚点见 [Issue #328](https://github.com/green-dalii/obsidian-llm-wiki/issues/328)。
+- **🎨 自定义标签词汇表** — 在设置 → Wiki → 标签词汇表 → *自定义* 中定义自己的实体类型与概念类型标签列表。词表是注入 LLM 的提示（schema injection hint），而非写入时的强制闸门——小型/本地模型仍可能漂移（约十次中有一次返回模型内置分类）。Lint 会把其余问题暴露出来。Schema 强校验的设计锚点见 [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
 ### 📄 文档 / PDF / 图片 摄入
 
@@ -171,7 +171,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - **🛡️ 逐字转录提示** — 带 `[illegible]` / `[figure: ...]` 反幻觉标记的 OCR 风格转换；小型本地模型的 markdown 围栏包裹在写入缓存前自动清洗。
 - **🔁 源页原句引用 (v1.27.0, #496)** — 每个生成的 `sources/<slug>.md` 页面现在携带一个 `Mentions in Source` 段，由提取阶段在每个实体/概念上抓取的原句引用直接拼接（模型已证明自己能看到的原文），因此源文档成了唯一一个能真实回溯到原始文本的 Wiki 页面。
 
-📖 **所有路径的完整设置教程**（云端 Provider、oMLX 硬件等级、MinerU 安装、缓存管理）→ [docs/PDF-OCR-GUIDE_CN.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE_CN.md)
+📖 **所有路径的完整设置教程**（云端 Provider、oMLX 硬件等级、MinerU 安装、缓存管理）→ [docs/PDF-OCR-GUIDE_CN.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE_CN.md)
 
 ### 💬 查询与维护
 
@@ -196,7 +196,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 - **🖥️ Ollama、LM Studio、OpenRouter、自定义端点** — 开箱即用。本地模型可用于查询（上下文窗口较小）；2000 页 vault 的摄入通常需要长上下文云端模型。
 - **📄 Apple Silicon 上 PDF OCR 路径完全本地** — 见上方的 [文档 / PDF / 图片 摄入](#-文档--pdf--图片-摄入)。
-- **🔐 ChatGPT Plan (Codex OAuth)** — 桌面端回环回调或移动端设备代码；凭据仅存在于 Obsidian SecretStorage 中。（完整 Provider 边界说明见下方的 [Anthropic vs OpenAI vs Codex OAuth](#-anthropic-vs-openai-vs-codex-oauth--它们是不同的-provider)。）
+- **🔐 ChatGPT Plan (Codex OAuth)** — 桌面端回环回调或移动端设备代码；凭据仅存在于 Obsidian SecretStorage 中。（完整 Provider 边界说明见下方的 [Anthropic vs OpenAI vs Codex OAuth](#anthropic-vs-openai-vs-codex-oauth--它们是不同的-provider)。）
 
 ### 🌐 语言
 
@@ -225,7 +225,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 **大多数用户可以跳过本节。** 插件的面向用户的 CLI 位于独立仓库 [green-dalii/obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli) ——以 npm 包 `karpathywiki-cli` 形式发布。安装：`npm i -g karpathywiki-cli`，运行 `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`。
 
-本仓库内 [`tools/dev-instrument/`](https://github.com/green-dalii/obsidian-llm-wiki/tree/main/tools/dev-instrument) 装的是 **dev-only 无头测量工具** —— 面向引擎贡献者，跑真正的 `WikiEngine.ingestSource`，无 Obsidian 运行时，输出每任务的 token + wall-clock 统计——正是 `CLAUDE.md` 和发布说明中性能证据的同源数据。入口命令、env 变量、测量模式、退出码规范详见 [`tools/dev-instrument/README.md`](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md)。
+本仓库内 [`tools/dev-instrument/`](https://github.com/GD4AI/obsidian-llm-wiki/tree/main/tools/dev-instrument) 装的是 **dev-only 无头测量工具** —— 面向引擎贡献者，跑真正的 `WikiEngine.ingestSource`，无 Obsidian 运行时，输出每任务的 token + wall-clock 统计——正是 `CLAUDE.md` 和发布说明中性能证据的同源数据。入口命令、env 变量、测量模式、退出码规范详见 [`tools/dev-instrument/README.md`](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md)。
 
 ---
 
@@ -253,7 +253,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ### 为什么不需要嵌入
 
-我们在 [Issue #175](https://github.com/green-dalii/obsidian-llm-wiki/issues/175) 中有意拒绝了嵌入路径。图谱信号已经在那里——每个 `[[wiki-link]]` 都是一条手动 curated 的"这些内容相关"边，而我们支持的大多数 Provider（Ollama、LM Studio、Anthropic、Bedrock、Kimi、GLM、MiniMax）根本没有 `/v1/embeddings` 端点。添加嵌入模型意味着每个页面一次下载、每个 Provider 一个适配器，而对检索质量没有任何提升。
+我们在 [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175) 中有意拒绝了嵌入路径。图谱信号已经在那里——每个 `[[wiki-link]]` 都是一条手动 curated 的"这些内容相关"边，而我们支持的大多数 Provider（Ollama、LM Studio、Anthropic、Bedrock、Kimi、GLM、MiniMax）根本没有 `/v1/embeddings` 端点。添加嵌入模型意味着每个页面一次下载、每个 Provider 一个适配器，而对检索质量没有任何提升。
 
 ---
 
@@ -280,7 +280,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 | **ChatGPT Plan (Codex OAuth)** | Codex Responses API | 浏览器/设备代码登录；SecretStorage |
 | **本地：Ollama, LM Studio, OpenRouter, Anthropic 兼容** | 任何 OpenAI/Anthropic 协议模型 | 自定义 OpenAI 兼容 + Anthropic 兼容（Token Plan / Coding Plan）|
 
-本插件每次查询向 LLM 提供完整的 Wiki 上下文——因此 **长上下文模型胜出**。完整的分级表格（云端 + 本地）见 [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)，来自 [models.dev](https://models.dev/) 交叉核对以确保推荐持续有效。
+本插件每次查询向 LLM 提供完整的 Wiki 上下文——因此 **长上下文模型胜出**。完整的分级表格（云端 + 本地）见 [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)，来自 [models.dev](https://models.dev/) 交叉核对以确保推荐持续有效。
 
 ### 什么更重要
 
@@ -307,7 +307,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 三种模式共享同一套 Obsidian SecretStorage 规范（凭据不出现在 `data.json`、日志或文档中）以及同一套零 AWS SDK 的手写 OIDC + SigV4 路径。Bedrock region 与认证模式相互独立，在同一 Provider 行配置。
 
-> 📖 **完整选择表格**（云端 + 本地 + PDF OCR + Codex OAuth + 量化 + 硬件等级）→ [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)
+> 📖 **完整选择表格**（云端 + 本地 + PDF OCR + Codex OAuth + 量化 + 硬件等级）→ [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)
 
 ---
 
@@ -323,7 +323,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ### 能摄入 PDF、图片和 Office 文档吗？
 
-✅ 可以。Anthropic、OpenAI、Bedrock、Gemini 原生支持 PDF；内置 MinerU 后端（v1.27.0）覆盖其余全部场景（PDF + 图片 + Office）。完整教程——云端 Provider、Apple Silicon OCR、Force PDF Support、缓存管理——见 [docs/PDF-OCR-GUIDE_CN.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE_CN.md)。
+✅ 可以。Anthropic、OpenAI、Bedrock、Gemini 原生支持 PDF；内置 MinerU 后端（v1.27.0）覆盖其余全部场景（PDF + 图片 + Office）。完整教程——云端 Provider、Apple Silicon OCR、Force PDF Support、缓存管理——见 [docs/PDF-OCR-GUIDE_CN.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE_CN.md)。
 
 ### 我现有的 Wiki 安全吗？
 
@@ -343,7 +343,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ### 该选哪个 LLM？
 
-长上下文模型（≥200K tokens）效果最佳。[模型推荐](#-模型推荐) 一节涵盖了原则；完整分级表格见 [docs/MODEL-GUIDE.md](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)。
+长上下文模型（≥200K tokens）效果最佳。[模型推荐](#-模型推荐) 一节涵盖了原则；完整分级表格见 [docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)。
 
 ### 有公开的基准测试吗？
 
@@ -359,7 +359,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ### 哪里可以获得帮助？
 
-[GitHub Issues](https://github.com/green-dalii/obsidian-llm-wiki/issues) 提交 Bug · [GitHub Discussions](https://github.com/green-dalii/obsidian-llm-wiki/discussions) 提问与反馈 · 开发者控制台（`Ctrl+Shift+I` / `Cmd+Option+I`）查看插件日志。
+[GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues) 提交 Bug · [GitHub Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions) 提问与反馈 · 开发者控制台（`Ctrl+Shift+I` / `Cmd+Option+I`）查看插件日志。
 
 ---
 
@@ -410,4 +410,4 @@ Apache License, Version 2.0 — 详见 [LICENSE](../LICENSE) 和 [NOTICE](../NOT
 
 **维护者：** [@green-dalii](https://github.com/green-dalii)
 
-[![Star History Chart](https://api.star-history.com/chart?repos=green-dalii/obsidian-llm-wiki&type=timeline&legend=bottom-right&sealed_token=Xa2Oeo4ZXfP48muFa_nEj7wrUaENRLnE0bXSZM7EKTUhHHlmnDFmmxSW80NS8-kXm4kDDMbdzkrZ0MtcqUcmAxB1a1FVVmIIimncTWL9Zg7Ms7j8gnjdCpd0-SyvSc5ubCtUB2zkqtn_V4alrEi7UbBpTlNTdHPva_Vuar5lx9d-ousGG-zhpUk3cGaw)](https://www.star-history.com/?repos=green-dalii%2Fobsidian-llm-wiki&type=timeline&legend=bottom-right)
+[![Star History Chart](https://api.star-history.com/chart?repos=GD4AI/obsidian-llm-wiki&type=timeline&legend=bottom-right&sealed_token=Xa2Oeo4ZXfP48muFa_nEj7wrUaENRLnE0bXSZM7EKTUhHHlmnDFmmxSW80NS8-kXm4kDDMbdzkrZ0MtcqUcmAxB1a1FVVmIIimncTWL9Zg7Ms7j8gnjdCpd0-SyvSc5ubCtUB2zkqtn_V4alrEi7UbBpTlNTdHPva_Vuar5lx9d-ousGG-zhpUk3cGaw)](https://www.star-history.com/?repos=green-dalii%2Fobsidian-llm-wiki&type=timeline&legend=bottom-right)
