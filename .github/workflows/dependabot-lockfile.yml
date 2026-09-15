@@ -1,0 +1,82 @@
+name: Dependabot lockfile sync
+
+# Dependabot updates `package.json` and `pnpm-lock.yaml`, and does not touch
+# `package-lock.json`. Before the lockfile gate existed (PR #693) that drift was
+# silent; now it is a hard block, and every npm PR Dependabot opens fails Gate 1
+# on `pnpm install --frozen-lockfile` for a file it was never able to update.
+# #706/#707/#708 are all red for exactly this reason, and none of them can go
+# green as it stands.
+#
+# Why it cannot update both: Dependabot detects the package manager from the
+# repository, and this one declares `packageManager: pnpm@10.14.0` plus a
+# `pnpm-workspace.yaml`, so its npm ecosystem resolves to pnpm and maintains
+# pnpm's lockfile. The claim in `.github/dependabot.yml` that
+# `package-ecosystem: npm` covers `package-lock.json` alike is contradicted by
+# every PR it has opened here: each changes `package.json` + `pnpm-lock.yaml`,
+# including #652, the drift that motivated the gate.
+#
+# So this workflow supplies the missing half: it regenerates the npm-side
+# lockfile on the PR branch, which lets the gate stay strict rather than being
+# weakened to accommodate a bot that cannot satisfy it.
+#
+# `pull_request_target` is required, not incidental. A `pull_request` run
+# triggered by Dependabot receives a read-only `GITHUB_TOKEN` regardless of the
+# `permissions:` block, so it could not push the result. The trade is that this
+# runs with a write token in the base repository's context, which is why:
+#
+#   - the job only runs when the actor is Dependabot AND the head branch is in
+#     this repository (not a fork);
+#   - the workflow definition used is always this one, from the base branch —
+#     a pull request cannot edit the job that runs on it;
+#   - the only command executed is `npm install --package-lock-only`, which
+#     resolves the tree and writes one file. It downloads no packages and runs
+#     no lifecycle scripts, so nothing from the pull request is executed.
+#
+# The push is a no-op once the lockfile is correct, so the resulting
+# `synchronize` event re-enters this workflow and terminates there.
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync package-lock.json
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Default for `pull_request_target` is the base branch; the lockfile
+          # has to be regenerated against the pull request's own package.json.
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+
+      - name: Regenerate package-lock.json from package.json
+        # `--legacy-peer-deps` matches the release-time regeneration documented
+        # in the release skill; without it npm's stricter peer resolution can
+        # reject the tree the project actually ships. `--package-lock-only` is
+        # what keeps this safe on a write token: nothing is downloaded and no
+        # install script runs.
+        run: npm install --legacy-peer-deps --package-lock-only
+
+      - name: Commit and push if the lockfile changed
+        run: |
+          set -e
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already matches package.json — nothing to push."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'chore(deps): sync package-lock.json with package.json'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"

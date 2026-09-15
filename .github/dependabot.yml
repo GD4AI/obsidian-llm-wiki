@@ -11,9 +11,16 @@
 # `pnpm audit --audit-level high` step in pr-ci.yml blocks merges in the
 # meantime. Human action reduces to review + merge, not hand-editing four files.
 #
-# `package-ecosystem: npm` covers pnpm-lock.yaml (GitHub native support) and
-# package-lock.json alike. `open-pull-requests-limit` kept low to avoid a
-# burst of dependency churn PRs competing with the release queue.
+# `package-ecosystem: npm` resolves to pnpm here — the repository declares
+# `packageManager: pnpm@10.14.0` and carries a `pnpm-workspace.yaml` — so this
+# updates `pnpm-lock.yaml` and only `pnpm-lock.yaml`. It does **not** cover
+# `package-lock.json`: #652, #706, #707 and #708 each changed exactly
+# `package.json` + `pnpm-lock.yaml`. The earlier note here claimed both were
+# covered, and that claim is what made three npm PRs look like a gate problem
+# rather than a missing half. `dependabot-lockfile.yml` regenerates the npm-side
+# lockfile on the PR branch so the gate can stay strict.
+# `open-pull-requests-limit` kept low to avoid a burst of dependency churn PRs
+# competing with the release queue.
 
 version: 2
 updates:
