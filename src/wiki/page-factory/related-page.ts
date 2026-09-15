@@ -162,7 +162,9 @@ export async function updateRelatedPage(
   if (finish.truncated) {
     console.warn('Related page rewrite hit the token limit, keeping existing body:', page.path);
     await ctx.createOrUpdateFile(page.path, `${frontmatter}\n\n${existingBody}`);
-    return true;
+    // The body was not adopted, but the frontmatter write landed — so the page
+    // WAS updated and belongs in `updated_pages` for the link-repoint pass.
+    return page.path;
   }
 
   const cleanedBody = cleanMarkdownResponse(updatedBody);

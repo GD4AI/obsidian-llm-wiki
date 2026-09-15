@@ -119,7 +119,7 @@ describe('updateRelatedPage — rewrite cut off at the token limit', () => {
 
   it('records the new source in frontmatter and keeps the body verbatim', async () => {
     const ctx = makeCtx(makeClient(['## Description\nHalf a rewr'], 'related-page'));
-    expect(await updateRelatedPage(ctx, 'X', analysis, { path: 'src.md', basename: 'src.md' })).toBe(true);
+    expect(await updateRelatedPage(ctx, 'X', analysis, { path: 'src.md', basename: 'src.md' })).toBe(PAGE_PATH);
     const written = ctx.written.get(PAGE_PATH)!;
     expect(written).toContain('Old body.');
     expect(written).not.toContain('Half a rewr');
@@ -128,7 +128,7 @@ describe('updateRelatedPage — rewrite cut off at the token limit', () => {
 
   it("adopts the rewrite when the client reports 'stop'", async () => {
     const ctx = makeCtx(makeClient(['## Description\nNew body.'], 'none'));
-    await updateRelatedPage(ctx, 'X', analysis, { path: 'src.md', basename: 'src.md' });
+    expect(await updateRelatedPage(ctx, 'X', analysis, { path: 'src.md', basename: 'src.md' })).toBe(PAGE_PATH);
     expect(ctx.written.get(PAGE_PATH)).toContain('New body.');
   });
 });
