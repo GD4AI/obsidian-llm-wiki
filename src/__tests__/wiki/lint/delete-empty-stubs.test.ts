@@ -18,6 +18,8 @@ import { deleteEmptyStubs } from '../../../wiki/lint/delete-empty-stubs';
 import { isPageEmpty } from '../../../wiki/lint/utils';
 import { buildDissentStubContent } from '../../../wiki/page-factory/stub-page';
 import { createMockContext } from '../../__support__/engine-context';
+import { createFakeLinkVault } from '../../__support__/link-vault';
+import type { EngineContext } from '../../../types';
 
 const WIKI = 'wiki';
 const STUB_PATH = `${WIKI}/concepts/smart-batch-skip.md`;
@@ -157,5 +159,131 @@ describe('deleteEmptyStubs — a Fix Dead Links stub is collected (#678)', () =>
     const { deleted } = await runDelete({ [STUB_PATH]: stub });
 
     expect(deleted).toEqual([STUB_PATH]);
+  });
+});
+
+// The other half of the round trip. Fix Dead Links creates this stub and
+// repoints the referring link at it; once the stub is collected the link is
+// dead again, and before this it stayed dead pointing at a folder-typed path
+// nobody wrote.
+describe('deleteEmptyStubs — the links pointing at a collected stub', () => {
+  const REFERRER = 'Notizen/Blutbild.md';
+  const STUB = `${WIKI}/entities/Vitamin-B12.md`;
+  const STUB_2 = `${WIKI}/entities/Folsaeure.md`;
+
+  function ctxOver(files: Record<string, string>, opts: { deleteThrows?: boolean } = {}): {
+    ctx: EngineContext; fake: ReturnType<typeof createFakeLinkVault>; deleted: string[]; order: string[];
+  } {
+    const fake = createFakeLinkVault(files);
+    const deleted: string[] = [];
+    const order: string[] = [];
+    const ctx = {
+      app: {
+        vault: {
+          ...fake.vault,
+          read: async (file: { path: string }) => fake.read(file.path),
+          process: async (file: { path: string }, fn: (d: string) => string) => {
+            order.push(`write:${file.path}`);
+            return fake.vault.process(file, fn);
+          },
+        },
+        metadataCache: fake.metadataCache,
+      },
+      settings: { wikiFolder: WIKI },
+      deleteFile: async (path: string) => {
+        order.push(`delete:${path}`);
+        if (opts.deleteThrows) throw new Error('vault busy');
+        deleted.push(path);
+      },
+    } as unknown as EngineContext;
+    return { ctx, fake, deleted, order };
+  }
+
+  it('hands the link its name back instead of leaving a path to a deleted page', async () => {
+    const { ctx, fake, deleted } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [REFERRER]: 'Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n',
+    });
+
+    const result = await deleteEmptyStubs(ctx, WIKI);
+
+    expect(deleted).toEqual([STUB]);
+    expect(fake.read(REFERRER)).toBe('Low [[Vitamin B12]] in the panel.\n');
+    expect(result.linksRestored).toBe(1);
+    expect(result.linksLeftDead).toBe(0);
+  });
+
+  it('keeps both links when one note references two collected stubs', async () => {
+    const { ctx, fake } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [STUB_2]: deadLinkStub('Folsaeure', 'sources/Blutbild'),
+      [REFERRER]: 'Low [[entities/Vitamin-B12|Vitamin B12]] and [[entities/Folsaeure|Folsäure]].\n',
+    });
+
+    const result = await deleteEmptyStubs(ctx, WIKI);
+
+    expect(fake.read(REFERRER)).toBe('Low [[Vitamin B12]] and [[Folsäure]].\n');
+    expect(result.linksRestored).toBe(2);
+    expect(result.linksLeftDead).toBe(0);
+  });
+
+  it('leaves the links untouched when the delete fails', async () => {
+    // The page is still on disk. Rewriting its incoming links here would point
+    // them away from a page that exists, and orphan the stub for good.
+    const { ctx, fake } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [REFERRER]: 'Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n',
+    }, { deleteThrows: true });
+
+    const result = await deleteEmptyStubs(ctx, WIKI);
+
+    expect(result.deleted).toBe(0);
+    expect(result.failed).toBe(1);
+    expect(fake.read(REFERRER)).toBe('Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n');
+    expect(result.linksRestored).toBe(0);
+  });
+
+  it('reports a link it cannot restore rather than inventing a name', async () => {
+    const { ctx, fake, deleted } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [REFERRER]: 'See [[entities/Vitamin-B12]].\n',
+    });
+
+    const result = await deleteEmptyStubs(ctx, WIKI);
+
+    expect(deleted).toEqual([STUB]);
+    expect(fake.read(REFERRER)).toBe('See [[entities/Vitamin-B12]].\n');
+    expect(result.linksRestored).toBe(0);
+    expect(result.linksLeftDead).toBe(1);
+  });
+
+  it('still deletes when the link layer is unavailable', async () => {
+    // The action's job is collecting empty stubs. Link care is an addition to
+    // it, so an unusable metadata cache must not turn a delete into a failure.
+    const { ctx, deleted } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [REFERRER]: 'Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n',
+    });
+    (ctx.app as unknown as { metadataCache: unknown }).metadataCache = undefined;
+
+    const result = await deleteEmptyStubs(ctx, WIKI);
+
+    expect(deleted).toEqual([STUB]);
+    expect(result.deleted).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(result.linksRestored).toBe(0);
+  });
+
+  it('plans while the page is there and writes only after it is gone', async () => {
+    // Both halves are timing-bound in opposite directions: resolving a link
+    // needs the page, writing needs the delete to have succeeded.
+    const { ctx, order } = ctxOver({
+      [STUB]: deadLinkStub('Vitamin-B12', 'sources/Blutbild'),
+      [REFERRER]: 'Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n',
+    });
+
+    await deleteEmptyStubs(ctx, WIKI);
+
+    expect(order).toEqual([`delete:${STUB}`, `write:${REFERRER}`]);
   });
 });

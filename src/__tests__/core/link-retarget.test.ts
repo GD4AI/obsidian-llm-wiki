@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { retargetLinksToPage } from '../../core/link-retarget';
+import { retargetLinksToPage, planDisplayNameRestores, applyRestorePlan } from '../../core/link-retarget';
 import { createFakeLinkVault } from '../__support__/link-vault';
 
 const FROM = 'wiki/entities/Osteopontin-2.md';
@@ -147,5 +147,127 @@ describe('retargetLinksToPage', () => {
 
     expect(result).toEqual({ filesChanged: 0, linksRewritten: 0, stale: 0 });
     expect(fake.processed).toEqual([]);
+  });
+});
+
+// The deletion with no successor page: Fix Dead Links wrote this stub and
+// repointed the referring link at it, carrying the author's name over as
+// display text. Delete Empty Stubs collects the stub again (#691), and the
+// name is the one thing left to put the link back the way it was written.
+const STUB = 'wiki/entities/Vitamin-B12.md';
+
+/** Plan and apply in one go, the way a caller does when every target is deleted. */
+async function restoreAll(fake: ReturnType<typeof createFakeLinkVault>, targets: string[]) {
+  const plan = planDisplayNameRestores(fake, new Set(targets));
+  const applied = await applyRestorePlan(fake, plan.restores);
+  return { ...applied, left: plan.left };
+}
+
+describe('planDisplayNameRestores / applyRestorePlan', () => {
+  it('gives the display text back as the link target', async () => {
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'Low [[entities/Vitamin-B12|Vitamin B12]] in the panel.\n',
+    });
+
+    const result = await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('Low [[Vitamin B12]] in the panel.\n');
+    expect(result).toEqual({ filesChanged: 1, linksRestored: 1, left: 0, stale: 0 });
+  });
+
+  it('rewrites a note referencing two deleted pages once, keeping both links', async () => {
+    // One pass for all targets. Two passes would shift the second link's cached
+    // offsets under a metadata cache that has not re-indexed, and the stale
+    // guard would drop exactly the link this exists to save.
+    const OTHER = 'wiki/entities/Folsaeure.md';
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      [OTHER]: '# Folsaeure\n',
+      'Notizen/Blutbild.md':
+        'Low [[entities/Vitamin-B12|Vitamin B12]] and [[entities/Folsaeure|Folsäure]] in the panel.\n',
+    });
+
+    const result = await restoreAll(fake, [STUB, OTHER]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('Low [[Vitamin B12]] and [[Folsäure]] in the panel.\n');
+    expect(result).toEqual({ filesChanged: 1, linksRestored: 2, left: 0, stale: 0 });
+    expect(fake.processed).toEqual(['Notizen/Blutbild.md']);
+  });
+
+  it('leaves a link with no display text and reports it', async () => {
+    // Nothing to restore it from: the name its author wrote is not in the file
+    // any more. Inventing one from the slug is what put it here to begin with.
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'See [[entities/Vitamin-B12]].\n',
+    });
+
+    const result = await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('See [[entities/Vitamin-B12]].\n');
+    expect(result).toEqual({ filesChanged: 0, linksRestored: 0, left: 1, stale: 0 });
+    expect(fake.processed).toEqual([]);
+  });
+
+  it('leaves a link whose subpath addresses the page being deleted', async () => {
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'See [[entities/Vitamin-B12#Description|Vitamin B12]].\n',
+    });
+
+    const result = await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('See [[entities/Vitamin-B12#Description|Vitamin B12]].\n');
+    expect(result).toEqual({ filesChanged: 0, linksRestored: 0, left: 1, stale: 0 });
+  });
+
+  it('leaves a display text that would read as link syntax of its own', async () => {
+    // `[[a|b|c]]` rewritten to `[[b|c]]` is target `b`, alias `c` — a different
+    // link than the one that was there.
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'See [[entities/Vitamin-B12|B12|cobalamin]].\n',
+    });
+
+    const result = await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('See [[entities/Vitamin-B12|B12|cobalamin]].\n');
+    expect(result).toEqual({ filesChanged: 0, linksRestored: 0, left: 1, stale: 0 });
+  });
+
+  it('leaves a link that resolves to a different page alone', async () => {
+    // Resolve before replacing, same property the retarget half is built on.
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Vitamin-B12.md': '# My own note\n',
+      'Notizen/Blutbild.md': 'See [[Vitamin-B12|Vitamin B12]].\n',
+    });
+
+    const result = await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('See [[Vitamin-B12|Vitamin B12]].\n');
+    expect(result).toEqual({ filesChanged: 0, linksRestored: 0, left: 0, stale: 0 });
+    expect(fake.processed).toEqual([]);
+  });
+
+  it('keeps the embed marker', async () => {
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'Panel: ![[entities/Vitamin-B12|Vitamin B12]]\n',
+    });
+
+    await restoreAll(fake, [STUB]);
+
+    expect(fake.read('Notizen/Blutbild.md')).toBe('Panel: ![[Vitamin B12]]\n');
+  });
+
+  it('plans nothing when no page is being deleted', () => {
+    const fake = createFakeLinkVault({
+      [STUB]: '# Vitamin-B12\n',
+      'Notizen/Blutbild.md': 'Low [[entities/Vitamin-B12|Vitamin B12]].\n',
+    });
+
+    expect(planDisplayNameRestores(fake, new Set())).toEqual({ restores: [], left: 0 });
   });
 });

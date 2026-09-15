@@ -144,17 +144,61 @@ export async function retargetLinksToPage(
   fromPath: string,
   toPath: string
 ): Promise<RetargetResult> {
-  const result: RetargetResult = { filesChanged: 0, linksRewritten: 0, stale: 0 };
-  if (fromPath === toPath) return result;
+  if (fromPath === toPath) return { filesChanged: 0, linksRewritten: 0, stale: 0 };
+
+  const edits: FileEdit[] = [];
+  for (const found of collectResolvingReferences(deps, new Set([fromPath]))) {
+    const newLinkpath = chooseLinkpath(deps.metadataCache, found.file.path, found.linkpath, toPath);
+    // Rebuild from `original` so display text (`|…`), the embed marker (`!`)
+    // and the subpath survive verbatim; only the destination changes.
+    const replacement = found.ref.original.replace(
+      `[[${found.ref.link}`,
+      `[[${newLinkpath}${found.subpath}`
+    );
+    if (replacement === found.ref.original) continue;
+    edits.push({ file: found.file, edit: editFor(found.ref, replacement) });
+  }
+
+  const { filesChanged, linksWritten, stale } = await applyFileEdits(deps, edits);
+  return { filesChanged, linksRewritten: linksWritten, stale };
+}
+
+/** A reference somewhere in the vault that resolves to one of the pages asked about. */
+interface ResolvedReference {
+  /** The file the reference is written in. */
+  file: RetargetFile;
+  ref: RetargetReference;
+  /** The page it resolves to — one of the targets. */
+  dest: RetargetFile;
+  /** The link's destination without its `#subpath`. */
+  linkpath: string;
+  /** The `#subpath`, or the empty string. */
+  subpath: string;
+}
+
+/**
+ * Every reference in the vault that resolves to one of `targets`, target files
+ * themselves excluded — their own links are about to disappear with them.
+ *
+ * This is the half both callers share, and the half that carries the module's
+ * first property: resolve before replacing. A bare `[[Foo]]` is not evidence
+ * that a particular page is meant, so every candidate goes through the app's
+ * own resolver and only a link that actually lands on a target is handed back.
+ */
+function collectResolvingReferences(
+  deps: RetargetDeps,
+  targets: ReadonlySet<string>
+): ResolvedReference[] {
+  const found: ResolvedReference[] = [];
+  if (targets.size === 0) return found;
 
   for (const file of deps.vault.getMarkdownFiles()) {
-    if (file.path === fromPath) continue;
+    if (targets.has(file.path)) continue;
 
     const cache = deps.metadataCache.getFileCache(file);
     const references = [...(cache?.links ?? []), ...(cache?.embeds ?? [])];
     if (references.length === 0) continue;
 
-    const edits: Array<{ start: number; end: number; original: string; replacement: string }> = [];
     for (const ref of references) {
       const hashIndex = ref.link.indexOf('#');
       const linkpath = hashIndex >= 0 ? ref.link.slice(0, hashIndex) : ref.link;
@@ -163,48 +207,203 @@ export async function retargetLinksToPage(
       if (!linkpath) continue;
 
       const dest = deps.metadataCache.getFirstLinkpathDest(linkpath, file.path);
-      if (!dest || dest.path !== fromPath) continue;
+      if (!dest || !targets.has(dest.path)) continue;
 
-      const newLinkpath = chooseLinkpath(deps.metadataCache, file.path, linkpath, toPath);
-      // Rebuild from `original` so display text (`|…`), the embed marker (`!`)
-      // and the subpath survive verbatim; only the destination changes.
-      const replacement = ref.original.replace(`[[${ref.link}`, `[[${newLinkpath}${subpath}`);
-      if (replacement === ref.original) continue;
-
-      edits.push({
-        start: ref.position.start.offset,
-        end: ref.position.end.offset,
-        original: ref.original,
-        replacement,
-      });
-    }
-    if (edits.length === 0) continue;
-
-    let applied = 0;
-    let stale = 0;
-    await deps.vault.process(file, data => {
-      let next = data;
-      // Descending, so an earlier edit's offsets stay valid.
-      for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
-        // The cache can lag the file. Splicing on a stale offset would corrupt
-        // the note, so a position that no longer holds what the cache promised
-        // is reported instead of guessed at.
-        if (next.slice(edit.start, edit.end) !== edit.original) {
-          stale++;
-          continue;
-        }
-        next = next.slice(0, edit.start) + edit.replacement + next.slice(edit.end);
-        applied++;
-      }
-      return next;
-    });
-
-    result.stale += stale;
-    if (applied > 0) {
-      result.filesChanged++;
-      result.linksRewritten += applied;
+      found.push({ file, ref, dest, linkpath, subpath });
     }
   }
 
-  return result;
+  return found;
+}
+
+/** The edit that puts `replacement` where `ref` stands. */
+function editFor(ref: RetargetReference, replacement: string): ReferenceEdit {
+  return {
+    start: ref.position.start.offset,
+    end: ref.position.end.offset,
+    original: ref.original,
+    replacement,
+  };
+}
+
+/** An edit together with the file it belongs to. */
+export interface FileEdit {
+  file: RetargetFile;
+  edit: ReferenceEdit;
+}
+
+/**
+ * Apply edits, one `vault.process` call per file so several edits in the same
+ * note land in one pass and keep each other's offsets valid.
+ */
+async function applyFileEdits(
+  deps: RetargetDeps,
+  edits: readonly FileEdit[]
+): Promise<{ filesChanged: number; linksWritten: number; stale: number }> {
+  const byFile = new Map<string, { file: RetargetFile; edits: ReferenceEdit[] }>();
+  for (const { file, edit } of edits) {
+    const entry = byFile.get(file.path);
+    if (entry) entry.edits.push(edit);
+    else byFile.set(file.path, { file, edits: [edit] });
+  }
+
+  let filesChanged = 0;
+  let linksWritten = 0;
+  let stale = 0;
+  for (const entry of byFile.values()) {
+    const applied = await applyEdits(deps, entry.file, entry.edits);
+    stale += applied.stale;
+    if (applied.applied > 0) {
+      filesChanged++;
+      linksWritten += applied.applied;
+    }
+  }
+  return { filesChanged, linksWritten, stale };
+}
+
+/** One in-place replacement of a reference, at the offsets the cache reported. */
+interface ReferenceEdit {
+  start: number;
+  end: number;
+  original: string;
+  replacement: string;
+}
+
+/**
+ * Apply the edits to one file through `vault.process`, descending so an
+ * earlier edit's offsets stay valid. The cache can lag the file, and splicing
+ * on a stale offset would corrupt the note — a position that no longer holds
+ * what the cache promised is counted, never guessed at.
+ */
+async function applyEdits(
+  deps: RetargetDeps,
+  file: RetargetFile,
+  edits: ReferenceEdit[]
+): Promise<{ applied: number; stale: number }> {
+  let applied = 0;
+  let stale = 0;
+  await deps.vault.process(file, data => {
+    let next = data;
+    for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
+      if (next.slice(edit.start, edit.end) !== edit.original) {
+        stale++;
+        continue;
+      }
+      next = next.slice(0, edit.start) + edit.replacement + next.slice(edit.end);
+      applied++;
+    }
+    return next;
+  });
+  return { applied, stale };
+}
+
+export interface PlannedRestore {
+  /** The page whose deletion makes this edit due. */
+  targetPath: string;
+  file: RetargetFile;
+  edit: ReferenceEdit;
+}
+
+export interface RestorePlan {
+  /** One entry per reference that can be handed its name back. */
+  restores: PlannedRestore[];
+  /**
+   * References resolving to one of the targets that were left as written: one
+   * without display text carries no name to restore, one with a `#subpath`
+   * addressed a heading of the page that is going, and a display text carrying
+   * link syntax of its own cannot become a target. All stay dead.
+   */
+  left: number;
+}
+
+export interface ApplyRestoreResult {
+  /** Files whose content was rewritten. */
+  filesChanged: number;
+  /** References whose display text became the link target again. */
+  linksRestored: number;
+  /** As in `RetargetResult`: cached position no longer matched the file. */
+  stale: number;
+}
+
+/**
+ * Plan the counterpart to `retargetLinksToPage`, for deletions with no
+ * successor page to point at: give every link that resolves to one of
+ * `targetPaths` its display text back as the target, so
+ * `[[entities/Vitamin-B12|Vitamin B12]]` becomes `[[Vitamin B12]]`.
+ *
+ * Fix Dead Links creates a placeholder page and repoints the referring link at
+ * it, carrying the author's name over as display text. When Delete Empty Stubs
+ * collects that placeholder again, this puts the link back the way it was
+ * written instead of leaving a folder-typed path to a file that is gone.
+ *
+ * Planning and applying are separate because the two halves have opposite
+ * timing constraints. Resolving needs the pages to still exist — after the
+ * delete, `getFirstLinkpathDest` cannot confirm that a link ever pointed at
+ * them. Writing must not happen until the delete has actually succeeded, or a
+ * failed delete leaves the links pointing away from a page that is still
+ * there. So: plan, delete, then apply what the delete made due.
+ *
+ * One pass over the vault for all targets, not one pass each: a note that
+ * references two collected stubs is rewritten once, with both edits applied
+ * together. Rewriting it twice would shift the offsets of the second set under
+ * a metadata cache that has not re-indexed yet, and the stale guard would drop
+ * exactly the links this exists to save.
+ *
+ * The restored link is the one its author wrote, so it resolves exactly as it
+ * did before Fix Dead Links ran — to nothing, or to a page of that name that
+ * has since appeared. That is the same outcome as never having run the action,
+ * which is the point; this heals nothing on its own.
+ */
+export function planDisplayNameRestores(
+  deps: RetargetDeps,
+  targetPaths: ReadonlySet<string>
+): RestorePlan {
+  const plan: RestorePlan = { restores: [], left: 0 };
+
+  for (const found of collectResolvingReferences(deps, targetPaths)) {
+    const name = restorableName(found.ref, found.subpath !== '');
+    if (!name) {
+      plan.left++;
+      continue;
+    }
+
+    const replacement = `${found.ref.original.startsWith('!') ? '!' : ''}[[${name}]]`;
+    if (replacement === found.ref.original) continue;
+
+    plan.restores.push({
+      targetPath: found.dest.path,
+      file: found.file,
+      edit: editFor(found.ref, replacement),
+    });
+  }
+
+  return plan;
+}
+
+/**
+ * Apply the planned restores, one `vault.process` call per file so several
+ * edits in the same note land in one pass and keep each other's offsets valid.
+ */
+export async function applyRestorePlan(
+  deps: RetargetDeps,
+  restores: readonly PlannedRestore[]
+): Promise<ApplyRestoreResult> {
+  const { filesChanged, linksWritten, stale } = await applyFileEdits(deps, restores);
+  return { filesChanged, linksRestored: linksWritten, stale };
+}
+
+/**
+ * The display text of `ref`, if it can stand as a link target on its own, else
+ * null. A subpath disqualifies the reference outright — it addressed a heading
+ * of the page being deleted. So does a display text carrying link syntax of its
+ * own: `[[a|b|c]]` reads as target `b`, alias `c` once rewritten, which is a
+ * different link than the one that was there.
+ */
+function restorableName(ref: RetargetReference, hasSubpath: boolean): string | null {
+  if (hasSubpath) return null;
+  const pipeIndex = ref.original.indexOf('|');
+  if (pipeIndex < 0) return null;
+  const name = ref.original.slice(pipeIndex + 1, ref.original.lastIndexOf(']]')).trim();
+  if (!name || /[[\]|#]/.test(name)) return null;
+  return name;
 }

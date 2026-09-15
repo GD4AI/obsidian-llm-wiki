@@ -3,6 +3,7 @@ import { parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { isPageEmpty } from './utils';
 import { isStubPage } from '../page-factory/stub-page';
 import { isInFolderScope } from '../../core/folder-scope';
+import { planDisplayNameRestores, applyRestorePlan } from '../../core/link-retarget';
 
 /**
  * A stub is empty when all it holds is its own title and its own placeholder
@@ -44,10 +45,24 @@ function isEmptyStub(content: string): boolean {
   return headings.length === 1 && quotes.length === 1 && prose.length === 0;
 }
 
+export interface DeleteEmptyStubsResult {
+  deleted: number;
+  failed: number;
+  errors: string[];
+  /** Links given their display text back as the target before the page went. */
+  linksRestored: number;
+  /**
+   * Links to a deleted stub that stay dead: no display text to restore, a
+   * `#subpath` into the page that went, or a cached position that no longer
+   * matched the file.
+   */
+  linksLeftDead: number;
+}
+
 export async function deleteEmptyStubs(
   ctx: EngineContext,
   wikiFolder: string
-): Promise<{ deleted: number; failed: number; errors: string[] }> {
+): Promise<DeleteEmptyStubsResult> {
   const files = ctx.app.vault.getMarkdownFiles()
     .filter(f => isInFolderScope(f.path, wikiFolder, false) &&
                  !f.path.endsWith('/index.md') &&
@@ -58,7 +73,16 @@ export async function deleteEmptyStubs(
 
   let deleted = 0;
   let failed = 0;
+  let linksRestored = 0;
+  let linksLeftDead = 0;
   const errors: string[] = [];
+  const recordFailure = (path: string, e: unknown): void => {
+    failed++;
+    errors.push(`${path}: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(`[deleteEmptyStubs] Failed: ${path}`, e);
+  };
+
+  const collectable: string[] = [];
   for (const file of files) {
     try {
       const content = await ctx.app.vault.read(file);
@@ -77,14 +101,56 @@ export async function deleteEmptyStubs(
       // The stub test is `isEmptyStub`, not `isStubPage` — the marker is set by
       // two writers whose bodies differ; see its doc comment above.
       if (!isPageEmpty(content) && !(isStubPage(fm) && isEmptyStub(content))) continue;
-      await ctx.deleteFile(file.path);
-      deleted++;
+      collectable.push(file.path);
     } catch (e) {
-      failed++;
-      const errMsg = e instanceof Error ? e.message : String(e);
-      errors.push(`${file.path}: ${errMsg}`);
-      console.error(`[deleteEmptyStubs] Failed: ${file.path}`, e);
+      recordFailure(file.path, e);
     }
   }
-  return { deleted, failed, errors };
+
+  // Plan before deleting, write after. Resolving a link needs the page to still
+  // exist — afterwards nothing can confirm a reference ever pointed at it — and
+  // writing before the delete has succeeded would point the links away from a
+  // page that is still there. One pass for all stubs, so a note referencing two
+  // of them is rewritten once instead of twice against a cache that has not
+  // re-indexed in between.
+  //
+  // Caught separately from the deletes on purpose: this action's job is
+  // collecting empty stubs, and it keeps doing that if the link layer is
+  // unavailable. A failure here leaves the links as they were before.
+  let plan;
+  try {
+    plan = planDisplayNameRestores(ctx.app, new Set(collectable));
+    linksLeftDead += plan.left;
+  } catch (e) {
+    console.warn('[deleteEmptyStubs] link restore could not be planned, deleting anyway:', e);
+  }
+
+  const gone = new Set<string>();
+  for (const path of collectable) {
+    try {
+      await ctx.deleteFile(path);
+      gone.add(path);
+      deleted++;
+    } catch (e) {
+      recordFailure(path, e);
+    }
+  }
+
+  if (plan && gone.size > 0) {
+    try {
+      const applied = await applyRestorePlan(ctx.app, plan.restores.filter(r => gone.has(r.targetPath)));
+      linksRestored += applied.linksRestored;
+      linksLeftDead += applied.stale;
+      if (applied.stale > 0) {
+        console.warn(
+          `[deleteEmptyStubs] ${applied.stale} link(s) could not be rewritten ` +
+          `(file changed since it was indexed) and are dead after the delete`
+        );
+      }
+    } catch (e) {
+      console.warn('[deleteEmptyStubs] link restore failed, stubs were deleted anyway:', e);
+    }
+  }
+
+  return { deleted, failed, errors, linksRestored, linksLeftDead };
 }

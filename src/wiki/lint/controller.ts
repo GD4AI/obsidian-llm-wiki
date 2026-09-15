@@ -347,7 +347,10 @@ export async function runLintWiki(
         const result = await ctx.wikiEngine.deleteEmptyStubs(ctx.settings.wikiFolder);
         if (result.deleted > 0) {
           await ctx.wikiEngine.generateIndexFromEngine();
-          await ctx.wikiEngine.logLintFix('Delete Empty Stubs', `Deleted ${result.deleted} empty stubs`);
+          const linkNote = result.linksRestored > 0 || result.linksLeftDead > 0
+            ? ` (${result.linksRestored} link(s) restored to their display name, ${result.linksLeftDead} left dead)`
+            : '';
+          await ctx.wikiEngine.logLintFix('Delete Empty Stubs', `Deleted ${result.deleted} empty stubs${linkNote}`);
         }
         // Issue #244: surface success + failure breakdown to the user.
         const parts: string[] = [];

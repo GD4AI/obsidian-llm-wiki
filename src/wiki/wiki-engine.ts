@@ -58,7 +58,7 @@ import { getExistingWikiPages } from './lint/get-existing-pages';
 import { correctRelatedLinkPrefixes, repointFolderTypedLinks } from '../core/related-link-corrector';
 import { fixDeadLink } from './lint/fix-dead-link';
 import { fillEmptyPage } from './lint/fill-empty-page';
-import { deleteEmptyStubs } from './lint/delete-empty-stubs';
+import { deleteEmptyStubs, type DeleteEmptyStubsResult } from './lint/delete-empty-stubs';
 import { linkOrphanPage } from './lint/link-orphan';
 import { mergeDuplicatePages } from './lint/merge-duplicates';
 import { fixPollutedPage } from './lint/fix-polluted-page';
@@ -2138,7 +2138,7 @@ export class WikiEngine {
   }
 
   // Issue #103: delete empty stubs without running full lint pipeline
-  async deleteEmptyStubs(wikiFolder: string): Promise<{ deleted: number; failed: number; errors: string[] }> {
+  async deleteEmptyStubs(wikiFolder: string): Promise<DeleteEmptyStubsResult> {
     return deleteEmptyStubs(this.ctx, wikiFolder);
   }
 
