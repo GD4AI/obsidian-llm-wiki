@@ -8,147 +8,55 @@
 
 ---
 
-## Current state (2026-09-15)
+## Current state (2026-09-16)
 
-**Latest shipped:** **v1.27.2 PATCH** (2026-09-15) — 39 merge commits since
-v1.27.1, 128 files, +4243/−1802 LOC, **4144 tests / 294 files** (see CHANGELOG
-§1.27.2). Content: a body rewrite cut off at the token limit is no longer
-adopted (#704, PR #705), one shape for `updated_pages` (#713, PR #714),
-provenance footnote brackets repaired (#702), corporate-gateway
-`response_format` demotion (#711, PR #712), strict structured output as a
-negotiated tier (#658, PR #686), source page head stamped from code
-(#679/#670/#661, PR #681), two contradiction dead paths removed (#604/#666, PR
-#684), ingest lifecycle released on skip (#688, PR #690), plus the regression
-fix that made `main` red (#722). All Gate-1 green.
+**Latest shipped:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files — see
+CHANGELOG §1.27.2). Nothing released since. `main` = `7cc50bf9`.
 
-**Next:** #653/#656 (Jan-Heldal, CHANGES_REQUESTED — #656 also carries its own
-lint failure at `src/schema/apply-suggestion.ts:143`), #673 (DocTpoint,
+**Since that release:** #707 and #708 (Dependabot eslint / tslib bumps) were
+structurally un-mergeable and now merge; #718 (the lockfile gate vs Dependabot)
+was root-fixed and verified in production; the v1.28.0 design direction was
+converged and published as issue **#729**.
+
+**Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups,
+the hardening-before-reader ordering, and the open decisions. This file carries
+the *why* and the *how* (see §"Design record — cross-source relations" below),
+never the window schedule.
+
+**Awaiting contributors:** #656 (Jan-Heldal — also carries an unfixed lint
+failure at `src/schema/apply-suggestion.ts:143`), #673 (DocTpoint,
 CHANGES_REQUESTED on the 9-locale blocker), #687 (Chase07, draft WIP).
-`v1.28.0 MINOR` holds **#701** (it writes `wiki-ingested:` into the user's
-source notes and defaults the write on — contradicts the `README.md:114`
-promise in all eleven locales) and **#706** (`@ai-sdk/openai-compatible` 2→3
-MAJOR, request-body shape). Open design calls: #603 (write-gate contract) /
-#567 (limit contract); #604 is closed by #684.
 
-> **Superseded 2026-09-15 (v1.27.2 shipped):** the 2026-09-06 block below is
-the pre-release snapshot (3993 tests, main at v1.27.1). Kept for archaeology —
-do not update the old block.
+> **Superseded 2026-09-16:** the 2026-09-15 block below is the v1.27.2 ship-day
+> snapshot. Kept for archaeology — do not update the old block.
 
-## Current state (2026-09-06)
+---
 
-**Latest shipped:** **v1.27.1 PATCH** (2026-09-06) — 46 merge commits since
-v1.27.0, 194 files, +10487/−3258 LOC, **3993 tests / 282 files** (see CHANGELOG
-§1.27.1). Content: deterministic related lists (#636), sourced-paragraph
-rewrite guard (#631), vault-wide folder-link repoint (#626), stream-path
-thinking policy (#629), local-calendar dates (#612), two-gate contradiction
-records (#610), stop-word/lex-PPR fix (#625), 3-phase repo audit
-(#632/#633/#634), dependency-security root fix (#637: fast-uri ^3.1.7, CI
-`pnpm audit` gate, `.github/dependabot.yml` weekly auto-PRs). All Gate-1 green.
+## Superseded snapshots (2026-09-05 → 2026-09-15)
 
-**Next:** v1.27.x PATCH shipped — remaining open design calls #603 (write-gate
-contract) / #604 (dead contradiction loop) / #567 (limit contract); Jan-Heldal
-#592/#593/#594/#597 PRs if submitted; #542 + #407-Stage-2; future MINOR
-(v1.28.0) backlog #608 image-embed ingest + #317/#326/#295 design-track.
-ROADMAP.md "v1.27.x PATCH" milestone now CLOSED (shipped as v1.27.1); open
-items live under `v1.27.0+ research` / backlog rows.
+Three pre-release snapshots used to sit here — the v1.27.2 ship day, the v1.27.1
+ship day, and the wave-C merge — each with its own "Next:" list. They are
+removed rather than archived in place, because **the per-version composition
+record is canonical in [CHANGELOG.md](./CHANGELOG.md)** and a stale "Next:" list is
+worse than no list: it reads as current.
 
-> **Superseded 2026-09-06 (v1.27.1 shipped):** the 2026-09-05 block below is
-> the pre-release snapshot (3975 tests, main `ddf392d`). Kept for
-> archaeology — do not update the old block.
-
-## Current state (2026-09-05)
-
-**Latest shipped:** **v1.27.0 MINOR** (2026-08-27) — 36 commits, 181 files,
-+11197/-3158 LOC, **3677 tests passing** (see CHANGELOG §1.27.0). Since then the
-v1.27.x PATCH slot has taken 26 PRs: wave A (09-02, 12 PRs), wave B (09-04,
-9 PRs), wave C (09-04/05, 5 DocTpoint fix PRs #625/#626/#629/#630/#631 closing
-#623/#624/#627/#628) plus the 3-phase repo-audit cleanup (#632/#633/#634).
-**3975 tests / 279 files on main `ddf392d`**, all Gate-1 green.
-
-**Next:** v1.27.x PATCH remaining scope — re-review #569-11-commits if updated,
-decide #603 (write-gate contract) / #604 (dead contradiction loop) / #567
-(limit contract), Jan-Heldal #592/#593/#594/#597 PRs if submitted, #542 +
-first #407-Stage-2 PR, #539 follow-ups, then #528/#521 late-PATCH.
-ROADMAP.md "v1.27.x PATCH" milestone is the live tracker.
-
-> **Superseded 2026-09-05 (wave-C merge):** the 2026-08-27 pointer block below
-> is the pre-PATCH snapshot. Current state is the block above (3975 tests,
-> main `ddf392d`). Kept for archaeology — do not update the old block.
-
-**Latest shipped (2026-08-27 snapshot):** **v1.27.0 MINOR** — 36 commits, 181 files, +11197/-3158 LOC,
-**3677 tests passing**. Highlights: Bedrock SSO/IAM (#425 / PR #540),
-MinerU multi-format ingest (#404), source-page verbatim quotes (#496),
-Fix Dead Links leave-it (#485), ingest candidate gate (#514), per-step
-taskPolicies UI (#525/#490), composite-key LLM probe caches (#551/#552/#553),
-release chore `npm audit HIGH→0` (#501).
-
-**Next:** v1.27.x PATCH slot carries deferred items (alias-floor unification
-#537×#532, bounded type-repair fan-out #528, zh/ja candidate-gate measurement
-#521, #407 Stage 2 silent-failure sites, #542/#543 follow-ups, **#562/#558/#556
-ship-day bugs from @DocTpoint's triage**). ROADMAP.md "v1.27.x PATCH" milestone
-is the live tracker. PRs #559 (alias) / #564 (gate) / #557 (pnpm) approved,
-merge in progress.
+For what shipped, read CHANGELOG §1.27.0 / §1.27.1 / §1.27.2. For the planning
+view at any point in the past, read ROADMAP's wave sections.
 
 ---
 
 ## Process invariants (non-negotiable)
 
-### Six-Gate Quality Closure
-Every release ships through six gates before merge:
+**[AGENTS.md](./AGENTS.md) is the single canonical source for process standards.**
+This section deliberately does not restate them: a duplicated rule drifts, and
+the AGENTS.md copy is the one the release skill reads.
 
-| Gate | Constraint |
-|------|-----------|
-| 1. Code correct | `pnpm lint` 0/0 + `npx tsc --noEmit` 0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 |
-| 2. No side effects | Call-site audit + data flow + state mutation + error propagation |
-| 3. No breaking | API schema, settings, file format, command IDs, Obsidian API |
-| 4. No perf regression | 5-dim written assessment (CPU/Memory/IO/Network/Token) |
-| 5. Docs complete | 10 READMEs + ROADMAP + AGENTS.md + CHANGELOG + memory |
-| 6. Release clean | superset 1-5 + TOC + i18n + Release Notes + Contributors + git hygiene |
-
-`pnpm gate:1` is the composite alias for Gate 1 — runs all five in the
-**mandatory order build → test** (test reads `main.js` for esbuild bundle
-shape; reversed order fails ENOENT on fresh clone).
-
-### Git workflow (enforced since v1.20.2)
-
-```
-main (protected, GH013) ────► tag → release
-  ├── feat/xxx ── PR → review → admin squash merge → delete branch
-  └── fix/xxx  ── PR → review → admin squash merge → delete branch
-```
-
-**Per-fix E2E handoff (post-#456 incident, 2026-08-14):**
-1. Branch from main
-2. RED test → GREEN fix → 4-Gate green
-3. Local commit (no push yet)
-4. `pnpm build:dev` → verify artifacts (`tail -1 main.js` ends with sourcemap;
-   `console.debug` preserved; 3 output files exist)
-5. **Report to user** — root cause + file:line + diff + test delta + 6-Gate table
-6. **Wait for explicit "可以 push" / "push it" / "ship it"** before `git push` + `gh pr create`
-7. **Wait for explicit "merge it" / "合并"** before `gh pr merge`
-
-### Mandatory merge sequence (added 2026-08-18)
-
-```
-gh pr review <N> --body "<file>"   # MANDATORY: formal review event lands on PR
-gh pr merge <N> --admin --squash --delete-branch   # ONLY after "merge it"
-```
-
-`gh pr review --approve` MUST be posted BEFORE `gh pr merge`. `--admin`
-bypasses the requirement rule, not the review event rule — two separate
-audit surfaces. If `--approve` was skipped, post `gh pr comment <N> --body-file
-<audit-note>` patching the audit trail only.
-
-### Bot double-lint invariant
-
-- Local `pnpm lint` = `eslint src/` only. **Obsidian review Bot scans the
-  whole repo `.ts` tree** including `tools/`.
-- The v1.26.1 release shipped a blocking `unsafe-call` Error in
-  `tools/llm-wiki-cli/src/obsidian.ts` that local lint never saw.
-- `pnpm lint:tools-bot` (v1.26.2+) is the local pre-check — read its
-  output, don't just check exit code. New warnings on touched code MUST
-  be fixed before submission; pre-existing structural warnings on
-  `tools/legacy/cli-v1.26.4-snapshot` are accepted.
+| Invariant | Canonical home |
+|---|---|
+| Six-Gate Quality Closure; `pnpm gate:1`; the **build → test** order (test reads `main.js`, so the reverse fails with ENOENT on a fresh clone) | AGENTS.md §"🛡️ Six-Gate Quality Closure" |
+| Git branch workflow; the 7-step per-fix E2E handoff; the explicit "可以 push" / "merge it" gates | AGENTS.md §"🔀 Git Branch Workflow (enforced since v1.20.2)" |
+| `gh pr review` before `gh pr merge` — two separate audit surfaces; `--admin` bypasses the requirement rule, never the review-event rule | AGENTS.md §"Git Branch Workflow" → "Mandatory merge sequence" |
+| Obsidian Bot double-lint — local `pnpm lint` covers `src/` only, the Bot scans the whole `.ts` tree incl. `tools/`, `pnpm lint:tools-bot` is the local pre-check | AGENTS.md §"⚠️ Obsidian Bot compliance invariant" |
 
 ### Lockfile rule
 
@@ -161,78 +69,76 @@ audit surfaces. If `--approve` was skipped, post `gh pr comment <N> --body-file
   pnpm >= 11 no longer reads it, Issue #556) — npm `overrides` has different
   semantics, so `package.json` keeps the top-level key with the same flat
   values to keep both lockfiles aligned.
+- **`package-lock.json` is load-bearing — do NOT delete it.** Its real
+  justification is release reproducibility, not Dependabot: Obsidian's own
+  pipeline runs `npm install` and compares the `main.js` it builds against the
+  released artifact, and a resolution difference demotes the review score.
+  `.npmrc` records that post-mortem (v1.25.1 Phase E) and
+  `.github/workflows/release.yml` depends on the same tree (`cache: 'npm'`,
+  `npm install --legacy-peer-deps` → `npm run build`). The gate's own header
+  comment still justifies itself with Dependabot advisories, which is now
+  obsolete — GitHub has supported pnpm for the dependency graph and alerts
+  since 2023-08-02 — so do not read that comment as the reason the file exists.
+- **Dependabot cannot update both lockfiles, and never will.** This repo
+  declares `packageManager: pnpm@10.14.0` plus a `pnpm-workspace.yaml`, so its
+  npm ecosystem resolves to pnpm and every PR it opens changes exactly
+  `package.json` + `pnpm-lock.yaml` (#652, #706, #707, #708 — all four).
+  `dependabot-lockfile.yml` (PR #727, 2026-09-16) regenerates
+  `package-lock.json` on the PR branch with `npm install --legacy-peer-deps
+  --package-lock-only` and pushes it. That command is **idempotent (SHA-256
+  verified)**, which is what keeps the workflow from looping. The push lands as
+  `github-actions[bot]`, so its Gate 1 run arrives as `action_required` — one
+  click, and it is the same click the ruleset's required review already asks
+  for, so do not add `actions: write` to self-approve it.
 
-### Issue close keyword
+### Issue close keyword — and its inverse hazard
 
-PR commit body MUST use `Closes #N` (or `Fixes #N` / `Resolves #N`) — NOT
-`Refs #N` / `See #N` / `Related to #N`. GitHub does NOT honor the latter for
-auto-close. Squash-merge must preserve the keyword in the squash commit
-body. Verified 2026-08-07: the v1.26.0 MINOR batch had 5 state-drift issues
-because PRs #401/#406/#410/#411 used non-closing keywords.
+`Closes #N` / `Fixes #N` / `Resolves #N` in the commit body, never `Refs` /
+`See` / `Related to`; the squash commit must carry the keyword. (Verified
+2026-08-07: PRs #401/#406/#410/#411 used non-closing keywords and 5 issues
+drifted.)
 
-**The inverse hazard — a keyword in prose closes a PR (2026-09-12):** the
-keyword does not have to be deliberate and it does not have to aim at an
-issue. PR #689's body described the milestone in prose:
+**A keyword does not have to be deliberate, and it does not have to aim at an
+issue.** PR #689's body described the milestone in prose — "…#604 sits on
+`v1.28.0 MINOR` while its **fix #684** sits on the PATCH line" — and GitHub read
+`fix #684` as a closing directive, so merging #689 closed **PR #684** one second
+after it landed. `ClosedEvent.closer` was the PR, the author had never touched
+it, and a closed PR reads to a contributor as *rejected*.
 
-> #604 sits on `v1.28.0 MINOR` while its **fix #684** sits on the PATCH line
-
-GitHub parsed `fix #684` as a closing directive ⇒ merging #689 **closed PR
-#684** one second after it landed. `ClosedEvent.closer` = PullRequest #689;
-the author had not touched it, and the ROI board merged in that same PR
-listed #684 as its second unblock-first item. A closed PR reads to the
-contributor as *rejected*. Rules that follow:
-
-- Never let `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` sit immediately
-  before `#N` in prose. Write "the fix for #604 is PR #684" — the article
-  breaks the match — or just "PR #684".
-- **The target decides the damage.** A keyword aimed at an issue closes the
-  issue (intended). Aimed at a PR it closes the PR.
-- **Before merging, scan the title + body and confirm every hit is an issue
-  you mean to close:**
+- Never let `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` sit immediately before
+  `#N` in prose. "The fix for #604 is PR #684" breaks the match; so does a bare
+  "PR #684".
+- **The target decides the damage:** aimed at an issue it closes the issue
+  (intended); aimed at a PR it closes the PR.
+- Scan before merging:
   `gh pr view <N> --json title,body --jq '.title, .body' | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'`
-  Open PRs at the time of writing are clean — the other matches
-  (`Fixes #592` / `#597` / `#672` / `#666` / `#688` / `#678` / `#657`) all
-  point at issues.
-- **Recover with `gh pr reopen <N>`**, and read the closer before assuming
-  the mechanism: a `closed` event carries `commit_id` when a commit message
-  did it, and leaves it empty for an API/PR-level close. This one was
-  `actor=green-dalii, commit=-`, which ruled out a commit keyword and pointed
-  at the merge that had happened one second earlier.
+- Recover with `gh pr reopen <N>`, and read `ClosedEvent` before assuming the
+  mechanism: `commit_id` present ⇒ a commit message did it; empty ⇒ API/PR-level.
 
 ### Declined PRs are closed, not left open
 
-A PR that has been decided against is **closed** once the contributor has
-had a fair window to answer the decision — roughly two weeks of silence is
-enough. An open pull request states that merging is still possible, which is
-exactly what a decline says is not the case; a closed one cannot collect a
-stray review at all. Closing loses nothing: the branch, the diff and the
-whole thread stay readable and linkable, which is all "preserved as a
-reference implementation" requires.
+A PR decided against is **closed** once the contributor has had a fair window to
+answer — about two weeks of silence is enough. An open pull request asserts that
+merging is still possible, which is exactly what a decline denies; a closed one
+cannot collect a stray review. Nothing is lost — branch, diff and thread stay
+readable and linkable, which is all "preserved as a reference implementation"
+needs. A close means "not now", not "never", so the decision comment **names in
+one line what would reopen it.**
 
-A close means "not now", not "never", so the **decision comment names what
-would reopen it, in one line**. That is what keeps the door open without
-keeping the PR open.
+**Read the signals before any review.** #570 (2026-09-12) carried three signals
+of one decision — a `wontfix` label, a decision comment, draft status — while
+staying open, so a `CHANGES_REQUESTED` review landed anyway, contradicting the
+decision and inviting work that had already been declined. Recovered by
+dismissing the review (`PUT .../reviews/<id>/dismissals`), posting a correction
+comment, and converting to draft via `convertPullRequestToDraft` (`gh` has no
+`pr draft`; REST's `draft` field is GitHub-App-only). Two ways that check was
+built wrong, both caught in review of its first version:
 
-`#570` (2026-09-12) carried three signals of one decision — a `wontfix`
-label, a decision comment, and draft status — while staying open. None of
-them is the place every tool and every reader agrees on, so a
-`CHANGES_REQUESTED` review landed on it anyway, contradicting the decision
-and inviting the contributor to do work that was already declined.
-Recovered by dismissing the review (`PUT .../reviews/<id>/dismissals`),
-posting a correction comment, and converting to draft via
-`convertPullRequestToDraft` (`gh` has no `pr draft`; REST's `draft` field is
-GitHub-App-only).
-
-**Before any review, read the signals.** Two ways to get that check wrong,
-both caught in review of its first version:
-
-- **Latest, not first.** Decisions arrive late on a thread that opened with
-a greeting. `.[0:1]` returns the *oldest* comment — which on #570 happened
-to be the decision, so the check looked right on the one case it was built
-against and would hide the decision everywhere else.
-- **Any maintainer, not one account.** Keying on `.author.login ==
-"green-dalii"` makes a decision written by anyone else invisible, and the
-rule quietly stops matching the moment a second person records one.
+- **Latest, not first** — decisions arrive late on a thread that opened with a
+  greeting, and `.[0:1]` returns the *oldest* comment, so it happens to look
+  right on the one case it was built against and hides the decision elsewhere.
+- **Any maintainer, not one account** — keying on `.author.login ==
+  "green-dalii"` makes a decision written by anyone else invisible.
 
 ```
 gh pr view <N> --json labels,comments \
@@ -240,8 +146,7 @@ gh pr view <N> --json labels,comments \
 ```
 
 Any `wontfix` / `duplicate` / `do not merge` label, or a maintainer comment
-recording a decision, means the PR is decided — **stop** and post a short
-comment asking rather than a review.
+recording a decision, means the PR is decided — **stop** and ask, do not review.
 
 ---
 
@@ -257,6 +162,256 @@ comment asking rather than a review.
 | **Dead-code-as-docs policy** (v1.26.0 Batch 4) — exported symbols with zero production importers have a **half-life of one release cycle**. Wire or delete before next MINOR ships. `pre-release-gate` Phase 2g enforces. | AGENTS.md §"Dead-code-as-docs policy"; [[feedback_dead_code_as_docs]] |
 | **Settings panel scope rule** (v1.26.0 Batch 2 lesson) — `advanced-section.ts` = LLM sampling + provider overrides ONLY. Bottom `advanced-settings-section.ts` = dedup thresholds + per-source toggles + storage flags. New toggle? Decide FIRST which scope. | AGENTS.md §"Settings panel scope rule"; [[feedback_settings_panel_naming_collision]] |
 | **Architect-level contributors** (v1.26.0+) — currently @DocTpoint with Write role on personal repo; "no push to main" enforced by branch protection, not role. | [[project_architect_contributor_policy]] |
+| **Floor / ceiling asymmetry** (2026-09-16, decided with the maintainer on #729) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
+
+---
+
+## Design record — cross-source relations (#729, v1.28.0)
+
+Recorded 2026-09-16, converged with the maintainer. The planning window lives in
+ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *how*.
+
+> **Start here if you have no context.** Read `### The measurement` and
+> `### Root cause` first — they are the whole reason this work exists. Then
+> `### Three mechanisms` for the design, and **`### Implementation plan
+> (ordered phases)` to build it**. Everything after that is rationale and
+> guardrails. The issue is #729.
+
+### The measurement
+
+@DocTpoint rebuilt a 413-note vault unattended over three days on v1.27.1: 413
+source pages + 2135 entity/concept pages. **95 % of edges connect pages born from
+the same note; plain co-occurrence reproduces 94.5 % of the Related edges; nine
+of ten pages have no incoming link from a page with another source.** The Related
+cap holds with zero violations and strays sit at 1 %.
+
+A null model over five multi-note questions (same character budget, same model,
+thinking off, truth from the notes, blind-rated) put an embedding index over raw
+notes (A) against the same index over wiki pages (B) and the plugin's query path
+(C): **B slightly ahead of A, both clearly ahead of C, which lost 3 of 5.**
+B ≥ A is the first hard evidence that the compiler is not a detour. The reader is
+the bottleneck, and the bottleneck is **recall** — arm C found the right pages
+less often, not less accurately once they were found.
+
+### Root cause: the star is written into the prompt
+
+The intra-source shape is not emergent. `src/wiki/prompts/ingestion.ts:27`
+instructs the model to name only items "extracted from **this same source
+file**", and the JSON example repeats it ("Related entity names **from this
+source**"). Phase 2 (`page-factory/related-links.ts`) then resolves those names
+against the whole vault through `buildVaultResolver`, which returns `undefined`
+for anything the vault does not hold — so the write path can **confirm** a name
+but can never **discover** one. In a star forest there is no path between stars,
+so no PPR weight function can create reachability either.
+
+**The generalisable method note:** the constraint was in the prompt, not the
+architecture. Reading the module tells you what *could* happen; reading the
+prompt tells you what *does*.
+
+### The machinery is already there and unwired
+
+- `getExistingWikiPages` returns, per page in the vault: `path`, `title`,
+  `aliases`, `tags`, `ctime`, and a bounded slice of the **prose**
+  (`CANDIDATE_WINDOW_TEXT_CHARS` = 2000). Read **locally — zero prompt tokens**,
+  so none of this is bounded by vault size in the prompt.
+- `core/candidate-window.ts` — "the one ranked window every prompt draws from" —
+  ranks on title + aliases + prose, `CANDIDATE_WINDOW_TOP_K` = 30.
+- `core/build-graph.ts` already builds the vault link graph locally.
+- The ranker is already used *inside* the page factory
+  (`page-factory/path-resolution.ts:27`) and in `lint/fix-dead-link.ts:169` —
+  for path resolution and link repair, **never for relation discovery**.
+
+The unwired question is simply: *which other pages in this vault relate to this
+one?*
+
+### Three mechanisms, ordered floor-first
+
+| | **M0 co-citation projection** | **M1 local window ranking** | **M2 world-knowledge proposals** |
+|---|---|---|---|
+| Signal | the vault's link structure | the vault's text | the model's training data |
+| Rule | `A → E` and `B → E` ⇒ `A — B` | rank the vault pool by title+aliases+prose against the item's own `summary` | the extraction model proposes names it believes exist |
+| **Model dependency** | **zero** | **low** — inherits Phase 1's `summary`, which page generation, dedup and query already depend on | **high** |
+| Prompt change / extra call | none / none | none / none | yes / none |
+| Role | **holds the floor** | **raises the floor** | **explores the ceiling** |
+| Status | this issue | this issue | deferred, evaluated against M0+M1's measurement |
+
+Both feed the same filter — the vault resolver — so neither can write a link to a
+page that does not exist.
+
+### Adaptive budget (replaces three scattered ceilings)
+
+`SIBLING_CAP = 3` (`core/related-shaping.ts:67`), the module-private
+`GRANULARITY_FIX_LIMITS` table (`wiki/system-prompts.ts:198-203`) and two inline
+`?? 5` defaults (`system-prompts.ts:226-227`) all move into `src/constants.ts`,
+keyed by the existing extraction-granularity axis:
+
+| Granularity | note-grounded | cross-source | total | siblings |
+|---|---|---|---|---|
+| `fine` | 7 | 5 | 12 | 3 |
+| `standard` | 5 | 3 | 8 | 3 |
+| `coarse` | 3 | 2 | 5 | 2 |
+| `minimal` | 2 | 1 | 3 | 1 |
+| `custom` | from `customEntityLimit` | `clamp(ceil(n × 0.6), 1, 5)` | sum | 3 |
+
+The cross-source column is a **ceiling, never a quota**. Refactor surface is
+small: the granularity table is module-private (zero external callers) and
+`SIBLING_CAP` is imported by one test file.
+
+### Allocation: reserved, with backfill
+
+Additive allocation silently disables the feature on pages whose Related list is
+already full — precisely the pages that need it.
+
+```
+1. resolve note-grounded names              (today's logic, unchanged)
+2. orphan -> siblings up to the sibling cap  (unchanged)
+3. note-grounded may occupy at most (total - cross-source) entries
+4. fill up to `cross-source` slots from the vault pool,
+   excluding self and anything already present
+5. if cross-source candidates < the reservation, the freed slots go back
+   to note-grounded (up to `total`)
+```
+
+### Implementation plan (ordered phases)
+
+Each phase is independently mergeable and testable. **Do not start phase N+1
+before phase N's pass condition holds.** Phases 1–2 are the feature; 3–4 make it
+useful and shippable; 0 is a prerequisite; 6 is what decides whether anything
+model-dependent is ever opened.
+
+**Phase 0 — centralise the ceilings (no behaviour change).**
+
+- Move `SIBLING_CAP` out of `core/related-shaping.ts:67`, the
+  `GRANULARITY_FIX_LIMITS` table out of `wiki/system-prompts.ts:198-203`, and
+  replace the two inline `?? 5` defaults (`:226-227`) with constants.
+- Add the budget table to `src/constants.ts` — granularity-keyed, with the
+  cross-source column present but unused.
+- Update the single importer (`__tests__/core/related-shaping.test.ts:3`). Do not
+  re-export from the old homes; the point of this phase is one canonical file.
+- **Pass condition:** Gate 1 green **and zero output diff** — this phase is
+  behaviour-identical by definition, so any snapshot or fixture churn is a bug,
+  not an update.
+
+**Phase 1 — M0, the co-citation projection.**
+
+- Build the projection from the graph `core/build-graph.ts` already produces:
+  for page `P`, candidates are pages sharing ≥1 outgoing target with `P`, ranked
+  by shared-target count, **ties broken by path** (project determinism).
+- Exclude self, anything already in the note-grounded list, and anything the
+  vault resolver rejects.
+- Wire it in as a new **optional** dep on `shapeRelatedLists`, so every existing
+  unit test keeps compiling untouched:
+  ```ts
+  candidates?: (self: string, exclude: ReadonlySet<string>) => string[]
+  ```
+- Run at **write time** (the open question on write-vs-query is resolved in
+  favour of write time for this phase) so the edges persist and PPR gets the
+  cross-source reach for free rather than re-deriving it per query.
+- **Pass condition:** new unit tests for the projection (sharing, ranking order,
+  tie determinism, exclusion) plus the existing suite green **with the dep
+  absent**. **Then re-measure the 95 % figure on a rebuild.** If this phase alone
+  does not move it, stop — the diagnosis is wrong, not the mechanism.
+
+**Phase 2 — allocation (reserved + backfill).**
+
+- Implement the five-step algorithm above inside `shapeRelatedLists`.
+- Log both the truncation count and the cross-source count; the acceptance
+  criteria are unmeasurable without them.
+- **Pass condition:** tests for (a) the reservation holds when candidates exist,
+  (b) freed slots return to note-grounded when they do not, (c) totals never
+  exceed the tier, (d) an orphan still gets its siblings before anything else.
+
+**Phase 3 — M1, local window ranking.**
+
+- Call `selectCandidateWindow({ name, context: item.summary }, vaultPool, K)`,
+  where `vaultPool` is `getExistingWikiPages`' output and `K` is the tier's
+  **cross-source budget** (30 is the window's own ceiling, not the budget).
+- `wiki-engine.ts:1224` is the call site that must supply the provider.
+- **Pass condition:** tests against a stub pool; determinism (same input → same
+  output, stable ordering); and **no additional LLM call enters the path**
+  (assert the client is untouched).
+
+**Phase 4 — settings toggle + docs.**
+
+- Toggle defaults **on**. Decide its panel **before** writing code:
+  content-generation behaviour ⇒ the bottom Advanced panel, per the
+  Settings-panel scope rule.
+- 11 locale strings, 11 READMEs, CHANGELOG entry under the MINOR.
+- **Pass condition:** Gate 1 green; `pnpm lint:tools-bot` clean; i18n parity.
+
+**Phase 5 — companion: multi-hop query decomposition.**
+
+- Extend `generateQueryKeywords`'s contract from `Promise<string[]>` to
+  `Promise<{ keywords: string[]; subqueries?: string[] }>` and update its callers
+  and tests — that signature change is the whole cost of this phase.
+- Decompose **only** when the model marks the query multi-hop.
+- **Pass condition:** a simple question is provably not decomposed (fixture
+  assertion); a compound one is; the union-of-seeds path is covered.
+
+**Phase 6 — measurement, and the only thing that opens M2.**
+
+- Rebuild a comparable vault, re-measure the intra-source share, re-run the five
+  multi-note questions, and check the dead-related-entry baseline (676 / 870).
+- Publish the numbers against the staged acceptance criteria below. **M2 (or an
+  embedding) is opened by these numbers, never by preference.**
+
+### Definition and companion
+
+- **"Cross-source" = not named by this note's own extraction.** Chosen because
+  `getExistingWikiPages` does not expose per-page `sources`; a provenance-based
+  definition is more precise and more expensive, and should not be paid for
+  before measurement says it matters.
+- **Companion: multi-hop query decomposition.** Arm C's three losses are
+  multi-note (compound) questions. Decompose into sub-queries, retrieve per
+  sub-query and union the seeds — **only for queries classified as multi-hop**;
+  over-splitting a simple question is the classic IR regression. The classifier
+  folds into the existing Stage 1.5a call (`generateQueryKeywords`, which already
+  makes an LLM round-trip on this path) so the decision costs no extra latency.
+  Kept in #729 rather than split out: same acceptance harness.
+
+### Why not embeddings
+
+`Zero-embedding graph retrieval` is a load-bearing identity claim — README badge
+line, SEO intents ("Obsidian RAG without embeddings"), the competitor comparison
+table, README `:229` ("Most 'AI search' plugins … embed them in a vector DB. We
+don't."), and `docs/MODEL-GUIDE.md` ("Embedding endpoints are irrelevant — we
+don't use embeddings"). It is also a **model-dependent dependency paid by every
+install**, including users who chose this plugin because it runs fully local —
+the exact asymmetry the floor/ceiling principle warns about. Reopen only if the
+lexical residual proves material *after* the floor is raised, and let the staged
+acceptance criteria make that visible.
+
+### Acceptance criteria (staged attribution)
+
+1. **M0 only** — intra-source edge share < 95 % on a comparable rebuild (the
+   model-independent floor).
+2. **M0 + M1** — the further drop, plus the five multi-note questions improving
+   in arm C.
+3. **M2 justified only if** 1–2 leave the multi-note questions unfixed, or the
+   residual gap is demonstrably semantic (*"how knowledge evolves over time"*
+   against a page titled *Consolidation kernel*).
+4. Dead related entries do not increase — **676 on 870 pages** is the baseline.
+5. No regression on single-note questions; the `related-shaping` /
+   `related-sections` suites stay green.
+6. Gate 1 green; no settings-schema break; a disable switch exists and defaults
+   **on** (a deliberate default change ⇒ MINOR).
+
+### Files to touch
+
+`src/constants.ts` (budget table) · `src/core/related-shaping.ts` (import +
+allocation + candidate hook) · `src/wiki/system-prompts.ts` (table out, `?? 5`
+replaced) · `src/wiki/wiki-engine.ts:1224` (pass the candidate provider) ·
+`src/__tests__/core/related-shaping.test.ts` (import + reservation / backfill /
+determinism) · `src/texts/*.ts` ×11 (toggle copy) · README ×11 + CHANGELOG.
+
+### Open questions
+
+- Reserved vs additive (we argue reserved-with-backfill).
+- The tier numbers (first proposal).
+- M0 at write time or query time.
+- Whether the ceiling deserves more than M2 — for instance a periodic
+  consolidation pass over accumulated pages (the #358 kernel). This design
+deliberately does not close that door.
 
 ---
 
@@ -447,6 +602,58 @@ workflow".
 
 ---
 
+## Lessons learned (2026-09-16 session — cross-source direction + Dependabot lockfile root fix)
+
+### Durable lessons
+
+- **`optionalDependencies` fail silently, and that is how a whole capability
+  disappears.** pi 0.85.1 declares `@earendil-works/pi-server` / `pi-client` as
+  optional; the global install skipped them and nothing complained, so background
+  subagents were unavailable — and the error text blamed a "standalone pi
+  binary" that did not exist. Diagnose by reading the consumer's resolution code
+  (`runner-aliases.ts::findPeerPackageDir` walks `<pkg>/node_modules` then every
+  ancestor), not the message. Fixed by extracting the 0.85.1 tarballs into pi's
+  own `node_modules` — **zero-intrusion (both manifest SHA-256s unchanged),
+  fully reversible with `rm -rf`**. Generalise: an optional dependency that a
+  required feature needs is a silent capability hole, not graceful degradation.
+- **Read the consumer before trusting an external search.** A research subagent
+  searched Obsidian's docs, correctly found no lockfile requirement, and
+  recommended deleting `package-lock.json`. The real constraint was in this
+  repo's own `.npmrc` post-mortem: Obsidian's pipeline runs `npm install` and
+  compares build hashes, so the file is load-bearing for release
+  reproducibility. **Absence of evidence in vendor documentation is not absence
+  of a constraint** — internal post-mortems outrank external docs for constraints
+  we discovered the hard way.
+- **The constraint may be in the prompt, not the architecture.** The Related
+  graph's intra-source shape looked like an inevitable property of "one note →
+  one star". It is literally an instruction at `prompts/ingestion.ts:27`.
+- **A log grep can identify the wrong CI step.** "Which step failed" was misread
+  from log text twice — `pnpm install --frozen-lockfile` looked like the failure
+  when it was the *preceding* step's `##[group]Run` echo. `gh run view <id>
+  --json jobs --jq '.jobs[].steps[]'` gives per-step conclusions and is the only
+  trustworthy source.
+- **A machine-generated artifact read back as input is a view-as-data bug.**
+  `build-graph.ts` parses `[[links]]` from page bodies without knowing that the
+  Related sections were written by `related-page.ts`. The graph is therefore
+  largely a render of the ingest's own co-occurrence decisions, which is why PPR
+  cannot discover anything the ingest had not already decided.
+- **Test the mechanism before merging it.** #718's workflow was validated on the
+  real Dependabot branch in a throwaway worktree — failure reproduced,
+  regeneration verified, single-file diff confirmed, and **idempotency proven by
+  SHA-256** so the workflow provably cannot loop — *then* merged, *then*
+  confirmed in production on #707 and #708.
+
+### State pointers (2026-09-16)
+
+- Issue **#729** — cross-source relations, the first item of the v1.28.0 design
+  track.
+- **#718** CLOSED by PR **#727** (`e9be7f75`); **#707** `3f0fc9a2` and **#708**
+  `7cc50bf9` merged; `main` = `7cc50bf9`.
+- **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
+  placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
+
+---
+
 ## Lessons learned (2026-09-15 session — v1.27.2 release prep, main-is-red regression forensics)
 
 **Trigger:** user "梳理本patch阶段所有工作，按skill执行发布流程". Gate 1 failed 12 seconds into Step 1 on a clean `main` — before any release change had been made.
@@ -512,79 +719,50 @@ workflow".
 
 ---
 
-## Lessons learned (2026-08-30 session — Hermes cross-reference)
+## Hermes cross-reference (2026-08-30) — what it settled
 
-**Trigger:** Issue #575 (newly opened) + DocTpoint's 2026-08-30 revive of
-Issue #220, cross-referenced against the Hermes agent's bundled `llm-wiki`
-skill (`NousResearch/hermes-agent`, `skills/research/llm-wiki/SKILL.md`
-v2.1.0; PR #5100 introduction; PR #13700 provenance/sha256/quality signals;
-PR #5635 skill-config interface). Full analysis: see commit history of the
-2026-08-30 session for the prior write-up.
+A cross-read of `NousResearch/hermes-agent`'s bundled `llm-wiki` skill against
+our own design, triggered by #575 and DocTpoint's revive of #220. Two findings
+were executed the next day and are now history; the rest are standing judgments.
 
-### Cross-reference table — borrow / don't-borrow / borrow-and-rewrite
+**Executed that week:** **#575** — the `merge` definition contained "contradicts",
+so `strategy: "contradictory"` was unreachable (closed 2026-08-31). **#577** — read
+the `contentHash` back and flag drifted sources, report-only (merged 2026-08-31).
+Hermes' PR #13700 had reached both conclusions independently, which is what made
+them worth acting on rather than worth debating.
 
-| Hermes does | We do | Action |
-|---|---|---|
-| Raw sources carry `sha256:` frontmatter (PR #13700) | Derived `wiki/sources/*.md` carries `contentHash` (`src/wiki/wiki-engine.ts:1470`, PR #164) | **Borrow-and-rewrite**: our posture (plugin never writes user notes) is more conservative than Hermes'; keep it. The fingerprint function `hashBody(extractBody(content))` is the same in both — body-only SHA-256, frontmatter excluded so it doesn't hash itself. |
-| Re-ingest: skip when body hash unchanged, flag drift when changed; report-only | #577 (open PR by DocTpoint, 2026-08-30) does exactly this on the read half of #220 Tier 0 | **Borrow unchanged**. Hermes and #577 are second-source-of-truth for the same design judgment. |
-| Paragraph-level provenance markers `^[raw/articles/source.md]` on pages synthesising 3+ sources (PR #13700) | Structured `Mentions:` block + per-claim `mentions_in_source` fields | **Don't borrow** (yet). Reader-UX enhancement, not core. Our structured form is friendlier for LLM parsing; human-traceability is satisfied by `Mentions:`. Revisit only if user-research shows the gap. |
-| Three-layer architecture (raw / entities / schema) | AGENTS.md "Three-layer architecture" (Sources → Wiki → Schema) | **Borrow unchanged** — same concept, same folder isolation in our vault. |
-| Compile-once vs. RAG-rediscover | Same — LLM-wiki pattern is the assumption, not a feature | **Borrow unchanged**. |
-| Contradiction handling: frontmatter mark + body keeps both positions with dates + source | `ContradictionManager` writes structured contradiction records in lint phase | **Borrow-and-rewrite**: keep the structured representation; do NOT regress to LLM-readable text. |
-| `mergeAnalysis` falls through to body-rewrite on contradiction; no structured signal kept at the merge point | Same — issue #575 documents this as a literal bug (`merge` definition includes "contradicts" bullet → `strategy: "contradictory"` is unreachable, 0/58 calls) | **Fix #575** (see "Next moves" below). DocTpoint called this out in #220 comment on 2026-07-12; #575 is the more specific location. |
+**Where Hermes is more permissive and we deliberately are not:**
 
-### First-principles anchors
+- Hermes puts `sha256:` in the **frontmatter of raw sources**; we attach the
+  fingerprint to the derived `wiki/sources/*.md` only, because the plugin never
+  writes user notes. Same function either way: `hashBody(extractBody(content))`
+  — body-only, frontmatter excluded so it cannot hash itself.
+- Hermes writes paragraph-level provenance markers (`^[raw/…/source.md]`) on
+  pages synthesising 3+ sources; we keep the structured `Mentions:` block. Ours
+  parses more reliably for an LLM and `Mentions:` already satisfies human
+  traceability, so revisit only on user research — not on symmetry.
+- Contradictions stay a **structured record**, never LLM-readable prose.
 
-- **Drift detection is intrinsic to wiki-mode**, not an optional add-on. Wiki's
-  premise (offline-compiled synthesis > per-query RAG) breaks the moment
-  sources change silently. So `contentHash` + read-back lint is required
-  for the pattern to hold.
-- **Auto-revise on drift is empirically harmful** — Wikipedia's 30-year
-  track record shows fact-revision-on-page-X does NOT auto-propagate to
-  pages that reference X; an automatic fix risks unbounded cascade
-  corruption. DocTpoint's #220 Tier 3 explicitly preserves this
-  conservatism ("detect and flag, not auto-rewrite"). Hermes PR #13700
-  commit message is also explicit: report-only, not a hard error. So:
-  report drift → route to user, do not auto-re-ingest, do not auto-revise.
-- **Tier 2 of #220 ("recency ≠ correctness") stays open by design**. A
-  "newest wins" rule would silently collapse editorial disagreement into
-  recency, which is exactly the failure mode #358 (complementary memory
-  model) warns against. Until we have a real benchmark for cross-source
-  resolution, **do not implement** an automatic rule here.
+### Standing judgments (survive the session that produced them)
 
-### Next moves (recorded here so they're findable later)
-
-1. **Fix #575** — owner-self, ~half-day. Remove "contradicts" from the `merge`
-   definition bullet list so `strategy: "contradictory"` becomes reachable.
-   When `mergeAnalysis` returns `contradictory`, push the structured
-   record to `ContradictionManager` at merge time (DocTpoint's #220
-   comment 2026-07-12 already proposed this; #575 is the specific
-   evidence that the path was unreachable). Test delta: ~3-5 unit tests
-   covering the now-reachable path.
-2. **Review PR #577** — the read half of #220 Tier 0 as a report-only
-   lint check (DocTpoint, 2026-08-30, 3699 tests passing, tsc/eslint
-   clean per PR description). Design matches Hermes and our own
-   `hashBody` post-#164; the only thing to verify is the edge-case
-   conservatism (skip pages with no `contentHash`, multi-source pages
-   with one surviving match, etc.).
-3. **Defer Tier 1 (`supersedes:` frontmatter flag) to a later MINOR**.
-   After #577 lands, the Tier 1 contract becomes: fingerprint detects
-   drift → user-declared `supersedes: true` overrides fingerprint
-   ambiguity → deterministic replace-self-block path. Not urgent; not
-   PATCH-scale; do not bundle with #577 in the same cycle.
-4. **Hold open**: Tier 2 (cross-source resolution) and Tier 3 (review
-   queue UI). Tier 3 is a product-surface decision; route to MINOR-track
-   design discussion. Tier 2 has no good automatic answer — do NOT
-   propose "newest wins" as a default.
-
-### Session memory pointer
-
-This section was extracted from the 2026-08-30 session's full analysis
-(in `/tmp/...` working notes of the same session). Full technical detail
-on Hermes's PR #13700 commit message, sha256-frontmatter mechanics, and
-the contradiction-handling comparison is recoverable from the session
-transcript; the *conclusions* — borrow table, first-principles anchors,
-next moves — are captured here for retrieval.
+- **Drift detection is intrinsic to wiki-mode, not an add-on.** The premise
+  (offline-compiled synthesis beats per-query RAG) breaks the moment sources
+  change silently, so `contentHash` + read-back lint is a requirement of the
+  pattern, not a feature of it.
+- **Auto-revise on drift is empirically harmful.** Wikipedia's record shows a
+  fact revision on page X does not propagate to pages citing X, and an automatic
+  fix risks unbounded cascade corruption. Report the drift, route it to the
+  user; never auto-re-ingest, never auto-revise.
+- **#220 Tier 2 ("recency ≠ correctness") stays open by design.** A "newest
+  wins" rule would silently collapse editorial disagreement into recency —
+  precisely the failure mode #358 warns against. **Do not implement an
+  automatic rule here** until there is a benchmark for cross-source resolution.
+- **#220 Tier 1 (`supersedes:` frontmatter) is deferred, not dropped.** Its
+  contract once #577 is in: fingerprint detects drift → a user-declared
+  `supersedes: true` overrides fingerprint ambiguity → deterministic
+  replace-self-block path. Not PATCH-scale, and not to be bundled with #577.
+- **#220 Tier 3** (review-queue UI) is a product-surface decision — route it to
+  a MINOR design discussion, not to a fix.
 
 ---
 

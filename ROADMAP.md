@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-15 (v1.27.2 release prep — wave F shipped, incl. the main-is-red regression fix #722)
+**Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-16 (**v1.28.0 MINOR planning opened** — design track seeded from the cross-source relation work, issue #729; see the section below)
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -13,6 +13,34 @@
 ## Process notes
 
 Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGENTS.md#-six-gate-quality-closure). Release flow lives in the [`obsidian-plugin-release` skill](/Users/greener/.pi/skills/obsidian-plugin-release/SKILL.md) (Pi canonical path; legacy alias `/Users/greener/.claude/skills/obsidian-plugin-release/SKILL.md` still works under Claude Code sessions). ROADMAP does not duplicate process standards or shipped-version details — only the **planning decisions** that have not yet shipped. The historical `[CLAUDE.md](./CLAUDE.md)` file is now a pointer stub to `AGENTS.md`; all new content goes in `AGENTS.md`.
+
+---
+
+## v1.28.0 MINOR — Design track
+
+**Opened 2026-09-16.** Two mandates, per user direction: **feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail for the first item lives in [MEMORY.md §"Design record — cross-source relations"](./MEMORY.md#design-record--cross-source-relations-729-v1280); this section carries only the planning decisions.
+
+### Scope groups
+
+| Group | Items | Why this window |
+|---|---|---|
+| **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. Research and design concluded 2026-09-16 |
+| **Write-path hardening** (architecture) | **#603** (the single write-gate contract does not hold — six writers bypass it), **#662** (the page index is rebuilt per item and per written page) | Design calls, not patch-shaped. Both sit under one surface: what the writer promises is what the reader may rely on |
+| **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
+| **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#669** (zod 4 migration, 17 `.passthrough()` sites), **#706** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape), **#723** (custom-header passthrough for OpenAI-compatible providers — no such path exists today) | Each needs a design decision this PATCH cycle cannot host |
+| **Community** | **#608** + PR **#687** (local Markdown image embeds, draft WIP) | Already on the milestone |
+
+### Ordering decision (2026-09-16)
+
+**Hardening before the reader.** #603 says the write-gate contract does not hold; an improved reader over an inconsistent store moves the error faster rather than removing it. #729's own acceptance criteria compare the reader against a store that must be telling the truth, so the write path is settled first.
+
+Within #729 the mechanisms are ordered **floor-first**: the model-independent mechanism that holds the graph's quality *floor* (co-citation projection over links the vault already has) precedes the model-dependent ones that could raise its *ceiling*. Rationale, the three-mechanism table and the budget tiers are in the MEMORY design record; the principle itself is now a canonical decision (MEMORY §"Key design decisions").
+
+### Open decisions
+
+- Whether #729's co-citation projection runs at **write time** (edges persist, PPR gets cross-source reach for free) or **query time** (no format change, A/B-able without a rebuild).
+- **Reserved vs additive** cross-source allocation — see #729 §"Open questions".
+- Where #729's toggle lands: content-generation behaviour belongs in the bottom Advanced panel per the Settings-panel scope rule, but this should be fixed before code, not after.
 
 ---
 
