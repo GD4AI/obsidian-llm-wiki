@@ -36,6 +36,24 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 Within #729 the mechanisms are ordered **floor-first**: the model-independent mechanism that holds the graph's quality *floor* (co-citation projection over links the vault already has) precedes the model-dependent ones that could raise its *ceiling*. Rationale, the three-mechanism table and the budget tiers are in the MEMORY design record; the principle itself is now a canonical decision (MEMORY §"Key design decisions").
 
+### Phase schedule (2026-09-16)
+
+Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable; phase 2 is a chain.
+
+| Phase | Items | Blocked by |
+|---|---|---|
+| **1 — decouple, take the cheap wins** | **#669** (zod 4 — a cross-cutting dependency bump, so *earliest is cheapest*: every later PR otherwise rebases onto it) · **#723** (custom-header passthrough, independent) · **#603 + #662 design pass** (design only, no implementation) | nothing |
+| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) is unblocked now** — behaviour-identical by definition; the rest waits | #603 |
+| **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** once #603 lands · **#668 after #729's toggle has a home** | phase 2 |
+| **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |
+
+**Two couplings found during the 2026-09-16 planning pass, now binding:**
+
+- **#729 ↔ #664.** #729 *adds* Related entries; #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open — and the measurement that would catch it (Related length over a rebuild) is exactly the one each would blame the other for. **They ship together.**
+- **#729 ↔ #668.** #729 introduces a settings toggle that defaults on; #668 restructures the settings tab. Land the toggle *after* #668's structure is settled, or it gets re-homed twice. Per the Settings-panel scope rule it is bottom-Advanced-panel either way (content-generation behaviour, not LLM sampling).
+
+**Scheduling gap closed 2026-09-16:** PR **#728** (the MAJOR bump that superseded #706 — which was closed still carrying this milestone) and Issue **#725** + PR **#726** were unassigned. They now sit on `v1.28.0 MINOR` and `v1.27.x PATCH` respectively.
+
 ### Open decisions
 
 - Whether #729's co-citation projection runs at **write time** (edges persist, PPR gets cross-source reach for free) or **query time** (no format change, A/B-able without a rebuild).

@@ -404,6 +404,27 @@ replaced) · `src/wiki/wiki-engine.ts:1224` (pass the candidate provider) ·
 `src/__tests__/core/related-shaping.test.ts` (import + reservation / backfill /
 determinism) · `src/texts/*.ts` ×11 (toggle copy) · README ×11 + CHANGELOG.
 
+### Coupling constraints
+
+Two constraints make the build order non-negotiable, and both were found late —
+during the 2026-09-16 planning pass, not during design. They are recorded here
+because the *reason* is what a future reader needs; the schedule table itself is
+in ROADMAP §"Phase schedule".
+
+- **#729 ships with #664.** #729 adds entries to the Related lists; #664
+  observes that those lists already grow about two per source and are never
+  pruned. Built separately, #729 raises the ceiling while #664 leaves the floor
+  open — and the measurement that would catch it (Related length over a rebuild)
+  is precisely the one each change would blame the other for.
+- **#729 sequences after #668, not parallel to it.** #729 introduces a settings
+  toggle defaulting on; #668 restructures the settings tab. Landing the toggle
+  first means re-homing it twice.
+- **#603 is a hard prerequisite for every sub-phase past 0.** The
+  floor-before-ceiling argument applies twice: a faster reader over a store whose
+  write-gate contract does not hold moves the error rather than removing it, and
+  the phase-1 acceptance criterion (intra-source share) is meaningless if the
+  edges it measures can be written by six paths the design does not account for.
+
 ### Open questions
 
 - Reserved vs additive (we argue reserved-with-backfill).
@@ -651,6 +672,25 @@ workflow".
   `7cc50bf9` merged; `main` = `7cc50bf9`.
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
+
+### Resume point (post-compact handoff, 2026-09-16)
+
+**Read in this order if context was lost:** ROADMAP §"v1.28.0 MINOR — Design
+track" (what ships, in what order) → this section's `### Design record` (the
+design and the six-phase implementation plan) → issue **#729**.
+
+**State at handoff:** `main` = `2692f768`; MEMORY + ROADMAP merged via #730.
+Milestones assigned: #728 → `v1.28.0 MINOR`, #725 and #726 → `v1.27.x PATCH`.
+**#728 was `DIRTY` and a `@dependabot rebase` was requested** — once it lands, its
+Gate 1 run on the corrected head arrives as `action_required` and needs one
+approval, then the MAJOR `@ai-sdk/openai-compatible` 2→3 bump must be checked
+against `openai-compat-request-body.test.ts` before merging.
+
+**Nothing in phase 2 has been started.** The next unblocked, concrete step is
+**#729 sub-phase 0** — centralising the three scattered Related ceilings into
+`src/constants.ts`. It is behaviour-identical by definition, so its pass
+condition is a **zero-output diff**, not a passing suite. **#669 (zod 4) and
+#723 are also unblocked**, and phase 1 needs no prerequisite at all.
 
 ---
 
