@@ -34,6 +34,8 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 **Hardening before the reader.** #603 says the write-gate contract does not hold; an improved reader over an inconsistent store moves the error faster rather than removing it. #729's own acceptance criteria compare the reader against a store that must be telling the truth, so the write path is settled first.
 
+**The write-path design pass completed 2026-09-16 and opens the phase-2/3 gate.** Its recommendation: split the gate into `rawWrite` / `pageGuard` / `notify` rather than funnel every write through it — **five real violations in four files** to fix, plus five sites that only need to declare their intent. Both source issues were re-measured and **each contained one claim that does not hold** (`log-writer.ts` does go through the gate; `contradictions.ts` does not exist), and each omitted worse sites than it listed — including `vault.adapter.write`, which sits below Obsidian's own eventing. Corrected counts and the reasoning are in the MEMORY design record, which phase 2 consumes directly.
+
 Within #729 the mechanisms are ordered **floor-first**: the model-independent mechanism that holds the graph's quality *floor* (co-citation projection over links the vault already has) precedes the model-dependent ones that could raise its *ceiling*. Rationale, the three-mechanism table and the budget tiers are in the MEMORY design record; the principle itself is now a canonical decision (MEMORY §"Key design decisions").
 
 ### Phase schedule (2026-09-16)
@@ -42,7 +44,7 @@ Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable
 
 | Phase | Items | Blocked by |
 |---|---|---|
-| **1 — decouple, take the cheap wins** | **#669** (zod 4 — a cross-cutting dependency bump, so *earliest is cheapest*: every later PR otherwise rebases onto it) · **#723** (custom-header passthrough, independent) · **#603 + #662 design pass** (design only, no implementation) | nothing |
+| **1 — decouple, take the cheap wins** | **#669** (zod 4 — a cross-cutting dependency bump, so *earliest is cheapest*: every later PR otherwise rebases onto it) · **#723** (custom-header passthrough, independent) · **#603 + #662 design pass** — ✅ **done 2026-09-16**, see MEMORY §"Design record — write path and page index" | nothing |
 | **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) is unblocked now** — behaviour-identical by definition; the rest waits | #603 |
 | **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** once #603 lands · **#668 after #729's toggle has a home** | phase 2 |
 | **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |

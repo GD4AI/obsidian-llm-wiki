@@ -436,6 +436,111 @@ deliberately does not close that door.
 
 ---
 
+## Design record — write path and page index (#603 / #662, v1.28.0)
+
+**Design pass, 2026-09-16. No implementation.** Both issues describe a surface
+problem accurately and enumerate it inaccurately; the enumeration is what decides
+the design, so it was re-measured from source rather than trusted.
+
+### The gate bundles four concerns, not one
+
+`createOrUpdateFile` (`wiki/wiki-engine.ts:1873-2045`) is documented as "single
+write gate with pollution defense". It actually does four separable things, and
+callers want different subsets of them:
+
+| # | Concern | Where |
+|---|---|---|
+| 1 | Pollution correction (display-name, path-prefix, `sources` field) | `:1884-1932` |
+| 2 | Heading + provenance normalization (`normalizeHeadingSpacing`, `normalizeProvenanceMarkers`) | `:1940-1945` |
+| 3 | IO with retry + path resolution (3 attempts, directory scan, full scan) | `:1947-2045` |
+| 4 | Notification + cache invalidation (`onFileWrite`, `invalidatePageCaches`) | 5 exit points |
+
+The gate offers "all four" or "none", and nothing in between is reachable.
+
+### The decisive evidence is already in the codebase
+
+`wiki-engine.ts:845-851` documents a **deliberate** bypass: the PDF sidecar is
+written via the vault directly because going through the gate "would fire
+`onFileWrite` + `invalidatePageCaches`, which could trigger auto-ingest cascades if
+the source folder is watched."
+
+That comment is the design conclusion, written early by whoever needed it first:
+**one gate for every write is the wrong shape**, because concern 4 is sometimes
+actively harmful. The sidecar wants concern 3 and nothing else.
+
+### Corrections to the two enumerations
+
+`#603` claims six bypassing writers:
+
+- ❌ **`log-writer.ts` is not one.** Its header states the vault calls "live in
+  WikiEngine's tryReadFile / createOrUpdateFile. LogWriter receives these as
+  injected" — it goes *through* the gate. The issue's list has a false positive.
+- ⚠️ **Missed: `lint/fix-runners.ts:133` and `:604` use `vault.adapter.write`** —
+  below Obsidian's own `vault.modify` eventing. The worst mechanism found, and
+  the one with the least in common with the documented contract.
+- ⚠️ **Missed: `wiki-engine.ts:349` (`markPageComplete`)** — the engine writes a
+  wiki page's frontmatter **outside its own gate**.
+- ⚠️ **Missed: `lint/phases/preparation.ts:68`** writes wiki pages (the
+  double-nested-link fix) — same class as the above, listed by the issue only
+  for its log.md sibling at `:82`.
+
+`#662` claims eight direct importers of `getExistingWikiPages`:
+
+- ❌ **`contradictions.ts:37` does not exist** — the file is
+  `contradiction-gates.ts` and calls neither. Measured count: **7**, not 8.
+- ✅ The 5 s TTL is right (`PAGES_CACHE_TTL_MS = 5000`, `constants.ts:55`) and it
+  is invalidated at `:447` plus five gate exit points.
+- ⚠️ **Missed: `wiki-engine.ts:1104` calls the module function directly**, bypassing
+  the engine's own cached wrapper at `:2120`. This is the *same self-bypass
+  pattern* as #603's `markPageComplete`, in a second subsystem — which is the
+  real finding: the engine does not consistently use its own front doors.
+
+### Recommendation — split, do not funnel
+
+Funnelling every write through today's gate is not the fix, for the reason the
+sidecar comment gives. Narrowing the contract alone is also insufficient, because
+five sites genuinely need the guard. The shape that satisfies both:
+
+| Layer | Contents | Who needs it |
+|---|---|---|
+| **`rawWrite`** | concern 3 — retry, path resolution, create-or-update | everything that writes |
+| **`pageGuard`** | concerns 1 + 2 | wiki pages only |
+| **`notify`** | concern 4 | anything the watcher must see; the sidecar **opts out explicitly** |
+
+Each call site then declares its set, and `types.ts:989`'s contract is narrowed to
+what the layers actually guarantee. Tiering the sites:
+
+- **A — real violations** (wiki pages, missing both guard and notify):
+  `link-retarget.ts:185`, `markPageComplete:349`, `fix-runners.ts:133`,
+  `fix-runners.ts:604`, `preparation.ts:68`. **Five sites, four files.**
+- **B — declare `guard: false` explicitly** (source notes, sidecars):
+  `sources-normalizer.ts:247`, `preparation.ts:105`, sidecar `:870/:872`.
+  Their current silence is indistinguishable from an oversight; the declaration
+  is the whole change.
+- **C — out of contract, document and leave** (schema, logs, caches):
+  `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`,
+  `disk-cache.ts:155`, `ensure-welcome-note.ts:161`.
+
+**For #662 the issue's proposal is right and its mechanism is the point:** the TTL
+cache is invalidated *by the writes the ingest itself performs*, so it cannot hold
+during an ingest no matter how many callers use the wrapper. Routing the 7 direct
+callers through the engine accessor is hygiene; the fix is a **run-scoped index
+updated by the writer**, as proposed — the writer knows what it wrote, so it
+should tell the index rather than invalidate it.
+
+### Open questions
+
+- Whether `pageGuard` stays inside `createOrUpdateFile` as a superset (smaller
+  diff, contract still ambiguous) or becomes a separate declared layer (clearer,
+  touches ~14 call sites).
+- Whether tier B's declaration is a type-level requirement or a call-site option.
+  Type-level is the only version that cannot be forgotten.
+- Whether `fix-runners.ts`'s `adapter.write` sites are a third mechanism to be
+  preserved (they avoid the Obsidian event layer deliberately?) or simply an
+  older idiom — the code does not say, and the answer changes the fix.
+
+---
+
 ## Architectural invariants (write-once)
 
 - **`document` is forbidden in production code** — Obsidian is multi-window,
