@@ -192,6 +192,8 @@ gh pr merge <N> --admin --squash --delete-branch   # ← ONLY after user said "m
 
 **Reviewing PRs (added 2026-09-12, after #570):** a PR decided against is **closed** once the contributor has had a fair window to answer (roughly two weeks of silence), with the decision comment naming in one line what would reopen it. An open PR states that merging is still possible — a closed one cannot collect a stray review at all.
 
+**Filing issues (added 2026-09-17, after #735 / #736):** an issue whose premise is a *missing capability* must name that capability as its acceptance criteria — or not be filed yet. Filing "X has no Y path" and then building Y in the next PR without linking them produces an issue that reads as unstarted work while the work is under review; a PR body written in between can even call the delivered capability "the open question", which is how it happened here. Link at the moment implementation starts (`Closes #N` in the body). And when an issue's own analysis turns out to be wrong, **record the correction on the issue rather than editing it away** — the route that was not needed is information about why the right one was cheap (#735 proposed a bespoke adapter; the bundled `@ai-sdk/openai.responses()` meant the work was a routing decision).
+
 Every review submission MUST begin with the signal check:
 
 ```
@@ -299,6 +301,8 @@ English, conventional commits: `feat:` `fix:` `docs:` `refactor:` `test:` `chore
 **Auto-close:** append `Closes #N` (or `Fixes #N` / `Resolves #N`) to commit body. NEVER use `gh issue close` or UI close — let the commit message do it.
 
 **Author identity:** canonical `green-dalii <654534332@qq.com>`. NEW commits (incl. `--amend` and squash) MUST use lowercase canonical form. **Maintainer commits DO NOT include any AI-generated trailer** — no `Co-Authored-By:`, no `Generated with`, no equivalent marker from **any** AI agent (Claude Code, Codex, Cursor, Pi, …). AI tooling may legitimately assist authoring, but the commit's audit trail must read as a single human author (per [[feedback_co_authored_by_format]]). External contributors write their own trailers — preserve verbatim on merge.
+
+**Verify the commit, not the command.** A commit that reports success can still carry the wrong content. `git commit --amend -F <msg>` without a prior `git add` commits the *message* plus whatever was already staged — so a fix made immediately before it is left behind while the message announces it. That is worse than a missing commit: the description disagrees with the contents, so a reader who diffs the change concludes they misread, and the audit trail itself is what got corrupted. Two habits close it — `git status --porcelain` must be **empty** immediately after every commit, and amending to change content means `git add` first (use `--no-edit` when the message is already right). Confirm with `git show HEAD:<path>`, or re-read the branch from GitHub, rather than trusting the exit code. Caught 2026-09-17 on #736, whose body announced a preset-ordering fix its diff did not contain.
 
 ---
 
