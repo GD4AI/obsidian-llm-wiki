@@ -214,5 +214,19 @@ export function buildOutputArgs(
   // validator is wrapped alongside. The plain tier sends the adapter's own
   // body, so a backend that accepts it (measured: LM Studio) is unaffected.
   const adapted = mode === 'json_schema_strict' ? strictSchemaFor(schema, adapt) : adapt();
+  // #669: on the plain tier the body carries `additionalProperties: false`,
+  // set by the AI SDK's zod→JSON-Schema converter for zod 4 (zod 3's
+  // `.passthrough()` used to emit `true` here). Kept deliberately rather than
+  // rewritten back to `true`:
+  //   - nothing reads unknown keys off a parsed response — `confidence` /
+  //     `score` appear only in `output-schemas.ts` comments;
+  //   - client-side tolerance comes from the zod parse, not from the wire
+  //     (zod 4's plain `z.object()` already strips extras without throwing,
+  //     so `.loose()` is not what provides the tolerance);
+  //   - the strict tier has always shipped `false` on this boundary.
+  // A tighter value constrains grammar-decoding backends instead of letting
+  // them emit keys that are then discarded. Pinned by a test on *this* path
+  // (output-schemas.test.ts, "the plain tier's wire body"), so a future SDK
+  // change that flips it fails loudly instead of silently.
   return { output: Output.object({ schema: adapted, name }) };
 }

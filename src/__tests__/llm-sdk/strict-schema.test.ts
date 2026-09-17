@@ -9,8 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { zodSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
-import { z as z3 } from 'zod';
-import { z as z4 } from 'zod/v4';
+import { z } from 'zod';
 import {
   normalizeStrictJsonSchema,
   strictSchemaFor,
@@ -229,37 +228,57 @@ describe('every exported output schema reaches the wire in the strict dialect', 
   });
 });
 
-describe('wire-body regression across zod 3 and zod 4 (#669)', () => {
-  // The same shape written twice: zod 3 `.passthrough()` (what
-  // output-schemas.ts uses today) and zod 4 `.looseObject()` (its documented
-  // replacement). zod 3.25.x ships both APIs, so the comparison runs without
-  // a dependency change. The raw bodies differ (`additionalProperties`,
-  // the nullable form, key order — the SDK routes zod 4 through
-  // `z.toJSONSchema()` and then forces `additionalProperties: false`); the
-  // normalised bodies must not.
-  const shape3 = z3.object({
-    action: z3.enum(['fix', 'stub', 'skip']).optional(),
-    path: z3.string().nullable(),
-    items: z3.array(z3.object({ n: z3.string(), k: z3.number().optional() }).passthrough()).optional(),
-    inner: z3.object({ a: z3.boolean().optional() }).passthrough(),
-  }).passthrough();
-  const shape4 = z4.looseObject({
-    action: z4.enum(['fix', 'stub', 'skip']).optional(),
-    path: z4.string().nullable(),
-    items: z4.array(z4.looseObject({ n: z4.string(), k: z4.number().optional() })).optional(),
-    inner: z4.looseObject({ a: z4.boolean().optional() }),
+describe('wire-body regression across the zod 3 and zod 4 representations (#669)', () => {
+  // output-schemas.ts used zod 3 `.passthrough()` before the v4 migration and
+  // uses `.loose()` now. zod 3 is no longer installed, so the v3 representation
+  // is frozen below instead of built — captured under zod 3.25.76, with
+  // `additionalProperties: true` at every level.
+  //
+  // Freezing it makes this stronger than the live v3-vs-v4 comparison it
+  // replaces: the *recorded* v3 bytes must still normalise to the same body as
+  // the *live* v4 schema, which proves the normaliser is representation-
+  // agnostic rather than merely self-consistent. The raw representations differ
+  // in three ways (`additionalProperties`, the nullable form, and `$schema`
+  // position); the normalised bodies must not. The v3 bytes of the two real
+  // schemas are frozen in the file snapshots below and carry the same weight.
+  const FROZEN_V3_RAW = {
+    type: 'object',
+    properties: {
+      action: { type: 'string', enum: ['fix', 'stub', 'skip'] },
+      path: { type: ['string', 'null'] },
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { n: { type: 'string' }, k: { type: 'number' } },
+          required: ['n'],
+          additionalProperties: true,
+        },
+      },
+      inner: { type: 'object', properties: { a: { type: 'boolean' } }, additionalProperties: true },
+    },
+    required: ['path', 'inner'],
+    additionalProperties: true,
+    $schema: 'http://json-schema.org/draft-07/schema#',
+  } as JSONSchema7;
+  const shape = z.looseObject({
+    action: z.enum(['fix', 'stub', 'skip']).optional(),
+    path: z.string().nullable(),
+    items: z.array(z.looseObject({ n: z.string(), k: z.number().optional() })).optional(),
+    inner: z.looseObject({ a: z.boolean().optional() }),
   });
 
-  it('the raw bodies differ — documented, not asserted as a contract', () => {
-    const raw3 = JSON.stringify(zodSchema(shape3).jsonSchema);
-    const raw4 = JSON.stringify(zodSchema(shape4).jsonSchema);
-    expect(raw3).not.toBe(raw4);
-    expect(raw3).toContain('"additionalProperties":true');
-    expect(raw4).toContain('"additionalProperties":false');
+  it('the live raw body still differs from the frozen v3 bytes — documented, not asserted as a contract', () => {
+    const raw = JSON.stringify(zodSchema(shape).jsonSchema);
+    expect(raw).not.toBe(JSON.stringify(FROZEN_V3_RAW));
+    expect(JSON.stringify(FROZEN_V3_RAW)).toContain('"additionalProperties":true');
+    expect(raw).toContain('"additionalProperties":false');
   });
 
-  it('the normalised bodies are byte-equal', () => {
-    expect(JSON.stringify(wireBody(shape3))).toBe(JSON.stringify(wireBody(shape4)));
+  it('the frozen v3 body and the live v4 body normalise byte-equal', () => {
+    const liveRaw = zodSchema(shape).jsonSchema as JSONSchema7;
+    expect(JSON.stringify(normalizeStrictJsonSchema(liveRaw)))
+      .toBe(JSON.stringify(normalizeStrictJsonSchema(FROZEN_V3_RAW)));
   });
 
   it('FixDeadLinkSchema — pinned bytes', async () => {

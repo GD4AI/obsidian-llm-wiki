@@ -14,6 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Output } from 'ai';
+import { buildOutputArgs } from '../../llm-sdk/output-args';
 import {
   SeedSelectorSchema,
   QueryKeywordsSchema,
@@ -318,20 +319,31 @@ describe('output-schemas (Phase B expanded scope)', () => {
       expect(required as string[]).toContain('concepts');
     });
 
-    it('Issue #463: wire schema top-level retains additionalProperties: true (passthrough requirement)', async () => {
-      // The fix MUST keep `.passthrough()` at the top level so models
-      // can emit extra fields like `confidence`, `score`, or
-      // whatever shape they choose. DocTpoint's 2026-08-16 measurement
-      // confirmed `additionalProperties: false` is NOT required to
-      // fix #463 — only `required` is. This test guards against
-      // dropping passthrough in a future refactor.
-      const output = Output.object({
-        schema: SourceAnalysisLLMSchema,
-        name: 'source_analysis',
-      });
-      const responseFormat = await output.responseFormat;
+    it('Issue #463: the plain tier\'s wire body keeps `required` and pins `additionalProperties: false`', async () => {
+      // Rewritten for zod 4 (#669). The assertion this replaces read
+      // `Output.object({ schema: <raw zod> }).responseFormat` and required
+      // `additionalProperties: true` — the value zod 3's `.passthrough()`
+      // happened to emit, which nothing consumes: `confidence` / `score` appear
+      // only in `output-schemas.ts` comments, unknown keys are never read off a
+      // parsed response, and the client-side tolerance comes from the zod parse
+      // rather than from the wire. zod 4's converter emits `false`, the value
+      // the strict tier has always shipped.
+      //
+      // What #463 actually needs is `required` — DocTpoint's 2026-08-16
+      // measurement: `additionalProperties: false` was NOT required to fix it,
+      // only `required` was. Both facts are now asserted on the *production*
+      // path (`buildOutputArgs`) instead of on a raw SDK call the plugin never
+      // makes, so this guards a real contract rather than an incidental one.
+      const { output } = buildOutputArgs(
+        { type: 'json_object', schema: SourceAnalysisLLMSchema },
+        'json_schema',
+        { name: 'source_analysis' },
+      );
+      const responseFormat = await output!.responseFormat;
       const wireSchema = (responseFormat as unknown as { schema: Record<string, unknown> }).schema;
-      expect(wireSchema.additionalProperties).toBe(true);
+
+      expect(wireSchema.required).toEqual(expect.arrayContaining(['entities', 'concepts']));
+      expect(wireSchema.additionalProperties).toBe(false);
     });
 
     it('Issue #463: wire schema source_title / summary / key_points / etc remain optional (no scope creep)', async () => {
