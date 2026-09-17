@@ -78,6 +78,7 @@ export const ZH_HANT_TEXTS = {
     // Issue #723: custom request headers (shown directly below the Base URL).
     customHeadersName: '自訂請求標頭',
     customHeadersDesc: '每行一項 `名稱: 值`。每次請求都會送出；空行與 `#` 註解會被忽略。',
+    customHeadersInvalid: '{} 行格式無效，將被忽略。',
 
     // Ollama 提示
     ollamaHint: 'Ollama 本地執行，無需 API Key',

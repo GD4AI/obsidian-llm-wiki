@@ -78,6 +78,7 @@ export const PT_TEXTS = {
     // Issue #723: custom request headers (shown directly below the Base URL).
     customHeadersName: 'Cabeçalhos personalizados',
     customHeadersDesc: 'Um `Nome: valor` por linha. Enviado em cada requisição; linhas vazias e comentários `#` são ignorados.',
+    customHeadersInvalid: '{} linha(s) malformada(s) serão ignoradas.',
 
     // Ollama Hint
     ollamaHint: 'O Ollama roda localmente, não requer API Key',

@@ -78,6 +78,7 @@ export const JA_TEXTS = {
     // Issue #723: custom request headers (shown directly below the Base URL).
     customHeadersName: 'カスタムヘッダー',
     customHeadersDesc: '1 行に 1 つ `名前: 値` の形式で指定します。すべてのリクエストに付与されます。空行と `#` コメントは無視されます。',
+    customHeadersInvalid: '{} 行が形式不正のため無視されます。',
 
     // Ollama Hint
     ollamaHint: 'Ollamaはローカルで動作するため、API Keyは不要です',

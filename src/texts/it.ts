@@ -78,6 +78,7 @@ export const IT_TEXTS = {
     // Issue #723: custom request headers (shown directly below the Base URL).
     customHeadersName: 'Intestazioni personalizzate',
     customHeadersDesc: 'Un `Nome: valore` per riga. Inviato a ogni richiesta; le righe vuote e i commenti `#` vengono ignorati.',
+    customHeadersInvalid: '{} riga/righe malformate verranno ignorate.',
 
     // Suggerimento Ollama
     ollamaHint: 'Ollama gira in locale, nessuna chiave API richiesta',

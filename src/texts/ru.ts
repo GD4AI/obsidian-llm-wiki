@@ -82,6 +82,7 @@ export const RU_TEXTS = {
     // Issue #723: custom request headers (shown directly below the Base URL).
     customHeadersName: 'Свои заголовки',
     customHeadersDesc: 'По одному `Имя: значение` в строке. Отправляется с каждым запросом; пустые строки и комментарии `#` игнорируются.',
+    customHeadersInvalid: '{} строк(и) с неверным форматом будут проигнорированы.',
 
     // Подсказка Ollama
     ollamaHint: 'Ollama работает локально, API Key не требуется',

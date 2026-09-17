@@ -39,6 +39,7 @@ import { renderRangeSlider } from '../settings-helpers';
 import { getCodexAuthUiState } from '../openai-codex-auth-controls';
 import { getBedrockAuthUiState } from '../bedrock-auth-controls';
 import { resolveInitialApiKey } from '../../llm-sdk/provider-api-key-resolver';
+import { parseCustomHeaders } from '../../llm-sdk/compat-headers';
 
 export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -178,13 +179,29 @@ export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLE
     // `AnthropicSdkClient` and would ignore the field entirely: a setting that
     // silently does nothing is worse than one that is absent.
     if (tempSettings.provider !== 'anthropic-compatible') {
-      new Setting(containerEl)
+      // Issue #723: a malformed line is dropped by `parseCustomHeaders` rather
+      // than becoming a header named after whatever preceded the colon. That is
+      // the right behaviour but an invisible one, so the count is surfaced here
+      // — on open as well as on edit, so a saved-but-malformed value is visible
+      // before the user touches the field again.
+      const describeHeaders = (raw: string): string => {
+        const base = tab.getText('customHeadersDesc');
+        const { invalid } = parseCustomHeaders(raw);
+        return invalid > 0
+          ? `${base} ${tab.getText('customHeadersInvalid').replace('{}', String(invalid))}`
+          : base;
+      };
+      const headersSetting = new Setting(containerEl)
         .setName(tab.getText('customHeadersName'))
-        .setDesc(tab.getText('customHeadersDesc'))
+        .setDesc(describeHeaders(tempSettings.customHeaders ?? ''))
         .addTextArea(text => text
           .setPlaceholder('X-My-Header: value')
           .setValue(tempSettings.customHeaders ?? '')
-          .onChange((value) => { tempSettings.customHeaders = value; tempSettings.llmReady = false; }));
+          .onChange((value) => {
+            tempSettings.customHeaders = value;
+            tempSettings.llmReady = false;
+            headersSetting.setDesc(describeHeaders(value));
+          }));
     }
   }
 
