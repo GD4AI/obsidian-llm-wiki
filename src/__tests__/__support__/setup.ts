@@ -185,6 +185,15 @@ Object.defineProperty(globalThis, 'crypto', {
         return out.buffer;
       },
     } as SubtleCrypto,
+    // Issue #723: the plugin generates a per-client session id for
+    // OpenAI-compatible providers that require one. `defineProperty` above
+    // replaces the whole `crypto` object, so jsdom's native `randomUUID` is not
+    // reachable — without this shim, constructing a compat client throws.
+    // Unique per call rather than random; nothing asserts the value.
+    randomUUID: (() => {
+      let seq = 0;
+      return () => `00000000-0000-4000-8000-${String(seq += 1).padStart(12, '0')}`;
+    })(),
   },
 });
 

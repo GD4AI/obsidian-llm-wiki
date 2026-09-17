@@ -18,7 +18,7 @@
 // sites in main.ts / wiki-engine.ts / query-engine.ts unchanged
 // (they all expect a sync `LLMClient` instance).
 
-import { LLMClient } from '../types';
+import { LLMClient, PREDEFINED_PROVIDERS } from '../types';
 import type { CodexAuthManager } from './openai-codex/auth-manager';
 import {
   bedrockMantleChatCompletionsUrl,
@@ -27,6 +27,7 @@ import {
   type BedrockRegion,
 } from '../constants';
 import { resolveProviderApiKey } from './provider-api-key-resolver';
+import { compatHeaders } from './compat-headers';
 import { usesBedrockAwsCredentials } from '../core/provider-auth';
 import type { ProviderSecretStorage } from './provider-secret-store';
 import { obsidianFetchBridge, streamWithFallback, type ObsidianFetchInit } from '../core/obsidian-fetch-bridge';
@@ -60,6 +61,12 @@ export interface ProviderSettings {
   codexAuth?: CodexAuthManager;
   codexVersion?: string;
   codexQuotaMessage?: string;
+  /**
+   * Issue #723: user-supplied request headers for the OpenAI-compatible path,
+   * one `Name: value` per line. Forwarded verbatim to `compatHeaders`, which
+   * parses and merges them last so they win over the generated ones.
+   */
+  customHeaders?: string;
   /**
    * #425 Bedrock Stage 2 — auth mode for the two `bedrock-*` provider
    * ids. Default `'api-key'` = Stage-1 bearer, unchanged.
@@ -161,6 +168,39 @@ function createBedrockClient(
  * Async factory used by callers that can await (Test Connection,
  * settings change handlers, ingestion init).
  */
+/**
+ * Issue #723: options shared by the two OpenAI-compatible routes.
+ *
+ * Headers are composed once per client — plugin identity, the preset's own
+ * defaults with `{sessionId}` filled in, then the user's, which win. The
+ * session id is generated here rather than in the preset table so the table
+ * stays declarative and each client gets its own id (the client lives for one
+ * conversation, which is the lifetime OpenCode's routing expects).
+ *
+ * `baseURL` keeps the localhost default: it is only reached when neither the
+ * user nor the preset supplied one, which for `custom` presets cannot happen
+ * (`requiresBaseUrl: true`) but has always been the fallback behaviour.
+ */
+function compatRouteOptions(
+  settings: ProviderSettings,
+  apiKey: string,
+  baseUrl: string | undefined,
+  provider: string,
+): { apiKey: string; baseURL: string; provider: string; headers?: Record<string, string> } {
+  const headers = compatHeaders({
+    version: settings.codexVersion,
+    presetHeaders: PREDEFINED_PROVIDERS[provider]?.defaultHeaders,
+    sessionId: () => crypto.randomUUID(),
+    customHeadersRaw: settings.customHeaders,
+  });
+  return {
+    apiKey,
+    baseURL: baseUrl ?? 'http://localhost:11434/v1',
+    provider,
+    ...(headers ? { headers } : {}),
+  };
+}
+
 export async function createLLMClientFromSettings(
   settings: ProviderSettings,
   pendingApiKey?: string,
@@ -228,11 +268,16 @@ export async function createLLMClientFromSettings(
     });
   }
 
-  return new OpenAICompatSdkClient({
-    apiKey,
-    baseURL: baseUrl ?? 'http://localhost:11434/v1',
-    provider,
-  });
+  // Issue #723: `apiShape: 'responses'` speaks `/v1/responses` through the
+  // already-bundled `@ai-sdk/openai` — `OpenAISdkClient`'s own
+  // `createOpenAI({ baseURL }).responses(modelId)` call — so the
+  // `custom-responses` preset needs no new dependency and no bespoke adapter.
+  // Everything else stays on `@ai-sdk/openai-compatible`.
+  const routeOptions = compatRouteOptions(settings, apiKey, baseUrl, provider);
+  if (PREDEFINED_PROVIDERS[provider]?.apiShape === 'responses') {
+    return new OpenAISdkClient(routeOptions);
+  }
+  return new OpenAICompatSdkClient(routeOptions);
 }
 
 /**
@@ -347,11 +392,12 @@ export function createLLMClientFromSettingsSync(
     });
   }
 
-  return new OpenAICompatSdkClient({
-    apiKey,
-    baseURL: baseUrl ?? 'http://localhost:11434/v1',
-    provider,
-  });
+  // Issue #723: same routing as the async factory; see the note there.
+  const routeOptions = compatRouteOptions(settings, apiKey, baseUrl, provider);
+  if (PREDEFINED_PROVIDERS[provider]?.apiShape === 'responses') {
+    return new OpenAISdkClient(routeOptions);
+  }
+  return new OpenAICompatSdkClient(routeOptions);
 }
 
 /**

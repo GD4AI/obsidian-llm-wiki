@@ -75,6 +75,10 @@ export const KO_TEXTS = {
     baseUrlDescCustom: '필수: 사용자 정의 OpenAI 호환 엔드포인트',
     baseUrlDescOverride: '선택: preset Base URL 재정의',
 
+    // Issue #723: custom request headers (shown directly below the Base URL).
+    customHeadersName: '사용자 지정 헤더',
+    customHeadersDesc: '한 줄에 하나씩 `이름: 값` 형식으로 입력합니다. 모든 요청에 전송되며, 빈 줄과 `#` 주석은 무시됩니다.',
+
     // Ollama Hint
     ollamaHint: 'Ollama는 로컬에서 실행되며 API 키가 필요하지 않습니다',
     lmstudioHint: 'LM Studio는 로컬에서 실행됩니다. API 키는 선택 사항입니다',

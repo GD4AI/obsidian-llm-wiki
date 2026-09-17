@@ -156,15 +156,36 @@ export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLE
   }
 
   // Base URL
-  if (tempSettings.provider === 'custom' || tempSettings.provider === 'anthropic-compatible' || (providerConfig && tempSettings.baseUrl !== providerConfig.baseUrl)) {
+  const isCustomUrlProvider = tempSettings.provider === 'custom'
+    || tempSettings.provider === 'custom-responses'
+    || tempSettings.provider === 'anthropic-compatible';
+  if (isCustomUrlProvider || (providerConfig && tempSettings.baseUrl !== providerConfig.baseUrl)) {
     new Setting(containerEl)
       .setName(tab.getText('baseUrlName'))
-      .setDesc(tempSettings.provider === 'custom' || tempSettings.provider === 'anthropic-compatible'
+      .setDesc(isCustomUrlProvider
         ? tab.getText('baseUrlDescCustom') : tab.getText('baseUrlDescOverride'))
       .addText(text => text
         .setPlaceholder(providerConfig?.baseUrl || 'https://api.example.com/v1')
         .setValue(tempSettings.baseUrl)
         .onChange((value) => { tempSettings.baseUrl = value; tempSettings.llmReady = false; }));
+
+    // Issue #723: custom request headers, placed directly below the base URL
+    // rather than in the bottom Advanced panel — the two are configured
+    // together, and a gateway that needs extra headers is usually the reason the
+    // user is editing this section at all.
+    //
+    // Skipped for the Anthropic-compatible provider, which routes to
+    // `AnthropicSdkClient` and would ignore the field entirely: a setting that
+    // silently does nothing is worse than one that is absent.
+    if (tempSettings.provider !== 'anthropic-compatible') {
+      new Setting(containerEl)
+        .setName(tab.getText('customHeadersName'))
+        .setDesc(tab.getText('customHeadersDesc'))
+        .addTextArea(text => text
+          .setPlaceholder('X-My-Header: value')
+          .setValue(tempSettings.customHeaders ?? '')
+          .onChange((value) => { tempSettings.customHeaders = value; tempSettings.llmReady = false; }));
+    }
   }
 
   // v1.24.1 PATCH Bedrock Stage 1 - region selector (only when provider

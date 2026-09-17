@@ -75,6 +75,10 @@ export const ZH_HANT_TEXTS = {
     baseUrlDescCustom: '必填：自定義 OpenAI 相容服務的 endpoint',
     baseUrlDescOverride: '可選：覆蓋預設的 Base URL',
 
+    // Issue #723: custom request headers (shown directly below the Base URL).
+    customHeadersName: '自訂請求標頭',
+    customHeadersDesc: '每行一項 `名稱: 值`。每次請求都會送出；空行與 `#` 註解會被忽略。',
+
     // Ollama 提示
     ollamaHint: 'Ollama 本地執行，無需 API Key',
     lmstudioHint: 'LM Studio 本地執行，API Key 可選',

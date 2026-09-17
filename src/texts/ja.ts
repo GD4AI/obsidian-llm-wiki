@@ -75,6 +75,10 @@ export const JA_TEXTS = {
     baseUrlDescCustom: '必須：カスタムOpenAI互換エンドポイント',
     baseUrlDescOverride: '任意：定義済みBase URLを上書き',
 
+    // Issue #723: custom request headers (shown directly below the Base URL).
+    customHeadersName: 'カスタムヘッダー',
+    customHeadersDesc: '1 行に 1 つ `名前: 値` の形式で指定します。すべてのリクエストに付与されます。空行と `#` コメントは無視されます。',
+
     // Ollama Hint
     ollamaHint: 'Ollamaはローカルで動作するため、API Keyは不要です',
     lmstudioHint: 'LM Studioはローカルで動作します。API Keyは任意です',

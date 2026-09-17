@@ -79,6 +79,10 @@ export const RU_TEXTS = {
     baseUrlDescCustom: 'Обязательно: собственный OpenAI-совместимый эндпоинт',
     baseUrlDescOverride: 'Необязательно: переопределить предустановленный Base URL',
 
+    // Issue #723: custom request headers (shown directly below the Base URL).
+    customHeadersName: 'Свои заголовки',
+    customHeadersDesc: 'По одному `Имя: значение` в строке. Отправляется с каждым запросом; пустые строки и комментарии `#` игнорируются.',
+
     // Подсказка Ollama
     ollamaHint: 'Ollama работает локально, API Key не требуется',
     // Подсказка LM Studio

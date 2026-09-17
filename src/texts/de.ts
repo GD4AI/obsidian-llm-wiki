@@ -75,6 +75,10 @@ export const DE_TEXTS = {
     baseUrlDescCustom: 'Erforderlich: Benutzerdefinierte OpenAI-kompatible Endpunkt',
     baseUrlDescOverride: 'Optional: Voreingestellte Basis-URL überschreiben',
 
+    // Issue #723: custom request headers (shown directly below the Base URL).
+    customHeadersName: 'Eigene Header',
+    customHeadersDesc: 'Eine Zeile pro `Name: Wert`. Wird bei jeder Anfrage gesendet; Leerzeilen und `#`-Kommentare werden ignoriert.',
+
     // Ollama Hint
     ollamaHint: 'Ollama läuft lokal, kein API-Schlüssel erforderlich',
     lmstudioHint: 'LM Studio läuft lokal, API-Key ist optional',

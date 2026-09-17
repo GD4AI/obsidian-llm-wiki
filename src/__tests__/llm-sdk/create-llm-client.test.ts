@@ -91,6 +91,34 @@ describe('createLLMClientFromSettings (async)', () => {
       });
       expect(c).toBeInstanceOf(OpenAICompatSdkClient);
     });
+
+    it('returns OpenAISdkClient for the custom-responses preset (Issue #723)', async () => {
+      // `apiShape: 'responses'` routes to the OpenAI client, whose
+      // `provider(modelId)` call already resolves to the Responses model — so
+      // `/v1/responses` against a user-supplied base URL needs no new dependency
+      // and no bespoke request adapter. Asserted here because the routing is the
+      // whole mechanism: if this preset silently landed on the compat client it
+      // would send `/v1/chat/completions` and the user would never know why.
+      const c = await createLLMClientFromSettings({
+        provider: 'custom-responses',
+        apiKey: 'test-key',
+        baseUrl: 'https://my-gateway.example.com/v1',
+        providerApiKeySecretId: 'karpathywiki-provider-api-key',
+      });
+      expect(c).toBeInstanceOf(OpenAISdkClient);
+    });
+
+    it('keeps the completion preset on the compat client after the rename', async () => {
+      // Guard for the rename in the same change: `custom` must not have been
+      // swept onto the new route by the apiShape branch.
+      const c = await createLLMClientFromSettings({
+        provider: 'custom',
+        apiKey: 'test-key',
+        baseUrl: 'https://my-gateway.example.com/v1',
+        providerApiKeySecretId: 'karpathywiki-provider-api-key',
+      });
+      expect(c).toBeInstanceOf(OpenAICompatSdkClient);
+    });
   });
 
   describe('useOfficialOpenAI override', () => {

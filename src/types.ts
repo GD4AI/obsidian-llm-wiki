@@ -192,6 +192,26 @@ export interface ProviderConfig {
    * clients and are unaffected by this flag.
    */
   supportsStructuredOutputs?: boolean;
+  /**
+   * Issue #723: extra headers this provider requires on every request. Values
+   * may contain the `{sessionId}` placeholder, replaced once per client with a
+   * stable UUID — that is how OpenCode gets its required per-conversation
+   * `x-opencode-session` without the table having to compute one at module load.
+   * Merged after the plugin's `User-Agent` and before the user's own headers.
+   */
+  defaultHeaders?: Record<string, string>;
+  /**
+   * Issue #723: which API shape the OpenAI-compatible path should speak.
+   * `chat` (default, and what every existing preset uses) is
+   * `/v1/chat/completions` via `@ai-sdk/openai-compatible`. `responses` is
+   * `/v1/responses` via the already-bundled `@ai-sdk/openai`
+   * (`createOpenAI({ baseURL }).responses(modelId)`), so it needs no new
+   * dependency and no bespoke request adapter.
+   *
+   * Only meaningful for providers that route through the compat path; the
+   * native OpenAI / Anthropic / Codex clients ignore it.
+   */
+  apiShape?: 'chat' | 'responses';
 }
 
 // Plugin settings
@@ -222,6 +242,15 @@ export interface LLMWikiSettings {
   openAICodexModelsFetchedAt?: number;
   openAICodexUnavailableModels?: string[];
   baseUrl: string;
+  /**
+   * Issue #723: user-supplied request headers for the OpenAI-compatible path,
+   * one `Name: value` per line. Blank lines and `#` comments are ignored; the
+   * first `:` splits, so a value may itself contain `:`.
+   *
+   * Kept as the raw string rather than a parsed map so a half-typed line
+   * survives a settings round-trip instead of being silently dropped.
+   */
+  customHeaders?: string;
   model: string;
   /** Markdown conversion backend. Native keeps the existing provider flow
    *  (PDF + images via the provider's native support); MinerU accepts PDF,
@@ -1144,6 +1173,25 @@ export const PREDEFINED_PROVIDERS: Record<string, ProviderConfig> = {
     requiresBaseUrl: false,
     authMode: 'api-key'
   },
+  // Issue #723: a named hosted provider, not a custom endpoint — the user never
+  // types a URL for it — so it belongs with the fixed-baseURL providers above
+  // the custom group rather than wedged between them. OpenCode routes on client
+  // identity: it needs a stable per-conversation id and rejects requests without
+  // one, which the client fills from the `{sessionId}` placeholder.
+  opencode: {
+    id: 'opencode',
+    name: 'OpenCode (Zen / Go)',
+    nameEn: 'OpenCode (Zen / Go)',
+    nameZh: 'OpenCode（Zen / Go）',
+    baseUrl: 'https://opencode.ai/zen/go/v1',
+    apiKeyPlaceholder: 'OpenCode API Key',
+    apiKeyPlaceholderEn: 'OpenCode API Key',
+    apiKeyPlaceholderZh: 'OpenCode API Key',
+    requiresBaseUrl: false,
+    authMode: 'api-key',
+    supportsStructuredOutputs: true,
+    defaultHeaders: { 'x-opencode-session': '{sessionId}' }
+  },
   // v1.24.1 PATCH Bedrock Stage 1 — reuses AnthropicSdkClient via the
   // bedrock-mantle endpoint (Bearer auth, no AWS SDK). baseUrl is filled
   // dynamically by createLLMClientFromSettings based on `bedrockRegion`.
@@ -1202,9 +1250,9 @@ export const PREDEFINED_PROVIDERS: Record<string, ProviderConfig> = {
   },
   custom: {
     id: 'custom',
-    name: 'Custom OpenAI-Compatible',
-    nameEn: 'Custom OpenAI-Compatible',
-    nameZh: '自定义 OpenAI 兼容',
+    name: 'Custom OpenAI-Compatible (Completion)',
+    nameEn: 'Custom OpenAI-Compatible (Completion)',
+    nameZh: '自定义 OpenAI 兼容（Completion）',
     baseUrl: '',
     apiKeyPlaceholder: 'API Key',
     apiKeyPlaceholderEn: 'API Key',
@@ -1212,6 +1260,24 @@ export const PREDEFINED_PROVIDERS: Record<string, ProviderConfig> = {
     requiresBaseUrl: true,
     authMode: 'api-key',
     supportsStructuredOutputs: true
+  },
+  // Issue #723: the same user-supplied base URL, spoken as `/v1/responses`
+  // instead of `/v1/chat/completions`. Separate preset rather than a toggle so
+  // the two shapes can coexist — a gateway may support one, both, or neither,
+  // and a user who guessed wrong can switch back without re-entering the URL.
+  'custom-responses': {
+    id: 'custom-responses',
+    name: 'Custom OpenAI-Compatible (Responses)',
+    nameEn: 'Custom OpenAI-Compatible (Responses)',
+    nameZh: '自定义 OpenAI 兼容（Responses）',
+    baseUrl: '',
+    apiKeyPlaceholder: 'API Key',
+    apiKeyPlaceholderEn: 'API Key',
+    apiKeyPlaceholderZh: 'API Key',
+    requiresBaseUrl: true,
+    authMode: 'api-key',
+    supportsStructuredOutputs: true,
+    apiShape: 'responses'
   },
   'anthropic-compatible': {
     id: 'anthropic-compatible',

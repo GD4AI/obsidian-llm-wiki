@@ -53,6 +53,9 @@ export function createLLMClient(
     codexAuth,
     codexVersion,
     codexQuotaMessage: getText(settings.language, 'codexAuthQuota'),
+    // Issue #723: the user's custom headers reach the compat client through the
+    // same path as the rest of the provider settings.
+    customHeaders: settings.customHeaders,
   }, pendingApiKey);
 
   return wrapWithAdvancedSettings(client, {
