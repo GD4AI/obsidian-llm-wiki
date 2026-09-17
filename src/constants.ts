@@ -9,6 +9,9 @@
  * maintainability, discoverability, and type safety.
  */
 
+// Type-only: `types.ts` does not import this module, so there is no cycle.
+import type { ExtractionGranularity } from './types';
+
 // ============================================================================
 // Wiki Folder Structure
 // ============================================================================
@@ -249,6 +252,75 @@ export const CANDIDATE_WINDOW_TEXT_CHARS = 2000;
  * have to know the language.
  */
 export const CANDIDATE_WINDOW_DF_CAP = 0.5;
+
+/**
+ * Siblings an orphan's Related list gets — enough for a way out, not a clique.
+ *
+ * Moved here from `core/related-shaping.ts` by #729 Phase 0. The value is
+ * unchanged. **This is not an extraction limit:** it caps Related *list
+ * entries*, while `EXTRACTION_LIMITS` below caps how much is extracted.
+ */
+export const RELATED_SIBLING_CAP = 3;
+
+/**
+ * Numeric limits for entity/concept generation, keyed by extraction
+ * granularity — max per type.
+ *
+ * Moved here from `wiki/system-prompts.ts` by #729 Phase 0; values unchanged.
+ * `custom` is a placeholder that is never read: `customEntityLimit` /
+ * `customConceptLimit` supply the real numbers, falling back to
+ * `CUSTOM_EXTRACTION_LIMIT_DEFAULT`.
+ */
+export const EXTRACTION_LIMITS: Record<ExtractionGranularity, { maxEntities: number; maxConcepts: number }> = {
+  fine: { maxEntities: 6, maxConcepts: 6 },
+  standard: { maxEntities: 3, maxConcepts: 3 },
+  coarse: { maxEntities: 2, maxConcepts: 2 },
+  minimal: { maxEntities: 1, maxConcepts: 2 },
+  custom: { maxEntities: 0, maxConcepts: 0 },
+};
+
+/**
+ * Fallback for the two custom-granularity limits when the user has not set one.
+ *
+ * Replaces four separate `?? 5` literals in `wiki/system-prompts.ts` (two in
+ * `getGranularityInstruction`, two in `getGranularityFixLimits`) that had to be
+ * kept in step by hand. **All four must read this constant** — replacing only
+ * the documented pair would leave two orphaned defaults behind, which is the
+ * scattering this constant exists to remove.
+ */
+export const CUSTOM_EXTRACTION_LIMIT_DEFAULT = 5;
+
+/**
+ * Issue #729 — the Related budget, keyed by the same extraction granularity.
+ *
+ * **Phase 0 ships this table unread, on purpose.** Two columns must not be
+ * consumed yet:
+ *
+ * - `crossSource` is what the feature adds. It is a **ceiling, never a
+ *   quota** — a page with fewer candidates keeps the note-grounded entries it
+ *   would have had (reserved-with-backfill allocation, MEMORY §"Allocation").
+ * - `siblings` will replace the flat `RELATED_SIBLING_CAP` in Phase 2. Reading
+ *   it now would **not** be behaviour-preserving: it is 2 for `coarse` and 1 for
+ *   `minimal`, where today every granularity gets 3. Phase 0's pass condition is
+ *   a zero output diff, so the switch belongs to Phase 2 where the change is
+ *   intended, measured and tested.
+ */
+export const RELATED_BUDGET: Record<ExtractionGranularity, {
+  noteGrounded: number;
+  crossSource: number;
+  total: number;
+  siblings: number;
+}> = {
+  fine: { noteGrounded: 7, crossSource: 5, total: 12, siblings: 3 },
+  standard: { noteGrounded: 5, crossSource: 3, total: 8, siblings: 3 },
+  coarse: { noteGrounded: 3, crossSource: 2, total: 5, siblings: 2 },
+  minimal: { noteGrounded: 2, crossSource: 1, total: 3, siblings: 1 },
+  // Mirrors the derivation for an unset `customEntityLimit`: noteGrounded = 5,
+  // crossSource = clamp(ceil(5 × 0.6), 1, 5) = 3. Phase 2 computes the row from
+  // the setting rather than reading this one; it is here so the type is total
+  // and the default is visible in a single place.
+  custom: { noteGrounded: 5, crossSource: 3, total: 8, siblings: 3 },
+};
 
 /**
  * v1.24.0 #216 — max tokens for the merge triage pre-flight classification.

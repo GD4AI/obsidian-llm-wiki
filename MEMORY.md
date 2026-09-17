@@ -238,12 +238,23 @@ one?*
 Both feed the same filter — the vault resolver — so neither can write a link to a
 page that does not exist.
 
-### Adaptive budget (replaces three scattered ceilings)
+### Adaptive budget (two granularity-keyed concerns, not one)
 
-`SIBLING_CAP = 3` (`core/related-shaping.ts:67`), the module-private
-`GRANULARITY_FIX_LIMITS` table (`wiki/system-prompts.ts:198-203`) and two inline
-`?? 5` defaults (`system-prompts.ts:226-227`) all move into `src/constants.ts`,
-keyed by the existing extraction-granularity axis:
+Corrected 2026-09-17 while implementing Phase 0. The earlier framing — "three
+scattered ceilings the new table replaces" — was wrong on two counts, and both
+would have misled Phase 2:
+
+- **They are two concerns, not three of a kind.** `GRANULARITY_FIX_LIMITS` and
+the `?? 5` defaults are **extraction** limits (how many entities/concepts to ask
+for), read by `getGranularityInstruction` and `getGranularityFixLimits`.
+`SIBLING_CAP` caps **Related list entries**. Both are granularity-keyed; nothing
+else about them is the same, so they are two tables in `constants.ts`, not one.
+- **The `?? 5` count was 4, not 2.** Two in `getGranularityInstruction`
+(`:209`, `:210`) and two in `getGranularityFixLimits` (`:226`, `:227`).
+Replacing only the documented pair would have left two orphaned defaults — the
+exact scattering the constant exists to remove.
+
+The Related budget, keyed by the same extraction-granularity axis:
 
 | Granularity | note-grounded | cross-source | total | siblings |
 |---|---|---|---|---|
@@ -279,18 +290,21 @@ before phase N's pass condition holds.** Phases 1–2 are the feature; 3–4 mak
 useful and shippable; 0 is a prerequisite; 6 is what decides whether anything
 model-dependent is ever opened.
 
-**Phase 0 — centralise the ceilings (no behaviour change).**
+**Phase 0 — centralise the ceilings (no behaviour change). ✅ DONE 2026-09-17**
 
-- Move `SIBLING_CAP` out of `core/related-shaping.ts:67`, the
-  `GRANULARITY_FIX_LIMITS` table out of `wiki/system-prompts.ts:198-203`, and
-  replace the two inline `?? 5` defaults (`:226-227`) with constants.
-- Add the budget table to `src/constants.ts` — granularity-keyed, with the
-  cross-source column present but unused.
-- Update the single importer (`__tests__/core/related-shaping.test.ts:3`). Do not
-  re-export from the old homes; the point of this phase is one canonical file.
-- **Pass condition:** Gate 1 green **and zero output diff** — this phase is
-  behaviour-identical by definition, so any snapshot or fixture churn is a bug,
-  not an update.
+- Moved `SIBLING_CAP` (`core/related-shaping.ts:67`) → `RELATED_SIBLING_CAP`, and
+  `GRANULARITY_FIX_LIMITS` + **four** (not two) `?? 5` literals →
+  `EXTRACTION_LIMITS` + `CUSTOM_EXTRACTION_LIMIT_DEFAULT`, all in
+  `src/constants.ts`. No re-export from the old homes; both files now import.
+- Added `RELATED_BUDGET` — granularity-keyed, **shipped unread on purpose**.
+- Updated the single importer (`__tests__/core/related-shaping.test.ts:3`).
+- **Pass condition met:** Gate 1 green, 4170/4170, **zero snapshot or fixture
+  churn** — the phase is behaviour-identical by definition, so churn here would
+  be a bug rather than an update.
+- **`siblings` must NOT be read yet.** It is 2 for `coarse` and 1 for `minimal`,
+  where today every granularity gets 3, so consuming it would not be
+  behaviour-preserving. It is wired in Phase 2, where the change is intended,
+  measured and tested — Phase 0's zero-diff condition forbids it here.
 
 **Phase 1 — M0, the co-citation projection.**
 

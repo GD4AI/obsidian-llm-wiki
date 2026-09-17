@@ -16,6 +16,7 @@
 // gap stays visible, but not removed.
 
 import { slugKeys } from './slug';
+import { RELATED_SIBLING_CAP } from '../constants';
 import type { EntityInfo, ConceptInfo, SourceAnalysis } from '../types';
 
 export type RelatedKind = 'entity' | 'concept';
@@ -62,9 +63,6 @@ function nameVariants(name: string): string[] {
   const m = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(name);
   return m ? [name, m[1].trim(), m[2].trim()].filter(Boolean) : [name];
 }
-
-/** Siblings an orphan gets — enough for a way out, not a clique. */
-export const SIBLING_CAP = 3;
 
 export function shapeRelatedLists(
   analysis: Pick<SourceAnalysis, 'entities' | 'concepts'>,
@@ -119,11 +117,11 @@ export function shapeRelatedLists(
     // to 20 pages per note, 462 pages with no other live edge — a graph of
     // co-birth, not content, and redundant with the source page both
     // siblings already link. A page whose own related names reach nothing
-    // alive (a self-link is nothing) gets up to SIBLING_CAP siblings.
+    // alive (a self-link is nothing) gets up to RELATED_SIBLING_CAP siblings.
     if (!hasLive) {
       const before = siblings;
       for (const s of survivors.values()) {
-        if (siblings - before >= SIBLING_CAP) break;
+        if (siblings - before >= RELATED_SIBLING_CAP) break;
         if (put(s.name, s.kind, s.kind)) siblings++;
       }
     }

@@ -2,6 +2,7 @@
 // Pure functions with no Obsidian vault dependencies.
 
 import { LLMWikiSettings, WIKI_LANGUAGES, ExtractionGranularity } from '../types';
+import { CUSTOM_EXTRACTION_LIMIT_DEFAULT, EXTRACTION_LIMITS } from '../constants';
 import { getActiveEntityTags, getActiveConceptTags } from '../core/tag-vocab';
 
 export function buildWikiLanguageDirective(settings: LLMWikiSettings): string {
@@ -192,22 +193,15 @@ const GRANULARITY_INSTRUCTIONS: Record<ExtractionGranularity, string> = {
   custom: '', // placeholder — never used; getGranularityInstruction handles custom dynamically
 };
 
-// Numeric limits for entity/concept generation in fix (non-ingestion) contexts.
-// Keyed by granularity: max per type (entities, concepts).
-// custom is handled dynamically in getGranularityFixLimits.
-const GRANULARITY_FIX_LIMITS: Record<ExtractionGranularity, { maxEntities: number; maxConcepts: number }> = {
-  fine:     { maxEntities: 6, maxConcepts: 6 },
-  standard: { maxEntities: 3, maxConcepts: 3 },
-  coarse:   { maxEntities: 2, maxConcepts: 2 },
-  minimal:  { maxEntities: 1, maxConcepts: 2 },
-  custom:   { maxEntities: 0, maxConcepts: 0 }, // placeholder — never used
-};
+// Numeric limits for entity/concept generation live in `src/constants.ts`
+// (`EXTRACTION_LIMITS`, `CUSTOM_EXTRACTION_LIMIT_DEFAULT`) since #729 Phase 0.
+// They are read below by the two functions that used to own a private copy.
 
 export function getGranularityInstruction(settings: LLMWikiSettings): string {
   const granularity = settings.extractionGranularity || 'standard';
   if (granularity === 'custom') {
-    const entityLimit = settings.customEntityLimit ?? 5;
-    const conceptLimit = settings.customConceptLimit ?? 5;
+    const entityLimit = settings.customEntityLimit ?? CUSTOM_EXTRACTION_LIMIT_DEFAULT;
+    const conceptLimit = settings.customConceptLimit ?? CUSTOM_EXTRACTION_LIMIT_DEFAULT;
     return `Extract at most ${entityLimit} entities and at most ${conceptLimit} concepts from the source. If you reach either limit, stop extracting that type.`;
   }
   return GRANULARITY_INSTRUCTIONS[granularity] || GRANULARITY_INSTRUCTIONS.standard;
@@ -223,11 +217,11 @@ export function getGranularityFixLimits(settings: LLMWikiSettings): { maxEntitie
   const granularity = settings.extractionGranularity || 'standard';
   if (granularity === 'custom') {
     return {
-      maxEntities: settings.customEntityLimit ?? 5,
-      maxConcepts: settings.customConceptLimit ?? 5
+      maxEntities: settings.customEntityLimit ?? CUSTOM_EXTRACTION_LIMIT_DEFAULT,
+      maxConcepts: settings.customConceptLimit ?? CUSTOM_EXTRACTION_LIMIT_DEFAULT
     };
   }
-  return GRANULARITY_FIX_LIMITS[granularity] || GRANULARITY_FIX_LIMITS.standard;
+  return EXTRACTION_LIMITS[granularity] || EXTRACTION_LIMITS.standard;
 }
 
 export function applySectionLabels(prompt: string, settings: LLMWikiSettings): string {

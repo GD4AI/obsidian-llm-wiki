@@ -45,7 +45,7 @@ Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable
 | Phase | Items | Blocked by |
 |---|---|---|
 | **1 — decouple, take the cheap wins** | **#669** (zod 4 — a cross-cutting dependency bump, so *earliest is cheapest*: every later PR otherwise rebases onto it) · **#723** (custom-header passthrough, independent) · **#603 + #662 design pass** — ✅ **done 2026-09-16**, see MEMORY §"Design record — write path and page index" | nothing |
-| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) is unblocked now** — behaviour-identical by definition; the rest waits | #603 |
+| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) — ✅ done 2026-09-17** (behaviour-identical, proven by zero snapshot churn); sub-phases 1+ wait | #603 |
 | **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** once #603 lands · **#668 after #729's toggle has a home** | phase 2 |
 | **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |
 

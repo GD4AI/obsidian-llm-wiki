@@ -1,6 +1,7 @@
 // See core/related-shaping.ts.
 import { describe, it, expect } from 'vitest';
-import { SIBLING_CAP, shapeRelatedLists } from '../../core/related-shaping';
+import { shapeRelatedLists } from '../../core/related-shaping';
+import { RELATED_SIBLING_CAP } from '../../constants';
 import type { EntityInfo, ConceptInfo } from '../../types';
 
 const ent = (name: string, rel: Partial<EntityInfo> = {}): EntityInfo =>
@@ -58,14 +59,14 @@ describe('shapeRelatedLists', () => {
     expect(r.entities[0].related_entities).toEqual(['Metformin']);
   });
 
-  it('caps an orphan at SIBLING_CAP siblings and counts an unanswered name as no way out', () => {
+  it('caps an orphan at RELATED_SIBLING_CAP siblings and counts an unanswered name as no way out', () => {
     const r = shapeRelatedLists(
       { entities: [ent('A1', { related_entities: ['Niemand'] }), ent('A2'), ent('A3'), ent('A4'), ent('A5')], concepts: [] },
       deps,
     );
     expect(r.entities[0].related_entities).toEqual(['Niemand', 'A2', 'A3', 'A4']); // frontier name kept, then 3 siblings
-    expect(r.entities[1].related_entities).toHaveLength(SIBLING_CAP);
-    expect(r.siblings).toBe(5 * SIBLING_CAP);
+    expect(r.entities[1].related_entities).toHaveLength(RELATED_SIBLING_CAP);
+    expect(r.siblings).toBe(5 * RELATED_SIBLING_CAP);
   });
 
   it('routes a survivor named in the wrong list to the list of its kind', () => {
