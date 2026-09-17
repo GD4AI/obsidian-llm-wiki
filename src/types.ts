@@ -1189,7 +1189,13 @@ export const PREDEFINED_PROVIDERS: Record<string, ProviderConfig> = {
     apiKeyPlaceholderZh: 'OpenCode API Key',
     requiresBaseUrl: false,
     authMode: 'api-key',
-    supportsStructuredOutputs: true,
+    // Deliberately no `supportsStructuredOutputs`. Every cloud compat preset
+    // (gemini / openrouter / deepseek / minimax / kimi / glm) omits it for the
+    // same reason documented at `ProviderConfig.supportsStructuredOutputs`: cloud
+    // backends receive `json_object`, not `json_schema`. Setting it on Go costs a
+    // wasted call — `response_format type is unavailable now` → 400 →
+    // OutputModeProber demotes and retries — on the first schema-bearing call per
+    // (baseURL, model) per session. Measured on a real Go key by @aisahpA (#736).
     defaultHeaders: { 'x-opencode-session': '{sessionId}' }
   },
   // v1.24.1 PATCH Bedrock Stage 1 — reuses AnthropicSdkClient via the

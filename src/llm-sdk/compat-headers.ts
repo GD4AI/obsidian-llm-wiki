@@ -36,12 +36,39 @@ export interface CompatHeaderSources {
 }
 
 /**
+ * RFC 7230 `token` — the only characters a header field-name may contain.
+ *
+ * Anything else makes `Headers.set` throw at request time, inside the fetch
+ * wrapper, where it surfaces as an opaque request failure with no hint at which
+ * settings line caused it. `My Header: v` used to pass the colon test and
+ * explode later; validating here turns it into the same visible `invalid` count
+ * the settings field already reports. Reported by @aisahpA (#736).
+ */
+const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/**
+ * RFC 7230 §3.2.6 — a field-value may not carry C0 controls or DEL. TAB (0x09)
+ * is allowed, as the spec's own `obs-fold` whitespace rule assumes.
+ *
+ * Written as a loop rather than a regex so no `no-control-regex` suppression is
+ * needed; the project forbids `eslint-disable`.
+ */
+function hasControlChar(value: string): boolean {
+  for (const ch of value) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code <= 0x08 || (code >= 0x0a && code <= 0x1f) || code === 0x7f) return true;
+  }
+  return false;
+}
+
+/**
  * Parse the settings field: one `Name: value` per line.
  *
  * Blank lines and `#` comments are skipped. Only the **first** `:` splits, so a
- * value may contain `:` (URLs, `Bearer x`, timestamps). Lines with no `:`, or
- * with an empty name, are dropped — a typo must not become a header named after
- * whatever preceded the colon.
+ * value may contain `:` (URLs, `Bearer x`, timestamps). Lines with no `:`, with
+ * an empty or non-token name, or with a control character in the value are
+ * dropped and counted — a typo must never become a header, and it must not
+ * reach `Headers.set`, which would throw far from the cause.
  */
 export function parseCustomHeaders(raw: string | undefined): {
   headers: Record<string, string>;
@@ -59,7 +86,7 @@ export function parseCustomHeaders(raw: string | undefined): {
     }
     const name = trimmed.slice(0, colon).trim();
     const value = trimmed.slice(colon + 1).trim();
-    if (name === '') {
+    if (name === '' || !HEADER_NAME_RE.test(name) || hasControlChar(value)) {
       invalid += 1;
       continue;
     }
@@ -71,15 +98,24 @@ export function parseCustomHeaders(raw: string | undefined): {
 /**
  * Compose the map handed to `createOpenAICompatible({ headers })`.
  *
- * Returns `undefined` when there is nothing to send, so a backend that never
- * asked for extra headers sees exactly the request shape it saw before this
- * feature existed.
+ * Never returns an empty map: the identity header is unconditional, so in
+ * production this always gives the fetch wrapper something to apply. The
+ * `undefined` return covers only the caller that passes no sources at all.
  */
 export function compatHeaders(sources: CompatHeaderSources): Record<string, string> | undefined {
   const out: Record<string, string> = {};
 
-  // 1. Identity. Sent unconditionally — it is a statement about this client, not
-  //    a response to any provider's requirement.
+  // 1. Identity. Sent unconditionally, and therefore to **every** provider on
+  //    this path — not only to one that asked. That is the intent (see the
+  //    module header), but it means the earlier claim that header-less providers
+  //    "keep the exact call path they had" holds only for a client constructed
+  //    directly without headers, which is what the unit tests do — not in
+  //    production, where the factory always supplies this.
+  //
+  //    Caveat worth knowing before relying on it: `User-Agent` is a
+  //    fetch-forbidden header, so Chromium may drop it on the `window.fetch`
+  //    branch. The `obsidianFetchBridge` (requestUrl) branch does send it. The
+  //    header is therefore best-effort on one path and guaranteed on the other.
   out['User-Agent'] = `karpathywiki/${sources.version ?? 'unknown'}`;
 
   // 2. Preset defaults. The session id is generated lazily and at most once:

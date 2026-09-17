@@ -42,6 +42,28 @@ describe('parseCustomHeaders', () => {
     expect(invalid).toBe(2);
   });
 
+  it('rejects a name that is not an RFC 7230 token', () => {
+    // Review finding 2 (@aisahpA, #736): `My Header: v` used to pass the colon
+    // test, then `Headers.set` threw inside the fetch wrapper — an opaque
+    // request failure with no hint at the line that caused it.
+    const { headers, invalid } = parseCustomHeaders('My Header: v\nX-Good: ok');
+    expect(headers).toEqual({ 'X-Good': 'ok' });
+    expect(invalid).toBe(1);
+  });
+
+  it('rejects a control character in the value but allows TAB', () => {
+    const { headers, invalid } = parseCustomHeaders('X-Bad: a\u0000b\nX-Tab: a\tb');
+    expect(headers).toEqual({ 'X-Tab': 'a\tb' });
+    expect(invalid).toBe(1);
+  });
+
+  it('accepts the full token character set', () => {
+    // `!#$%&'*+-.^_`|~` are all legal, and real gateways use some of them.
+    const { headers, invalid } = parseCustomHeaders("X-Odd!#$%&'*+-.^_`|~: v");
+    expect(invalid).toBe(0);
+    expect(headers["X-Odd!#$%&'*+-.^_`|~"]).toBe('v');
+  });
+
   it('tolerates undefined and empty input', () => {
     expect(parseCustomHeaders(undefined).headers).toEqual({});
     expect(parseCustomHeaders('').headers).toEqual({});

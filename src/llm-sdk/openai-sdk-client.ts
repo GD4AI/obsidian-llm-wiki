@@ -121,7 +121,9 @@ export class OpenAISdkClient implements LLMClient {
    * `ai/<v> ai-sdk/provider-utils/<v> runtime/...` despite an explicit
    * `User-Agent`. The same holds on the compat path; both apply headers here.
    *
-   * Returns the fetch untouched when there is nothing to add.
+   * Returns the fetch untouched when the client has no headers at all — which
+   * in production does not happen: the factory always supplies the identity
+   * header, so every request on this path goes through the wrapper.
    */
   private withRequestHeaders(fetchFn: unknown): unknown {
     const headers = this.headers;

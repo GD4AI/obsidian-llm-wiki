@@ -228,8 +228,10 @@ export class OpenAICompatSdkClient implements LLMClient {
    * Identifying the plugin rather than the SDK is the whole point for gateways
    * that route on it, so the headers are set after the SDK has built its own.
    *
-   * Returns the fetch untouched when there is nothing to add, so providers that
-   * supplied no headers keep the exact call path they had before.
+   * Returns the fetch untouched when the client has no headers at all — which
+   * in production does not happen: the factory always supplies the identity
+   * header, so every compat request goes through the wrapper. The untouched path
+   * exists for clients constructed directly, as the wire tests do.
    */
   private withRequestHeaders(fetchFn: unknown): unknown {
     const headers = this.headers;
