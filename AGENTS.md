@@ -176,6 +176,8 @@ gh pr review <N> --body "<file>"   # ← MANDATORY. Formal review event lands on
 gh pr merge <N> --admin --squash --delete-branch   # ← ONLY after user said "merge it"
 ```
 
+- **A PR body is not the commit-message file.** `git log` wants ~80-column wrapping; GitHub renders a single newline in a PR or issue body as a **hard break**, so a wrapped paragraph arrives on the web as a column of ~80-character fragments. Same content, two renderings: write the body with one long line per paragraph and let the page reflow it, and keep the commit message wrapped. The symptom reappears whenever `--body-file` is handed the same file that was passed to `git commit -F`. Caught 2026-09-16 on #733. Check before posting — `awk 'length>0 && length<88' <body-file>` should return only markdown-structure lines (headings, list items, table rows), never prose.
+
 - **Scan the body before merging.** A closing keyword needs no intent and does
   not have to aim at an issue. Writing the fix reference as prose — "its fix
   #684" — parsed as `fix #684` and closed **PR #684** one second after the PR
