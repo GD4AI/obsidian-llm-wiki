@@ -11,10 +11,15 @@
 ## Current state (2026-09-17)
 
 **Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = `e150d139`, Gate 1 green
-at **302 files / 4215 tests**. **v1.28.0 MINOR is in flight.**
+see CHANGELOG §1.27.2). Nothing released since. `main` = `a8110551`, Gate 1 green
+at **304 files / 4231 tests**. **v1.28.0 MINOR is in flight.**
 
 **Merged into v1.28.0 so far (unreleased):**
+
+- **#748** — **#603 slice 1**: the write gate split into named layers
+(`pageGuard` / `rawWrite` / `notify`) with a defaultless `WriteIntent`, zero call-site
+changes. Two mutation tests prove the wiring; see §"Slice 1 shipped" for the race it
+surfaced.
 
 - **#744** + **#746** — **#741 resolved in two steps**: a cross-origin failure is now
 recorded per origin with a visible warning instead of degrading silently, and desktop
@@ -663,6 +668,46 @@ can cascade into auto-ingest.
   is not circular in effect — after they fix a file the gate finds nothing to do — but
   it does mean the repair runs the thing it repairs. Decide before slice 3.
 
+### Slice 1 shipped (2026-09-18) — and the race it surfaced
+
+`4f00823f` (PR #748) split the gate into `writeFileWithIntent` / `rawWrite` +
+`wiki/page-write-guard.ts`, with `WriteIntent { guard, notify }` and **no default**
+(a default is how the ambiguity the type exists to remove would return).
+`createOrUpdateFile(path, content)` stays as the all-three shorthand, so the six
+existing callers changed nothing.
+
+**Acceptance was zero behaviour change, and exactly one assertion flipped — which is
+the finding, not a nuisance.** `wiki-engine-ingest.test.ts` asserted a created file's
+content equalled the raw input, which also excluded the `generation_complete` stamp.
+That test was passing on a **race**: `markPageComplete` is deliberately
+fire-and-forget (`void (async () => …)()`), so whether it landed before the caller
+resumed depended on how many async frames the write path took, and the split added
+one. It is now deterministic (5/5 runs). The assertion was replaced with a
+**stronger pair** — content present *and* stamp present — not relaxed.
+
+**That fire-and-forget stamp is a #603-shaped hole in its own right:** "this page is
+complete" is not something a reader may rely on immediately after the write returns.
+Slice 3 owns it.
+
+**Two mutations were run, because pure unit tests cannot see wiring.** Disabling the
+guard call failed exactly 4 wiring tests (`write-gate-layers.test.ts`) while all 10
+pure-unit tests (`page-write-guard.test.ts`) stayed green — the precise split that
+made the #736 gap invisible. Removing `onFileWrite` failed exactly 2. This is the
+#736 lesson applied on purpose rather than rediscovered.
+
+**The `recovered` asymmetry is preserved and encoded**, not silently unified: the two
+recovery paths (NFC/NFD "already exists", exhausted-retries scan) never stamped the
+page while the two ordinary paths did. `rawWrite` returns `'updated' | 'created' |
+'recovered'` so `writeFileWithIntent` can reproduce that exactly. Whether the recovery
+paths *should* stamp is a slice-3 decision.
+
+**A trap worth remembering when extracting regexes:** both pollution patterns carry
+the `g` flag, and `RegExp.prototype.test` advances `lastIndex` on a global regex. The
+inline form was safe only because it rebuilt the literals per call. Hoisting them to
+module scope — the obvious move when extracting to a module — would make every
+**second** write skip its correction. The guard keeps them inside the function, and a
+test calls it four times on the same input requiring all four to correct.
+
 ---
 
 ## Design record — the streaming fallback classifies by URL, not by outcome (#741, v1.28.0)
@@ -1074,9 +1119,11 @@ order) → then the design record for whichever item is next: **`## Design recor
 write path and page index` for #603**, or `## Design record — cross-source
 relations` for #729. Issues: **#603** first, then **#729**.
 
-**State at handoff:** `main` = `e150d139`, Gate 1 green at **302 files / 4215
-tests**. Closed in this window: #723, #735, #669, #741, #729 Phase 0. **Nothing is
-mid-flight in the working tree** — no branch, no stash, no uncommitted edit.
+**State at handoff:** `main` = `a8110551`, Gate 1 green at **304 files / 4231
+tests**. Closed in this window: #723, #735, #669, #741, #729 Phase 0. **#603 slice 1
+is merged** (the layers exist, nothing yet uses them); slices 2 and 3 are next and the
+design record carries the corrected site list. **Nothing is mid-flight in the working
+tree** — no branch, no stash, no uncommitted edit.
 
 **The next concrete step is #603, not #729** — #729 Phase 1 is blocked by it by
 design (§"Coupling constraints"). The design pass for #603 is finished; what
