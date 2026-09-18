@@ -21,7 +21,9 @@ import {
   obsidianFetchBridge,
   isObsidianFetchBridge,
   streamingObsidianFetch,
+  streamWithFallback,
   isLocalBaseURL,
+  __resetCorsMemory,
 } from '../../core/obsidian-fetch-bridge';
 
 const mockRequestUrl = vi.mocked(requestUrl);
@@ -506,5 +508,155 @@ describe('isLocalBaseURL', () => {
   it('returns false for empty / malformed baseURL (defensive: cloud is safer default)', () => {
     expect(isLocalBaseURL('')).toBe(false);
     expect(isLocalBaseURL('not-a-url')).toBe(false);
+  });
+});
+
+describe('streamWithFallback (CORS memory — #741)', () => {
+  // #741: the transport used to be chosen from the URL shape alone
+  // (`isLocalBaseURL`), but whether a server permits a cross-origin request is
+  // a function of method + URL + *header set*, and #736 made the header set
+  // user data. A table keyed on host cannot represent a function of two
+  // variables, so the only faithful record is the observed outcome: a real
+  // CORS TypeError is remembered per origin for the session, and later calls
+  // stop gambling on a request already known to be blocked.
+  //
+  // The memory is session-scoped — a reload clears it, which is also how it
+  // self-heals if a host starts answering preflights.
+
+  function chunkedResponse(chunks: string[], status = 200) {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(controller) {
+        for (const c of chunks) controller.enqueue(encoder.encode(c));
+        controller.close();
+      },
+    });
+    return new Response(body, { status, headers: { 'content-type': 'text/event-stream' } });
+  }
+
+  const CHAT = '/v1/chat/completions';
+  const OPENCODE = `https://opencode.ai/zen/go/v1${CHAT}`;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    __resetCorsMemory();
+    // The fallback leg always ends in `requestUrl`; give it a body so the
+    // assertions can check that the caller still receives a Response.
+    mockRequestUrl.mockReset();
+    mockRequestUrl.mockResolvedValue(makeRequestUrlResult({ status: 200, text: 'buffered' }));
+  });
+
+  it('tries window.fetch first on a host with no recorded failure', async () => {
+    const mockFetch = vi
+      .spyOn(window, 'fetch')
+      .mockResolvedValueOnce(chunkedResponse(['data: {"a":1}\n\n']));
+
+    const res = await streamWithFallback(`https://api.openai.com/v1${CHAT}`, { method: 'POST' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Real streaming is preserved: the body is a stream, not a string.
+    expect(res.body).toBeInstanceOf(ReadableStream);
+  });
+
+  it('remembers a CORS TypeError so the next call skips the doomed attempt', async () => {
+    const mockFetch = vi
+      .spyOn(window, 'fetch')
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockRequestUrl).toHaveBeenCalled();
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    // The whole point: a second call to the same origin does not re-attempt a
+    // request that is already known to be blocked.
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the memory per-origin, so other hosts still stream', async () => {
+    const mockFetch = vi
+      .spyOn(window, 'fetch')
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    mockFetch.mockResolvedValueOnce(chunkedResponse(['data: {"a":1}\n\n']));
+    const res = await streamWithFallback(`https://api.openai.com/v1${CHAT}`, { method: 'POST' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(res.body).toBeInstanceOf(ReadableStream);
+  });
+
+  it('does not remember a non-TypeError (only CORS/network is the signal)', async () => {
+    const mockFetch = vi.spyOn(window, 'fetch').mockRejectedValueOnce(new Error('boom'));
+
+    await expect(
+      streamWithFallback(`https://api.kimi.com/v1${CHAT}`, { method: 'POST' })
+    ).rejects.toThrow('boom');
+
+    mockFetch.mockResolvedValueOnce(chunkedResponse(['data: {"a":1}\n\n']));
+    await streamWithFallback(`https://api.kimi.com/v1${CHAT}`, { method: 'POST' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not remember AbortError (a cancelled request is not a CORS verdict)', async () => {
+    const mockFetch = vi
+      .spyOn(window, 'fetch')
+      .mockRejectedValueOnce(new DOMException('The operation was aborted.', 'AbortError'));
+
+    await expect(
+      streamWithFallback(`https://api.deepseek.com/v1${CHAT}`, { method: 'POST' })
+    ).rejects.toThrow();
+
+    mockFetch.mockResolvedValueOnce(chunkedResponse(['data: {"a":1}\n\n']));
+    await streamWithFallback(`https://api.deepseek.com/v1${CHAT}`, { method: 'POST' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('warns on the production-visible channel when it downgrades to requestUrl', async () => {
+    // console.debug is neutralised in shipped builds (esbuild.config.mjs:15),
+    // so console.warn is the only signal a user's build can emit. Without it
+    // the degradation is invisible: no log, no error, and requestUrl never
+    // appears in the DevTools network panel either.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('opencode.ai');
+  });
+
+  it('does not warn again for the same origin in the same session', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends local providers straight to requestUrl without touching window.fetch', async () => {
+    const mockFetch = vi.spyOn(window, 'fetch');
+
+    await streamWithFallback('http://localhost:11434/v1/chat/completions', { method: 'POST' });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockRequestUrl).toHaveBeenCalled();
+  });
+
+  it('treats an unparseable URL as its own origin rather than trusting it', async () => {
+    const mockFetch = vi
+      .spyOn(window, 'fetch')
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await streamWithFallback('not-a-url', { method: 'POST' });
+    await streamWithFallback('not-a-url', { method: 'POST' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

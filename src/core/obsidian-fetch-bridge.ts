@@ -243,17 +243,62 @@ export async function streamingObsidianFetch(
 }
 
 /**
+ * Origins where a cross-origin request has already been observed to fail this
+ * session (Issue #741).
+ *
+ * Populated **only** from an observed `TypeError` — never from a host list.
+ * Whether a server permits a cross-origin request is a function of the method,
+ * the URL *and the header set*, and #736's custom-header field made the header
+ * set user data. A table keyed on host cannot represent a function of two
+ * variables, so the only faithful record is the outcome. Remembering it also
+ * means a host that later starts answering preflights is picked up again after
+ * a reload, with no list to maintain.
+ *
+ * Session-scoped: cleared on reload, and by `__resetCorsMemory()` in tests.
+ */
+const corsBlockedOrigins = new Set<string>();
+
+/**
+ * Origin of `url`, or the raw string when it cannot be parsed.
+ *
+ * The fallback matters because a malformed URL is exactly the kind of input
+ * that reaches `window.fetch` as a hard failure — treating each unparseable
+ * value as its own key keeps the memory working instead of throwing here.
+ */
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Forget every recorded cross-origin failure.
+ *
+ * Test seam. Production relies on the module being re-evaluated on reload,
+ * which is the self-healing path described on `corsBlockedOrigins`.
+ */
+export function __resetCorsMemory(): void {
+  corsBlockedOrigins.clear();
+}
+
+/**
  * Stream-or-fetch with automatic CORS fallback.
  *
  * Decision tree:
  *   - If baseURL is local (Ollama / LMStudio / private IP):
  *     use obsidianFetchBridge (requestUrl). No CORS issue but
  *     "fake streaming" (whole body in one chunk).
+ *   - If this origin has already failed a cross-origin request this
+ *     session (Issue #741): skip the gamble and go straight to
+ *     requestUrl. The attempt is known to be blocked; retrying it
+ *     per call buys nothing.
  *   - Otherwise: try streamingObsidianFetch (window.fetch) first.
- *     On TypeError (CORS, network, DNS), fall back to
- *     obsidianFetchBridge (requestUrl). Caller gets a Response
- *     either way; AI-SDK handles single-chunk vs multi-chunk
- *     transparently.
+ *     On TypeError (CORS, network, DNS), record the origin and fall
+ *     back to obsidianFetchBridge (requestUrl). Caller gets a
+ *     Response either way; AI-SDK handles single-chunk vs
+ *     multi-chunk transparently.
  *
  * This is the function the SDK clients should use — it picks the
  * right strategy per provider and gracefully degrades.
@@ -262,17 +307,24 @@ export async function streamingObsidianFetch(
  *   - TypeError from window.fetch (CORS / network / DNS)
  *   - window.fetch unavailable (e.g. test runner without jsdom)
  *
- * Successful fallback path is silent (no console.warn) — it would
- * spam logs on every request. Real errors (after fallback also
- * fails) bubble up.
+ * The fallback is announced **once per origin per session** via
+ * `console.warn`. That channel is deliberate: `console.debug` is neutralised in
+ * shipped builds (`esbuild.config.mjs:15`) and `requestUrl` is a main-process
+ * call that never appears in the DevTools network panel, so a debug-level note
+ * would leave the downgrade with no observable at all. Repeating it per call
+ * would be the log spam this used to avoid; once per origin is the compromise.
+ * Real errors (after the fallback also fails) still bubble up.
  */
 export async function streamWithFallback(
   url: string,
   init?: ObsidianFetchInit
 ): Promise<Response> {
-  // Local providers: skip the CORS gamble. Use requestUrl directly.
-  if (isLocalBaseURL(url)) {
-    console.debug(`[${STREAM_FETCH_LOG}] isLocal, fallback to obsidianFetchBridge (requestUrl): ${url}`);
+  const origin = originOf(url);
+
+  // Local providers, and any origin already known to block cross-origin
+  // requests: skip the CORS gamble. Use requestUrl directly.
+  if (isLocalBaseURL(url) || corsBlockedOrigins.has(origin)) {
+    console.debug(`[${STREAM_FETCH_LOG}] isLocal or CORS-blocked, using obsidianFetchBridge (requestUrl): ${origin}`);
     return obsidianFetchBridge(url, init);
   }
 
@@ -286,7 +338,13 @@ export async function streamWithFallback(
     // Fallback: TypeError = CORS / network / DNS failure.
     // Other errors (DOMException from AbortSignal) should propagate.
     if (err instanceof TypeError) {
-      console.debug(`[${STREAM_FETCH_LOG}] TypeError, falling back to obsidianFetchBridge: ${err.message}`);
+      const firstTime = !corsBlockedOrigins.has(origin);
+      corsBlockedOrigins.add(origin);
+      if (firstTime) {
+        console.warn(
+          `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; using requestUrl for the rest of this session — answers will arrive in one piece instead of streaming.`
+        );
+      }
       // Build a response from requestUrl — no streaming body, but
       // AI-SDK can still read it as a single yield.
       return obsidianFetchBridge(url, init);
