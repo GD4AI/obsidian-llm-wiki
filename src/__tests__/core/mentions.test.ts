@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatMentionsSection } from '../../core/mentions-formatter';
 import { injectMentionsSection } from '../../core/mentions-injector';
-import { normalizeBatchResponse } from '../../wiki/source-analyzer';
+import { normalizeBatchResponse, isSourceSelfReference } from '../../wiki/source-analyzer';
 import { parseMentionsSection } from '../../core/mentions-parser';
 
 // ─── formatMentionsSection ──────────────────────────────────────────────
@@ -485,8 +485,8 @@ describe('normalizeBatchResponse — shadow-source self-reference guard', () => 
   it('drops an entity whose name is the source basename copied verbatim (dinox UUID filename)', () => {
     const raw = {
       entities: [
-        { name: '01988c6e_86e9_7b79_83b5_c8c4b354fdc9', type: 'event' as const, summary: 're-narrates the source' },
-        { name: '范闲', type: 'person' as const, summary: 'legitimate entity' },
+        { name: '01988c6e_86e9_7b79_83b5_c8c4b354fdc9', type: 'event' as const, summary: 're-narrates the source', mentions_in_source: [] },
+        { name: '范闲', type: 'person' as const, summary: 'legitimate entity', mentions_in_source: [] },
       ],
       concepts: [],
     };
@@ -503,7 +503,7 @@ describe('normalizeBatchResponse — shadow-source self-reference guard', () => 
     expect(isSourceSelfReference('0198662c_a25c_777c_b171_f3258625f46b', 'notes/other.md')).toBe(true);
   });
 
-  it('drops long pure-digit message IDs (>=13 digits, IM/snowflake shapes) (v1.29.5)', () => {
+  it('drops long pure-digit message IDs (>=13 digits, IM/snowflake shapes) (v1.27.3)', () => {
     // 19-digit IM voice-note message ID extracted as an entity (live vault report)
     expect(isSourceSelfReference('1921147873752416344', 'notes/voice/1921147873752416344.md')).toBe(true);
     // with the plugin-style hex hash tail
@@ -518,7 +518,7 @@ describe('normalizeBatchResponse — shadow-source self-reference guard', () => 
   it('drops a concept named after the source document itself', () => {
     const raw = {
       entities: [],
-      concepts: [{ name: '202511042307', type: 'other' as const, summary: 'the source doc as a "concept"' }],
+      concepts: [{ name: '202511042307', type: 'other' as const, summary: 'the source doc as a "concept"', mentions_in_source: [], related_concepts: [] }],
     };
     const { data } = normalizeBatchResponse(raw, 'notes/ob/202511042307.md');
     expect(data.concepts).toHaveLength(0);
@@ -529,8 +529,8 @@ describe('normalizeBatchResponse — shadow-source self-reference guard', () => 
     // name is not machine-shaped, so it must survive the guard.
     const raw = {
       entities: [
-        { name: '庆余年', type: 'product' as const, summary: 'the drama itself, a legitimate entity' },
-        { name: '庆余年_8a53fa', type: 'other' as const, summary: 'verbatim filename copy' },
+        { name: '庆余年', type: 'product' as const, summary: 'the drama itself, a legitimate entity', mentions_in_source: [] },
+        { name: '庆余年_8a53fa', type: 'other' as const, summary: 'verbatim filename copy', mentions_in_source: [] },
       ],
       concepts: [],
     };
