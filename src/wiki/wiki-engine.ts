@@ -354,10 +354,12 @@ export class WikiEngine {
         if (!current) return;
         const flipped = setGenerationComplete(current, true);
         if (flipped === current) return;
-        const file = this.app.vault.getAbstractFileByPath(path);
-        if (file instanceof TFile) {
-          await this.app.vault.process(file, () => flipped);
-        }
+        // #603 slice 3: was `this.app.vault.process(file, () => flipped)`.
+        // The callback discarded its `data` argument and returned a value computed
+        // from an earlier read, so this never had `process`'s atomicity to lose —
+        // it only lacked what `rawWrite` adds: the three-attempt retry and the
+        // NFC/NFD "already exists" recovery for the path.
+        await this.rawWrite(path, flipped);
       } catch (e) {
         console.warn(`[wiki-engine] markPageComplete failed for ${path}:`, e);
       }
@@ -1915,8 +1917,14 @@ export class WikiEngine {
    *
    * Order is unchanged from the single-method form: cancel check, guard, write,
    * page completion, notification. Only the composition is new.
+   *
+   * Public since #603 slice 3: the lint fixers reach it through
+   * `LintContext.wikiEngine`, which every lint phase already carries, so the
+   * declared-intent entry needs no new interface member anywhere. The `intent`
+   * parameter is required — an optional one would let a call site stay silent,
+   * and silence is what let the bypasses in #603 go unnoticed.
    */
-  private async writeFileWithIntent(
+  async writeFileWithIntent(
     path: string,
     content: string,
     intent: WriteIntent
