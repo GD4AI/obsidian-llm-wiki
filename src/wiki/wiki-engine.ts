@@ -17,6 +17,8 @@ import {
   DEFAULT_SOURCE_TAG,
   WriteIntent,
   FULL_WRITE_INTENT,
+  LOG_WRITE_INTENT,
+  RAW_WRITE_INTENT,
 } from '../types';
 import { PROMPTS } from '../prompts';
 import { getText } from '../core/i18n';
@@ -289,7 +291,11 @@ export class WikiEngine {
       wikiFolder: this.settings.wikiFolder,
       wikiLanguage: this.settings.wikiLanguage ?? '',
       readFile: (path: string) => this.tryReadFile(path),
-      writeFile: (path: string, content: string) => this.createOrUpdateFile(path, content),
+      // #603 slice 2: the log declares its intent instead of inheriting the
+      // full gate. `guard: false` — see `LOG_WRITE_INTENT`: the path-prefix
+      // repair turns this journal's correct page links into dead links.
+      writeFile: (path: string, content: string) =>
+        this.writeFileWithIntent(path, content, LOG_WRITE_INTENT),
     });
   }
 
@@ -344,10 +350,12 @@ export class WikiEngine {
         if (!current) return;
         const flipped = setGenerationComplete(current, true);
         if (flipped === current) return;
-        const file = this.app.vault.getAbstractFileByPath(path);
-        if (file instanceof TFile) {
-          await this.app.vault.process(file, () => flipped);
-        }
+        // #603 slice 3: was `this.app.vault.process(file, () => flipped)`.
+        // The callback discarded its `data` argument and returned a value computed
+        // from an earlier read, so this never had `process`'s atomicity to lose —
+        // it only lacked what `rawWrite` adds: the three-attempt retry and the
+        // NFC/NFD "already exists" recovery for the path.
+        await this.rawWrite(path, flipped);
       } catch (e) {
         console.warn(`[wiki-engine] markPageComplete failed for ${path}:`, e);
       }
@@ -861,16 +869,17 @@ export class WikiEngine {
       const dir = file.parent?.path ?? '';
       const rawPath = dir ? `${dir}/${file.basename}.pdf.md` : `${file.basename}.pdf.md`;
       sidecarPath = normalizePath(rawPath);
-      const existing = this.app.vault.getAbstractFileByPath(sidecarPath);
       // v1.25.11 PATCH #169: sidecar-write stage mirror. Fires only when
       // the user has opted in via writePdfMarkdownToVault. ADD-only
       // emission — the vault write itself is unchanged.
       setPdfStage('pdfStageSidecar');
-      if (existing instanceof TFile) {
-        await this.app.vault.modify(existing, conversionResult.markdown);
-      } else {
-        await this.app.vault.create(sidecarPath, conversionResult.markdown);
-      }
+      // #603 slice 2: the prose bypass above is now declared rather than implied.
+      // The sidecar takes `rawWrite` alone — the retry and path resolution every
+      // write wants, without the guard (it is a plain copy of LLM-converted
+      // markdown) and without the notification that could cascade into
+      // auto-ingest. Routing it through the same helper also means the NFC/NFD
+      // "already exists" recovery now applies here.
+      await this.writeFileWithIntent(sidecarPath, conversionResult.markdown, RAW_WRITE_INTENT);
     }
 
     // Altitude #3: duration-driven completion Notice. Below NOTICE_SHORT
@@ -1897,8 +1906,14 @@ export class WikiEngine {
    *
    * Order is unchanged from the single-method form: cancel check, guard, write,
    * page completion, notification. Only the composition is new.
+   *
+   * Public since #603 slice 3: the lint fixers reach it through
+   * `LintContext.wikiEngine`, which every lint phase already carries, so the
+   * declared-intent entry needs no new interface member anywhere. The `intent`
+   * parameter is required — an optional one would let a call site stay silent,
+   * and silence is what let the bypasses in #603 go unnoticed.
    */
-  private async writeFileWithIntent(
+  async writeFileWithIntent(
     path: string,
     content: string,
     intent: WriteIntent

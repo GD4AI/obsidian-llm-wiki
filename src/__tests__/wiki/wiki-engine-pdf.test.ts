@@ -206,6 +206,35 @@ describe('WikiEngine.ingestSource — PDF cache-only branch (#PR2 redo)', () => 
     expect(h.files.get('sources/paper.pdf.md')).toBe(MARKDOWN);
   });
 
+  it('does not notify the watcher about the sidecar write', async () => {
+    // #603 slice 2: this is the property the bypass exists for, and until now
+    // nothing asserted it. `wiki-engine.ts:845-851` records the reason — going
+    // through the full gate fires `onFileWrite` + `invalidatePageCaches`, which
+    // "could trigger auto-ingest cascades if the source folder is watched".
+    // If someone ever gives the sidecar `notify: true`, the cascade that comment
+    // warns about comes back, and this is the only test that would say so.
+    const MARKDOWN = '# Paper\n\nConverted content.';
+    mockedConvert.mockResolvedValueOnce({
+      markdown: MARKDOWN,
+      metadata: { convertedAt: '2026-07-15T00:00:00Z', converter: 'anthropic/claude-opus-4-8' },
+    });
+
+    const h = createWikiEngineHarness({
+      settings: { writePdfMarkdownToVault: true },
+      llmResponses: [
+        JSON.stringify({ source_title: 'P', summary: 's', entities: [], concepts: [] }),
+      ],
+    });
+
+    await h.engine.ingestSource(pdfFile('sources/paper.pdf'));
+
+    // The sidecar landed...
+    expect(h.files.get('sources/paper.pdf.md')).toBe(MARKDOWN);
+    // ...but the watcher was never told about it. The source note is a separate
+    // write and is expected in `writtenPaths`; the sidecar's own path is not.
+    expect(h.writtenPaths).not.toContain('sources/paper.pdf.md');
+  });
+
   it('writes sidecar file when writePdfMarkdownToVault is true (update existing)', async () => {
     const MARKDOWN = '# Paper\n\nUpdated content.';
     mockedConvert.mockResolvedValueOnce({

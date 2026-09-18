@@ -71,6 +71,51 @@ describe('WikiEngine write gate — pageGuard layer is wired (#603)', () => {
   });
 });
 
+describe('WikiEngine write gate — the log is not a wiki page (#603 slice 2)', () => {
+  it('does not rewrite a log entry’s page links into dead links', async () => {
+    // `LogWriter.pageLinks` builds its links from **real page paths** — it strips
+    // the `wiki/` prefix because `[[wiki/concepts/X.md]]` renders dead while
+    // `[[concepts/X.md]]` resolves. So a page genuinely named `concepts布局优化`
+    // under `wiki/concepts/` is referenced as `[[concepts/concepts布局优化]]`,
+    // which is **correct as written**.
+    //
+    // The gate's path-prefix pattern cannot tell that apart from LLM-emitted
+    // duplication, and rewrites it to `[[concepts/布局优化]]` — a dead link. This
+    // is the corruption the `guard: false` intent removes.
+    const h = createWikiEngineHarness({});
+
+    await h.engine.logLintFix('test', 'Fixed [[concepts/concepts布局优化]] and [[entities/Qwen]].');
+
+    const written = h.files.get('wiki/log.md') ?? '';
+    expect(written).toContain('[[concepts/concepts布局优化]]');
+    expect(written).not.toContain('[[concepts/布局优化]]');
+  });
+
+  it('leaves h1-free log bodies untouched by heading normalization', async () => {
+    // The second half of the same intent: heading/provenance normalization is
+    // meaningless for a journal, and it was already excluded by
+    // `isInWikiContentFolder`. Pinned so a later widening of `pageGuard` cannot
+    // silently start reshaping the log.
+    const h = createWikiEngineHarness({});
+
+    await h.engine.logLintFix('test', 'Line one.\nLine two.');
+
+    const written = h.files.get('wiki/log.md') ?? '';
+    expect(written).toContain('Line one.\nLine two.');
+  });
+
+  it('still notifies the watcher when the log is written', async () => {
+    // `guard: false` must not become `notify: false`. The log is a real vault
+    // file the watcher and the index must hear about — only the *guard* is
+    // dropped.
+    const h = createWikiEngineHarness({});
+
+    await h.engine.logLintFix('test', 'details');
+
+    expect(h.writtenPaths).toContain('wiki/log.md');
+  });
+});
+
 describe('WikiEngine write gate — notify layer is wired (#603)', () => {
   it('reports the write to onFileWrite', async () => {
     const h = createWikiEngineHarness({});
