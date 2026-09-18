@@ -330,6 +330,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
       app: {
         vault: {
           adapter: { write: vi.fn().mockResolvedValue(undefined) },
+          getMarkdownFiles: () => [],
           getAbstractFileByPath: vi.fn().mockReturnValue(
             opts.fileContent === null ? null : realTFileMock
           ),
@@ -444,11 +445,12 @@ describe('runRetagViolations (Issue #85 v7)', () => {
     expect(writtenContent).not.toContain('Medical_Arzneimittel');
   });
 
-  it('filters LLM-returned source tags not in VALID_SOURCE_TAGS (defensive)', async () => {
+  it('filters LLM-returned source tags outside form list and domain vocabulary (defensive)', async () => {
     const ctx = makeRetagCtx({
       fileContent: '---\ntype: source\ntitle: Smith2024\ntags: [Medical_Arzneimittel]\n---\n\nSmith 2024 body.',
-      // LLM hallucinates "bogus" (any vocab) + "person" (entity vocab,
-      // not source vocab). Both must be filtered.
+      // "bogus" is in no list. "person" is an entity identity type — legal on
+      // an entity page, not on a source page, which carries only the form
+      // list and the Group/Value view of the vocabulary. Both must go.
       llmResponse: '{"tags":["article","bogus","person"]}',
     });
     const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
@@ -779,6 +781,7 @@ describe('runRetagViolations — typed-output migration (#443 expanded scope)', 
       app: {
         vault: {
           adapter: { write: vi.fn().mockResolvedValue(undefined) },
+          getMarkdownFiles: () => [],
           getAbstractFileByPath: vi.fn().mockReturnValue(realTFileMock),
           read: vi.fn().mockImplementation(async (f: { path: string }) => {
             if (typeof (f as { read?: unknown }).read === 'function') {

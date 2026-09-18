@@ -5,6 +5,8 @@ import { parseFrontmatter, extractBody, originNoteRefs } from '../../core/frontm
 import { hashBody } from '../../core/source-requirements';
 import { CONTRADICTIONS_KEY } from '../../core/contradicted-marker';
 import { getActiveEntityTags, getActiveConceptTags, getActiveSourceTags } from '../../core/tag-vocab';
+import type { VocabularyLists } from '../../core/vocabulary';
+import { isDomainTag } from '../../core/domain-axis';
 import { normalizeQuote, isQuoteGrounded } from './utils';
 import { LLMWikiSettings } from '../../types';
 
@@ -414,10 +416,18 @@ export interface TagViolation {
 export function scanTagViolations(
   pageMap: Map<string, ScannerPage>,
   settings: LLMWikiSettings,
+  vocabulary?: VocabularyLists,
 ): TagViolation[] {
-  const validEntity = new Set(getActiveEntityTags(settings));
-  const validConcept = new Set(getActiveConceptTags(settings));
-  const validSource = new Set(getActiveSourceTags(settings));
+  // One vocabulary (vocabulary.ts): the lint judges against the same lists
+  // the prompt offers and the gate enforces. Without them, the settings list.
+  const validEntity = new Set(vocabulary?.entities ?? getActiveEntityTags(settings));
+  const validConcept = new Set(vocabulary?.concepts ?? getActiveConceptTags(settings));
+  // A source page carries the form list next to the `Group/Value` view of the
+  // vocabulary; the flat identity types belong to entity and concept pages.
+  const validSource = new Set([
+    ...getActiveSourceTags(settings),
+    ...(vocabulary ? [...vocabulary.entities, ...vocabulary.concepts].filter(isDomainTag) : []),
+  ]);
   const violations: TagViolation[] = [];
 
   for (const [path, page] of pageMap) {
@@ -443,11 +453,17 @@ export function scanTagViolations(
     } else if (typeof rawTags === 'string' && rawTags.length > 0) {
       currentTags = [rawTags.trim()];
     } else {
-      continue; // empty / no tags → not a violation
+      currentTags = [];
     }
 
+    // An empty list is a violation too: it is what the write gate leaves
+    // behind when it stripped every tag the model wrote (69 of 903 pages on
+    // one rebuild), and the retag runner is the only repair path that does
+    // not re-ingest. Skipping it here made the gate's output invisible. The
+    // domains axis may legitimately be empty; the identity value may not, and
+    // `tags:` carries both — a page without any tag has no identity.
     const invalidTags = currentTags.filter(t => !validSet.has(t));
-    if (invalidTags.length > 0) {
+    if (invalidTags.length > 0 || currentTags.length === 0) {
       violations.push({
         path,
         pageType,

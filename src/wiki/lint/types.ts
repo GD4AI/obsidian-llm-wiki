@@ -43,6 +43,8 @@ export interface LintPhaseContext {
     };
     metadataCache: {
       on: (event: string, cb: unknown) => unknown;
+      /** The vocabulary harvest (core/vocabulary.ts) reads every page's frontmatter tags through it. */
+      getFileCache: (file: { path: string }) => { frontmatter?: Record<string, unknown> } | null;
     };
   };
   settings: LLMWikiSettings;

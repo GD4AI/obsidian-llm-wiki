@@ -22,7 +22,7 @@ function makeCtx(
 ): { ctx: EngineContext; writes: Array<{ path: string; content: string }> } {
   const written: Array<{ path: string; content: string }> = [];
   const ctx = {
-    app: {},
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as never,
     settings: {
       wikiFolder: 'wiki',
       wikiLanguage: 'en',

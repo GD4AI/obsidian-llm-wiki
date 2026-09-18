@@ -1,3 +1,4 @@
+import { activeVocabularyLists } from '../../../core/vocabulary';
 import { detectAliasDeficiency, scanOrphans, scanTagViolations, scanDeadLinks, scanQuoteGrounding, scanHubLinkDensity, scanSourceDrift, scanContradictionMarkers, collectCitedRawNoteTargets } from '../scanners';
 import { detectPollutedPages } from '../utils';
 import { parseFrontmatter } from '../../../core/frontmatter';
@@ -41,7 +42,7 @@ export async function runProgrammaticPhase(
   const orphans = scanOrphans(input.pageMap, ctx.settings.wikiFolder);
 
   // 3. Tag vocabulary violations
-  const tagViolations = scanTagViolations(input.pageMap, ctx.settings);
+  const tagViolations = scanTagViolations(input.pageMap, ctx.settings, activeVocabularyLists(ctx.app as never, ctx.settings));
 
   // 4. Polluted pages
   const allPages = Array.from(input.pageMap.values()).map(({ path, basename }) => ({

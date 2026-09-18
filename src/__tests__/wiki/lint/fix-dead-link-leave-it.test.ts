@@ -27,7 +27,8 @@ function makeCtx(
 ): { ctx: EngineContext; writes: Array<{ path: string; content: string }> } {
   const written: Array<{ path: string; content: string }> = [];
   const ctx = {
-    app: {},
+    // the one vocabulary (vocabulary.ts) is harvested from the vault before every system prompt
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as never,
     settings: {
       wikiFolder: 'wiki',
       wikiLanguage: 'en',

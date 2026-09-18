@@ -1,4 +1,5 @@
 import { EngineContext } from '../../types';
+import { activeVocabularyLists } from '../../core/vocabulary';
 import { PROMPTS } from '../../prompts';
 import { TOKENS_LINT_ORPHAN_FIX } from '../../constants';
 import { buildSystemPrompt, getSectionLabels } from '../system-prompts';
@@ -47,7 +48,8 @@ export async function linkOrphanPage(
       system: await buildSystemPrompt(
         ctx.settings,
         ctx.getSchemaContext,
-        'lint'
+        'lint',
+        activeVocabularyLists(ctx.app, ctx.settings)
       ),
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object', schema: LinkOrphanSchema },
@@ -63,7 +65,8 @@ export async function linkOrphanPage(
       system: await buildSystemPrompt(
         ctx.settings,
         ctx.getSchemaContext,
-        'lint'
+        'lint',
+        activeVocabularyLists(ctx.app, ctx.settings)
       ),
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },

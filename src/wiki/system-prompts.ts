@@ -4,6 +4,7 @@
 import { LLMWikiSettings, WIKI_LANGUAGES, ExtractionGranularity } from '../types';
 import { CUSTOM_EXTRACTION_LIMIT_DEFAULT, EXTRACTION_LIMITS } from '../constants';
 import { getActiveEntityTags, getActiveConceptTags } from '../core/tag-vocab';
+import type { VocabularyLists } from '../core/vocabulary';
 
 export function buildWikiLanguageDirective(settings: LLMWikiSettings): string {
   const lang = settings.wikiLanguage || 'en';
@@ -236,7 +237,8 @@ export function applySectionLabels(prompt: string, settings: LLMWikiSettings): s
 export async function buildSystemPrompt(
   settings: LLMWikiSettings,
   getSchemaContext: (task: string) => Promise<string | undefined>,
-  task: string
+  task: string,
+  vocabulary?: VocabularyLists
 ): Promise<string | undefined> {
   const parts: string[] = [];
   const langDirective = buildWikiLanguageDirective(settings);
@@ -249,7 +251,11 @@ export async function buildSystemPrompt(
   // caller's responsibility — schema bodies produced by
   // buildDefaultSchemaBody() no longer contain a baked enum to duplicate
   // against.
-  const tagVocab = buildActiveTagVocabularySection(settings);
+  // One vocabulary (vocabulary.ts): callers with an `App` pass the harvested
+  // lists, so the model is offered exactly what the write gate lets through.
+  // Without them the settings list alone is rendered — the shape a caller
+  // without vault access (tests, the CLI shim's early paths) has always seen.
+  const tagVocab = buildActiveTagVocabularySection(settings, vocabulary);
   if (tagVocab) parts.push(tagVocab);
 
   return parts.length > 0 ? parts.join('\n\n') : undefined;
@@ -268,10 +274,11 @@ export async function buildSystemPrompt(
  * language.
  */
 export function buildActiveTagVocabularySection(
-  settings: LLMWikiSettings
+  settings: LLMWikiSettings,
+  vocabulary?: VocabularyLists
 ): string {
-  const entities = getActiveEntityTags(settings);
-  const concepts = getActiveConceptTags(settings);
+  const entities = vocabulary?.entities ?? getActiveEntityTags(settings);
+  const concepts = vocabulary?.concepts ?? getActiveConceptTags(settings);
   const lines: string[] = [];
   lines.push('## Active Tag Vocabulary (runtime)');
   lines.push('');
@@ -287,6 +294,10 @@ export function buildActiveTagVocabularySection(
   lines.push('');
   lines.push(
     'If a discovered item does not clearly fit any of the above, choose the closest match. Do NOT emit a free-form type string — the frontmatter validator will reject it.'
+  );
+  lines.push('');
+  lines.push(
+    'Source pages: `tags:` keeps its form value (paper, article, book, transcript, clippings, notes, other) and may add Group/Value tags from the lists above that describe what the source is about. Nothing else — no entity or concept type.'
   );
   return lines.join('\n');
 }

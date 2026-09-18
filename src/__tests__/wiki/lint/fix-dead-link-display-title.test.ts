@@ -11,7 +11,7 @@ const SOURCE_CONTENT = '# My Page\n\nReferences [[haem-a3]] here.\n';
 function makeCtx(client: LLMClient, sourceContent: string = SOURCE_CONTENT): { ctx: EngineContext; writes: Array<{ path: string; content: string }> } {
   const written: Array<{ path: string; content: string }> = [];
   const ctx = {
-    app: {},
+    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } } as never,
     settings: {
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
