@@ -82,6 +82,44 @@ function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T,
   return { ...item, mentions_with_provenance: provenance, mentions_in_source: undefined };
 }
 
+// "Shadow source" guard (2026-09-15, live vault report): when the source note's
+// own filename is a machine identifier (a dinox UUID like
+// `01988c6e_86e9_7b79_83b5_c8c4b354fdc9`, an ob timestamp like `202511042307`),
+// the LLM sometimes extracts the source DOCUMENT ITSELF as an entity and lifts
+// the filename as its name. The result is an `entities/<uuid>.md` page whose
+// body merely re-narrates the source summary — a shadow of the sources/ page.
+// Names matching these machine shapes are never valid knowledge-item names, so
+// we drop them at normalization time. Semantic filenames are NOT affected: when
+// the source is `庆余年_8a53fa.md`, an extracted `庆余年` entity is legitimate
+// and passes through untouched.
+const MACHINE_UUID_RE = /^[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}$/i;
+// Pure-digit timestamps: YYYYMMDDHHmm (12) or YYYYMMDDHHmmss (14). Shorter runs
+// (years, counters) stay allowed — only the note-tool naming shapes are gated.
+const MACHINE_TIMESTAMP_RE = /^\d{12}$|^\d{14}$/;
+// Long pure-digit machine IDs (2026-09-18, live vault report): IM/voice-note
+// message IDs (`1921147873752416344`, 19 digits) and snowflake-style keys slip
+// past the 12/14-digit timestamp gate. Any run of >=13 digits — optionally with
+// a `_`/`.` + hex hash tail — is never a valid knowledge-item name. Phone-sized
+// runs (<=11 digits) and years stay allowed.
+const MACHINE_LONG_DIGIT_ID_RE = /^\d{13,}(?:[_.][0-9a-f]{4,})?$/i;
+
+export function isSourceSelfReference(name: string, sourcePath: string): boolean {
+  const n = name?.trim() ?? '';
+  if (!n) return false;
+  // Machine-identifier shapes, regardless of what the source file is called.
+  if (MACHINE_UUID_RE.test(n)) return true;
+  if (MACHINE_TIMESTAMP_RE.test(n)) return true;
+  if (MACHINE_LONG_DIGIT_ID_RE.test(n)) return true;
+  // Verbatim copy of the source basename INCLUDING a plugin-style hash suffix
+  // (`庆余年_8a53fa`) — a semantic name plus a 6+ hex-digit tail is never a
+  // natural entity name, so an exact-basename match in that shape means the
+  // model transcribed the filename. A bare semantic match (TNF-α from
+  // TNF-α.md) is a legitimate topical entity and must survive.
+  const base = (sourcePath.split('/').pop() || '').replace(/\.md$/i, '');
+  if (base && n === base && /[_.][0-9a-f]{6,}$/i.test(n)) return true;
+  return false;
+}
+
 export interface NormalizedBatch {
   entities: EntityInfo[];
   concepts: ConceptInfo[];

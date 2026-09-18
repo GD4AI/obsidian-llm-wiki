@@ -475,3 +475,71 @@ describe('parseMentionsSection — Issue #363 self-heal on empty link', () => {
     expect(parsed.mentions[2].source_path).toBe('sources/y');
   });
 });
+
+// Shadow-source guard (2026-09-15): when the source note's own filename is a
+// machine identifier, the LLM may extract the source document itself as an
+// entity and lift the filename as the name. normalizeBatchResponse must drop
+// those items before they can seed `entities/<uuid>.md` pages, while leaving
+// semantic names — even ones matching a semantic source basename — untouched.
+describe('normalizeBatchResponse — shadow-source self-reference guard', () => {
+  it('drops an entity whose name is the source basename copied verbatim (dinox UUID filename)', () => {
+    const raw = {
+      entities: [
+        { name: '01988c6e_86e9_7b79_83b5_c8c4b354fdc9', type: 'event' as const, summary: 're-narrates the source' },
+        { name: '范闲', type: 'person' as const, summary: 'legitimate entity' },
+      ],
+      concepts: [],
+    };
+    const { data } = normalizeBatchResponse(raw, 'notes/machine/2025/2025-W32/01988c6e_86e9_7b79_83b5_c8c4b354fdc9.md');
+    expect(data.entities.map(e => e.name)).toEqual(['范闲']);
+  });
+
+  it('drops machine-shaped names even when they differ from the source filename', () => {
+    // ob-style 12-digit timestamp name, whatever the source file is called
+    expect(isSourceSelfReference('202511042307', 'notes/some-note.md')).toBe(true);
+    // canonical dash-separated UUID
+    expect(isSourceSelfReference('01988c6e-86e9-7b79-83b5-c8c4b354fdc9', 'notes/other.md')).toBe(true);
+    // underscore variant
+    expect(isSourceSelfReference('0198662c_a25c_777c_b171_f3258625f46b', 'notes/other.md')).toBe(true);
+  });
+
+  it('drops long pure-digit message IDs (>=13 digits, IM/snowflake shapes) (v1.29.5)', () => {
+    // 19-digit IM voice-note message ID extracted as an entity (live vault report)
+    expect(isSourceSelfReference('1921147873752416344', 'notes/voice/1921147873752416344.md')).toBe(true);
+    // with the plugin-style hex hash tail
+    expect(isSourceSelfReference('1921666889412080224_ab927f', 'notes/other.md')).toBe(true);
+    // 13-digit boundary still gated
+    expect(isSourceSelfReference('1921147873752416', 'notes/other.md')).toBe(true);
+    // phone-sized digit runs (<=11) and years stay allowed
+    expect(isSourceSelfReference('13812345678', 'notes/phone.md')).toBe(false);
+    expect(isSourceSelfReference('2045', 'notes/future.md')).toBe(false);
+  });
+
+  it('drops a concept named after the source document itself', () => {
+    const raw = {
+      entities: [],
+      concepts: [{ name: '202511042307', type: 'other' as const, summary: 'the source doc as a "concept"' }],
+    };
+    const { data } = normalizeBatchResponse(raw, 'notes/ob/202511042307.md');
+    expect(data.concepts).toHaveLength(0);
+  });
+
+  it('keeps semantic entities whose name matches a semantic source basename', () => {
+    // Source `庆余年_8a53fa.md`, LLM extracted 庆余年 (the TV drama) — the
+    // name is not machine-shaped, so it must survive the guard.
+    const raw = {
+      entities: [
+        { name: '庆余年', type: 'product' as const, summary: 'the drama itself, a legitimate entity' },
+        { name: '庆余年_8a53fa', type: 'other' as const, summary: 'verbatim filename copy' },
+      ],
+      concepts: [],
+    };
+    const { data } = normalizeBatchResponse(raw, 'notes/drama/庆余年_8a53fa.md');
+    expect(data.entities.map(e => e.name)).toEqual(['庆余年']);
+  });
+
+  it('keeps short numeric names (years, counters) that are not timestamp-shaped', () => {
+    expect(isSourceSelfReference('2045', 'notes/future.md')).toBe(false);
+    expect(isSourceSelfReference('GPT-4', 'notes/models.md')).toBe(false);
+  });
+});
