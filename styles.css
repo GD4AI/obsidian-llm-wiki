@@ -1340,3 +1340,10 @@
   font-weight: 600;
   vertical-align: baseline;
 }
+
+/* #755: prompt customization textareas (extraction focus / content requirements) */
+.llm-wiki-prompt-focus-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+}

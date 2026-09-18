@@ -37,6 +37,7 @@ import { NOTICE_NORMAL, NOTICE_ERROR, NOTICE_SHORT, CUSTOM_LIMIT_MAX, CUSTOM_LIM
 import { HistoryModal } from '../history-modal';
 import { TagChipInputComponent } from '../tag-chip-input';
 import { setSettingsVisible } from '../settings-helpers';
+import { PROMPT_FOCUS_MAX_CHARS } from '../../core/prompt-focus';
 
 export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -52,6 +53,48 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
       .setPlaceholder(tab.getText('wikiFolderPlaceholder'))
       .setValue(tempSettings.wikiFolder)
       .onChange((value) => { tempSettings.wikiFolder = value; }));
+
+  // v1.27.3: prompt customization (WeKnora-style extraction focus +
+  // content requirements). Two free-textareas editing the global
+  // fallbacks; a topic entry (WikiTopic.extractionFocus /
+  // contentRequirements) overrides these per topic when present.
+  {
+    const readFocus = (which: 'extractionFocus' | 'contentRequirements'): string =>
+      tempSettings[which] ?? '';
+    const writeFocus = (which: 'extractionFocus' | 'contentRequirements', value: string): void => {
+      const capped = value.length > PROMPT_FOCUS_MAX_CHARS ? value.slice(0, PROMPT_FOCUS_MAX_CHARS) : value;
+      tempSettings[which] = capped;
+    };
+
+    new Setting(containerEl)
+      .setName(tab.getText('promptFocusSectionName'))
+      .setDesc(tab.getText('promptFocusScopeGlobal'))
+      .setHeading();
+
+    const extractionFocusSetting = new Setting(containerEl)
+      .setName(tab.getText('extractionFocusName'))
+      .setDesc(tab.getText('extractionFocusDesc'))
+      .addTextArea(text => {
+        text
+          .setPlaceholder(tab.getText('extractionFocusPlaceholder'))
+          .setValue(readFocus('extractionFocus'))
+          .onChange(value => { writeFocus('extractionFocus', value); });
+        text.inputEl.rows = 4;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+      });
+    const contentReqSetting = new Setting(containerEl)
+      .setName(tab.getText('contentRequirementsName'))
+      .setDesc(tab.getText('contentRequirementsDesc'))
+      .addTextArea(text => {
+        text
+          .setPlaceholder(tab.getText('contentRequirementsPlaceholder'))
+          .setValue(readFocus('contentRequirements'))
+          .onChange(value => { writeFocus('contentRequirements', value); });
+        text.inputEl.rows = 4;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+      });
+    setSettingsVisible([extractionFocusSetting, contentReqSetting], true);
+  }
 
   let mineruTokenSetting: Setting | null = null;
   new Setting(containerEl)

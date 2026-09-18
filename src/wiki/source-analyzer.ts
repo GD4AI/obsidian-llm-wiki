@@ -26,6 +26,7 @@ import { activeVocabulary, domainVocabulary } from '../core/vocabulary';
 import { isBlankSource, extractBody } from '../core/frontmatter';
 import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
 import { getGranularityInstruction } from './system-prompts';
+import { getExtractionFocus, buildExtractionFocusSection } from '../core/prompt-focus';
 import { resolveModelForTask } from '../core/model-resolver';
 import { getText } from '../core/i18n';
 import { calculateBatchLimits, adjustBatchSizeForResponse, getCustomTypeCaps } from '../core/batch-limits';
@@ -162,9 +163,11 @@ export function normalizeBatchResponse(
 
   const entities = coerceToArray<EntityInfo>(raw.entities)
     .filter(e => e?.name?.trim())
+    .filter(e => !isSourceSelfReference(e.name, sourcePath))
     .map(e => fillMentionsWithProvenance(e, sourcePath));
   const concepts = coerceToArray<ConceptInfo>(raw.concepts)
     .filter(c => c?.name?.trim())
+    .filter(c => !isSourceSelfReference(c.name, sourcePath))
     .map(c => fillMentionsWithProvenance(c, sourcePath));
 
   // Strip wiki-link formatting if LLM outputs [[path|name]] instead of plain name
@@ -336,6 +339,11 @@ export class SourceAnalyzer {
     // Build granularity instruction from shared definitions
     const granularityInstruction = getGranularityInstruction(this.ctx.settings)
 
+    // v1.27.3: topic/global extraction focus — an extra block inside the
+    // Extraction Scope section. Empty for every vault that has not
+    // configured it (byte-identical prompts, prefix cache unaffected).
+    const extractionFocusSection = buildExtractionFocusSection(getExtractionFocus(this.ctx.settings))
+
     // Issue #85 v6 / #328 Phase 1 follow-up: user-layer tag-vocab removed
     // (system layer append once, see comments at the injection site below).
     //
@@ -408,7 +416,7 @@ export class SourceAnalyzer {
       }
 
       const prompt = renderTemplate(staticPrefix + batchContext + suffixTemplate, {
-        granularity_instruction: granularityInstruction,
+        granularity_instruction: granularityInstruction + (extractionFocusSection ? `\n\n${extractionFocusSection}` : ''),
         batch_size: String(currentBatchSize),
       });
 
