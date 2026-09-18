@@ -20,6 +20,8 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 **Opened 2026-09-16.** Two mandates, per user direction: **feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail for the first item lives in [MEMORY.md §"Design record — cross-source relations"](./MEMORY.md#design-record--cross-source-relations-729-v1280); this section carries only the planning decisions.
 
+> **The live, ROI-ordered task list is [MEMORY.md §"Work list (2026-09-18)"](./MEMORY.md#work-list-2026-09-18--ordered-by-roi).** That file holds the ordering and the reasoning; this one holds the window's scope. When they disagree, MEMORY is the newer document.
+
 ### Scope groups
 
 | Group | Items | Why this window |
@@ -28,7 +30,16 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 | **Write-path hardening** (architecture) | **#603** (the single write-gate contract does not hold — six writers bypass it), **#662** (the page index is rebuilt per item and per written page) | Design calls, not patch-shaped. Both sit under one surface: what the writer promises is what the reader may rely on |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
-| **Community** | **#608** + PR **#687** (local Markdown image embeds, draft WIP) | Already on the milestone |
+| **Community** | **#608** + PR **#687** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | Already on the milestone |
+
+### Landed outside this window, and worth noting
+
+**#751** sits on `v1.27.x PATCH` rather than here, deliberately: it is one line in
+`esbuild.config.mjs` and it repairs two shipped features (Codex browser login, and the
+desktop streaming transport from #746 that never loaded). **#753 is the same defect
+fixed at the call sites and is an alternative, not a companion** — the reasoning, and
+the check that #751's global flag only affects the two `node:` imports, are in
+MEMORY's work list. **Decide one, not both.**
 
 ### Merged into v1.28.0 so far (unreleased)
 
