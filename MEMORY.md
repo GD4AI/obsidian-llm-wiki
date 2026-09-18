@@ -135,10 +135,20 @@ it, and a closed PR reads to a contributor as *rejected*.
 - Never let `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` sit immediately before
   `#N` in prose. "The fix for #604 is PR #684" breaks the match; so does a bare
   "PR #684".
+- **Negation does not protect it.** GitHub's parser has no notion of "not".
+  *"It does not close #741"* closes #741. The first draft of PR #744's body said
+  exactly that — announcing that the issue would stay open — and the pre-merge
+  scan caught it at 0 hits only after the sentence was rewritten to "#741 stays
+  open". This is the same hazard as #689 above, one step further in: there the
+  keyword was unintended, here it was **deliberately negated and still armed**.
 - **The target decides the damage:** aimed at an issue it closes the issue
   (intended); aimed at a PR it closes the PR.
 - Scan before merging:
   `gh pr view <N> --json title,body --jq '.title, .body' | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'`
+- **Count it, do not eyeball the grep.** `grep ... | sed` in a pipeline exits with
+  *sed's* status, so `|| echo "clean"` never fires and an empty result is
+  indistinguishable from a match that was swallowed. Use `grep -c` and read the
+  number; re-run it against the **PR body as GitHub holds it**, not the local draft.
 - Recover with `gh pr reopen <N>`, and read `ClosedEvent` before assuming the
   mechanism: `commit_id` present ⇒ a commit message did it; empty ⇒ API/PR-level.
 
