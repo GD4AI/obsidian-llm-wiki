@@ -57,18 +57,17 @@ export type NodeHttpsImporter = () => Promise<NodeHttpsModule>;
  * Load `node:https`, desktop only.
  *
  * The early-exit guard at function start is what satisfies
- * `obsidianmd/no-nodejs-modules` — see the module header. `createRequire` is
- * used rather than bare `require()` because `@types/node` types the latter as
- * `any`, which would propagate `@typescript-eslint/no-unsafe-*` through every
- * caller (Bot enforces those as errors). The cast is local to the return
- * statement so `any` stops here.
+ * `obsidianmd/no-nodejs-modules` — see the module header. Obsidian loads
+ * plugins as CommonJS, so use its CJS loader rather than a dynamic import of
+ * a Node built-in, which can be interpreted as a browser module fetch.
  */
 async function requireNodeHttps(): Promise<NodeHttpsModule> {
   if (!Platform.isDesktop) {
     throw new TypeError('node:https transport is available on desktop only');
   }
-  const nodeModule = await import('node:module');
-  // eslint-disable-next-line no-undef -- __filename is a CJS global injected by esbuild's CJS bundler; not a browser global - desktop-only, guarded by Platform.isDesktop above
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- guarded desktop-only CommonJS loader
+  const nodeModule = require('node:module') as typeof import('node:module');
+  // eslint-disable-next-line no-undef -- __filename is provided by the CommonJS bundle
   const nodeRequire = nodeModule.Module.createRequire(__filename);
   return nodeRequire('node:https') as NodeHttpsModule;
 }
