@@ -31,12 +31,13 @@ gate vs Dependabot, root-fixed and verified in production).
 **Next is #603, not #729.** #603 is the hard prerequisite for #729 Phase 1+ by
 design (§"Coupling constraints"): a reader's acceptance metric is meaningless
 while the write path's contract does not hold. Its design pass is complete
-(§"Design record — write path and page index"); implementation has not started.
-The suggested first slice is the **five sites that only need to declare their
-intent** (`sources-normalizer.ts:247`, `preparation.ts:105`, the PDF sidecar at
-`wiki-engine.ts:870/:872`) — those are behaviour-preserving and establish the
-`notify` / `pageGuard` interfaces before the **five real violations in four
-files** are touched.
+(§"Design record — write path and page index") and was **re-measured against the
+source on 2026-09-17, which corrected three of its claims and changed the first
+slice** — see §"Re-measurement". The corrected shape: slice 1 introduces the
+three layers (`rawWrite` / `pageGuard` / `notify`) plus a required-`intent` type
+with **zero call-site changes**, so zero behaviour change is provable; slice 2
+converts the two prose-declared bypasses to typed intent; slice 3 takes the
+**six real violations across five files** one at a time, `fix-runners.ts` last.
 
 **Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups,
 the hardening-before-reader ordering, and the open decisions. This file carries
@@ -568,16 +569,214 @@ callers through the engine accessor is hygiene; the fix is a **run-scoped index
 updated by the writer**, as proposed — the writer knows what it wrote, so it
 should tell the index rather than invalidate it.
 
+### Re-measurement (2026-09-17) — three corrections, and the first slice changes
+
+The design pass above reasoned from the two issues' line numbers. Re-measuring them
+against the source on 2026-09-17, before writing any code, found **three errors** —
+and one of them removes the reason the pass gave for doing tier B first.
+
+| Design record said | Actually | Evidence |
+|---|---|---|
+| `link-retarget.ts:185` is a tier-A violation | ❌ **Not a violation.** `:33` records it as deliberate: the write goes through `vault.process` because the gate normalizes `sources:` and corrects link pollution, which is "appropriate for a generated wiki page, not for someone's own note" | declared, and for a good reason |
+| `sources-normalizer.ts:247` is a tier-B **source-note** write | ❌ **It writes wiki pages** — the file set is `isInFolderScope(f.path, wikiFolder, …)` | `folder-scope.ts:33` |
+| `preparation.ts:105` is a tier-B **source-note** write | ❌ **It writes wiki pages** — it iterates `pageMap`, built from `wikiFiles` | `preparation.ts:34-52` |
+
+**Consequence:** tier B is not "three silent sites" — it is **the sidecar alone, and
+the sidecar is the most-documented write in the codebase**. The pass's stated reason
+for doing B first ("behaviour-preserving, and the declaration is the whole change")
+no longer supports a slice of that shape at all.
+
+### `log.md` proves the gate already spans two file classes
+
+The pass looked at the gate's *callers* only through the issues' lens. Reading them
+directly turns up the strongest argument for splitting:
+
+| Caller | What it writes |
+|---|---|
+| `:283` `indexGenerator.writeFile` | the index — a wiki page, wants **all three** layers |
+| `:292` `logWriter.writeFile` | **`log.md` — not a wiki page** |
+
+So the "single write gate" already serves two file classes, and `pageGuard`
+(pollution correction + heading/provenance normalization) is **meaningless for a
+log**. That answers the pass's first open question by itself: `pageGuard` must be a
+**separately declared layer**, not a superset of `createOrUpdateFile`.
+
+### Corrected tiers
+
+- **A — real violations** (wiki pages, missing both guard and notify):
+  `markPageComplete:349` (the engine writes a page's frontmatter outside its own
+  gate; no deliberate note) · `fix-runners.ts:133` and `:604` (`vault.adapter.write`,
+  below Obsidian's event layer) · `preparation.ts:68` (the double-nested-link fix) ·
+  **`sources-normalizer.ts:247` and `preparation.ts:105`** (the sources-field repair,
+  writing wiki pages). **Six sites, five files.**
+- **B — already declared deliberate, in prose:** the PDF sidecar `:870/:872` (its
+  comment at `:848-852` is the evidence the pass itself cites) and
+  `link-retarget.ts:185` (comment at `:33`). Both want `guard: false`; the sidecar
+  also wants `notify: false`. Making the declaration *typed* rather than prose is
+  the whole change — no behaviour moves.
+- **C — out of contract, document and leave** (schema, caches, welcome note):
+  `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`,
+  `ensure-welcome-note.ts:161`. (`disk-cache.ts:155` is not a vault write.)
+
+### Revised slice plan
+
+Because tier B collapsed, the first slice changes shape: **introduce the three layers
+and the `WriteIntent` type with zero call-site changes**, `createOrUpdateFile`
+becoming the "all three" compatibility entry point. Zero behaviour change is
+provable — the default path must equal today's four concerns one for one — and it is
+what actually establishes the interfaces the later slices consume. Slice 2 converts
+the two prose-declared bypasses into typed intent (the sidecar to `rawWrite` alone;
+`log.md` to `rawWrite + notify`, which **is** a behaviour change and needs its own
+check). Slice 3 takes the six violations one at a time, `fix-runners.ts` last: routing
+`adapter.write` through the gate fires `onFileWrite` + `invalidatePageCaches`, which
+can cascade into auto-ingest.
+
 ### Open questions
 
-- Whether `pageGuard` stays inside `createOrUpdateFile` as a superset (smaller
-  diff, contract still ambiguous) or becomes a separate declared layer (clearer,
-  touches ~14 call sites).
-- Whether tier B's declaration is a type-level requirement or a call-site option.
-  Type-level is the only version that cannot be forgotten.
-- Whether `fix-runners.ts`'s `adapter.write` sites are a third mechanism to be
-  preserved (they avoid the Obsidian event layer deliberately?) or simply an
-  older idiom — the code does not say, and the answer changes the fix.
+- ~~Whether `pageGuard` stays inside `createOrUpdateFile` as a superset or becomes a
+  separate declared layer.~~ **Answered 2026-09-17:** separate. `log.md` already goes
+  through the gate and is not a wiki page — a superset would normalize a log.
+- ~~Whether tier B's declaration is a type-level requirement or a call-site option.~~
+  **Answered 2026-09-17:** type-level, as the pass suspected. The new layer entries
+  take `intent` as a **required** parameter; `createOrUpdateFile(path, content)` stays
+  as the "all three" shorthand so the six existing callers change nothing.
+- ~~Whether `fix-runners.ts`'s `adapter.write` sites are deliberate or an old idiom.~~
+  **Answered 2026-09-17:** no comment says either way, so it is an idiom rather than
+  a decision — but the fix carries cascade risk (see the revised slice plan) and is
+  therefore last, not first.
+- **Still open:** whether the sources-field repair sites
+  (`sources-normalizer.ts:247`, `preparation.ts:105`) should *use* the gate or declare
+  `guard: false` because they **are** the guard's repair path. Routing them through it
+  is not circular in effect — after they fix a file the gate finds nothing to do — but
+  it does mean the repair runs the thing it repairs. Decide before slice 3.
+
+---
+
+## Design record — the streaming fallback classifies by URL, not by outcome (#741, v1.28.0)
+
+**Analysis 2026-09-18, from source + history. No implementation.** @aisahpA measured
+the preflight behaviour on the shipped `c709a162` and raised three points; two of
+them are corrections to what #736 shipped, and one of those contradicts a comment
+#736 itself wrote.
+
+### The mechanism as built
+
+```
+streamWithFallback(url, init)
+  ├─ isLocalBaseURL(url)?  → requestUrl   (no CORS, no streaming: whole body at once)
+  └─ else try window.fetch → real streaming
+            catch TypeError → requestUrl  (silent, buffered)
+```
+
+### First principle: the classifier is a proxy for the wrong variable
+
+The capability actually required is **"this method + URL + *header set* is permitted
+cross-origin by this server"** — a server-side property computed per request. The
+code decides on `isLocalBaseURL(url)` — a client-side property of the host.
+
+That proxy was approximately true when it was written (`6be9258d`, the AI-SDK v6
+migration): the observed population was **bimodal** — cloud hosts returned `ACAO`
+(`*` or `app://obsidian.md`), local servers returned nothing — and a bimodal
+population hides proxy errors. Introduce a third kind (a cloud host that is *not*
+permissive about `app://obsidian.md`) and the proxy is simply wrong.
+
+**Extending the host list cannot fix it, and not because of maintenance burden — it
+is a type error.** A preflight is triggered by non-safelisted headers and succeeds
+only if the server echoes *every* name from `Access-Control-Request-Headers`. So the
+outcome is a function of `(host, method, header set)`. #736 turned the header set
+into **user data** via the free-form custom-headers field. A table keyed on host
+cannot represent a function of two variables — it structurally cannot cover the case
+#736 introduced, on any host.
+
+The only faithful representation is **the observed outcome**: try once, remember per
+host for the session, skip the gamble afterwards. That also self-heals if a host
+starts answering `OPTIONS`, with no list to maintain.
+
+### The finding that explains why this took so long: in production the fallback is unobservable
+
+Three independent layers each hide it:
+
+| Layer | What it hides | Evidence |
+|---|---|---|
+| `streamWithFallback` catches `TypeError` deliberately | the error itself | `:265` — "Successful fallback path is silent (no console.warn) — it would spam logs on every request" |
+| every diagnostic is `console.debug` | the trace | `:275/:281/:283/:289` |
+| the production build **neutralises** `console.debug` | even that | `esbuild.config.mjs:15` — `const prodBanner = prod ? 'console.debug = function() {};\n' : ''`, injected as main.js's first statement |
+| `requestUrl` is a main-process IPC call | the request | aisahpA: bridge requests do not appear in DevTools Network at all — **an empty Network panel is not evidence nothing was sent** |
+
+So in the shipped plugin a CORS-blocked provider degrades from streaming to buffered
+leaving **no log, no error, and no Network entry** — the only observable is the ~20 s
+empty pane. The silent-fallback decision was correct for the population it was written
+for (local servers, where the fallback is *expected and total*, so a warning would be
+noise on every single call) and was inherited unchanged by a population where the
+fallback is a **capability downgrade**. One code path, two meanings.
+
+This is the same class as MEMORY's "an `optionalDependency` a required feature needs
+is a silent capability hole": the degradation is designed, the *silence* is the bug.
+
+### The two branches differ in header semantics, not only in streaming
+
+| | `window.fetch` | `requestUrl` |
+|---|---|---|
+| stack | renderer, browser-arbitrated | main process over IPC |
+| CORS | enforced | **not applicable — not a browser fetch** |
+| forbidden headers | dropped | unaffected |
+| `User-Agent` | **overridden by Chromium** | sent as supplied |
+| visible in DevTools Network | yes | **no** |
+
+**The `User-Agent` premise in #736 is inverted, and so is its stated reason.** #736's
+comment says the header "is a fetch-forbidden header". It is not — the Fetch standard
+removed `User-Agent` from the forbidden list (`whatwg/fetch` `dab09b0`, "Allow
+User-Agent to be set, but not omitted"); **Chromium implemented that and then reverted
+it** (`chromium/chromium` `079b3a3` reverts `c7d5f1c6`, bug 40450316), with
+the chromestatus entry to allow it still at intent-to-prototype. So the correct
+statement is: *spec-permitted, Chromium-policy-suppressed* — which means the plugin's
+`karpathywiki/<version>` identity **reaches the wire only on the `requestUrl` branch**,
+i.e. exactly on the hosts that are *not* the default. #736's purpose included plugin
+identity; on the preferred branch it never arrives. aisahpA measured both to
+Obsidian's UA; the revert explains why.
+
+### The structural limit, stated plainly
+
+`requestUrl` returns a **complete body**; only `window.fetch` exposes
+`response.body: ReadableStream`. CORS is enforced by the renderer. Therefore **on a
+host that blocks CORS, real streaming is architecturally unavailable** — it is not a
+bug to be routed around. The honest goal is narrower: route around CORS to recover
+*identity* and *legible errors*, and **tell the user** streaming is off. Adopting
+`requestUrl` for `opencode` is not a streaming fix; it is a legibility fix.
+
+### Historical precedent — the project has made this call twice already
+
+- `13e57772` (2026-05-15) `fix: CORS for OpenAI-compatible endpoints + Query UX overhaul`
+- `c3bb5c11` (2026-06-05) `fix(llm): rewrite AnthropicClient on requestUrl to fix CORS (Closes #95)`
+
+Both concluded the same way: **`requestUrl` is the escape hatch**. The per-call gamble
+(`streamWithFallback`) arrived later, with the AI-SDK v6 migration, to recover
+streaming where it is available. The current design is therefore the *union* of two
+strategies chosen by a proxy — and **the chooser is the weak link, not either branch**.
+
+### Recommended shape
+
+1. **Decide from the outcome, not the URL** — remember the first CORS `TypeError` per
+   host for the session; later calls skip the gamble. Covers user-added headers, no
+   host list, self-healing.
+2. **Stop degrading silently** — one `console.warn` plus (given the 20 s empty pane) a
+   first-time Notice per host per session. A no-op `console.debug` is not a signal.
+3. **Correct the `User-Agent` claim in code and docs** — either add a non-forbidden
+   identity header (`x-karpathywiki-version`) or state the caveat. The comments #736
+   wrote assert a false reason and must be fixed regardless of the transport decision.
+4. **Keep a preset flag only as a *hint*** for hosts known to answer no `OPTIONS`
+   (`opencode`), never as the mechanism.
+5. **Acceptance criteria** (aisahpA's, adopted): first streamed character within ~1 s;
+   no `[STREAM-FETCH] TypeError` from the second streamed call onward; adding a custom
+   header on `kimi`/`gemini` no longer downgrades to a buffered answer.
+
+### What this changes about #736's regression status
+
+`opencode` failing is **not** a #736 regression — that host never worked. The
+**regression is the free-form header field**: each host's CORS policy is configured
+against a fixed header set, and #736 made that set user-extensible, so **any user can
+now silently downgrade their own streaming on any provider**. Combined with the
+unobservability above, the user gets no way to connect cause to effect.
 
 ---
 
