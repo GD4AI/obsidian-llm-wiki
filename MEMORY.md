@@ -298,111 +298,41 @@ ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *h
 > (ordered phases)` to build it**. Everything after that is rationale and
 > guardrails. The issue is #729.
 
-### The measurement
+### Where the analysis lives — and the two corrections made since
 
-@DocTpoint rebuilt a 413-note vault unattended over three days on v1.27.1: 413
-source pages + 2135 entity/concept pages. **95 % of edges connect pages born from
-the same note; plain co-occurrence reproduces 94.5 % of the Related edges; nine
-of ten pages have no incoming link from a page with another source.** The Related
-cap holds with zero violations and strays sit at 1 %.
+**The measurement, the root cause, the three mechanisms, the budget table, the
+allocation algorithm, the definition, the rejection of embeddings and the acceptance
+criteria are all in [issue #729](https://github.com/GD4AI/obsidian-llm-wiki/issues/729).**
+It was written as the design document and is the canonical statement of them. They
+were mirrored here for several rounds and had already begun to diverge — this copy
+carried none of the corrections below and the issue carries none of the phase status
+that follows. One fact, one place: **read the issue for the design, this section for
+what changed afterwards and what is left.**
 
-A null model over five multi-note questions (same character budget, same model,
-thinking off, truth from the notes, blind-rated) put an embedding index over raw
-notes (A) against the same index over wiki pages (B) and the plugin's query path
-(C): **B slightly ahead of A, both clearly ahead of C, which lost 3 of 5.**
-B ≥ A is the first hard evidence that the compiler is not a detour. The reader is
-the bottleneck, and the bottleneck is **recall** — arm C found the right pages
-less often, not less accurately once they were found.
+Two corrections were made here after the issue was written, and would otherwise be
+lost:
 
-### Root cause: the star is written into the prompt
+- **Two concerns, not three of a kind.** `GRANULARITY_FIX_LIMITS` and the `?? 5`
+  defaults are **extraction** limits — how many entities/concepts to ask for, read by
+  `getGranularityInstruction` and `getGranularityFixLimits`. `SIBLING_CAP` caps
+  **Related list entries**. Both are granularity-keyed and nothing else about them is
+  the same, so they are two tables in `constants.ts`, not one.
+- **The `?? 5` count was 4, not 2** — two in `getGranularityInstruction` (`:209`,
+  `:210`) and two in `getGranularityFixLimits` (`:226`, `:227`). Replacing only the
+  documented pair would have left two orphaned defaults, the exact scattering the
+  constant exists to remove.
 
-The intra-source shape is not emergent. `src/wiki/prompts/ingestion.ts:27`
-instructs the model to name only items "extracted from **this same source
-file**", and the JSON example repeats it ("Related entity names **from this
-source**"). Phase 2 (`page-factory/related-links.ts`) then resolves those names
-against the whole vault through `buildVaultResolver`, which returns `undefined`
-for anything the vault does not hold — so the write path can **confirm** a name
-but can never **discover** one. In a star forest there is no path between stars,
-so no PPR weight function can create reachability either.
+And one claim in the issue that did not survive contact, recorded here so Phase 2 does
+not re-derive it: **`RELATED_BUDGET.siblings` must NOT be read yet.** It is 3/3/2/1/3
+where today every granularity gets a flat 3, so consuming it is not
+behaviour-preserving. Phase 0 shipped it unread on purpose; Phase 2 owns it.
 
-**The generalisable method note:** the constraint was in the prompt, not the
-architecture. Reading the module tells you what *could* happen; reading the
-prompt tells you what *does*.
-
-### The machinery is already there and unwired
-
-- `getExistingWikiPages` returns, per page in the vault: `path`, `title`,
-  `aliases`, `tags`, `ctime`, and a bounded slice of the **prose**
-  (`CANDIDATE_WINDOW_TEXT_CHARS` = 2000). Read **locally — zero prompt tokens**,
-  so none of this is bounded by vault size in the prompt.
-- `core/candidate-window.ts` — "the one ranked window every prompt draws from" —
-  ranks on title + aliases + prose, `CANDIDATE_WINDOW_TOP_K` = 30.
-- `core/build-graph.ts` already builds the vault link graph locally.
-- The ranker is already used *inside* the page factory
-  (`page-factory/path-resolution.ts:27`) and in `lint/fix-dead-link.ts:169` —
-  for path resolution and link repair, **never for relation discovery**.
-
-The unwired question is simply: *which other pages in this vault relate to this
-one?*
-
-### Three mechanisms, ordered floor-first
-
-| | **M0 co-citation projection** | **M1 local window ranking** | **M2 world-knowledge proposals** |
-|---|---|---|---|
-| Signal | the vault's link structure | the vault's text | the model's training data |
-| Rule | `A → E` and `B → E` ⇒ `A — B` | rank the vault pool by title+aliases+prose against the item's own `summary` | the extraction model proposes names it believes exist |
-| **Model dependency** | **zero** | **low** — inherits Phase 1's `summary`, which page generation, dedup and query already depend on | **high** |
-| Prompt change / extra call | none / none | none / none | yes / none |
-| Role | **holds the floor** | **raises the floor** | **explores the ceiling** |
-| Status | this issue | this issue | deferred, evaluated against M0+M1's measurement |
-
-Both feed the same filter — the vault resolver — so neither can write a link to a
-page that does not exist.
-
-### Adaptive budget (two granularity-keyed concerns, not one)
-
-Corrected 2026-09-17 while implementing Phase 0. The earlier framing — "three
-scattered ceilings the new table replaces" — was wrong on two counts, and both
-would have misled Phase 2:
-
-- **They are two concerns, not three of a kind.** `GRANULARITY_FIX_LIMITS` and
-the `?? 5` defaults are **extraction** limits (how many entities/concepts to ask
-for), read by `getGranularityInstruction` and `getGranularityFixLimits`.
-`SIBLING_CAP` caps **Related list entries**. Both are granularity-keyed; nothing
-else about them is the same, so they are two tables in `constants.ts`, not one.
-- **The `?? 5` count was 4, not 2.** Two in `getGranularityInstruction`
-(`:209`, `:210`) and two in `getGranularityFixLimits` (`:226`, `:227`).
-Replacing only the documented pair would have left two orphaned defaults — the
-exact scattering the constant exists to remove.
-
-The Related budget, keyed by the same extraction-granularity axis:
-
-| Granularity | note-grounded | cross-source | total | siblings |
-|---|---|---|---|---|
-| `fine` | 7 | 5 | 12 | 3 |
-| `standard` | 5 | 3 | 8 | 3 |
-| `coarse` | 3 | 2 | 5 | 2 |
-| `minimal` | 2 | 1 | 3 | 1 |
-| `custom` | from `customEntityLimit` | `clamp(ceil(n × 0.6), 1, 5)` | sum | 3 |
-
-The cross-source column is a **ceiling, never a quota**. Refactor surface is
-small: the granularity table is module-private (zero external callers) and
-`SIBLING_CAP` is imported by one test file.
-
-### Allocation: reserved, with backfill
-
-Additive allocation silently disables the feature on pages whose Related list is
-already full — precisely the pages that need it.
-
-```
-1. resolve note-grounded names              (today's logic, unchanged)
-2. orphan -> siblings up to the sibling cap  (unchanged)
-3. note-grounded may occupy at most (total - cross-source) entries
-4. fill up to `cross-source` slots from the vault pool,
-   excluding self and anything already present
-5. if cross-source candidates < the reservation, the freed slots go back
-   to note-grounded (up to `total`)
-```
+**The budget table and the five-step allocation algorithm are in the issue** under
+§"1. An adaptive Related budget" and §"2. Reserved allocation, with backfill". Kept
+there rather than mirrored: they are the specification Phase 2 implements, and a copy
+here would be a second place to update when it changes. The one property worth
+carrying at this level is that **the cross-source column is a ceiling, never a
+quota** — a page with no cross-source candidates is not made emptier by the feature.
 
 ### Implementation plan (ordered phases)
 
