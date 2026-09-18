@@ -22,6 +22,7 @@ import { isBlankSource, extractBody } from '../core/frontmatter';
 import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
 import { getExistingWikiPages } from './lint/get-existing-pages';
 import { getGranularityInstruction } from './system-prompts';
+import { getExtractionFocus, buildExtractionFocusSection } from '../core/prompt-focus';
 import { resolveModelForTask } from '../core/model-resolver';
 import { getText } from '../core/i18n';
 import { calculateBatchLimits, adjustBatchSizeForResponse, getCustomTypeCaps } from '../core/batch-limits';
@@ -82,6 +83,44 @@ function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T,
   return { ...item, mentions_with_provenance: provenance, mentions_in_source: undefined };
 }
 
+// "Shadow source" guard (2026-09-15, live vault report): when the source note's
+// own filename is a machine identifier (a dinox UUID like
+// `01988c6e_86e9_7b79_83b5_c8c4b354fdc9`, an ob timestamp like `202511042307`),
+// the LLM sometimes extracts the source DOCUMENT ITSELF as an entity and lifts
+// the filename as its name. The result is an `entities/<uuid>.md` page whose
+// body merely re-narrates the source summary — a shadow of the sources/ page.
+// Names matching these machine shapes are never valid knowledge-item names, so
+// we drop them at normalization time. Semantic filenames are NOT affected: when
+// the source is `庆余年_8a53fa.md`, an extracted `庆余年` entity is legitimate
+// and passes through untouched.
+const MACHINE_UUID_RE = /^[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}$/i;
+// Pure-digit timestamps: YYYYMMDDHHmm (12) or YYYYMMDDHHmmss (14). Shorter runs
+// (years, counters) stay allowed — only the note-tool naming shapes are gated.
+const MACHINE_TIMESTAMP_RE = /^\d{12}$|^\d{14}$/;
+// Long pure-digit machine IDs (2026-09-18, live vault report): IM/voice-note
+// message IDs (`1921147873752416344`, 19 digits) and snowflake-style keys slip
+// past the 12/14-digit timestamp gate. Any run of >=13 digits — optionally with
+// a `_`/`.` + hex hash tail — is never a valid knowledge-item name. Phone-sized
+// runs (<=11 digits) and years stay allowed.
+const MACHINE_LONG_DIGIT_ID_RE = /^\d{13,}(?:[_.][0-9a-f]{4,})?$/i;
+
+export function isSourceSelfReference(name: string, sourcePath: string): boolean {
+  const n = name?.trim() ?? '';
+  if (!n) return false;
+  // Machine-identifier shapes, regardless of what the source file is called.
+  if (MACHINE_UUID_RE.test(n)) return true;
+  if (MACHINE_TIMESTAMP_RE.test(n)) return true;
+  if (MACHINE_LONG_DIGIT_ID_RE.test(n)) return true;
+  // Verbatim copy of the source basename INCLUDING a plugin-style hash suffix
+  // (`庆余年_8a53fa`) — a semantic name plus a 6+ hex-digit tail is never a
+  // natural entity name, so an exact-basename match in that shape means the
+  // model transcribed the filename. A bare semantic match (TNF-α from
+  // TNF-α.md) is a legitimate topical entity and must survive.
+  const base = (sourcePath.split('/').pop() || '').replace(/\.md$/i, '');
+  if (base && n === base && /[_.][0-9a-f]{6,}$/i.test(n)) return true;
+  return false;
+}
+
 export interface NormalizedBatch {
   entities: EntityInfo[];
   concepts: ConceptInfo[];
@@ -106,9 +145,11 @@ export function normalizeBatchResponse(
 
   const entities = coerceToArray<EntityInfo>(raw.entities)
     .filter(e => e?.name?.trim())
+    .filter(e => !isSourceSelfReference(e.name, sourcePath))
     .map(e => fillMentionsWithProvenance(e, sourcePath));
   const concepts = coerceToArray<ConceptInfo>(raw.concepts)
     .filter(c => c?.name?.trim())
+    .filter(c => !isSourceSelfReference(c.name, sourcePath))
     .map(c => fillMentionsWithProvenance(c, sourcePath));
 
   // Strip wiki-link formatting if LLM outputs [[path|name]] instead of plain name
@@ -280,6 +321,11 @@ export class SourceAnalyzer {
     // Build granularity instruction from shared definitions
     const granularityInstruction = getGranularityInstruction(this.ctx.settings)
 
+    // v1.27.3: topic/global extraction focus — an extra block inside the
+    // Extraction Scope section. Empty for every vault that has not
+    // configured it (byte-identical prompts, prefix cache unaffected).
+    const extractionFocusSection = buildExtractionFocusSection(getExtractionFocus(this.ctx.settings))
+
     // Issue #85 v6 / #328 Phase 1 follow-up: user-layer tag-vocab removed
     // (system layer append once, see comments at the injection site below).
     //
@@ -345,7 +391,7 @@ export class SourceAnalyzer {
       }
 
       const prompt = renderTemplate(staticPrefix + batchContext + suffixTemplate, {
-        granularity_instruction: granularityInstruction,
+        granularity_instruction: granularityInstruction + (extractionFocusSection ? `\n\n${extractionFocusSection}` : ''),
         batch_size: String(currentBatchSize),
       });
 

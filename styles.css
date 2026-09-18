@@ -1298,3 +1298,10 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
+/* v1.29.6: prompt customization textareas (extraction focus / content requirements) */
+.llm-wiki-prompt-focus-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+}
