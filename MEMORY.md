@@ -11,11 +11,15 @@
 ## Current state (2026-09-17)
 
 **Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = `33cd23a3`, Gate 1 green
-at **301 files / 4196 tests**. **v1.28.0 MINOR is in flight.**
+see CHANGELOG §1.27.2). Nothing released since. `main` = `e150d139`, Gate 1 green
+at **302 files / 4215 tests**. **v1.28.0 MINOR is in flight.**
 
 **Merged into v1.28.0 so far (unreleased):**
 
+- **#744** + **#746** — **#741 resolved in two steps**: a cross-origin failure is now
+recorded per origin with a visible warning instead of degrading silently, and desktop
+gains a streaming `node:https` transport for those origins. See §"Design record — the
+streaming fallback classifies by URL" for the analysis and the rejected transports.
 - **#736** — custom request headers, the `opencode` preset, and a `(Responses)`
 variant. Closes **#723** and **#735**, both verified end to end by @aisahpA on a
 real vault with a real Go key. Three defects he found in the PR's own code were
@@ -50,9 +54,8 @@ request-body check against `openai-compat-request-body.test.ts` before merging) 
 #656 (@Jan-Heldal — also carries an unfixed lint failure at
 `src/schema/apply-suggestion.ts:143`).
 
-**Newly filed, unstarted:** #741 — `opencode.ai` fails the CORS preflight, so
-streamed answers arrive buffered (~20 s empty pane). Not a regression, and a
-separate mechanism from #736.
+**Newly filed, unstarted:** none. #741 was filed 2026-09-17 and closed 2026-09-18 by
+#744 + #746.
 
 > **Superseded 2026-09-17:** the 2026-09-16 block below is the previous snapshot.
 > Kept for archaeology — do not update the old block.
@@ -788,6 +791,42 @@ against a fixed header set, and #736 made that set user-extensible, so **any use
 now silently downgrade their own streaming on any provider**. Combined with the
 unobservability above, the user gets no way to connect cause to effect.
 
+### Resolution (2026-09-18) — shipped in two steps
+
+**Step 1** (`5f6754f7`) records a cross-origin failure per origin and warns once per
+origin per session, on `console.warn` — the only channel a shipped build can emit.
+`AbortError` and plain `Error` are deliberately not recorded; only a `TypeError` is a
+verdict about the host.
+
+**Step 2** (`e150d139`) gives desktop a streaming transport for these origins:
+`node:https` behind the `Platform.isDesktop` early-exit guard, wrapped as a web
+`ReadableStream` and handed to AI-SDK as a `Response`.
+
+**A fifth transport was rejected on the way, and the reason must not be forgotten:**
+**Electron's `net` module** is the ideal answer on paper — Chromium's network stack,
+therefore proxy-aware *and* streaming — but its documented process list is **"Main,
+Utility"** and a plugin runs in the renderer. That is why `node:https` (which cannot
+see Obsidian's proxy configuration; Electron's docs contrast `net` with the Node
+modules as offering "better support for web proxies") is the only option left.
+
+Because of that gap a failed Node attempt is treated as a verdict about the
+**transport**, not the request: recorded per origin, then `requestUrl` takes over. A
+proxy user therefore lands on exactly the behaviour they had before step 2, paying for
+the discovery once per origin instead of once per call. **This is the pattern to
+reuse** — when a fallback transport has a known environmental failure mode, remember
+the failure rather than predicting it.
+
+**Bot compliance was verified by control, not by reading.** `node:https` is a Node
+built-in so `obsidianmd/no-nodejs-modules` applies. A probe file with three shapes
+produced exactly two reports — the unguarded import and
+`if (!Platform.isDesktop) { import(…) }` — and **none** for the early-exit form
+`if (!Platform.isDesktop) throw` at function start. The rule is sourced from Node's
+own `module.isBuiltin()`, so **`electron` is not covered by it at all**.
+
+**Known limitation, and the reason the issue is closed rather than left open:** mobile
+is unchanged. It has no Node runtime and `net` is main-process only, so streaming on a
+CORS-blocked host is not reachable there — not pending work.
+
 ---
 
 ## Architectural invariants (write-once)
@@ -1027,7 +1066,7 @@ workflow".
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
 
-### Resume point (post-compact handoff, 2026-09-17)
+### Resume point (post-compact handoff, 2026-09-18)
 
 **Read in this order if context was lost:** this file's `## Current state` (where
 things stand) → ROADMAP §"v1.28.0 MINOR — Design track" (what ships, in what
@@ -1035,8 +1074,8 @@ order) → then the design record for whichever item is next: **`## Design recor
 write path and page index` for #603**, or `## Design record — cross-source
 relations` for #729. Issues: **#603** first, then **#729**.
 
-**State at handoff:** `main` = `33cd23a3`, Gate 1 green at **301 files / 4196
-tests**. #723, #735, #669 and #729 Phase 0 are merged and closed. **Nothing is
+**State at handoff:** `main` = `e150d139`, Gate 1 green at **302 files / 4215
+tests**. Closed in this window: #723, #735, #669, #741, #729 Phase 0. **Nothing is
 mid-flight in the working tree** — no branch, no stash, no uncommitted edit.
 
 **The next concrete step is #603, not #729** — #729 Phase 1 is blocked by it by
