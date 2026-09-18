@@ -8,27 +8,53 @@
 
 ---
 
-## Current state (2026-09-16)
+## Current state (2026-09-17)
 
-**Latest shipped:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files — see
-CHANGELOG §1.27.2). Nothing released since. `main` = `7cc50bf9`.
+**Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
+see CHANGELOG §1.27.2). Nothing released since. `main` = `33cd23a3`, Gate 1 green
+at **301 files / 4196 tests**. **v1.28.0 MINOR is in flight.**
 
-**Since that release:** #707 and #708 (Dependabot eslint / tslib bumps) were
-structurally un-mergeable and now merge; #718 (the lockfile gate vs Dependabot)
-was root-fixed and verified in production; the v1.28.0 design direction was
-converged and published as issue **#729**.
+**Merged into v1.28.0 so far (unreleased):**
+
+- **#736** — custom request headers, the `opencode` preset, and a `(Responses)`
+variant. Closes **#723** and **#735**, both verified end to end by @aisahpA on a
+real vault with a real Go key. Three defects he found in the PR's own code were
+fixed before merge. See the 2026-09-17 session lessons below.
+- **#739** — **#729 Phase 0**: the Related and extraction ceilings centralised into
+`src/constants.ts`, behaviour-identical and proven so by zero snapshot churn.
+- **#733** — zod 4 migration (**#669**), proven by byte-identical wire snapshots.
+- **#737** and **#734** — two AGENTS.md process rules (verify the commit not the
+command; a PR body is not the commit-message file).
+- Earlier: #707 / #708 (Dependabot eslint / tslib bumps) and #727 (the lockfile
+gate vs Dependabot, root-fixed and verified in production).
+
+**Next is #603, not #729.** #603 is the hard prerequisite for #729 Phase 1+ by
+design (§"Coupling constraints"): a reader's acceptance metric is meaningless
+while the write path's contract does not hold. Its design pass is complete
+(§"Design record — write path and page index"); implementation has not started.
+The suggested first slice is the **five sites that only need to declare their
+intent** (`sources-normalizer.ts:247`, `preparation.ts:105`, the PDF sidecar at
+`wiki-engine.ts:870/:872`) — those are behaviour-preserving and establish the
+`notify` / `pageGuard` interfaces before the **five real violations in four
+files** are touched.
 
 **Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups,
 the hardening-before-reader ordering, and the open decisions. This file carries
 the *why* and the *how* (see §"Design record — cross-source relations" below),
 never the window schedule.
 
-**Awaiting contributors:** #656 (Jan-Heldal — also carries an unfixed lint
-failure at `src/schema/apply-suggestion.ts:143`), #673 (DocTpoint,
-CHANGES_REQUESTED on the 9-locale blocker), #687 (Chase07, draft WIP).
+**Open PRs:** #728 (Dependabot MAJOR `@ai-sdk/openai-compatible` — needs the
+request-body check against `openai-compat-request-body.test.ts` before merging) ·
+#726 and #673 (@DocTpoint) · #701 (@weqoocu) · #687 (@Chase07, draft WIP) ·
+#656 (@Jan-Heldal — also carries an unfixed lint failure at
+`src/schema/apply-suggestion.ts:143`).
 
-> **Superseded 2026-09-16:** the 2026-09-15 block below is the v1.27.2 ship-day
-> snapshot. Kept for archaeology — do not update the old block.
+**Newly filed, unstarted:** #741 — `opencode.ai` fails the CORS preflight, so
+streamed answers arrive buffered (~20 s empty pane). Not a regression, and a
+separate mechanism from #736.
+
+> **Superseded 2026-09-17:** the 2026-09-16 block below is the previous snapshot.
+> Kept for archaeology — do not update the old block.
 
 ---
 
@@ -792,24 +818,32 @@ workflow".
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
 
-### Resume point (post-compact handoff, 2026-09-16)
+### Resume point (post-compact handoff, 2026-09-17)
 
-**Read in this order if context was lost:** ROADMAP §"v1.28.0 MINOR — Design
-track" (what ships, in what order) → this section's `### Design record` (the
-design and the six-phase implementation plan) → issue **#729**.
+**Read in this order if context was lost:** this file's `## Current state` (where
+things stand) → ROADMAP §"v1.28.0 MINOR — Design track" (what ships, in what
+order) → then the design record for whichever item is next: **`## Design record —
+write path and page index` for #603**, or `## Design record — cross-source
+relations` for #729. Issues: **#603** first, then **#729**.
 
-**State at handoff:** `main` = `2692f768`; MEMORY + ROADMAP merged via #730.
-Milestones assigned: #728 → `v1.28.0 MINOR`, #725 and #726 → `v1.27.x PATCH`.
-**#728 was `DIRTY` and a `@dependabot rebase` was requested** — once it lands, its
-Gate 1 run on the corrected head arrives as `action_required` and needs one
-approval, then the MAJOR `@ai-sdk/openai-compatible` 2→3 bump must be checked
-against `openai-compat-request-body.test.ts` before merging.
+**State at handoff:** `main` = `33cd23a3`, Gate 1 green at **301 files / 4196
+tests**. #723, #735, #669 and #729 Phase 0 are merged and closed. **Nothing is
+mid-flight in the working tree** — no branch, no stash, no uncommitted edit.
 
-**Nothing in phase 2 has been started.** The next unblocked, concrete step is
-**#729 sub-phase 0** — centralising the three scattered Related ceilings into
-`src/constants.ts`. It is behaviour-identical by definition, so its pass
-condition is a **zero-output diff**, not a passing suite. **#669 (zod 4) and
-#723 are also unblocked**, and phase 1 needs no prerequisite at all.
+**The next concrete step is #603, not #729** — #729 Phase 1 is blocked by it by
+design (§"Coupling constraints"). The design pass for #603 is finished; what
+remains is implementation, and its first slice is the *intent-declaring* sites
+rather than the violations, because those are behaviour-preserving and establish
+the interfaces first.
+
+**Two facts that save time on resume:** the ruleset needs ~15 s to propagate
+after a bypass actor is added (6 s fails the merge), and this environment's
+GraphQL surface returns intermittent EOFs — prefer `gh api repos/.../pulls/<N>`
+over `gh pr view` when a read looks wrong.
+
+**One open decision blocks a later phase, not this one:** #729's toggle
+placement (bottom Advanced panel vs a home created by #668) — needed before
+Phase 4.
 
 ---
 

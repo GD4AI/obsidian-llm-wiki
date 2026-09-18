@@ -27,8 +27,22 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 | **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. Research and design concluded 2026-09-16 |
 | **Write-path hardening** (architecture) | **#603** (the single write-gate contract does not hold — six writers bypass it), **#662** (the page index is rebuilt per item and per written page) | Design calls, not patch-shaped. Both sit under one surface: what the writer promises is what the reader may rely on |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
-| **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#669** (zod 4 migration, 17 `.passthrough()` sites), **#706** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape), **#723** (custom-header passthrough for OpenAI-compatible providers — no such path exists today) | Each needs a design decision this PATCH cycle cannot host |
+| **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
 | **Community** | **#608** + PR **#687** (local Markdown image embeds, draft WIP) | Already on the milestone |
+
+### Merged into v1.28.0 so far (unreleased)
+
+Recorded here, not in CHANGELOG — that entry is written once at release. Detail on
+what each change settled lives in MEMORY.
+
+- **#736** — custom request headers, the `opencode` preset, a `(Responses)` variant.
+  Closes **#723** and **#735**; both verified end to end by @aisahpA on a real vault
+  with a real Go key, and three defects he found in the PR's own code were fixed
+  before merge.
+- **#739** — **#729 Phase 0**: the Related and extraction ceilings centralised into
+  `src/constants.ts`, behaviour-identical and proven by zero snapshot churn.
+- **#733** — zod 4 migration (**#669**), proven by byte-identical wire snapshots.
+- **#737** + **#734** — AGENTS.md process rules.
 
 ### Ordering decision (2026-09-16)
 
@@ -44,7 +58,7 @@ Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable
 
 | Phase | Items | Blocked by |
 |---|---|---|
-| **1 — decouple, take the cheap wins** | **#669** (zod 4 — a cross-cutting dependency bump, so *earliest is cheapest*: every later PR otherwise rebases onto it) · **#723** (custom-header passthrough, independent) · **#603 + #662 design pass** — ✅ **done 2026-09-16**, see MEMORY §"Design record — write path and page index" | nothing |
+| **1 — decouple, take the cheap wins** | **#669** ✅ zod 4 · **#723** ✅ custom headers, OpenCode preset, Responses variant (also closed #735) · **#603 + #662 design pass** ✅ — **complete**, see MEMORY §"Design record — write path and page index" | **nothing — done** |
 | **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) — ✅ done 2026-09-17** (behaviour-identical, proven by zero snapshot churn); sub-phases 1+ wait | #603 |
 | **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** once #603 lands · **#668 after #729's toggle has a home** | phase 2 |
 | **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |
