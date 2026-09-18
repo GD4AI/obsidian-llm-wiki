@@ -621,9 +621,13 @@ directly turns up the strongest argument for splitting:
 | `:292` `logWriter.writeFile` | **`log.md` — not a wiki page** |
 
 So the "single write gate" already serves two file classes, and `pageGuard`
-(pollution correction + heading/provenance normalization) is **meaningless for a
-log**. That answers the pass's first open question by itself: `pageGuard` must be a
-**separately declared layer**, not a superset of `createOrUpdateFile`.
+(pollution correction + heading/provenance normalization) is **harmful for a
+log** — not merely meaningless, which is what this pass first assumed. Slice 2
+measured it: `LogWriter.pageLinks` builds links from real page paths, so a page
+named `concepts布局优化` is written as `[[concepts/concepts布局优化]]` (correct), and
+Pattern B rewrites it to `[[concepts/布局优化]]` — a dead link. That answers the
+pass's first open question by itself: `pageGuard` must be a **separately declared
+layer**, not a superset of `createOrUpdateFile`.
 
 ### Corrected tiers
 
@@ -713,6 +717,36 @@ inline form was safe only because it rebuilt the literals per call. Hoisting the
 module scope — the obvious move when extracting to a module — would make every
 **second** write skip its correction. The guard keeps them inside the function, and a
 test calls it four times on the same input requiring all four to correct.
+
+### Slice 2 shipped (2026-09-18) — and the log turned out to be corrupted
+
+**The pass's description of `log.md` was wrong in a way that mattered.** It said the
+guard was *meaningless* for a log. Measuring before changing found it is
+**harmful**: `LogWriter.pageLinks` builds links from **real page paths** (stripping
+`wiki/` because `[[wiki/concepts/X.md]]` renders dead), so a page genuinely named
+`concepts布局优化` is written as `[[concepts/concepts布局优化]]` — correct as written.
+Pattern B cannot tell that from LLM-emitted duplication and rewrote it to
+`[[concepts/布局优化]]`, a dead link. **The fix is a bug fix, not a tidy-up** — which
+is why the test asserts both directions rather than a single `toContain`.
+
+Shipped: `LOG_WRITE_INTENT { guard: false, notify: true }` at the LogWriter injection
+(`log.md` keeps `notify` — only the guard is dropped) and `RAW_WRITE_INTENT
+{ guard: false, notify: false }` at the PDF sidecar, whose prose bypass at
+`wiki-engine.ts:845-851` is now a declaration. Routing the sidecar through `rawWrite`
+also gave it the retry and the NFC/NFD recovery the two direct vault calls lacked.
+
+**A property that had never been tested:** the sidecar's **not-notify** behaviour is
+the entire reason the bypass exists (the comment warns of auto-ingest cascades), yet
+the existing tests asserted only file contents. Giving the sidecar `notify: true`
+would have broken nothing. It now fails one test.
+
+**`link-retarget.ts:185` is deliberately out of scope and must stay that way**: it
+receives an injected `process` and never touches the engine's layers, so its
+"declaration" is a type-level statement, not a call-site change.
+
+**Lesson worth keeping: "this does nothing useful" and "this is harmful" are
+different claims, and only the second justifies urgency.** The design pass made the
+first; one measurement upgraded it to the second.
 
 ---
 
