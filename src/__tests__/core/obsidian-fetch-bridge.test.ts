@@ -28,6 +28,14 @@ import {
 
 const mockRequestUrl = vi.mocked(requestUrl);
 
+// The desktop `node:https` transport is injected here rather than exercised for
+// real. Note the harness's `Platform` mock sets `isDesktopApp: true` but leaves
+// `isDesktop` undefined, so the production loader would throw — which would make
+// these tests pass for the wrong reason, or worse, reach the network if the
+// mock is ever completed. Stubbing the module keeps the intent explicit.
+const mockNodeHttpsFetch = vi.hoisted(() => vi.fn());
+vi.mock('../../core/node-https-fetch', () => ({ nodeHttpsFetch: mockNodeHttpsFetch }));
+
 function makeRequestUrlResult(opts: {
   status: number;
   text?: string;
@@ -544,6 +552,51 @@ describe('streamWithFallback (CORS memory — #741)', () => {
     // assertions can check that the caller still receives a Response.
     mockRequestUrl.mockReset();
     mockRequestUrl.mockResolvedValue(makeRequestUrlResult({ status: 200, text: 'buffered' }));
+    // Default: the desktop transport is unavailable (the common case in the
+    // field today — a proxy, or a build without Node access). Individual tests
+    // override this to exercise the streaming path.
+    mockNodeHttpsFetch.mockReset();
+    mockNodeHttpsFetch.mockRejectedValue(new TypeError('node:https transport is available on desktop only'));
+  });
+
+  it('uses the desktop node transport for a blocked origin, which still streams', async () => {
+    // The whole point of step 2: on desktop, a CORS-blocked origin keeps real
+    // streaming instead of degrading to a buffered requestUrl answer.
+    const streamed = new Response(
+      new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"a":1}\n\n'));
+          c.close();
+        },
+      }),
+      { status: 200 }
+    );
+    mockNodeHttpsFetch.mockReset();
+    mockNodeHttpsFetch.mockResolvedValue(streamed);
+    vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const res = await streamWithFallback(OPENCODE, { method: 'POST' });
+
+    expect(mockNodeHttpsFetch).toHaveBeenCalledTimes(1);
+    expect(res).toBe(streamed);
+    // requestUrl is the buffered last resort and must not be reached.
+    expect(mockRequestUrl).not.toHaveBeenCalled();
+  });
+
+  it('remembers a failed node transport so later calls skip it (no regression for proxy users)', async () => {
+    // A machine behind a proxy cannot reach the host directly, so the desktop
+    // transport fails where requestUrl succeeds. Recording that failure is what
+    // keeps such a user on exactly the behaviour they had before step 2.
+    vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    expect(mockNodeHttpsFetch).toHaveBeenCalledTimes(1);
+    expect(mockRequestUrl).toHaveBeenCalledTimes(1);
+
+    await streamWithFallback(OPENCODE, { method: 'POST' });
+    // Not retried, and the request still completes through requestUrl.
+    expect(mockNodeHttpsFetch).toHaveBeenCalledTimes(1);
+    expect(mockRequestUrl).toHaveBeenCalledTimes(2);
   });
 
   it('tries window.fetch first on a host with no recorded failure', async () => {
@@ -616,7 +669,7 @@ describe('streamWithFallback (CORS memory — #741)', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('warns on the production-visible channel when it downgrades to requestUrl', async () => {
+  it('warns on the production-visible channel when it downgrades', async () => {
     // console.debug is neutralised in shipped builds (esbuild.config.mjs:15),
     // so console.warn is the only signal a user's build can emit. Without it
     // the degradation is invisible: no log, no error, and requestUrl never
@@ -626,8 +679,12 @@ describe('streamWithFallback (CORS memory — #741)', () => {
 
     await streamWithFallback(OPENCODE, { method: 'POST' });
 
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0][0])).toContain('opencode.ai');
+    // Two lines are expected and they say different things: the origin refused
+    // the cross-origin request, and the desktop transport could not stand in
+    // for it. Both name the origin so the cause can be traced.
+    const lines = warn.mock.calls.map(c => String(c[0]));
+    expect(lines.some(l => l.includes('opencode.ai') && l.includes('refused'))).toBe(true);
+    expect(lines.some(l => l.includes('node:https'))).toBe(true);
   });
 
   it('does not warn again for the same origin in the same session', async () => {
@@ -635,9 +692,14 @@ describe('streamWithFallback (CORS memory — #741)', () => {
     vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
 
     await streamWithFallback(OPENCODE, { method: 'POST' });
+    const afterFirst = warn.mock.calls.length;
+    expect(afterFirst).toBeGreaterThan(0);
+
     await streamWithFallback(OPENCODE, { method: 'POST' });
 
-    expect(warn).toHaveBeenCalledTimes(1);
+    // Everything about this origin is already known; repeating it is the log
+    // spam the original silent fallback was written to avoid.
+    expect(warn.mock.calls.length).toBe(afterFirst);
   });
 
   it('sends local providers straight to requestUrl without touching window.fetch', async () => {

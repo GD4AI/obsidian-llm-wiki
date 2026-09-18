@@ -23,7 +23,8 @@
 //
 // Reference: https://ai-sdk.dev/docs/reference/ai-sdk-core/provider#custom-fetch
 
-import { requestUrl, RequestUrlParam } from 'obsidian';
+import { requestUrl, RequestUrlParam, Platform } from 'obsidian';
+import { nodeHttpsFetch } from './node-https-fetch';
 
 export interface ObsidianFetchInit {
   method?: string;
@@ -259,6 +260,20 @@ export async function streamingObsidianFetch(
 const corsBlockedOrigins = new Set<string>();
 
 /**
+ * Origins where the desktop `node:https` transport has already failed this
+ * session (Issue #741 step 2).
+ *
+ * That transport exists because `requestUrl` cannot stream and Electron's `net`
+ * is main-process only. Its cost is that Node does not read Obsidian's proxy
+ * configuration, so on a machine that needs a proxy it fails where `requestUrl`
+ * works. Treating such a failure as a **verdict about the transport** and
+ * remembering it is what keeps the change safe: a proxy user ends up on exactly
+ * the behaviour they had before this transport existed, and pays for the
+ * discovery once per origin per session rather than once per call.
+ */
+const nodeTransportBlockedOrigins = new Set<string>();
+
+/**
  * Origin of `url`, or the raw string when it cannot be parsed.
  *
  * The fallback matters because a malformed URL is exactly the kind of input
@@ -274,13 +289,14 @@ function originOf(url: string): string {
 }
 
 /**
- * Forget every recorded cross-origin failure.
+ * Forget every recorded transport failure (both kinds).
  *
  * Test seam. Production relies on the module being re-evaluated on reload,
  * which is the self-healing path described on `corsBlockedOrigins`.
  */
 export function __resetCorsMemory(): void {
   corsBlockedOrigins.clear();
+  nodeTransportBlockedOrigins.clear();
 }
 
 /**
@@ -321,14 +337,18 @@ export async function streamWithFallback(
 ): Promise<Response> {
   const origin = originOf(url);
 
-  // Local providers, and any origin already known to block cross-origin
-  // requests: skip the CORS gamble. Use requestUrl directly.
-  if (isLocalBaseURL(url) || corsBlockedOrigins.has(origin)) {
-    console.debug(`[${STREAM_FETCH_LOG}] isLocal or CORS-blocked, using obsidianFetchBridge (requestUrl): ${origin}`);
+  // Local providers: skip the CORS gamble. Use requestUrl directly.
+  if (isLocalBaseURL(url)) {
+    console.debug(`[${STREAM_FETCH_LOG}] isLocal, using obsidianFetchBridge (requestUrl): ${origin}`);
     return obsidianFetchBridge(url, init);
   }
 
-  // Cloud providers: try streaming first.
+  // This origin is known to refuse cross-origin requests: do not gamble again.
+  if (corsBlockedOrigins.has(origin)) {
+    return viaFallbackTransport(url, init, origin);
+  }
+
+  // Otherwise: try streaming first.
   try {
     console.debug(`[${STREAM_FETCH_LOG}] try streamingObsidianFetch (window.fetch): ${url}`);
     const res = await streamingObsidianFetch(url, init);
@@ -342,15 +362,46 @@ export async function streamWithFallback(
       corsBlockedOrigins.add(origin);
       if (firstTime) {
         console.warn(
-          `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; using requestUrl for the rest of this session — answers will arrive in one piece instead of streaming.`
+          `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; falling back for the rest of this session.`
         );
       }
-      // Build a response from requestUrl — no streaming body, but
-      // AI-SDK can still read it as a single yield.
-      return obsidianFetchBridge(url, init);
+      return viaFallbackTransport(url, init, origin);
     }
     throw err;
   }
+}
+
+/**
+ * Serve a request whose origin refuses `window.fetch`.
+ *
+ * Desktop tries the `node:https` transport first because it is the only one
+ * here that can still stream. If it fails with a `TypeError` — no proxy path,
+ * no route, TLS interception — that is recorded as a property of the origin
+ * and the request goes through `requestUrl`, which is buffered but honours the
+ * proxy. An `AbortError` is not a `TypeError` and propagates: a cancelled
+ * request says nothing about whether the transport works.
+ */
+async function viaFallbackTransport(
+  url: string,
+  init: ObsidianFetchInit | undefined,
+  origin: string
+): Promise<Response> {
+  // Mobile has no Node transport at all, so this is not a finding worth
+  // reporting — the origin simply goes to requestUrl. Only a *desktop* attempt
+  // that failed tells the user something they did not already know.
+  if (Platform.isDesktopApp && !nodeTransportBlockedOrigins.has(origin)) {
+    try {
+      console.debug(`[${STREAM_FETCH_LOG}] trying node:https transport for ${origin}`);
+      return await nodeHttpsFetch(url, init);
+    } catch (err) {
+      if (!(err instanceof TypeError)) throw err;
+      nodeTransportBlockedOrigins.add(origin);
+      console.warn(
+        `[${STREAM_FETCH_LOG}] node:https transport unavailable for ${origin} (${err.message}); using requestUrl, so answers will arrive in one piece.`
+      );
+    }
+  }
+  return obsidianFetchBridge(url, init);
 }
 
 /**
