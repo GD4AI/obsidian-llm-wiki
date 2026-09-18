@@ -1051,6 +1051,30 @@ export interface WriteIntent {
  */
 export const FULL_WRITE_INTENT: WriteIntent = { guard: true, notify: true };
 
+/**
+ * The operation log is a journal, not a page (Issue #603 slice 2).
+ *
+ * Dropping `guard` here fixes a real corruption: `LogWriter.pageLinks` builds its
+ * links from **actual page paths**, so a page legitimately named `concepts布局优化`
+ * under `wiki/concepts/` is written as `[[concepts/concepts布局优化]]` — correct as
+ * written. The guard's path-prefix repair cannot distinguish that from LLM-emitted
+ * duplication and rewrote it to `[[concepts/布局优化]]`, a dead link.
+ *
+ * `notify` stays on: the log is a vault file the watcher and the index must hear
+ * about. Only the guard is dropped.
+ */
+export const LOG_WRITE_INTENT: WriteIntent = { guard: false, notify: true };
+
+/**
+ * The PDF sidecar wants the write itself and nothing else (Issue #603 slice 2).
+ *
+ * This is the bypass that `wiki-engine.ts:845-851` already documented in prose —
+ * going through the full gate would fire `onFileWrite` + `invalidatePageCaches`,
+ * which "could trigger auto-ingest cascades if the source folder is watched". The
+ * declaration makes that intent checkable instead of inferable from silence.
+ */
+export const RAW_WRITE_INTENT: WriteIntent = { guard: false, notify: false };
+
 // Shape returned by wiki/lint/get-existing-pages.ts's getExistingWikiPages, shared
 // with EngineContext's and WikiEngine's own accessors so the three don't drift
 // out of sync with each other or with the field the implementation actually sets.
