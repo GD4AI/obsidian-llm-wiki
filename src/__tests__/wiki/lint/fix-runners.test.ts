@@ -28,6 +28,10 @@ const makeCtx = (overrides: Partial<LintContext> = {}): LintContext => {
       fillEmptyPage: vi.fn().mockResolvedValue('expanded'),
       linkOrphanPage: vi.fn().mockResolvedValue(['wiki/OtherPage']),
       mergeDuplicatePages: vi.fn().mockResolvedValue('merged'),
+      // #603 slice 3: the lint fixers write through the engine's declared-intent
+      // entry rather than `app.vault.adapter.write`, so this is the capture point
+      // the write-assertions below read from.
+      writeFileWithIntent: vi.fn().mockResolvedValue(undefined),
     } as unknown as LintContext['wikiEngine'],
     onAnalyzeSchema: vi.fn(),
   };
@@ -167,22 +171,18 @@ describe('fix-runners — AbortSignal propagation', () => {
 // canonical `serializeFrontmatter` writer.
 
 describe('runAliasCompletion — frontmatter write correctness', () => {
-  // Capture what `vault.adapter.write` was called with.
+  // Capture what the engine's declared-intent write was called with.
   function makeWriteCaptureCtx(): {
     ctx: LintContext;
     writes: Array<{ path: string; data: string }>;
   } {
     const writes: Array<{ path: string; data: string }> = [];
     const ctx = makeCtx({
-      app: {
-        vault: {
-          adapter: {
-            write: vi.fn().mockImplementation(async (path: string, data: string) => {
-              writes.push({ path, data });
-            }),
-          },
-        },
-      } as unknown as LintContext['app'],
+      wikiEngine: {
+        writeFileWithIntent: vi.fn().mockImplementation(async (path: string, data: string) => {
+          writes.push({ path, data });
+        }),
+      } as unknown as LintContext['wikiEngine'],
       llmClient: {
         createMessage: vi.fn().mockResolvedValue(
           '{"aliases":["Foo","Bar"]}'
@@ -373,7 +373,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
     return runRetagViolations(ctx, undefined, [baseViolation]).then(result => {
       expect(result.fixed).toBe(1);
       expect(result.results[0]).toContain('Alice.md');
-      const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
+      const writeSpy = (ctx.wikiEngine as unknown as { writeFileWithIntent: ReturnType<typeof vi.fn> }).writeFileWithIntent;
       const writtenContent = writeSpy.mock.calls[0][1] as string;
       // v1.24.0: tags are now serialized via the canonical writer.
       // Both block (`tags:\n  - "person"`) and inline (`tags: [person]`)
@@ -393,7 +393,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
     const ctx = makeRetagCtx({
       llmResponse: '{"tags":["person","bogus","Medical_Arzneimittel"]}',
     });
-    const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
+    const writeSpy = (ctx.wikiEngine as unknown as { writeFileWithIntent: ReturnType<typeof vi.fn> }).writeFileWithIntent;
     const result = await runRetagViolations(ctx, undefined, [baseViolation]);
     expect(result.fixed).toBe(1);
     const writtenContent = writeSpy.mock.calls[0][1] as string;
@@ -408,7 +408,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
 
   it('does not write when LLM returns empty tags (safety)', async () => {
     const ctx = makeRetagCtx({ llmResponse: '{"tags":[]}' });
-    const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
+    const writeSpy = (ctx.wikiEngine as unknown as { writeFileWithIntent: ReturnType<typeof vi.fn> }).writeFileWithIntent;
     const result = await runRetagViolations(ctx, undefined, [baseViolation]);
     expect(result.fixed).toBe(0);
     expect(writeSpy).not.toHaveBeenCalled();
@@ -436,7 +436,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
       fileContent: '---\ntype: source\ntitle: Smith2024\ntags: [Medical_Arzneimittel]\n---\n\nSmith 2024 body.',
       llmResponse: '{"tags":["article"]}',
     });
-    const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
+    const writeSpy = (ctx.wikiEngine as unknown as { writeFileWithIntent: ReturnType<typeof vi.fn> }).writeFileWithIntent;
     const result = await runRetagViolations(ctx, undefined, [sourceViolation]);
     expect(result.fixed).toBe(1);
     const writtenContent = writeSpy.mock.calls[0][1] as string;
@@ -451,7 +451,7 @@ describe('runRetagViolations (Issue #85 v7)', () => {
       // not source vocab). Both must be filtered.
       llmResponse: '{"tags":["article","bogus","person"]}',
     });
-    const writeSpy = (ctx.app.vault.adapter as unknown as { write: ReturnType<typeof vi.fn> }).write;
+    const writeSpy = (ctx.wikiEngine as unknown as { writeFileWithIntent: ReturnType<typeof vi.fn> }).writeFileWithIntent;
     const result = await runRetagViolations(ctx, undefined, [sourceViolation]);
     expect(result.fixed).toBe(1);
     const writtenContent = writeSpy.mock.calls[0][1] as string;
@@ -703,6 +703,13 @@ describe('runAliasCompletion — typed-output migration (#443 expanded scope)', 
           adapter: { write: vi.fn().mockResolvedValue(undefined) },
         },
       } as unknown as LintContext['app'],
+      // #603 slice 3: the alias fix writes through the engine's declared-intent
+      // entry, so this stub is required for `result.filled` to reach 1. The
+      // `adapter.write` stub above is kept only because other assertions in this
+      // block still reference it.
+      wikiEngine: {
+        writeFileWithIntent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as LintContext['wikiEngine'],
       llmClient: client,
       settings: { wikiFolder: 'wiki', language: 'en' } as LintContext['settings'],
     } as unknown as LintContext;

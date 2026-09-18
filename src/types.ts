@@ -1093,6 +1093,12 @@ export interface EngineContext {
   app: App;
   settings: LLMWikiSettings;
   getClient: () => LLMClient | null;
+  /**
+   * The legacy shorthand: the full gate (`FULL_WRITE_INTENT`). Its meaning is
+   * frozen so the call sites that predate `WriteIntent` keep behaving exactly as
+   * they did. A caller that wants a subset declares it through
+   * `WikiEngine.writeFileWithIntent` instead (Issue #603 slice 3).
+   */
   createOrUpdateFile: (path: string, content: string) => Promise<void>;
   tryReadFile: (path: string) => Promise<string | null>;
   deleteFile: (path: string) => Promise<void>;
