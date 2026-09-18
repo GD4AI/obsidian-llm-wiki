@@ -193,7 +193,17 @@ describe('WikiEngine.createOrUpdateFile — NFC/NFD path resolution (#173 Sympto
 
     await h.engine.createOrUpdateFile('wiki/sources/new.md', 'fresh content');
 
-    expect(h.files.get('wiki/sources/new.md')).toBe('fresh content');
+    const written = h.files.get('wiki/sources/new.md');
+    // The content was created rather than updated...
+    expect(written).toContain('fresh content');
+    // ...and `markPageComplete` has stamped it by now. This second assertion is
+    // new and it replaces a race rather than relaxing one. `markPageComplete` is
+    // fire-and-forget (`void (async () => …)()`), so whether it landed before the
+    // caller resumed depended on how many async frames the write path took — the
+    // #603 layer split added one, which made the stamp land here deterministically.
+    // The stamp is correct (the page is complete); pinning it means this test now
+    // asserts the resolved order instead of a coin flip.
+    expect(written).toContain('generation_complete: true');
     // A new file creation should not trigger vaultMarkdownScans either.
     expect(h.stats.vaultMarkdownScans).toBe(0);
   });

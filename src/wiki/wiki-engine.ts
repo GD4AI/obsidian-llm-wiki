@@ -15,10 +15,12 @@ import {
   WikiPageRef,
   VALID_SOURCE_TAGS,
   DEFAULT_SOURCE_TAG,
+  WriteIntent,
+  FULL_WRITE_INTENT,
 } from '../types';
 import { PROMPTS } from '../prompts';
-import { normalizeHeadingSpacing } from '../core/markdown-spacing';
 import { getText } from '../core/i18n';
+import { applyPageGuard } from './page-write-guard';
 import { buildRepetitionPenaltyHint } from '../core/repetition-penalty-hint';
 import { formatTaskUsage, snapshotTaskUsage, taskUsageSince } from '../core/llm-task-usage';
 import { TEXTS } from '../texts';
@@ -33,7 +35,6 @@ import { setGenerationComplete } from '../core/incomplete-page-cleaner';
 import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from '../core/pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
 import { hashBody, checkContentRequirements } from '../core/source-requirements';
-import { normalizeProvenanceMarkers } from '../core/provenance-marker';
 import { resolveModelForTask } from '../core/model-resolver';
 import type { SourceRejection } from '../core/source-requirements';
 // v1.25.1 Phase C-PR1: detectRateLimitFailures is invoked exclusively by runBatchedWithRetry (engine-internals/page-batch-runner.ts).
@@ -63,7 +64,6 @@ import { linkOrphanPage } from './lint/link-orphan';
 import { mergeDuplicatePages } from './lint/merge-duplicates';
 import { fixPollutedPage } from './lint/fix-polluted-page';
 import { ContradictionManager } from './contradictions';
-import { fixPollutedSources } from '../core/sources-normalizer';
 // v1.25.1 Phase C-PR1: buildLogHeader moved into LogWriter.
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
 import { SourceAnalyzer } from './source-analyzer';
@@ -1870,7 +1870,39 @@ export class WikiEngine {
     return path;
   }
 
+  /**
+   * How a write reached its result (Issue #603).
+   *
+   * `recovered` is a separate case because the two recovery paths — the
+   * NFC/NFD "already exists" fallback and the exhausted-retries scan — do **not**
+   * stamp the page complete, while the two ordinary paths do. That asymmetry is
+   * preserved deliberately: this slice changes no behaviour, and encoding the
+   * outcome in a return value makes the difference checkable instead of hidden in
+   * two early `return`s. Whether the recovery paths should stamp is a slice-3
+   * decision, not one to make silently here.
+   */
+  private static readonly RECOVERED = 'recovered' as const;
+
+  /**
+   * The compatibility entry point. Every existing caller already gets the full
+   * gate — `writeFileWithIntent` with `FULL_WRITE_INTENT` — so this shorthand
+   * changes nothing. New callers that want a subset should name it (Issue #603).
+   */
   async createOrUpdateFile(path: string, content: string): Promise<void> {
+    return this.writeFileWithIntent(path, content, FULL_WRITE_INTENT);
+  }
+
+  /**
+   * The write gate, with the layers a caller actually wants.
+   *
+   * Order is unchanged from the single-method form: cancel check, guard, write,
+   * page completion, notification. Only the composition is new.
+   */
+  private async writeFileWithIntent(
+    path: string,
+    content: string,
+    intent: WriteIntent
+  ): Promise<void> {
     // #646: a cancelled ingest stops at the next page write. The abort signal
     // reaches the model call only since the same fix; before, every call ran
     // to its end and the cancel was honoured at three checkpoints per ingest.
@@ -1881,69 +1913,52 @@ export class WikiEngine {
     this.checkCancelled();
     console.debug('createOrUpdateFile:', path);
 
-    // Central pollution detection: strip folder-prefix duplication from wiki-links
-    // before writing. This catches pollution from ALL sources (page generation,
-    // stub expansion, dead link fixes, merges, etc.).
-    //
-    // Pattern A: display-name pollution — [[entities/X|entities/Y]]
-    //   e.g. [[entities/Qwen|entities/Qwen]] → [[entities/Qwen|Qwen]]
-    const DISPLAY_POLLUTION_REGEX = /\[\[(entities|concepts|sources)\/([^|\]]+)\|(entities|concepts|sources)\/([^|\]]+)\]\]/g;
-    if (DISPLAY_POLLUTION_REGEX.test(content)) {
-      console.warn(
-        `createOrUpdateFile: detected display-name pollution in ${path}, auto-correcting`
-      );
-      content = content.replace(
-        DISPLAY_POLLUTION_REGEX,
-        (_match: string, _folder: string, _path: string, _dupFolder: string, display: string) => {
-          return `[[${_folder}/${_path}|${display}]]`;
-        }
-      );
+    const isWikiContentPage = this.isInWikiContentFolder(path, this.settings.wikiFolder);
+
+    if (intent.guard) {
+      const guarded = applyPageGuard(content, {
+        wikiFolder: this.settings.wikiFolder,
+        preserveCase: this.settings.slugCase === 'preserve',
+        isWikiContentPage,
+      });
+      content = guarded.content;
+      // The messages are unchanged from the pre-split form: the guard reports
+      // what it corrected, the engine still says it, so the console looks
+      // identical.
+      if (guarded.corrections.displayNamePollution) {
+        console.warn(
+          `createOrUpdateFile: detected display-name pollution in ${path}, auto-correcting`
+        );
+      }
+      if (guarded.corrections.pathPrefixPollution) {
+        console.warn(
+          `createOrUpdateFile: detected path-prefix pollution in ${path}, auto-correcting`
+        );
+      }
+      if (guarded.corrections.sourcesEntries > 0) {
+        console.warn(`createOrUpdateFile: normalized polluted sources field in ${path}`);
+      }
     }
 
-    // Pattern B: path-prefix duplication — [[X/Xname|name]]
-    //   e.g. [[concepts/concepts布局优化|布局优化]] → [[concepts/布局优化|布局优化]]
-    //   The folder prefix is duplicated in the path portion, directly before
-    //   the page name with no separator (CJK char, letter, etc.).
-    //   Safe: [[concepts/concepts-of-ML|...]] — '-' separator indicates legitimate slug.
-    const PATH_DUP_REGEX = /\[\[(entities|concepts|sources)\/\1([^\s\-_|\]]+)(\|[^\]]+)?\]\]/g;
-    if (PATH_DUP_REGEX.test(content)) {
-      console.warn(
-        `createOrUpdateFile: detected path-prefix pollution in ${path}, auto-correcting`
-      );
-      content = content.replace(
-        PATH_DUP_REGEX,
-        (_match: string, folder: string, rest: string, display: string | undefined) => {
-          const displayPart = display || '';
-          return `[[${folder}/${rest}${displayPart}]]`;
-        }
-      );
-    }
+    const outcome = await this.rawWrite(path, content);
 
-    // Issue #125: normalize the `sources:` frontmatter field on every write.
-    // The LLM emits raw note paths ("[[Notizen/Autonome Dysregulation.md]]"),
-    // `.md` extensions, `|alias` pipes, and space/paren-containing titles. Left
-    // unfixed these become dead links that previously required a post-ingest
-    // cleanup script. normalizeSourcesField (Issue #81) already exists and is
-    // unit-tested but was only wired into the lint/auto-maintain paths — not the
-    // generation/merge write path that produces this pollution in the first place.
-    const preserveCase = this.settings.slugCase === 'preserve';
-    const sourcesFix = fixPollutedSources(content, this.settings.wikiFolder, preserveCase);
-    if (sourcesFix.fixed > 0) {
-      console.warn(`createOrUpdateFile: normalized polluted sources field in ${path}`);
-      content = sourcesFix.content;
+    if (intent.guard && outcome !== WikiEngine.RECOVERED && isWikiContentPage) {
+      this.markPageComplete(path);
     }
-
-    // Cosmetic spacing: one blank line after each heading, blank-line runs
-    // collapsed (see core/markdown-spacing.ts). Wiki content pages only —
-    // log/schema writes pass through untouched.
-    if (this.isInWikiContentFolder(path, this.settings.wikiFolder)) {
-      content = normalizeHeadingSpacing(content);
-      // Repair the provenance footnote's brackets on the same pass. The model
-      // gets them wrong often enough that paragraph-provenance.ts stops seeing
-      // the marker, and a marker it cannot see is a paragraph with no owner.
-      content = normalizeProvenanceMarkers(content);
+    if (intent.notify) {
+      this.onFileWrite?.(path);
+      this.invalidatePageCaches();
     }
+  }
 
+  /**
+   * Concern 3 of the old gate: retry, path resolution, create-or-update.
+   *
+   * Deliberately knows nothing about wiki pages, pollution or notification — that
+   * is what makes it usable by the PDF sidecar, whose comment at `:845-851` is the
+   * original evidence that one gate for every write was the wrong shape.
+   */
+  private async rawWrite(path: string, content: string): Promise<string> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const file = this.app.vault.getAbstractFileByPath(path);
@@ -1951,12 +1966,7 @@ export class WikiEngine {
           console.debug(`Attempt ${attempt + 1}: File exists, updating:`, path);
           await this.app.vault.process(file, () => content);
           console.debug('Update success:', path);
-          if (this.isInWikiContentFolder(path, this.settings.wikiFolder)) {
-            this.markPageComplete(path);
-          }
-          this.onFileWrite?.(path);
-          this.invalidatePageCaches();
-          return;
+          return 'updated';
         }
 
         // getAbstractFileByPath returned null — could be an NFC/NFD normalization
@@ -1969,12 +1979,7 @@ export class WikiEngine {
             console.debug('createOrUpdateFile: resolved via directory scan:', path);
             await this.app.vault.process(resolved, () => content);
             console.debug('Update success (resolved path):', path);
-            if (this.isInWikiContentFolder(path, this.settings.wikiFolder)) {
-              this.markPageComplete(path);
-            }
-            this.onFileWrite?.(path);
-            this.invalidatePageCaches();
-            return;
+            return 'updated';
           }
         }
 
@@ -1982,12 +1987,7 @@ export class WikiEngine {
         console.debug(`Attempt ${attempt + 1}: File not found, creating:`, path);
         await this.app.vault.create(path, content);
         console.debug('Create success:', path);
-        if (this.isInWikiContentFolder(path, this.settings.wikiFolder)) {
-          this.markPageComplete(path);
-        }
-        this.onFileWrite?.(path);
-        this.invalidatePageCaches();
-        return;
+        return 'created';
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.error(`Attempt ${attempt + 1} failed:`, errorMsg);
@@ -2006,9 +2006,7 @@ export class WikiEngine {
           if (resolved instanceof TFile) {
             await this.app.vault.process(resolved, () => content);
             console.debug('Update succeeded after file resolution:', path);
-            this.onFileWrite?.(path);
-            this.invalidatePageCaches();
-            return;
+            return 'recovered';
           }
           console.debug('File exists anomaly, retrying after 100ms:', path);
           await new Promise(resolve => window.setTimeout(resolve, 100));
@@ -2033,8 +2031,7 @@ export class WikiEngine {
     if (file) {
       await this.app.vault.process(file, () => content);
       console.debug('Final update succeeded:', path);
-      this.onFileWrite?.(path);
-      this.invalidatePageCaches();
+      return 'recovered';
     } else {
       // Issue #172: localize via getText, never hardcode CJK in source.
       throw new Error(

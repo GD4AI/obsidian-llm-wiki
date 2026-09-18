@@ -1013,10 +1013,43 @@ export const DEFAULT_SOURCE_TAG = 'other';
 // Core (required by all sub-modules):
 //   getClient — runtime accessor for LLM client, reflects settings changes
 //   getExistingWikiPages — reads frontmatter from all wiki/*.md files
-//   createOrUpdateFile — single write gate with pollution defense
+//   createOrUpdateFile — the write gate: pageGuard + rawWrite + notify
 // Integration (consumed by auto-maintain and ingestion pipeline):
 //   onFileWrite — notifies file watcher of writes for change detection
 //   onProgress / onDone — ingestion progress → UI modal
+
+/**
+ * Which layers of the write gate a caller wants (Issue #603).
+ *
+ * The gate used to offer all of its four concerns or none, and different callers
+ * need different subsets — the PDF sidecar's deliberate bypass at
+ * `wiki-engine.ts:845-851` is the proof, since it opts out of notification to
+ * avoid auto-ingest cascades. Naming the layers makes each call site's intent
+ * checkable instead of inferred from silence.
+ *
+ * There is no default. A default is how the ambiguity this type exists to remove
+ * would come back.
+ */
+export interface WriteIntent {
+  /**
+   * Pollution correction plus heading/provenance normalization —
+   * `wiki/page-write-guard.ts`. For **wiki pages**. A log or a sidecar is not a
+   * page and gains nothing from it.
+   */
+  guard: boolean;
+  /**
+   * `onFileWrite` + cache invalidation. For anything the file watcher must see.
+   * The sidecar opts out deliberately.
+   */
+  notify: boolean;
+}
+
+/**
+ * The intent every existing caller of `createOrUpdateFile` already gets, kept as
+ * a named constant so the compatibility path is not a bare literal that later
+ * callers copy without noticing what it means.
+ */
+export const FULL_WRITE_INTENT: WriteIntent = { guard: true, notify: true };
 
 // Shape returned by wiki/lint/get-existing-pages.ts's getExistingWikiPages, shared
 // with EngineContext's and WikiEngine's own accessors so the three don't drift
