@@ -27,7 +27,7 @@ import {
   type LLMFinishReason,
   type LLMFinishMeta,
   type LLMUsage,
-  type MessageContentPart,
+  type LLMMessage,
 } from '../types';
 import { obsidianFetchBridge, streamWithFallback } from '../core/obsidian-fetch-bridge';
 import { mapAiSdkError } from './openai-sdk-client';
@@ -382,7 +382,8 @@ export class OpenAICompatSdkClient implements LLMClient {
       const result = await generateText({
         model: languageModel,
         ...(system ? { system } : {}),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         ...outputArgs,
         providerOptions: this.buildProviderOptions({
@@ -557,7 +558,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -642,7 +643,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -780,7 +781,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           const result = await generateText({
             model: retryLanguageModel,
             ...(retrySystem ? { system: retrySystem } : {}),
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            messages,
             maxOutputTokens: max_tokens,
             ...buildOutputArgs(response_format, demotedMode),
             providerOptions: this.buildProviderOptions({
@@ -843,7 +844,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -898,7 +899,7 @@ export class OpenAICompatSdkClient implements LLMClient {
     max_tokens: number;
     abortSignal?: AbortSignal;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     response_format?: { type: 'json_object'; schema?: Record<string, unknown> | z.ZodType };
     task?: string;
     outputModeOverride?: OutputMode;
@@ -962,7 +963,7 @@ export class OpenAICompatSdkClient implements LLMClient {
       const result = await generateText({
         model: languageModel,
         ...(system ? { system } : {}),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages,
         maxOutputTokens: max_tokens,
         ...outputArgs,
         providerOptions: this.buildProviderOptions({
@@ -1085,7 +1086,7 @@ export class OpenAICompatSdkClient implements LLMClient {
               const retryResult = await generateText({
                 model: retryLanguageModel,
                 ...(retrySystem ? { system: retrySystem } : {}),
-                messages: messages.map((m) => ({ role: m.role, content: m.content })),
+                messages,
                 maxOutputTokens: max_tokens,
                 ...buildOutputArgs(response_format, 'text_prompt'),
                 providerOptions: this.buildProviderOptions({
@@ -1186,7 +1187,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -1250,7 +1251,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             const result = await generateText({
               model: retryLanguageModel,
               ...(retrySystem ? { system: retrySystem } : {}),
-              messages: messages.map((m) => ({ role: m.role, content: m.content })),
+              messages,
               maxOutputTokens: max_tokens,
               ...buildOutputArgs(response_format, demotedMode),
               providerOptions: this.buildProviderOptions({
@@ -1290,7 +1291,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({

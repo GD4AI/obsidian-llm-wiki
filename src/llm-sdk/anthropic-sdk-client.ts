@@ -196,6 +196,7 @@ export class AnthropicSdkClient implements LLMClient {
         // Anthropic's 4 cache breakpoints (Issue #449 Branch D fix).
         ...(system ? { system } : {}),
         messages: messagesWithCacheControl,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         providerOptions: this.buildProviderOptions({
           enableThinking,

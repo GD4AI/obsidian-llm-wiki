@@ -94,6 +94,35 @@ export interface SourceAnalysis {
    * (tests, callers predating #496) legitimately omit it.
    */
   mentions_in_source?: string[];
+  /** Runtime-only diagnostics for opt-in embedded image analysis. */
+  embedded_image_analysis?: EmbeddedImageAnalysisReport;
+}
+
+export interface EmbeddedImageAnalysisReport {
+  discovered: number;
+  queued: number;
+  sent: number;
+  analyzed: number;
+  packages: number;
+  convertedGifs: number;
+  failedPackages: number;
+  skipped: Array<{ path: string; reason: string }>;
+  evidence: EmbeddedImageEvidence[];
+  evidenceSaved: boolean;
+}
+
+export interface EmbeddedImageEvidence {
+  index: number;
+  path: string;
+  contextBefore: string;
+  contextAfter: string;
+  visibleText?: string;
+  description?: string;
+  beforeRelevance?: string;
+  afterRelevance?: string;
+  contextInterpretation?: string;
+  status: 'analyzed' | 'no-evidence' | 'skipped' | 'failed';
+  reason?: string;
 }
 
 export interface EntityInfo {
@@ -439,6 +468,11 @@ export interface LLMWikiSettings {
    */
   writePdfMarkdownToVault?: boolean;
 
+  /** Opt-in local-image analysis for Markdown source embeds. */
+  analyzeEmbeddedImages?: boolean;
+  /** Opt-in audit trail for the visual evidence produced during image analysis. */
+  saveEmbeddedImageEvidence?: boolean;
+
   // Issue #128: per-task sampling temperature. Leave undefined to use the
   // provider's default. Low values (e.g. 0.15) improve fidelity for extraction
   // and verbatim quotes; higher values (e.g. 0.7) make chat answers more fluid.
@@ -713,6 +747,7 @@ export interface IngestReport {
   skipped?: boolean;
   /** Files rejected by the requirements gate, with the reason for each. */
   rejectedFiles?: Array<{ path: string; reason: RejectionReason; detail?: string }>;
+  embeddedImageAnalysis?: EmbeddedImageAnalysisReport;
 }
 
 /** Cross-file dedup state shared across a folder/batch ingest run (#164). */
@@ -760,7 +795,20 @@ export interface IngestOptions {
  */
 export type MessageContentPart =
   | { type: 'text'; text: string }
-  | { type: 'file'; data: string; mediaType: 'application/pdf'; filename?: string };
+  | { type: 'file'; data: string; mediaType: 'application/pdf'; filename?: string }
+  | ImageContentPart;
+
+/** A local image encoded as base64 for the AI SDK's multimodal input. */
+export type ImageContentPart = {
+  type: 'image';
+  image: string;
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif' | 'image/bmp';
+};
+
+/** User messages may carry images; assistant messages retain text/file compatibility. */
+export type LLMMessage =
+  | { role: 'user'; content: string | MessageContentPart[] }
+  | { role: 'assistant'; content: string | Exclude<MessageContentPart, ImageContentPart>[] };
 
 /**
  * Why the provider stopped generating. Mirrors the AI SDK v6 `FinishReason`
@@ -814,7 +862,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     response_format?:
       | { type: 'json_object' }
       // v1.26.3 PATCH pilot (Issue #443): a schema can now travel with
@@ -917,7 +965,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     // v1.26.3 PATCH Phase B: `schema` accepts either a raw JSON Schema
     // (legacy callers) or a Zod schema (Phase B migrations — the Zod
     // schema is the single source of truth for both the Tier 0 wire
@@ -952,7 +1000,7 @@ export interface LLMClient {
     model: string;
     max_tokens: number;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     onChunk: (chunk: string) => void;
     enableThinking?: boolean;
     temperature?: number;
@@ -1076,6 +1124,7 @@ export interface EngineContext {
   getSectionLabels: () => Record<string, string>;
   getExistingWikiPages: () => Promise<WikiPageRef[]>;
   getSchemaContext: (task: string) => Promise<string | undefined>;
+  getAbortSignal?: () => AbortSignal | undefined;
   /**
    * SubtleCrypto from Obsidian's popout-window-aware `activeWindow.crypto`.
    * Used by the PDF cache to derive a content-addressed key without
@@ -1415,6 +1464,8 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // PDF conversion.
   forcePdfSupport: false,
   writePdfMarkdownToVault: false,
+  analyzeEmbeddedImages: false,
+  saveEmbeddedImageEvidence: false,
   // v1.26.0 (#382 item 2): dedup threshold overrides — undefined = use the
   // LINT_DEDUP_* constants in src/constants.ts. The UI renders them only
   // when showAdvancedSettings is on (Advanced Settings panel, bottom of the

@@ -1,6 +1,13 @@
 // Ingestion prompts — source analysis, entity resolution
 
 export const INGESTION_PROMPTS = {
+  analyzeEmbeddedImages: `Analyze the supplied local images from one Markdown source. Return JSON only.
+
+For every supplied image, use the preceding and following Markdown passages only as candidate context. Each image's metadata text is immediately followed by that image's content block; preserve that exact numeric index in your result. Return one record for every image even when it has no visible text or useful evidence. Judge each passage independently as "related", "supporting", "unrelated", or "uncertain"; neither direction is inherently more authoritative. Return a context interpretation only when one or both passages are related or supporting, and do not use unrelated passages to infer facts. Return the numeric source position, visible text (when legible), and concise factual visual evidence. Do not invent details. The evidence will be combined with the source Markdown for later wiki extraction; do not create entities or concepts here.
+
+Output format:
+{"images":[{"index":0,"visible_text":"exact visible text or empty string","description":"concise factual description","before_relevance":"related|supporting|unrelated|uncertain","after_relevance":"related|supporting|unrelated|uncertain","context_interpretation":"relationship supported only by related or supporting context, or empty string"}]}`,
+
   analyzeSource: `You are a Wiki knowledge base maintainer. Analyze the following source file and output structured JSON.
 
 **Source File:**

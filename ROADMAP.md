@@ -4,6 +4,8 @@
 
 **Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-16 (**v1.28.0 MINOR planning opened** — design track seeded from the cross-source relation work, issue #729; see the section below)
 
+**Next MINOR candidate:** Issue #608 — opt-in local Markdown-image analysis. The implementation resolves vault-local Obsidian and Markdown image embeds into 20 MiB visual-evidence packages with no per-note image-count limit; individual images stay capped at 10 MiB and GIFs use their first frame. Images carry their nearest Markdown paragraphs for context, and a default-off source-page audit section can retain the resulting evidence. Remote images, OCR, and caching remain out of scope.
+
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
 **v1.27.0 MINOR Phase4 (CLI demote) — MERGED 2026-08-22**: PR #511 (`002da74`, closes #507) migrates `tools/llm-wiki-cli/` → `tools/dev-instrument/` (UPSTREAM DEV-ONLY INSTRUMENT, engine contributors only), eliminating 49 of ~52 Obsidian Bot errors. Two review rounds by @DocTpoint (round-2 blocking finding produced the shim-bundle smoke test now in Gate 1); legacy snapshot at `legacy/cli-v1.26.4-snapshot`. One-cycle deprecation notice ships in the v1.27.0 release notes.
