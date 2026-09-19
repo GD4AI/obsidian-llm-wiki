@@ -132,30 +132,33 @@ class NodeLoopbackServer implements LoopbackServer {
 }
 
 async function requireNodeHttp(): Promise<typeof import('node:http')> {
+  // Obsidian loads plugins as CommonJS. A dynamic import of a Node built-in
+  // is handled by the renderer as a browser module fetch on some Obsidian
+  // versions (`Failed to fetch dynamically imported module: node module`).
+  // Use the CJS loader that is already available to the plugin instead.
   // v1.25.6: Use module.createRequire(__filename) — the typed Node.js API
-  // for creating a CJS require function from an ESM context. Replaces the
+  // for creating a CJS require function. Replaces the
   // bare `require('node:http')` that v1.25.4/5 used because:
   //   - The bare `require()` global returns `any` per @types/node, polluting
   //     every downstream consumer with `@typescript-eslint/no-unsafe-*`
   //     warnings (Bot enforces these as errors).
   //   - `createRequire` is the official typed Node API for this — both
-  //     `node:module` (dynamic import, guarded below) and `node:http`
+  //     `node:module` (CommonJS require, guarded below) and `node:http`
   //     (the createRequire result) are protected by the
   //     Platform.isDesktop guard satisfying `obsidianmd/no-nodejs-modules`
   //     AST guard-detection.
   //   - `__filename` is replaced by esbuild with the actual file path in
   //     the bundled CJS output (no `import.meta.url` needed).
-  //   - Static `import { createRequire } from 'node:module'` would fire
-  //     `no-nodejs-modules` unconditionally (static imports can never be
-  //     guarded at runtime per the rule's source comment), so we use a
-  //     dynamic `import()` inside the guard block.
+  //   - Static imports would fire `no-nodejs-modules` unconditionally, so
+  //     the CommonJS require stays inside the desktop guard.
   // The nodeRequire function signature in @types/node is `(id: string) => any`
   // (same as the bare require), so we cast the result to the precise
   // `typeof import('node:http')` type at the call site — the cast is local
   // to this single return statement, so `any` does not propagate downstream.
   if (!Platform.isDesktop) throw new Error('Codex browser login is available only on desktop');
-  const nodeModule = await import('node:module');
-  // eslint-disable-next-line no-undef -- __filename is a CJS global injected by esbuild's CJS bundler; not a browser global - desktop-only, guarded by Platform.isDesktop above
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- guarded desktop-only CommonJS loader
+  const nodeModule = require('node:module') as typeof import('node:module');
+  // eslint-disable-next-line no-undef -- __filename is provided by the CommonJS bundle
   const nodeRequire = nodeModule.Module.createRequire(__filename);
   return nodeRequire('node:http') as typeof import('node:http');
 }
