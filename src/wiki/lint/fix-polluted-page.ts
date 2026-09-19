@@ -1,5 +1,4 @@
 import { EngineContext } from '../../types';
-import { getExistingWikiPages } from './get-existing-pages';
 import { escapeRegex } from './utils';
 
 export async function fixPollutedPage(
@@ -28,7 +27,7 @@ export async function fixPollutedPage(
   await ctx.createOrUpdateFile(newPath, oldContent);
   await ctx.deleteFile(oldPath);
 
-  const allPages = await getExistingWikiPages(ctx.app, ctx.settings.wikiFolder);
+  const allPages = await ctx.getExistingWikiPages();
   let updatedCount = 0;
   for (const page of allPages) {
     const content = await ctx.tryReadFile(page.path);

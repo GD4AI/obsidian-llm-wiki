@@ -17,6 +17,8 @@ import { describe, it, expect } from 'vitest';
 import { TFile } from 'obsidian';
 import { updateRelatedPage, type RelatedPageContext } from '../../../wiki/page-factory/related-page';
 import type { SourceAnalysis, LLMWikiSettings } from '../../../types';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 const PAGE_PATH = 'wiki/entities/X.md';
 const PAGE_TITLE = 'X';
@@ -67,6 +69,9 @@ function makeCtx(opts: {
       ? null
       : { createMessage: async () => opts.llmResponse ?? 'new body' },
     buildSystemPrompt: async () => 'system',
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
 }
 

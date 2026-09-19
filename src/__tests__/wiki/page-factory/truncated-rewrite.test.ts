@@ -11,6 +11,8 @@ import { updateRelatedPage, type RelatedPageContext } from '../../../wiki/page-f
 import { captureFinish } from '../../../llm-sdk/finish-reason';
 import { createMockEntity } from '../../__support__/factories';
 import type { LLMClient, LLMFinishMeta, LLMWikiSettings, SourceAnalysis } from '../../../types';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 type Params = { task?: string; onFinish?: (meta: LLMFinishMeta) => void };
 
@@ -41,6 +43,9 @@ function makeMergeCtx(client: LLMClient): MergeContext & { written: Map<string, 
     async createOrUpdateFile(p: string, c: string) { written.set(p, c); },
     getClient: () => client,
     buildSystemPrompt: async () => 'system',
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
 }
 
@@ -107,6 +112,9 @@ describe('updateRelatedPage — rewrite cut off at the token limit', () => {
       async createOrUpdateFile(p: string, c: string) { written.set(p, c); },
       getClient: () => client,
       buildSystemPrompt: async () => 'system',
+      getExistingWikiPages(): Promise<WikiPageRef[]> {
+        return mockExistingWikiPages(this)();
+      },
       };
   }
   const analysis: SourceAnalysis = {

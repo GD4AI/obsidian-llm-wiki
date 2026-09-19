@@ -20,7 +20,6 @@ import { coerceToArray } from '../core/arrays';
 import { buildDomainContext, collectActiveVocabulary } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
 import { isBlankSource, extractBody } from '../core/frontmatter';
 import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
-import { getExistingWikiPages } from './lint/get-existing-pages';
 import { getGranularityInstruction } from './system-prompts';
 import { resolveModelForTask } from '../core/model-resolver';
 import { getText } from '../core/i18n';
@@ -745,7 +744,7 @@ export class SourceAnalyzer {
     ];
     if (allExtractedNames.length > 0) {
       try {
-        const existingPages = await getExistingWikiPages(this.ctx.app, this.ctx.settings.wikiFolder);
+        const existingPages = await this.ctx.getExistingWikiPages();
         accumulation.relatedPages = matchExtractedToExisting(allExtractedNames, existingPages);
         console.debug('[Related pages] Programmatic matching:', accumulation.relatedPages.length, 'pages matched');
       } catch (err) {

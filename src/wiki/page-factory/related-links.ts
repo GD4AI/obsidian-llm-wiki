@@ -7,11 +7,12 @@
 import { correctRelatedLinkPrefixes, buildVaultResolver } from '../../core/related-link-corrector';
 import { renderRelatedSections } from '../../core/related-sections';
 import type { Folder } from '../../core/related-sections';
-import { getExistingWikiPages } from '../lint/get-existing-pages';
+import type { WikiPageRef } from '../../types';
 
 interface RelatedLinkCtx {
-  app: unknown;
   settings: { wikiFolder: string; slugCase?: string };
+  /** The wiki page index, through the engine's own held copy (Issue #662). */
+  getExistingWikiPages(): Promise<WikiPageRef[]>;
 }
 
 interface RelatedLists {
@@ -30,7 +31,7 @@ export async function applyRelatedLinks(
   opts: { pageType: 'entity' | 'concept'; keepFrom?: string },
 ): Promise<string> {
   const firstSection: Folder = opts.pageType === 'concept' ? 'concepts' : 'entities';
-  const vaultIndex = { wikiFolder: ctx.settings.wikiFolder, pages: await getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder) };
+  const vaultIndex = { wikiFolder: ctx.settings.wikiFolder, pages: await ctx.getExistingWikiPages() };
   const prefixed = correctRelatedLinkPrefixes(
     content,
     lists.related_entities,

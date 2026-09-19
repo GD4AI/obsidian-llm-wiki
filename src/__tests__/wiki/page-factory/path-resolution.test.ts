@@ -12,6 +12,8 @@ import {
   type PathResolutionContext,
 } from '../../../wiki/page-factory/path-resolution';
 import type { LLMWikiSettings } from '../../../types';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 // Mock app is required because getExistingWikiPages accepts `ctx.app`. We
 // stub it at the test level so the real Obsidian API is never invoked.
@@ -43,6 +45,9 @@ function makeCtx(overrides: {
       return overrides.client === undefined ? null : overrides.client;
     },
     async buildSystemPrompt(): Promise<string> { return 'system'; },
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
   Object.assign(ctx.settings, {
     wikiFolder: 'wiki',

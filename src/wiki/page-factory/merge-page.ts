@@ -60,6 +60,7 @@ import { applyComplementaryAppends } from './complementary-appends';
 import { firstQuotesForPrompt, isConversationSource, mergeError } from './contextualize';
 import { buildNoteExcerpt, renderNoteExcerptBlock } from './note-window';
 import { localDateStamp } from '../../core/format';
+import type { WikiPageRef } from '../../types';
 
 /**
  * Minimal context contract required by mergePage / appendToReviewedPage.
@@ -70,6 +71,8 @@ export interface MergeContext {
   settings: LLMWikiSettings;
   getClient(): LLMClient | null;
   buildSystemPrompt(mode: 'full' | 'compact' | 'merge'): Promise<string>;
+  /** The wiki page index, through the engine's own held copy (Issue #662). */
+  getExistingWikiPages(): Promise<WikiPageRef[]>;
   createOrUpdateFile(path: string, content: string): Promise<void>;
   tryReadFile(path: string): Promise<string | null>;
   /** Optional: receives each contradiction the triage lane records (see EngineContext). */

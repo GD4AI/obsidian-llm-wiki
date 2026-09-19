@@ -8,6 +8,7 @@
 
 import type { App } from 'obsidian';
 import { LLMWikiSettings, LLMClient } from '../../types';
+import type { WikiPageRef } from '../../types';
 import { WikiEngine } from '../wiki-engine';
 
 // Public ctx for the entire lint run. The controller creates one of these
@@ -67,7 +68,7 @@ export interface LintPhaseContext {
   llmClient: () => LLMClient | null;
   wikiEngine: {
     updateStatusBar: (text: string) => void;
-    getExistingWikiPages: () => Promise<Array<{ path: string }>>;
+    getExistingWikiPages: () => Promise<WikiPageRef[]>;
     tryReadFile: (path: string) => Promise<string | null>;
     getOpenContradictions: () => Promise<Array<{ path: string; status: string; claim: string }>>;
   };

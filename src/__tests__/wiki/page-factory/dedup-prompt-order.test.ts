@@ -24,6 +24,8 @@ import {
 } from '../../../wiki/page-factory/path-resolution';
 import type { LLMWikiSettings } from '../../../types';
 import { PathResolutionLLMSchema } from '../../../llm-sdk/output-schemas';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 describe('resolveEntityDedup template — invariant prefix first', () => {
   it('renders the existing-pages list before the per-call candidate block', () => {
@@ -63,6 +65,9 @@ function makeCtx(files: MockFile[], capture: { prompt?: string }): PathResolutio
       };
     },
     async buildSystemPrompt(): Promise<string> { return 'system'; },
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
 }
 
@@ -128,6 +133,9 @@ describe('resolvePagePath — typed-output migration (#443 expanded scope)', () 
     async createOrUpdateFile(): Promise<void> {},
     getClient() { return client; },
     async buildSystemPrompt(): Promise<string> { return 'system'; },
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   });
 
   it('passes PathResolutionLLMSchema on the wire via response_format.schema (legacy client)', async () => {

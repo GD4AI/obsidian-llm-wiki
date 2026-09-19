@@ -55,7 +55,7 @@ import {
   getSourcePageHeadLabels,
   applySectionLabels,
 } from './system-prompts';
-import { getExistingWikiPages } from './lint/get-existing-pages';
+import { WikiPageIndex } from './lint/get-existing-pages';
 import { correctRelatedLinkPrefixes, repointFolderTypedLinks } from '../core/related-link-corrector';
 import { fixDeadLink } from './lint/fix-dead-link';
 import { fillEmptyPage } from './lint/fill-empty-page';
@@ -67,7 +67,7 @@ import { ContradictionManager } from './contradictions';
 // v1.25.1 Phase C-PR1: buildLogHeader moved into LogWriter.
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
 import { SourceAnalyzer } from './source-analyzer';
-import { TOKENS_PAGE_GENERATION, NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, PAGES_CACHE_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES } from '../constants';
+import { TOKENS_PAGE_GENERATION, NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES } from '../constants';
 import { PageFactory } from './page-factory';
 import { ConversationIngestor, ConversationOrchestration, formatConversation, ConversationHistory } from './conversation-ingest';
 import type { Graph } from '../core/build-graph';
@@ -176,11 +176,13 @@ export class WikiEngine {
   private onLintStart: (() => void) | null = null;
   private onLintEnd: (() => void) | null = null;
   private onStatusBarUpdate: ((text: string) => void) | null = null;
-  private pagesCache: WikiPageRef[] | null = null;
-  private pagesCacheTime = 0;
-  private readonly PAGES_CACHE_TTL_MS = PAGES_CACHE_TTL_MS;
-  // #164: ingested content-hash snapshot, cached on the same TTL/lifecycle as
-  // pagesCache so back-to-back single-file ingests don't re-walk the vault.
+  // The wiki page index, held per file across calls. Replaces the 5-second TTL
+  // snapshot that every write dropped whole (Issue #662).
+  private pageIndex!: WikiPageIndex;
+  private readonly INGESTED_HASHES_TTL_MS = INGESTED_HASHES_TTL_MS;
+  // #164: ingested content-hash snapshot. This cache owns INGESTED_HASHES_TTL_MS
+  // now, and is still invalidated on every write, so back-to-back single-file
+  // ingests don't re-walk the vault.
   private ingestedHashesCache: Set<string> | null = null;
   private ingestedHashesCacheTime = 0;
   // v1.24.0 Bug A: shared graph cache for PPR — built lazily from loaded page
@@ -230,8 +232,7 @@ export class WikiEngine {
       buildSystemPrompt: task =>
         buildSystemPrompt(this.settings, t => this.schemaManager.getSchemaContext(t as SchemaTask), task),
       getSectionLabels: () => getSectionLabels(this.settings),
-      getExistingWikiPages: () =>
-        getExistingWikiPages(this.app, this.settings.wikiFolder),
+      getExistingWikiPages: () => this.getExistingWikiPages(),
       getSchemaContext: t => this.schemaManager.getSchemaContext(t as SchemaTask),
       ...(this.subtle ? { subtle: this.subtle } : {}),
       onFileWrite: path => this.onFileWrite?.(path),
@@ -273,6 +274,9 @@ export class WikiEngine {
       return Promise.all(readTasks);
     };
     this.graphCache = new GraphCache({ wikiFolder: this.settings.wikiFolder, loadPages: graphLoader });
+    // The wiki folder is read through a closure: `updateSettings` can change it,
+    // and the index must follow the current one rather than the one at construction.
+    this.pageIndex = new WikiPageIndex(this.app, () => this.settings.wikiFolder);
 
     // v1.25.1 Phase C-PR1: index generator (extracted from inline state in
     // WikiEngine). Reads from app.vault via injected closures; never holds App.
@@ -461,14 +465,14 @@ export class WikiEngine {
 
   /**
    * Content hashes already present in the wiki, read from source-page
-   * frontmatter. Cached on the same TTL as pagesCache and invalidated on every
+   * frontmatter. Held for INGESTED_HASHES_TTL_MS and invalidated on every
    * file write (via invalidatePageCaches), so a fresh ingest is always seen on
    * the next call while back-to-back rejected/skip checks reuse one snapshot.
    * The returned set is read-only to callers (only `seen` is mutated per batch).
    */
   private buildIngestedHashes(): Set<string> {
     const now = Date.now();
-    if (this.ingestedHashesCache && (now - this.ingestedHashesCacheTime) < this.PAGES_CACHE_TTL_MS) {
+    if (this.ingestedHashesCache && (now - this.ingestedHashesCacheTime) < this.INGESTED_HASHES_TTL_MS) {
       return this.ingestedHashesCache;
     }
     const hashes = new Set<string>();
@@ -483,9 +487,16 @@ export class WikiEngine {
     return hashes;
   }
 
-  /** Invalidate both write-dependent caches. Called after every vault write/delete. */
-  private invalidatePageCaches(): void {
-    this.pagesCache = null;
+  /**
+   * Invalidate the write-dependent caches. Called after every vault write/delete.
+   *
+   * `path` is the page that changed, when the caller knows it: the index then
+   * drops that one entry instead of everything. Without it — the wiki folder
+   * itself changed — the whole index goes.
+   */
+  private invalidatePageCaches(path?: string): void {
+    if (path === undefined) this.pageIndex.clear();
+    else this.pageIndex.invalidate(path);
     this.ingestedHashesCache = null;
     this.graphCache.invalidate();
   }
@@ -1101,7 +1112,7 @@ export class WikiEngine {
         this.settings.skipMentionOnlyCandidates === true &&
         !translated
       ) {
-        const pages = await getExistingWikiPages(this.app, this.settings.wikiFolder);
+        const pages = await this.getExistingWikiPages();
         const table = applyOutcomeTable(
           analysis,
           extractBody(rawSource),
@@ -1947,7 +1958,7 @@ export class WikiEngine {
     }
     if (intent.notify) {
       this.onFileWrite?.(path);
-      this.invalidatePageCaches();
+      this.invalidatePageCaches(path);
     }
   }
 
@@ -2044,7 +2055,7 @@ export class WikiEngine {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (file instanceof TFile) {
       await this.app.fileManager.trashFile(file);
-      this.invalidatePageCaches();
+      this.invalidatePageCaches(path);
       console.debug('deleteFile:', path);
     }
   }
@@ -2115,15 +2126,7 @@ export class WikiEngine {
   // ---- Lint-fix delegation ----
 
   getExistingWikiPages(): Promise<WikiPageRef[]> {
-    const now = Date.now();
-    if (this.pagesCache && (now - this.pagesCacheTime) < this.PAGES_CACHE_TTL_MS) {
-      return Promise.resolve(this.pagesCache);
-    }
-    return getExistingWikiPages(this.app, this.settings.wikiFolder).then(data => {
-      this.pagesCache = data;
-      this.pagesCacheTime = Date.now();
-      return data;
-    });
+    return this.pageIndex.pages();
   }
 
   async fixDeadLink(sourcePath: string, targetName: string): Promise<string> {

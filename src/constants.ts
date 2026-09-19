@@ -54,8 +54,14 @@ export const MINERU_CONVERSION_EXTENSIONS = [
 /** Minimum substantive body content for a page to be considered non-empty. */
 export const MIN_SUBSTANTIVE_CHARS = 50;
 
-/** TTL for cached existing Wiki page list (milliseconds). */
-export const PAGES_CACHE_TTL_MS = 5000;
+/**
+ * TTL for the ingested content-hash snapshot (milliseconds).
+ *
+ * It was the wiki page list's TTL too until the page list moved to a per-file
+ * index with no TTL at all (#662). Renamed with that move: a constant named
+ * after a cache that no longer exists sends the next reader to the wrong place.
+ */
+export const INGESTED_HASHES_TTL_MS = 5000;
 
 // ============================================================================
 // Custom Granularity Limits

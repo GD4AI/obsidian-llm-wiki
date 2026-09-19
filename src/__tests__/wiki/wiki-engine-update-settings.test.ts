@@ -133,10 +133,9 @@ describe('WikiEngine.updateSettings — Bug C 3.2 cache invalidation', () => {
     expect(engine.updateSettings({ ...currentSettings, model: 'different-model' })).toBe(false);
   });
 
-  it('invalidates pagesCache + ingestedHashesCache when wikiFolder changes', async () => {
+  it('drops the page index + ingestedHashesCache when wikiFolder changes', async () => {
     const engine = harness.engine as unknown as {
-      pagesCache: unknown;
-      pagesCacheTime: number;
+      pageIndex: { size: number };
       ingestedHashesCache: unknown;
       ingestedHashesCacheTime: number;
       buildIngestedHashes: () => unknown;
@@ -144,17 +143,18 @@ describe('WikiEngine.updateSettings — Bug C 3.2 cache invalidation', () => {
       updateSettings: (s: unknown) => void;
     };
 
-    // Force the caches to populate by reading them once. getExistingWikiPages
-    // is async and populates pagesCache as a side effect.
+    // Force both to populate by reading them once. getExistingWikiPages fills
+    // the page index as a side effect (Issue #662: the index replaced the TTL
+    // snapshot, so the assertion is on what it holds, not on a null field).
     await engine.getExistingWikiPages();
     engine.buildIngestedHashes();
-    expect(engine.pagesCache).not.toBeNull();
+    expect(engine.pageIndex.size).toBeGreaterThan(0);
     expect(engine.ingestedHashesCache).not.toBeNull();
 
-    // Switch wikiFolder — caches must drop immediately.
+    // Switch wikiFolder — the index and the hash snapshot must drop immediately.
     engine.updateSettings({ ...DEFAULT_SETTINGS, ...harness.engine['settings'], wikiFolder: 'test3' });
 
-    expect(engine.pagesCache).toBeNull();
+    expect(engine.pageIndex.size).toBe(0);
     expect(engine.ingestedHashesCache).toBeNull();
   });
 

@@ -25,7 +25,6 @@ import { MIN_DEDUP_NAME_LENGTH, WIKI_SUBFOLDERS, TOKENS_DEDUP_RESOLUTION, DEDUP_
 import { slugify } from '../../core/slug';
 import { ConflictResolver } from '../../core/conflict-resolver';
 import { selectCandidateWindow } from '../../core/candidate-window';
-import { getExistingWikiPages } from '../lint/get-existing-pages';
 import { PROMPTS } from '../../prompts';
 import { parseJsonResult } from '../../core/json';
 import { normalizeLLMPath } from '../../core/prompt-builders';
@@ -35,6 +34,7 @@ import { appendAliases, aliasClaimsFromPages, type AliasesContext } from './alia
 import { parseFrontmatter } from '../../core/frontmatter';
 import { PathResolutionLLMSchema } from '../../llm-sdk/output-schemas';
 import { callLlm } from '../../core/llm-dispatch';
+import type { WikiPageRef } from '../../types';
 
 /** Page shape consumed by the dedup candidate pre-filter. */
 export interface DedupCandidatePage {
@@ -92,6 +92,8 @@ export interface PathResolutionContext extends AliasesContext {
     createMessageWithOutput?: (...args: unknown[]) => Promise<{ text: string }>;
   } | null;
   buildSystemPrompt(mode: 'full' | 'compact' | 'merge' | 'index'): Promise<string>;
+  /** The wiki page index, through the engine's own held copy (Issue #662). */
+  getExistingWikiPages(): Promise<WikiPageRef[]>;
 }
 
 /**
@@ -153,7 +155,7 @@ export async function resolvePagePath(
 
   // Fast path 2 + Slow path: share sameTypePages across slug-match and LLM resolution
   try {
-    const allPages = await getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder);
+    const allPages = await ctx.getExistingWikiPages();
 
     // Use ConflictResolver for deterministic slug/alias matching before LLM fallback.
     const resolver = new ConflictResolver(ctx.settings.wikiFolder, allPages);
