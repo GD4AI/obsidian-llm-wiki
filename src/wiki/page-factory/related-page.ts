@@ -32,7 +32,6 @@ import {
 } from '../../core/section-header-canonicalizer';
 import { applyRelatedLinks } from './related-links';
 import { getSectionLabels } from '../system-prompts';
-import { getExistingWikiPages } from '../lint/get-existing-pages';
 import { UNIVERSAL_LINK_CONSTRAINTS } from '../prompts/constraints';
 import { appendToReviewedPage, type MergeContext } from './merge-page';
 import { assembleFinalContent } from './mentions-integration';
@@ -66,10 +65,7 @@ export async function updateRelatedPage(
   sourceFile: TFile | { path: string; basename: string },
   sourceSlug?: string,
 ): Promise<string | null> {
-  const existingPages = await getExistingWikiPages(
-    ctx.app as never,
-    ctx.settings.wikiFolder,
-  );
+  const existingPages = await ctx.getExistingWikiPages();
   // A related page is an entity or concept page. The title index spans the
   // whole wiki folder, and a source page shares its basename with the entity
   // its note is about (`sources/Zytokine` next to `entities/Zytokine`), so a

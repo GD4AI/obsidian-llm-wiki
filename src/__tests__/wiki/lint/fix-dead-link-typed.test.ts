@@ -14,6 +14,7 @@ import { fixDeadLink } from '../../../wiki/lint/fix-dead-link';
 import * as getExistingPages from '../../../wiki/lint/get-existing-pages';
 import type { EngineContext } from '../../../types';
 import type { LLMClient } from '../../../types';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
 
 function makeTypedClient(createMessageWithOutput: (p: Record<string, unknown>) => Promise<{
   text: string;
@@ -40,6 +41,13 @@ function makeCtx(client: LLMClient, sourceContent: string): EngineContext {
     getSchemaContext: () => ({}),
     tryReadFile: async (_path: string): Promise<string | null> => sourceContent,
     createOrUpdateFile: async (_path: string, _content: string): Promise<void> => {},
+    // #662: fixDeadLink now takes the page list from the context seam instead of
+    // importing the module. The shared helper delegates to the real reader, so
+    // each test's existing spy on `getExistingWikiPages` stays in force — the
+    // seam is what changed, not the data.
+    getExistingWikiPages(this: { app: unknown; settings: { wikiFolder: string } }) {
+      return mockExistingWikiPages(this)();
+    },
   } as unknown as EngineContext;
   return ctx;
 }

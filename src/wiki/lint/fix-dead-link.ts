@@ -11,7 +11,6 @@ import {
   buildDeadLinkReplacement,
   replaceDeadLink,
 } from '../../core/dead-link-detector';
-import { getExistingWikiPages } from './get-existing-pages';
 import { selectCandidateWindow, contextAround } from '../../core/candidate-window';
 import { FixDeadLinkSchema, type FixDeadLink } from '../../llm-sdk/output-schemas';
 import { localDateStamp } from '../../core/format';
@@ -163,10 +162,7 @@ export async function fixDeadLink(
   sourcePath: string,
   targetName: string
 ): Promise<string> {
-  const existingPages = await getExistingWikiPages(
-    ctx.app,
-    ctx.settings.wikiFolder
-  );
+  const existingPages = await ctx.getExistingWikiPages();
 
   // ---- Pre-check: deterministic title + alias match ----
   const sourceContent =

@@ -14,6 +14,8 @@ import {
 } from '../../../wiki/page-factory/merge-page';
 import { createMockEntity } from '../../__support__/factories';
 import type { LLMWikiSettings, LLMClient } from '../../../types';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 function makeCtx(client: LLMClient | null = null): MergeContext & { written: Map<string, string> } {
   const written = new Map<string, string>();
@@ -39,6 +41,9 @@ function makeCtx(client: LLMClient | null = null): MergeContext & { written: Map
     },
     getClient: () => client,
     buildSystemPrompt: async () => 'system',
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
 }
 

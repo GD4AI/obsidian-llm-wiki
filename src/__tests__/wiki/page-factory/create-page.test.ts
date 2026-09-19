@@ -16,6 +16,8 @@ import {
 import { createMockEntity, createMockConcept } from '../../__support__/factories';
 import type { LLMWikiSettings, LLMClient } from '../../../types';
 import { localDateStamp } from '../../../core/format';
+import { mockExistingWikiPages } from '../../__support__/engine-context';
+import type { WikiPageRef } from '../../../types';
 
 const EXISTING_FM = `---\ncreated: 2026-07-10\nupdated: 2026-07-10\nsources:\n  - "[[existing]]"\ntags: []\n---\n\n## Description\nOld body.\n`;
 
@@ -49,6 +51,9 @@ function makeCtx(opts: {
       ? null
       : { createMessage: async () => opts.llmResponse ?? '## Description\nLLM body.' },
     buildSystemPrompt: async () => 'system',
+    getExistingWikiPages(): Promise<WikiPageRef[]> {
+      return mockExistingWikiPages(this)();
+    },
   };
 }
 
@@ -202,6 +207,9 @@ describe('createNewPage — wraps errors with entity context', () => {
       async createOrUpdateFile() {},
       getClient: () => failingClient,
       buildSystemPrompt: async () => 'system',
+      getExistingWikiPages(): Promise<WikiPageRef[]> {
+        return mockExistingWikiPages(this)();
+      },
     };
     await expect(
       createNewPage(

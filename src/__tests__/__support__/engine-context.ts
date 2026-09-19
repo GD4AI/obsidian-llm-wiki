@@ -19,6 +19,8 @@
 
 import { TFile } from 'obsidian'; // mocked in setup.ts
 import { EngineContext, LLMClient, LLMWikiSettings } from '../../types';
+import type { WikiPageRef } from '../../types';
+import { getExistingWikiPages } from '../../wiki/lint/get-existing-pages';
 import { parseFrontmatter } from '../../core/frontmatter';
 
 // ── Mock File ────────────────────────────────────────────────────
@@ -190,7 +192,12 @@ export function createMockContext(opts: MockContextOptions = {}): { ctx: EngineC
       resolution_suggestion: 'Resolution Suggestion',
       source_page: 'Source Page',
     }),
-    getExistingWikiPages: async () => [],
+    // Delegates to the real reader against the mock vault. An empty list here
+    // would make every test that depends on the vault holding a page pass for
+    // the wrong reason.
+    getExistingWikiPages(this: { app: unknown; settings: { wikiFolder: string } }) {
+      return mockExistingWikiPages(this)();
+    },
     getSchemaContext: async () => undefined,
     onFileWrite: undefined,
     onProgress: undefined,
@@ -198,4 +205,22 @@ export function createMockContext(opts: MockContextOptions = {}): { ctx: EngineC
   };
 
   return { ctx, vault };
+}
+
+/**
+ * The page-index seam for a test context.
+ *
+ * Several test contexts carried this as a byte-identical copy once patch 25
+ * moved the index onto the context seam. One shape here means a later change
+ * to how tests supply pages is one edit, not several.
+ *
+ * It delegates to the real reader against the mock vault — exactly what the
+ * call inlined in `related-page.ts` did before the seam. Returning an empty
+ * list instead would be wrong: some mock vaults do hold pages, and the tests
+ * that depend on them would pass for the wrong reason.
+ */
+export function mockExistingWikiPages(
+  ctx: { app: unknown; settings: { wikiFolder: string } }
+): () => Promise<WikiPageRef[]> {
+  return () => getExistingWikiPages(ctx.app as never, ctx.settings.wikiFolder);
 }
