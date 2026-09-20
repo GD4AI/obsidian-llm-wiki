@@ -53,6 +53,27 @@ updates:
       # tracked as #764. Remove this entry when that lands, not before.
       - dependency-name: "@ai-sdk/openai-compatible"
         update-types: ["version-update:semver-major"]
+      # obsidian 1.13 deprecates PluginSettingTab.display() in favour of the
+      # declarative getSettingDefinitions(). Taking it means a 42-site rewrite of
+      # display() plus 68 imperative `new Setting(...)` calls, and
+      # `@typescript-eslint/no-deprecated` is on the Bot's no-disable list, so the
+      # warning cannot be suppressed — the bump and the migration are one change.
+      # The API itself is NOT removed: its own doc comment calls it "a fallback
+      # for plugins that need to support Obsidian versions older than 1.13.0", so
+      # minAppVersion does not have to move either. Held until that migration is
+      # deliberately planned alongside the settings-UI work (#668, #752, #756),
+      # because the one thing it buys is searchability of our settings in
+      # Obsidian's own search. Measured in #766.
+      - dependency-name: "obsidian"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # @types/node 16 -> 26 buys types for Node APIs this project does not use —
+      # `node:module` (createRequire) and `node:https` have existed since Node 15 —
+      # and costs the `compatibility/indexable.d.ts` shim that 16 ships, which is
+      # what currently makes `Array.prototype.at` typecheck under `lib: ES2021`.
+      # Taking it needs `lib` raised to ES2022 or 31 `.at()` call sites rewritten;
+      # neither is worth a type package with no runtime surface. Measured in #768.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions themselves (checkout/setup-node/attest-build-provenance)
   # are supply-chain surface too — a vulnerable action version is as bad as a
