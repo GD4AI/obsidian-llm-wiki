@@ -91,6 +91,31 @@ describe('normalizeFrontmatterOpening', () => {
     const result = normalizeFrontmatterOpening('--\r\nversion: 1\r\n---\r\nBody');
     expect(result).toBe('---\r\nversion: 1\r\n---\r\nBody');
   });
+
+  it('leaves a Markdown thematic break alone', () => {
+    // `----` is both a wrong dash count and a horizontal rule, and the first line
+    // alone cannot tell them apart. Repairing the rule hands `parseFrontmatter`
+    // the next `---` in the document, so it parses a "frontmatter" block that
+    // begins in the middle of the prose — and `bumpSchemaMetadata` then writes
+    // `updated:` and `auto_suggestion_count:` into the body. Guard: a damaged
+    // opening is only repaird when a YAML key follows it (review, 2026-09-14).
+    const input = '----\n\n## Extraction\n\nSome prose.\n\n---\n\n## Merge\n';
+    expect(normalizeFrontmatterOpening(input)).toBe(input);
+  });
+
+  it('still repairs a wrong dash count when a YAML key follows it', () => {
+    // The guard must not cost the case the function exists for.
+    expect(normalizeFrontmatterOpening('----\ntype: entity\n---\nBody')).toBe('---\ntype: entity\n---\nBody');
+    expect(normalizeFrontmatterOpening('--\nversion: 1\n---\nBody')).toBe('---\nversion: 1\n---\nBody');
+  });
+
+  it('returns the original content, not the trimmed one, when it does not repair', () => {
+    // `trimStart()` used to run before the decision, so a document with no
+    // frontmatter at all lost its leading blank lines as a side effect of asking
+    // the question.
+    const input = '\n\n# Config\n\nText.\n';
+    expect(normalizeFrontmatterOpening(input)).toBe(input);
+  });
 });
 
 describe('parseFrontmatter', () => {

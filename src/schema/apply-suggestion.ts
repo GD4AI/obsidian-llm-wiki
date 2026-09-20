@@ -135,11 +135,19 @@ export function spliceBody(originalContent: string, newBody: string): string {
  *     corresponding wiki/schema/suggestions.md log entry) only when given;
  *     omitted entirely otherwise.
  * Before any of that, `normalizeFrontmatterOpening` repairs a recoverable damaged opening
- * delimiter (leading BOM, leading whitespace, or a wrong dash count) in place, so a pre-existing
- * block is recognized rather than treated as absent. A no-op returning the original, un-normalized
- * content unchanged when frontmatter is still unterminated even after that repair. Content with no
- * frontmatter marker at all gets a fresh `---\n...\n---` block created (via
- * `upsertFrontmatterField`, called below on `normalized`/`next`).
+ * delimiter (leading BOM, leading whitespace, or a wrong dash count, when a YAML key
+ * follows it) in place, so a pre-existing block is recognized rather than treated as
+ * absent. A no-op returning the original, un-normalized content unchanged when the
+ * opening cannot be recognized. Content with no frontmatter marker at all gets a fresh
+ * `---\n...\n---` block created (via `upsertFrontmatterField`, called below on
+ * `normalized`/`next`).
+ *
+ * **Line endings.** `parseFrontmatter` matches `\n` only, so a CRLF file takes the
+ * "unrecognized opening" path above and is returned unchanged — including its audit
+ * fields. `normalizeFrontmatterOpening` preserves CRLF when it repairs an opening, but
+ * it cannot rescue the parse. Accepting `\r?\n` in `parseFrontmatter` would change
+ * every caller of it and belongs in its own change; stated here rather than implied
+ * because an earlier revision of this comment read as if CRLF were handled end to end.
  */
 export function bumpSchemaMetadata(content: string, now: Date, suggestionTimestamp?: string): string {
   const normalized = normalizeFrontmatterOpening(content);

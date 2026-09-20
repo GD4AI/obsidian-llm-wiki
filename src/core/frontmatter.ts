@@ -120,19 +120,42 @@ export function parseFrontmatter(content: string): FrontmatterData | null {
  * CRLF), never flipped to LF.
  */
 export function normalizeFrontmatterOpening(content: string): string {
-  let result = content.trimStart();
+  const trimmed = content.trimStart();
+  const leadingTrimmed = trimmed !== content;
 
-  const newlineIdx = result.indexOf('\n');
-  const firstLine = newlineIdx === -1 ? result : result.slice(0, newlineIdx);
+  const newlineIdx = trimmed.indexOf('\n');
+  const firstLine = newlineIdx === -1 ? trimmed : trimmed.slice(0, newlineIdx);
   const hasTrailingCr = firstLine.endsWith('\r');
   const firstLineNoCr = hasTrailingCr ? firstLine.slice(0, -1) : firstLine;
 
-  if (/^-{2,}\s*$/.test(firstLineNoCr) && firstLineNoCr !== '---') {
-    const openingLine = '---' + (hasTrailingCr ? '\r' : '');
-    result = newlineIdx === -1 ? openingLine : openingLine + result.slice(newlineIdx);
+  if (firstLineNoCr === '---') {
+    // Already a valid opening. Report the trimmed form only when trimming
+    // removed something — a BOM or leading blank lines — because that removal is
+    // itself the repair. Returning the trimmed form unconditionally would drop
+    // leading blank lines from a document whose frontmatter was never damaged.
+    return leadingTrimmed ? trimmed : content;
   }
 
-  return result;
+  if (!/^-{2,}\s*$/.test(firstLineNoCr)) {
+    // No opening to repair. Return the original rather than the trimmed form:
+    // stripping leading blank lines here is a side effect of asking the
+    // question, and it is outside what the function's name promises.
+    return content;
+  }
+
+  // A run of dashes is only a damaged *opening delimiter* if a YAML key follows
+  // it. `----` is also a Markdown thematic break, and the first line alone
+  // cannot tell the two apart. Repairing a rule hands `parseFrontmatter` the
+  // NEXT `---` in the document — so it parses a block that begins in the middle
+  // of the prose, and `bumpSchemaMetadata` writes `updated:` and
+  // `auto_suggestion_count:` into the body. Reported in review, 2026-09-14.
+  const rest = newlineIdx === -1 ? '' : trimmed.slice(newlineIdx + 1);
+  const nextBreak = rest.indexOf('\n');
+  const nextLine = (nextBreak === -1 ? rest : rest.slice(0, nextBreak)).replace(/\r$/, '');
+  if (!/^[A-Za-z_][\w.-]*\s*:/.test(nextLine)) return content;
+
+  const openingLine = '---' + (hasTrailingCr ? '\r' : '');
+  return newlineIdx === -1 ? openingLine : openingLine + trimmed.slice(newlineIdx);
 }
 
 /**

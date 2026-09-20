@@ -348,3 +348,49 @@ describe('bumpSchemaMetadata (#597)', () => {
     expect(result).toBe(bomButUnterminated);
   });
 });
+
+// Review findings, 2026-09-14. The dash-count repair is the author's own extra
+// over what #597 asks for, and it is the part that could write into prose:
+// `----` is both a damaged opening delimiter and a Markdown thematic break.
+describe('bumpSchemaMetadata — the dash-count repair cannot write into prose', () => {
+  it('writes nothing when the document opens with a thematic break', () => {
+    // Reproduced before the guard: `----` was rewritten to `---`, so
+    // `parseFrontmatter` matched the `---` further down and treated the prose
+    // between them as frontmatter. The audit fields landed in the body.
+    const input = '----\n\n## Extraction\n\nSome prose.\n\n---\n\n## Merge\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('writes nothing when the whole document is a rule and prose', () => {
+    const input = '----\n\nJust a note. No frontmatter here at all.\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('still bumps a genuinely damaged opening', () => {
+    // The guard must not cost the case the repair was added for.
+    const out = bumpSchemaMetadata(
+      '--\nversion: 1\nupdated: 2026-01-01\nauto_suggestion_count: 0\n---\n\n# Body\n',
+      new Date('2026-09-21T10:00:00Z')
+    );
+    expect(out).toContain('updated: 2026-09-21');
+    expect(out).toContain('auto_suggestion_count: 1');
+  });
+
+  it('leaves a CRLF file unchanged, and that is pinned rather than promised', () => {
+    // `parseFrontmatter` matches `\n` only, so CRLF content takes the
+    // "unrecognized opening" path and comes back untouched. The behaviour is a
+    // known limit, not a regression: this test exists so the doc comment cannot
+    // drift back into claiming CRLF is handled end to end. Accepting `\r?\n` in
+    // `parseFrontmatter` touches every caller of it and belongs in its own PR.
+    const input = '---\r\nupdated: 2026-01-01\r\nauto_suggestion_count: 0\r\n---\r\n\r\nText.\r\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('creates a block without eating leading blank lines', () => {
+    // `trimStart()` ran before the decision, so the no-frontmatter path also
+    // lost the document's opening blank lines as a side effect.
+    const out = bumpSchemaMetadata('\n\n# Config\n\nText.\n', new Date('2026-09-21T10:00:00Z'));
+    expect(out).toContain('updated: 2026-09-21');
+    expect(out.endsWith('\n\n# Config\n\nText.\n')).toBe(true);
+  });
+});
