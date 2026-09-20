@@ -37,6 +37,7 @@ import { parseFrontmatter, enforceFrontmatterConstraints, mergeFrontmatterArrayF
 import { activeVocabulary } from '../../core/vocabulary';
 import { injectMentionsSection } from '../../core/mentions-injector';
 import { renderTemplate } from '../../core/template-renderer';
+import { getContentRequirements, buildContentRequirementsSection } from '../../core/prompt-focus';
 import { applySectionLabels, getSectionLabels } from '../system-prompts';
 import { resolvePagePath, type PathResolutionContext } from './path-resolution';
 import { mergePage } from './merge-page';
@@ -203,6 +204,10 @@ export async function createNewPage(
       // disambiguated source slug is honored and the normalizer passes it
       // through unchanged.
       source_file: sourceSlug ? `sources/${sourceSlug}` : sourceFile.path,
+      // v1.27.3: topic/global content requirements — extra expressive-
+      // requirements block after the merge strategy. Empty string when
+      // unconfigured (byte-identical prompt).
+      content_requirements: buildContentRequirementsSection(getContentRequirements(ctx.settings)),
     });
 
     // #328 Phase 1 follow-up: user-layer tag-vocab removed — system layer injects once.

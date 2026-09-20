@@ -259,6 +259,16 @@ export interface LLMWikiSettings {
    *  (Anthropic Vision + OpenAI Vision support images natively). */
   markdownConversionBackend?: 'native' | 'mineru';
   wikiFolder: string;
+  /**
+   * v1.27.3: named sub-wikis (one per subject). Empty array/undefined =
+   * single-wiki mode. Each entry's `folder` is a vault path; the topic
+   * machinery beyond storage (switching UI, folder rebinding) is out of
+   * scope for this change — the field exists so a topic can carry its
+   * own prompt-customization overrides resolved by folder.
+   */
+  wikiTopics?: WikiTopic[];
+  /** v1.27.3: `id` of the currently active topic, when any. */
+  activeTopicId?: string;
   /** UI language — the locale the settings panel and modals render in. Keyed
    *  off the TEXTS barrel (11 locales) so adding a locale updates this type. */
   language: keyof typeof TEXTS;
@@ -584,6 +594,20 @@ export interface LLMWikiSettings {
    * alongside `queryHistory`.
    */
   customQueryInstructions?: string;
+
+  /**
+   * v1.27.3: global fallback for the topic-scoped extraction focus —
+   * free-text domain hint appended to the extraction prompt's Extraction
+   * Scope block. Empty string/undefined = feature off.
+   */
+  extractionFocus?: string;
+
+  /**
+   * v1.27.3: global fallback for the topic-scoped content requirements —
+   * free-text expressive requirements appended to entity/concept
+   * page-generation prompts. Empty string/undefined = feature off.
+   */
+  contentRequirements?: string;
 
   /**
    * v1.24.0 #208: per-task model overrides. Each field is the MODEL
@@ -1475,6 +1499,37 @@ export const PREDEFINED_PROVIDERS: Record<string, ProviderConfig> = {
 
 // Default plugin settings
 
+/**
+ * v1.27.3: one named sub-wiki inside the Wiki Folder. `folder` is a vault
+ * path relative to the vault root, kept in sync with the topic semantics —
+ * each topic owns a full entities/concepts/sources subtree.
+ */
+export interface WikiTopic {
+  /** Stable identifier persisted in `activeTopicId`. Never user-edited. */
+  id: string;
+  /** Display name shown in the topic picker. */
+  name: string;
+  /** Vault-relative folder of this topic's wiki subtree. */
+  folder: string;
+  /**
+   * v1.27.3: topic-scoped domain focus hint injected into the extraction
+   * prompt's Extraction Scope block. Free text describing which domain
+   * entities/concepts this topic should prioritize. Never replaces the
+   * JSON protocol, the classification rules or the tag vocabulary — it
+   * narrows what the model looks for, not how it answers.
+   * Empty/undefined = off (the global setting applies).
+   */
+  extractionFocus?: string;
+  /**
+   * v1.27.3: topic-scoped content requirements injected into the
+   * entity/concept page-generation prompts. Free text controlling
+   * expressive emphasis — structure, tone, must-cover aspects. Citation,
+   * merge and anti-hallucination rules stay system-owned and cannot be
+   * weakened by this text. Empty/undefined = off (the global applies).
+   */
+  contentRequirements?: string;
+}
+
 export const DEFAULT_SETTINGS: LLMWikiSettings = {
   provider: 'anthropic',
   apiKey: '',
@@ -1490,6 +1545,8 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   model: '',  // No hardcoded default — user must fetch models or enter manually
   markdownConversionBackend: 'native',
   wikiFolder: 'wiki',
+  wikiTopics: [],
+  activeTopicId: '',
   language: 'en',
   wikiLanguage: 'en',
   useCustomWikiLanguage: false,
@@ -1587,6 +1644,11 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // compatible). Stored in data.json alongside queryHistory. Scoped
   // strictly to Query Wiki chat; no other workflow is affected.
   customQueryInstructions: '',
+
+  // v1.27.3: global fallbacks for topic-scoped prompt customization.
+  // Empty string = feature off; topic-level fields override these.
+  extractionFocus: '',
+  contentRequirements: '',
 
   // v1.24.1 PATCH Bedrock Stage 1 — default region is the broadest-coverage
   // region (us-east-1). Only consulted when provider is one of the two
