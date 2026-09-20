@@ -1301,9 +1301,14 @@ most of what follows came from @DocTpoint's reviews rather than from my own pass
    `git push` to a contributor's branch came back `non-fast-forward` — which is just what
    a rebase looks like — before `--force-with-lease` returned the real `permission denied`
    (`maintainer_can_modify: false`). Two attempts were spent on the wrong diagnosis.
-   Similarly: **verify the merge returned `merged=true` before restoring a bypass actor**, 
+   Similarly: **verify the merge returned `merged=true` before restoring a bypass actor**,
    not that the command exited — restoring first left #773 open while the script printed
-   success, and only the next status read showed it.
+   success, and only the next status read showed it. **And never suppress the restore's
+   output.** A `>/dev/null 2>&1` on the ruleset `PUT` hid two network failures this
+   session, so the run reported "restored" while `bypass_actors` stayed at 1 — a
+   security-relevant residue that survived several commands before a direct read found
+   it. The restore is the one write in this flow whose failure is silent by construction,
+   so it is the one that must be read back.
 
 8. **The bundle is the authority on what is bundled — read the artifact, do not
    re-derive the set.** #699 measured ten third-party packages in the shipped `main.js`;
