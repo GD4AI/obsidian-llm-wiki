@@ -38,6 +38,14 @@ const context = await esbuild.context({
     ...builtinModules.map((module) => `node:${module}`)],
   format: 'cjs',
   target: 'es2018',
+  // Without this, esbuild defaults `platform` to 'browser', under which an
+  // *external* dynamic import is assumed to be available natively and is left
+  // in place. `node:module` is external (see above), so `await import(...)`
+  // reached the shipped bundle as a native ESM import inside a CJS file, and
+  // failed at runtime — silently, because the callers catch the TypeError.
+  // Declaring the target unable to do it makes esbuild emit the
+  // require-based form that a CJS bundle can actually load.
+  supported: { 'dynamic-import': false },
   logLevel: "info",
   sourcemap: prod ? false : 'inline',
   treeShaking: true,

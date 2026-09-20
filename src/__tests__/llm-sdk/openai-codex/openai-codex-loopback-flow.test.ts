@@ -26,21 +26,46 @@ afterEach(() => {
 });
 
 describe('Codex loopback flow', () => {
-  it('bundles desktop HTTP as a lazy ESM dynamic import of node:module', () => {
+  it('bundles desktop HTTP as a lazy, guarded load of node:module', () => {
     // v1.25.6: switched from bare require('node:http') (which Bot
     // rejected as no-unsafe-* propagation) to a typed createRequire
-    // helper. esbuild compiles the dynamic import('node:module') pattern
-    // to a lazy Promise that resolves the module at first call — the
-    // bundle MUST NOT eagerly import node:http at module-eval time
-    // (which would defeat the Platform.isDesktop guard). The string
-    // 'require("node:http")' is no longer present; we assert the
-    // equivalent: a lazy import of node:module that resolves to a
-    // createRequire factory used to load node:http on first call.
+    // helper. The property under test is laziness behind the desktop
+    // guard, not a spelling.
+    //
+    // #751 changed what the build emits for it. esbuild's `platform`
+    // defaults to 'browser', and under that platform an *external*
+    // dynamic import is assumed available natively and left as written —
+    // so `await import('node:module')` shipped as a native ESM import
+    // inside a CJS bundle, could not load, and was swallowed by the
+    // callers' TypeError handling. With
+    // `supported: { 'dynamic-import': false }` the same guarded source
+    // compiles to the deferred require form below. Both forms are lazy
+    // and both sit behind the guard; only one of them can actually load.
+    //
+    // Asserting the wrapper rather than the token is strictly stronger:
+    // the old assertion passed for ANY occurrence of
+    // `import("node:module")`, including one at module-eval time. Here
+    // every `require("node:module")` must be the deferred one, so an
+    // eager load cannot be introduced without failing this test.
     const bundle = readFileSync('main.js', 'utf8');
     expect(bundle).not.toContain('require("node:http")');
     expect(bundle).not.toContain('import("node:http")');
-    expect(bundle).toContain('import("node:module")');
+    const loads = bundle.match(/require\("node:module"\)/g) ?? [];
+    const deferred = bundle.match(/Promise\.resolve\(\)\.then\(\(\) => __toESM\(require\("node:module"\)\)\)/g) ?? [];
+    expect(deferred).toHaveLength(2);
+    expect(loads).toHaveLength(deferred.length);
     expect(bundle).toContain('createRequire');
+    // Both call sites keep their own desktop guard, and the load cannot run
+    // before its guard: assert by position rather than by a character budget,
+    // which would be a guess about how much the bundler elides between them.
+    const firstLoad = bundle.indexOf('require("node:module")');
+    const secondLoad = bundle.indexOf('require("node:module")', firstLoad + 1);
+    const guardHttps = bundle.indexOf('node:https transport is available on desktop only');
+    const guardLoopback = bundle.indexOf('Codex browser login is available only on desktop');
+    expect(guardHttps).toBeGreaterThan(-1);
+    expect(guardLoopback).toBeGreaterThan(-1);
+    expect(guardHttps).toBeLessThan(firstLoad);
+    expect(guardLoopback).toBeLessThan(secondLoad);
   });
   it('rejects mobile runtime loading before resolving Node HTTP', async () => {
     const importHttp = vi.fn();
