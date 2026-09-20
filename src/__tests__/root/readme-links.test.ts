@@ -91,10 +91,17 @@ function normaliseTarget(raw: string): string {
  * every locale README links to them via `[LICENSE](LICENSE)` or
  * `[LICENSE](../LICENSE)`. Both render correctly on GitHub and in the
  * Obsidian marketplace, so they are explicitly allowed as relative.
+ *
+ * `THIRD-PARTY-NOTICES.md` is the third file of that class — repo root,
+ * referenced from every locale's licence line, same renderer behaviour — and
+ * was added when #699 gave the bundle the attributions it was missing. The
+ * alternative was an absolute `blob/main` URL, which would be inconsistent with
+ * the two files sitting beside it and no safer for them.
  */
 const RELATIVE_FILE_BASENAME_ALLOWLIST = new Set([
   'LICENSE',
   'NOTICE',
+  'THIRD-PARTY-NOTICES.md',
 ]);
 
 describe('v1.25.11 PATCH #375 — README links are absolute https:// or known-safe', () => {

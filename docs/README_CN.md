@@ -400,7 +400,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ## 📜 许可证与致谢
 
-Apache License, Version 2.0 — 详见 [LICENSE](../LICENSE) 和 [NOTICE](../NOTICE)。
+Apache License, Version 2.0 — 详见 [LICENSE](../LICENSE)、[NOTICE](../NOTICE) 和 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。
 
 **构建于：**
 - 💡 [Andrej Karpathy 的 LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — 原始概念

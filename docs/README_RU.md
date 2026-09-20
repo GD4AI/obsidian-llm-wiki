@@ -392,7 +392,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ## 📜 Лицензия и благодарности
 
-Apache License, Version 2.0 — см. [LICENSE](../LICENSE) и [NOTICE](../NOTICE).
+Apache License, Version 2.0 — см. [LICENSE](../LICENSE), [NOTICE](../NOTICE) и [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
 **Построено на:**
 - 💡 [Karpathy LLM Wiki Андрея Карпатого](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — оригинальная концепция

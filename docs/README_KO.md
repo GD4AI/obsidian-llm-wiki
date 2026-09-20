@@ -389,7 +389,7 @@ LLM-Wiki가 여러분의 지식 워크플로에서 중요한 부분이 되었다
 
 ## 📜 라이선스 및 크레딧
 
-Apache License, Version 2.0 — [LICENSE](../LICENSE) 및 [NOTICE](../NOTICE) 참조.
+Apache License, Version 2.0 — [LICENSE](../LICENSE), [NOTICE](../NOTICE) 및 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) 참조.
 
 **다음을 기반으로 구축되었습니다:**
 - 💡 [Andrej Karpathy의 LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — 원본 개념

@@ -34,5 +34,17 @@ listed in alphabetical order by GitHub handle:
 - Roman Kuzmin (rkuzmin) — LM Studio no-key ingest (PR #272, #339)
 - Younian (YounianC, xiaochuanlu) — ingest status bar and Query Wiki side panel
 
+## Third-party components
+
+The plugin bundles third-party software into the shipped `main.js`. Their licences,
+and the attribution each one requires, are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — which is generated from the
+built bundle rather than maintained by hand, so a new dependency cannot be
+bundled without appearing there.
+
+This section is a pointer rather than a copy because that file is large (the
+Apache-2.0 licence text alone runs to several thousand words) and is regenerated
+on every dependency change, which a hand-edited section here could not track.
+
 This NOTICE file is provided for attribution purposes only and does not
 modify the terms of the Apache License, Version 2.0.

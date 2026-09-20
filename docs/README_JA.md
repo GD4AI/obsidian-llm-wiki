@@ -392,7 +392,7 @@ LLM-Wikiがあなたのナレッジワークフローの重要な一部になっ
 
 ## 📜 ライセンスとクレジット
 
-Apache License, Version 2.0 — [LICENSE](../LICENSE) と [NOTICE](../NOTICE) を参照。
+Apache License, Version 2.0 — [LICENSE](../LICENSE)、[NOTICE](../NOTICE)、[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) を参照。
 
 **ベースとなったもの：**
 - 💡 [Andrej KarpathyのLLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — オリジナルコンセプト

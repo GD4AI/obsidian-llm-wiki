@@ -393,7 +393,7 @@ Dank an die Folgenden für die Unterstützung des Projekts:
 
 ## 📜 Lizenz & Danksagungen
 
-Apache License, Version 2.0 — siehe [LICENSE](../LICENSE) und [NOTICE](../NOTICE).
+Apache License, Version 2.0 — siehe [LICENSE](../LICENSE), [NOTICE](../NOTICE) und [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
 **Basiert auf:**
 - 💡 [Andrej Karpathys LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — das ursprüngliche Konzept

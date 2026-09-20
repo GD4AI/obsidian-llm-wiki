@@ -390,7 +390,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ## 📜 許可證與致謝
 
-Apache License, Version 2.0 — 詳見 [LICENSE](../LICENSE) 與 [NOTICE](../NOTICE)。
+Apache License, Version 2.0 — 詳見 [LICENSE](../LICENSE)、[NOTICE](../NOTICE) 與 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。
 
 **基於以下專案建構：**
 - 💡 [Andrej Karpathy 的 LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — 原始概念

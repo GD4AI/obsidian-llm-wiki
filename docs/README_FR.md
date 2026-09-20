@@ -388,7 +388,7 @@ Merci aux suivants pour leur soutien au projet:
 
 ## 📜 Licence et crédits
 
-Apache License, Version 2.0 — voir [LICENSE](../LICENSE) et [NOTICE](../NOTICE).
+Apache License, Version 2.0 — voir [LICENSE](../LICENSE), [NOTICE](../NOTICE) et [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
 **Construit avec :**
 - 💡 [LLM Wiki d'Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — le concept original
