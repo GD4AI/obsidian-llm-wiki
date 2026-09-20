@@ -27,7 +27,7 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 | Group | Items | Why this window |
 |---|---|---|
 | **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. Research and design concluded 2026-09-16 |
-| **Write-path hardening** (architecture) | **#603** (the single write-gate contract does not hold — six writers bypass it), **#662** (the page index is rebuilt per item and per written page) | Design calls, not patch-shaped. Both sit under one surface: what the writer promises is what the reader may rely on |
+| **Write-path hardening** (architecture) | **#603** ✅ closed with **#750** · **#662** ✅ closed with **#757** | Both landed 2026-09-20. The gate is split into `rawWrite` / `pageGuard` / `notify` with a defaultless `WriteIntent`, and the page index is held per file. **This was the gate on #729 Phase 1 and it is open** |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
 | **Community** | **#608** + PR **#687** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | Already on the milestone |
@@ -57,7 +57,9 @@ what each change settled lives in MEMORY.
 
 ### Ordering decision (2026-09-16)
 
-**Hardening before the reader.** #603 says the write-gate contract does not hold; an improved reader over an inconsistent store moves the error faster rather than removing it. #729's own acceptance criteria compare the reader against a store that must be telling the truth, so the write path is settled first.
+**Hardening before the reader — done.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20.**
+
+The four review rounds #750 took are the part worth carrying forward: the slice shipped **two behaviour regressions of its own** despite passing all three of its mutations, and the second of the two was a check it *removed* that had been incidentally holding another door shut. Both findings came from @DocTpoint reading the tree rather than the description.
 
 **The write-path design pass completed 2026-09-16 and opens the phase-2/3 gate.** Its recommendation: split the gate into `rawWrite` / `pageGuard` / `notify` rather than funnel every write through it — **five real violations in four files** to fix, plus five sites that only need to declare their intent. Both source issues were re-measured and **each contained one claim that does not hold** (`log-writer.ts` does go through the gate; `contradictions.ts` does not exist), and each omitted worse sites than it listed — including `vault.adapter.write`, which sits below Obsidian's own eventing. Corrected counts and the reasoning are in the MEMORY design record, which phase 2 consumes directly.
 
@@ -70,8 +72,8 @@ Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable
 | Phase | Items | Blocked by |
 |---|---|---|
 | **1 — decouple, take the cheap wins** | **#669** ✅ zod 4 · **#723** ✅ custom headers, OpenCode preset, Responses variant (also closed #735) · **#603 + #662 design pass** ✅ — **complete**, see MEMORY §"Design record — write path and page index" | **nothing — done** |
-| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) — ✅ done 2026-09-17** (behaviour-identical, proven by zero snapshot churn); sub-phases 1+ wait | #603 |
-| **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** once #603 lands · **#668 after #729's toggle has a home** | phase 2 |
+| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) — ✅ done 2026-09-17** (behaviour-identical, proven by zero snapshot churn); **sub-phase 1 is next — it is the head of the queue** | **nothing — #603 closed 2026-09-20** |
+| **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** (unblocked with #603) · **#668 after #729's toggle has a home** | phase 2 |
 | **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |
 
 **Two couplings found during the 2026-09-16 planning pass, now binding:**
@@ -191,7 +193,7 @@ Composition record: [CHANGELOG §1.27.2](./CHANGELOG.md#1272---2026-09-15) — 3
 |---|-------|------|---------|-------|--------|
 | 1 | **#568** | Domain-axis write side follow-ups (post-#569-merge) | #91 read-side prerequisite; PR #569 MERGED 09-04 (`9d6183c`), gate table #607 MERGED 09-04 (`6a5ba34`) — remaining work is follow-ups on the merged base, not re-review | DocTpoint | Merged base; file follow-up issues as needed |
 | 2 | **#567** | `customEntityLimit` / `customConceptLimit` ceiling-vs-denominator coupling reduces yield as limit rises | Real user pain (11-50 default range); recommended contract: ceiling-only + stop gets own signal sibling to `checkEmptyBatch` | green-dalii (owner-self) | Issue open; needs contract decision then PR; #607's gate table addresses part of it |
-| 3 | **#603** | "single write gate" contract does not hold — six writers bypass `createOrUpdatePage` | Design call (09-02 reply): narrow documented contract + progressive funnel + write-audit logging | DocTpoint | Open; design decision pending |
+| 3 | **#603** | "single write gate" contract does not hold — six writers bypass `createOrUpdatePage` | Design call (09-02 reply): narrow documented contract + progressive funnel + write-audit logging | DocTpoint | ✅ **CLOSED 2026-09-20** — landed as #750 after four review rounds; slices 1–3 shipped |
 | 4 | **#604** | contradiction resolution loop dead code — nothing sets `review_ok` | Design call (09-02 reply): remove dead branch, keep review field on record | DocTpoint | Open; design decision pending |
 | 5 | **#592 / #593 / #594 / #597** | Jan-Heldal community bug series (dead-link clobber / modal crash / log voice / schema metadata) | Verified against bundled main.js by DocTpoint; submitter invited to PR | Jan-Heldal | Open; awaiting contributor PRs |
 | 6 | **#542** | `isSourceBorneLoop` suppresses halve-retry for common-word degenerate cases | Reaffirmed by #525 follow-up review | green-dalii (owner-self) | Issue open; small fix |

@@ -8,104 +8,114 @@
 
 ---
 
-## Current state (2026-09-18)
+## Current state (2026-09-20)
 
 **Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = `3499da2a`, Gate 1 green
-at **305 files / 4240 tests**. **v1.28.0 MINOR is in flight.**
+see CHANGELOG §1.27.2). Nothing released since. `main` = **`4f56b475`**, Gate 1 green
+at **308 files / 4285 tests**. **v1.28.0 MINOR is in flight.**
+
+**⭐ #603 is CLOSED** (#750 merged), so the write-path contract holds and **#729
+Phase 1 is unblocked** — that was the head of the v1.28.0 chain. The chain is now
+#662 ✅ (shipped in #757) → #729 P1 → P2 + #664 → P3-6.
 
 **Merged into v1.28.0 so far (unreleased):**
 
-- **#726** — `deleteEmptyStubs` gives a link its name back before the stub it points
-at is deleted. Closes **#725**. Merged **without `--admin`**: a cross-account
-`gh pr review --approve` satisfies the ruleset, so no bypass-actor mutation is needed
-when merging someone else's PR — prefer that path.
-- **#748** — **#603 slice 1**: the write gate split into named layers
-(`pageGuard` / `rawWrite` / `notify`) with a defaultless `WriteIntent`, zero call-site
-changes. Two mutation tests prove the wiring; see §"Slice 1 shipped" for the race it
-surfaced.
-- **#744** + **#746** — **#741 resolved in two steps**: a cross-origin failure is now
-recorded per origin with a visible warning instead of degrading silently, and desktop
-gains a streaming `node:https` transport for those origins. **That transport does not
-load in a shipped build** — see #751 in §"Work list"; the safety net made it fail
-silently rather than crash, which is why it went unnoticed.
-- **#736** — custom request headers, the `opencode` preset, and a `(Responses)`
-variant. Closes **#723** and **#735**, both verified end to end by @aisahpA on a
-real vault with a real Go key. Three defects he found in the PR's own code were
-fixed before merge. See the 2026-09-17 session lessons below.
-- **#739** — **#729 Phase 0**: the Related and extraction ceilings centralised into
-`src/constants.ts`, behaviour-identical and proven so by zero snapshot churn.
-- **#733** — zod 4 migration (**#669**), proven by byte-identical wire snapshots.
-- **#737** and **#734** — two AGENTS.md process rules (verify the commit not the
-command; a PR body is not the commit-message file).
-- Earlier: #707 / #708 (Dependabot eslint / tslib bumps) and #727 (the lockfile
-gate vs Dependabot, root-fixed and verified in production).
+- **#750** — **#603 slices 2 + 3**, and the four rounds it took are the most
+  instructive review of the cycle. Closes **#603**. Three blocking findings, two of
+  them behaviour regressions the slice introduced, each now covered by a test that
+  fails without its fix. See §"Slice 3 reviewed" for the chain and §"Write path"
+  for the shape.
+- **#757** — **#662**: `getExistingWikiPages` no longer walks the vault per written
+  page. From @DocTpoint; closes **#662**.
+- **#759** — **#751**: the build-config one-liner that made two shipped features
+  work. Closes **#751** and, transitively, **#665**. See §"The build test that was
+  protecting the bug".
+- **#773** — **#699**: third-party licence notices generated from the built bundle
+  rather than hand-listed. Closes **#699**. See §"Third-party notices" for the two
+  things the packages' own files did not settle, and §"Notices scope decision" for
+  why they live in the repository rather than in the artifact.
+- **#762** + **#673** — one change to a user-visible claim, landed as two PRs on
+  purpose (EN + DE in one, the other nine locales in the other) because merging
+  either alone makes nine locales assert the opposite of what ships. Closes **#672**.
+- **#769** — dependabot holds for `obsidian` and `@types/node`, each entry carrying
+  the measurement that says why. See §"Two bumps that read opposite to their cost".
+- **#765** — dependabot hold for `@ai-sdk/openai-compatible` 3.x, which cannot
+  typecheck without `ai@7`; tracked as **#764**.
+- **#761** — an AGENTS.md rule: a squash merge is how a contributor's trailer
+  reaches a maintainer commit. See §"Main's own commits".
+- **#767** — the `yaml` devDependency bump.
+- Earlier: #726 (#725), #748 (#603 slice 1), #744 + #746 (#741), #736 (#723/#735),
+  #739 (#729 Phase 0), #733 (#669), #737 + #734, #707/#708, #727.
 
-**In review, not merged:** **#750** (#603 slices 2 + 3) — awaiting @DocTpoint. It
-also carries the correction that the log's guard is *harmful*, not merely idle, and a
-contract test that reads the source tree rather than restating the rule.
+**In review:** **#775** (#467, Gate 1 green, waiting on @DocTpoint); **#760** (#758);
+**#656** (@Jan-Heldal's audit-trail fix, which now supersedes an implementation of
+mine — see §"The issue that was already being fixed").
 
-**Next work, ordered by ROI: §"Work list (2026-09-18)" below.** The top item is
-**#751** — a one-line build-config fix that makes a shipped feature work.
+**Blocked on other people:** **#687** — @Chase07 confirmed the implementation is
+complete and the WIP description was stale, and asked for the maintainer-side
+rebase; **it is done and green (309 files / 4298 tests) and cannot be pushed**
+because `maintainer_can_modify` is `false`. Waiting on one checkbox. **#755** —
+waiting on @weqoocu to strip a version bump (the two features still need the
+"one PR or two" answer). **#701** — premise refuted; a product decision.
+
+**New from Dependabot on 2026-09-20:** **#772** (`ai` 6 → 7.0.105), **#771**
+(`@ai-sdk/anthropic`), **#770** (TypeScript 5.9.3 → 6). #772 is the piece **#764**
+was filed for; the coordinated upgrade is now three PRs that have to move together,
+and `@ai-sdk/openai-compatible` is still held so it will not join them.
 
 **Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups,
 the hardening-before-reader ordering, and the open decisions. This file carries
-the *why* and the *how* (see §"Design record — cross-source relations" below),
-never the window schedule.
+the *why* and the *how*, never the window schedule.
 
 ---
 
-## Work list (2026-09-18) — ordered by ROI
+## Work list (2026-09-20) — ordered by ROI
 
 **ROI = (impact × certainty) / effort.** Certainty is how confident we are the fix
 lands *and* stays landed. A high-impact item with unknown reproduction cost ranks
 below a medium-impact one that is measured, because the second actually ships.
 
-### Tier 0 — land #751 before anything else
+### Tier 0 — **closed on 2026-09-20**
 
-**#751** — `esbuild.config.mjs` never sets `platform`, so it defaults to `browser`;
-`node:module` is `external`; and under the browser platform esbuild leaves an external
-dynamic `import()` as a **native** `import()`, which the renderer hands to Chromium's
-module loader and blocks.
+**#751 landed as #759.** The build-config one-liner is in `main`: `esbuild.config.mjs`
+now sets `supported: { 'dynamic-import': false }`, so `await import('node:module')`
+compiles to `require` and the renderer can load it. It fixed **two** shipped features —
+Codex browser login (#665, closed) and the desktop streaming transport from #746, which
+had never loaded once in a release build. **#753 was closed as superseded** on the layer
+decision, with the author's diagnosis credited in the closing comment.
 
-| | |
-|---|---|
-| Impact | **Two shipped features.** Codex browser login (**#665**, broken since v1.25.6) and the desktop streaming transport from **#746**, which is inert — it fails into the `requestUrl` fallback, which is exactly why it went unnoticed |
-| Effort | **One line**: `supported: { 'dynamic-import': false }` |
-| Certainty | **High** — measured on the artifact (`import("node:module")` 2→0, `require(...)` 0→2) and verified end to end on a real vault with a real Go key |
+Measured by @DocTpoint rather than by me, and his form is stronger: he built the branch
+twice, one line apart, and diffed the artifacts — **two lines differ in 4,539,124 bytes**,
+both at the intended sites, and the ~30 other runtime `import()` calls were already
+require-based under `format: 'cjs'`. "The global switch is safe, not merely untested."
 
-**The global switch is safe, and that was checked rather than assumed.** There are 37
-`await import()` sites and only **2** are Node builtins. The other 35 load `ai` or our
-own modules, and `ai` is **not** in the `external` list — the shipped bundle contains
-`require("ai")` 0 times and `import("ai")` 0 times, so it is already inlined into the
-single-file CJS bundle. Only `obsidian`, `electron`, `@codemirror/*`, `@lezer/*` and
-the Node builtins are external, and of those only the builtins are dynamically
-imported. So the switch reaches exactly the two sites that need it.
+### Tier 0′ — the v1.28.0 chain's head is now unblocked
 
-**#753 is the same defect fixed at the call sites** and is an *alternative*, not a
-second half. If #751 lands, `await import('node:module')` compiles to `require` on its
-own — which is precisely what #753's bundle assertion checks for, so that assertion
-would pass without its source change. Prefer #751: it is smaller, and it is the one
-verified against a real vault. #753's source-level form is defensible (it makes the
-CommonJS requirement explicit) but its `@typescript-eslint/no-require-imports`
-disables exist only to support a form the build can produce by itself. **Decide one,
-not both.** Both are filed on this reasoning; do not re-derive it.
+**#729 Phase 1** (M0 co-citation projection) was hard-blocked on #603 by design: a
+reader's acceptance metric is meaningless while the write path's contract does not hold.
+**#603 closed with #750**, and **#662 closed with #757**, so both gates are open and
+Phase 1 is the highest-ROI substantive work left in the window.
+
+Read `## Design record — cross-source relations (#729, v1.28.0)` for the phase plan and
+the two corrections made after the issue was written — in particular that
+**`RELATED_BUDGET.siblings` must not be read until Phase 2**, since it is 3/3/2/1/3 while
+today every granularity gets a flat 3.
 
 ### Tier 1 — unblock the queue (zero new work)
 
 | Item | What it waits on | Effort |
 |---|---|---|
-| **#750** (#603 slices 2+3) | @DocTpoint | none |
-| **#656** | @DocTpoint's 5th round — he wrote *"Points 1 and 2 addressed … and I will approve"*. The CRLF claim is gone from the source; whether that satisfies him is his call | none |
-| **#673** | @DocTpoint — blocking issue is 9 of 11 locales stating the opposite of shipped behaviour | none |
-| **#687** | The author. Its own description still says *"Draft / work in progress"* with *"run final validation before requesting review"* outstanding, while the draft flag is off. Asked, not reviewed | none |
+| **#687** (@Chase07) | **One checkbox.** The author confirmed the implementation is complete and the WIP wording was stale, and asked for the maintainer-side rebase. It is **done and green** — 7 commits, one conflict (an import block in `source-analyzer.ts`), Gate 1 at 309 files / 4298 tests — and **cannot be pushed**: `maintainer_can_modify` is `false`, so the push is rejected `permission denied`. The branch is parked at `pr-687` @ `e3273353`; push it the moment "Allow edits by maintainers" is ticked. The conflict resolution is described on the PR for him to review | none |
+| **#656** (@Jan-Heldal) | @DocTpoint. **Three fixes of mine are already on the branch** (`4c6d2fb1`), pushed as a fast-forward after `gh pr update-branch --rebase`. See §"The issue that was already being fixed" | none |
+| **#755** (@weqoocu) | The author, for the "one PR or two" answer. The version bump can be stripped by us — it is three files (`manifest.json`, `package.json`, `CHANGELOG.md`) | small |
+| **#701** (@weqoocu) | A product decision. The premise is refuted — see §"#701's premise does not hold" | none |
 
 ### Tier 2 — the v1.28.0 feature track (the window's purpose)
 
 Dependency-ordered; each is blocked by the one before it.
 
-1. **#603** — slices 2+3 are in #750. After it lands, #603 closes.
-2. **#662** — the page index rebuilt per item and per written page. Same surface as #603; the design already concludes the fix is a **run-scoped index the writer updates**, not a TTL cache.
+1. ✅ **#603** — slices 2+3 landed in **#750**; the issue is closed.
+2. ✅ **#662** — landed in **#757**; the page index is held per file and the issue is closed.
 3. **#729 Phase 1** (M0 co-citation projection) — hard-blocked on #603 by design: a reader's acceptance metric is meaningless while the write path's contract does not hold.
 4. **#729 Phase 2** + **#664 together** — *“they ship together”*: #729 adds Related entries while #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open.
 5. **#729 Phases 3–6**, then **#668 + #752 together** — #668 restructures the settings tab and #752 is the sibling bug (the panel also jumps back to the top), so fixing the scroll before the restructure means doing it twice. #729's toggle placement is also gated on #668.
@@ -129,14 +139,16 @@ cites are already handled. **#330 / #358** are design anchors rather than tasks.
 `v1.27.x PATCH` or older milestones and should be re-triaged at the next planning
 pass rather than carried indefinitely.
 
-**Open PRs:** #728 (Dependabot MAJOR `@ai-sdk/openai-compatible` — needs the
-request-body check against `openai-compat-request-body.test.ts` before merging) ·
-#726 and #673 (@DocTpoint) · #701 (@weqoocu) · #687 (@Chase07, draft WIP) ·
-#656 (@Jan-Heldal — also carries an unfixed lint failure at
-`src/schema/apply-suggestion.ts:143`).
+**Open PRs (2026-09-20):** **#775** (#467, Gate 1 green — the guard is the deliverable,
+see §"The unified-model guard was wrong twice") · **#760** (#758) · **#774** (@DocTpoint,
+prompts) · **#770 / #771 / #772** (Dependabot: TypeScript 6, `@ai-sdk/anthropic`, and
+**`ai` 6 → 7** — #772 is the piece **#764** was filed for, so those three move together
+and `@ai-sdk/openai-compatible` stays held).
 
-**Newly filed, unstarted:** none. #741 was filed 2026-09-17 and closed 2026-09-18 by
-#744 + #746.
+**Newly filed, unstarted:** **#763** — `writeFileWithIntent` returns `void`, so a
+skipped lint write is logged as a fix that happened. Needs a return value; review scoped
+it out of #750 and the scope is 8 production declarations plus ~20 test doubles. **#764**
+— the coordinated AI SDK v7 upgrade.
 
 > **Superseded 2026-09-17:** the 2026-09-16 block below is the previous snapshot.
 > Kept for archaeology — do not update the old block.
@@ -1220,6 +1232,89 @@ workflow".
 
 ---
 
+## Lessons learned (2026-09-20 session — skill audit, build-config layer, three dependency holds)
+
+**Trigger:** compact-prep after a long working session. Merged #757, #759, #761, #762,
+#765, #767, #769, #773, **#750**; closed #603, #662, #665, #672, #699, #751, and #753 as
+superseded; filed #763 and #764. `main` `3499da2a` → **`4f56b475`**; 4240 → **4285
+tests**. The through-line was **reviewing other people's work and being reviewed**, and
+most of what follows came from @DocTpoint's reviews rather than from my own passes.
+
+### Durable lessons
+
+1. **A dependency experiment leaves `node_modules` ahead of the lockfile, and `git
+   checkout` does not clean it — because it is not tracked.** Hit twice, and the second
+   time I reported it as a fact about `main`: 31 `TS2550: Property 'at' does not exist`
+   errors presented as a property of the `@types/node` bump, when the installed tree
+   still held the bumped package from reading that branch. `main` was clean. **Any local
+   Gate 1 result after a dependency experiment is untrustworthy until `pnpm install
+   --frozen-lockfile`.** The symptom is indistinguishable from a real regression, and it
+   was written into #765's audit note and #768's closing comment so the next person
+   recognises it faster.
+
+2. **The triage skill's dedup step read `--state merged` only, so an OPEN PR already
+   fixing an issue was invisible.** I picked #597 as the highest-ROI unstarted item, read
+   the code, confirmed the defect against two independent doc comments, implemented it,
+   tested it, mutation-tested it twice — and then found **#656 had been fixing the same
+   issue for four review rounds and was one small change from approval**. Its branch was
+   six days stale, so every "recent activity" search missed it too. The wasted work is
+   the cheap part; the real cost is that a re-implementation is how a contributor's four
+   rounds get devalued. **Fixed in the skill**: Phase 1.5 now asks two separate questions
+   (fixed on `main`? vs **in flight in an open PR?**) and Phase 1d pulls every thread
+   roster-wide rather than per item, because a body does not say who already acted on it.
+
+3. **A test can be written to protect a property and end up protecting a spelling.**
+   Three instances in one week, from two different authors and three different files: the
+   bundle test asserting `toContain('import("node:module")')` while its own comment said
+   the requirement was laziness; `toContain('updated:')` in the schema-audit test, which
+   passes for the old value and so cannot tell an apply from a no-op; and #750's fourth
+   assertion, caught by review. **The check that catches it is one question: what would
+   this assertion still pass on?**
+
+4. **When you remove a wrong check, ask what it was incidentally holding shut.** The
+   best finding of the session, and it was not mine: `LINT_WRITE_INTENT` stopped reading
+   the ingest controller, which was right — and the old wiring had *also* been preventing
+   a lint write from resurrecting the page the cancelled-ingest cleanup had just deleted.
+   Removing a wrong reason left a right effect unprotected, and nothing replaced it. The
+   fix is now `create: false` plus a test that fails without it.
+
+5. **Mutations cover the wiring; a correctness finding can live elsewhere — and a guard
+   assertion must itself be mutation-tested.** #750's slice passed all three of its own
+   mutations and still shipped two behaviour regressions. Then, on #467, **my guard
+   passed two of three mutations on the first version**: the assignment assertion was
+   satisfied by `syncModelsFromPlugin` assigning the same field, and the cascade
+   assertion by `toContain` matching the method's own *definition* — a lazy
+   `[\s\S]{0,400}?` span reaching past the closing brace to find it. Both now sit inside
+   one block, bound by `[^}]*`.
+
+6. **Two version numbers that read opposite to their cost.** `@types/node` 16 → 26 does
+   not add anything this project uses (`node:module` and `node:https` date from Node 15)
+   and **removes** the `compatibility/indexable.d.ts` shim that makes
+   `Array.prototype.at` typecheck under `lib: ES2021` — the upgrade takes away a
+   convenience. And `obsidian` 1.13.1 deprecates `display()` while its own doc comment
+   calls it *"a fallback for plugins that need to support Obsidian versions older than
+   1.13.0"* — so neither bump forces `minAppVersion`, and both were held with the
+   measurement written into `.github/dependabot.yml` rather than left as open PRs #766
+   and #768. **A version number is a claim about change, not about benefit.**
+
+7. **A rejection message can name the wrong cause, and the fix is the stronger flag.**
+   `git push` to a contributor's branch came back `non-fast-forward` — which is just what
+   a rebase looks like — before `--force-with-lease` returned the real `permission denied`
+   (`maintainer_can_modify: false`). Two attempts were spent on the wrong diagnosis.
+   Similarly: **verify the merge returned `merged=true` before restoring a bypass actor**, 
+   not that the command exited — restoring first left #773 open while the script printed
+   success, and only the next status read showed it.
+
+8. **The bundle is the authority on what is bundled — read the artifact, do not
+   re-derive the set.** #699 measured ten third-party packages in the shipped `main.js`;
+   the artifact contains **twelve**. The two it missed (`@vercel/oidc`,
+   `eventsource-parser`) are transitive two levels below anything `package.json` names,
+   and they are exactly the ones a hand-maintained list keeps missing. The generator now
+   reads esbuild's own `// node_modules/.pnpm/<pkg>@<ver>/` markers, so the set cannot go
+   stale, and a test fails when the committed document and the artifact disagree.
+
+---
+
 ## Lessons learned (2026-09-16 session — cross-source direction + Dependabot lockfile root fix)
 
 ### Durable lessons
@@ -1270,37 +1365,41 @@ workflow".
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
 
-### Resume point (post-compact handoff, 2026-09-18)
+### Resume point (post-compact handoff, 2026-09-20)
 
 **Read in this order if context was lost:** this file's `## Current state` (where
-things stand) → **`## Work list (2026-09-18)`** (what to do next, ROI-ordered) →
+things stand) → **`## Work list (2026-09-20)`** (what to do next, ROI-ordered) →
 ROADMAP §"v1.28.0 MINOR — Design track" (the window's scope) → then the design record
-for whichever item is next. Issues: **#751** first, then whatever Tier 1 unblocks.
+for whichever item is next. **The next substantive work is #729 Phase 1** — both of its
+gates (#603, #662) closed on 2026-09-20.
 
-**State at handoff:** `main` = `3499da2a`, Gate 1 green at **305 files / 4240 tests**.
-Closed in this window: #723, #725, #735, #669, #741, #729 Phase 0. **Nothing is
-mid-flight in the working tree** — no branch, no stash, no uncommitted edit. **#750 is
-open and awaiting @DocTpoint** — do not merge it without his review.
+**State at handoff:** `main` = **`4f56b475`**, Gate 1 green at **308 files / 4285
+tests**. Merged this window: #757, #759, #761, #762, #765, #767, #769, #773, **#750**.
+Closed: #603, #662, #665, #672, #699, #751, #753 (superseded), plus the Dependabot PRs
+#726/#728/#766/#768. **The working tree is clean and the stash is empty.**
 
-**The next concrete step is #751**, one line in `esbuild.config.mjs`. It is written up
-in the work list, including the check that its global flag only reaches the two `node:`
-imports, and the reason **#751 and #753 are alternatives rather than two halves** —
-decide one. Do not re-derive either.
+**One branch is parked and must not be lost:** `pr-687` @ **`e3273353`** — the rebase
+of @Chase07's PR, 7 commits, Gate 1 green at 309 files / 4298 tests, **unpushable
+until he ticks "Allow edits by maintainers"**. If context is lost and that branch is
+gone, re-deriving it is cheap (one conflict, an import block in `source-analyzer.ts`:
+keep main's `foldToVocabulary` import, add his `EmbeddedImageEvidenceSchema` to the
+`output-schemas` line). One other local branch, `refactor/467-unified-model-setter` @
+`033e1842`, is PR **#775** and is already pushed.
 
-**Two facts that save time on resume:** the ruleset needs ~15 s to propagate after a
-bypass actor is added, **and you usually do not need one** — a cross-account
-`gh pr review --approve` satisfies it, which is how #726 merged without `--admin`.
-This environment's GraphQL surface returns intermittent EOFs and its
-`/pulls/<N>/files` endpoint occasionally returns an empty array; retry, and prefer REST
-over `gh pr view`.
+**The ruleset needs ~15 s to propagate, not 6 s — and one more thing about bypasses:**
+verify the merge returned `merged=true` **before** restoring the ruleset. Restoring
+first left #773 open while the script reported success, and the failure only surfaced
+on the next status read. A cross-account `gh pr review --approve` still satisfies the
+ruleset on someone else's PR, so most merges need no bypass at all — that is how #750
+merged.
+
+**This environment's reads are intermittently empty, not wrong.** The GraphQL surface
+returns EOFs and `/pulls/<N>/files` sometimes returns `[]`; a status read that comes
+back blank is a retry, not a fact. `gh api repos/.../pulls/<N>` is more reliable than
+`gh pr view`.
 
 **One open decision blocks a later phase, not this one:** #729's toggle placement
 (bottom Advanced panel vs a home created by #668) — needed before Phase 4.
-
-**Two facts that save time on resume:** the ruleset needs ~15 s to propagate
-after a bypass actor is added (6 s fails the merge), and this environment's
-GraphQL surface returns intermittent EOFs — prefer `gh api repos/.../pulls/<N>`
-over `gh pr view` when a read looks wrong.
 
 **One open decision blocks a later phase, not this one:** #729's toggle
 placement (bottom Advanced panel vs a home created by #668) — needed before
