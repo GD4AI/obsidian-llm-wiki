@@ -68,13 +68,13 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.2.1
-        version: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3)
+        version: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1)
       vitest:
         specifier: 5.0.0
-        version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@16.18.126)(jsdom@30.0.1)(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3))
+        version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@16.18.126)(jsdom@30.0.1)(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1))
       yaml:
         specifier: ^2.4.2
-        version: 2.8.3
+        version: 2.9.1
 
 packages:
 
@@ -1727,8 +1727,8 @@ packages:
     resolution: {integrity: sha512-vavAMRXOgBVNF6nyEEmL3DBK19iRpDcoIwW+swQ+CbGiu7lju6t+JklA1MHweoWtadgt4ISVUsXLyDq34ddcwA==}
     engines: {node: '>=4'}
 
-  style-mod@4.1.3:
-    resolution: {integrity: sha512-i/n8VsZydrugj3Iuzll8+x/00GH2vnYsk1eomD8QiRrSAeW6ItbCQDtfXCeJHd0iwiNagqjQkvpvREEPtW3IoQ==}
+  style-mod@4.1.4:
+    resolution: {integrity: sha512-XXWIQt633/EpAFx8aZDOTjBzrCaGmhvEQlQo6MVPfa2OzO2cWo+4hV9h+6UkHYlXGfy+ODXKUdP7Pthmcu5ATw==}
 
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
@@ -1994,8 +1994,8 @@ packages:
     resolution: {integrity: sha512-odxVsHAkZYYglR30aPYRY4nUGJnoJ2y1ww2HDvZALo0BDETv9kWbi16J52eHs+PWRNmF4ub6nZqfVOeesOvntg==}
     engines: {node: ^14.17.0 || >=16.0.0}
 
-  yaml@2.8.3:
-    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -2083,7 +2083,7 @@ snapshots:
     dependencies:
       '@codemirror/state': 6.5.0
       crelt: 1.0.7
-      style-mod: 4.1.3
+      style-mod: 4.1.4
       w3c-keyname: 2.2.8
 
   '@csstools/color-helpers@6.1.0': {}
@@ -2514,14 +2514,14 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vitest/mocker@5.0.0(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3))':
+  '@vitest/mocker@5.0.0(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3)
+      vite: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1)
 
   '@vitest/spy@5.0.0': {}
 
@@ -3881,7 +3881,7 @@ snapshots:
 
   strip-bom@3.0.0: {}
 
-  style-mod@4.1.3: {}
+  style-mod@4.1.4: {}
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
@@ -4014,7 +4014,7 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3):
+  vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -4025,12 +4025,12 @@ snapshots:
       '@types/node': 16.18.126
       esbuild: 0.28.1
       fsevents: 2.3.3
-      yaml: 2.8.3
+      yaml: 2.9.1
 
-  vitest@5.0.0(@opentelemetry/api@1.9.1)(@types/node@16.18.126)(jsdom@30.0.1)(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3)):
+  vitest@5.0.0(@opentelemetry/api@1.9.1)(@types/node@16.18.126)(jsdom@30.0.1)(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3))
+      '@vitest/mocker': 5.0.0(vite@8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -4041,7 +4041,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.8.3)
+      vite: 8.2.1(@types/node@16.18.126)(esbuild@0.28.1)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
@@ -4135,9 +4135,9 @@ snapshots:
   yaml-eslint-parser@1.3.2:
     dependencies:
       eslint-visitor-keys: 3.4.3
-      yaml: 2.8.3
+      yaml: 2.9.1
 
-  yaml@2.8.3: {}
+  yaml@2.9.1: {}
 
   yocto-queue@0.1.0: {}
 
