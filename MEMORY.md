@@ -729,11 +729,21 @@ Pattern B cannot tell that from LLM-emitted duplication and rewrote it to
 `[[concepts/布局优化]]`, a dead link. **The fix is a bug fix, not a tidy-up** — which
 is why the test asserts both directions rather than a single `toContain`.
 
-Shipped: `LOG_WRITE_INTENT { guard: false, notify: true }` at the LogWriter injection
-(`log.md` keeps `notify` — only the guard is dropped) and `RAW_WRITE_INTENT
-{ guard: false, notify: false }` at the PDF sidecar, whose prose bypass at
-`wiki-engine.ts:845-851` is now a declaration. Routing the sidecar through `rawWrite`
-also gave it the retry and the NFC/NFD recovery the two direct vault calls lacked.
+Shipped: `LOG_WRITE_INTENT { guard: false, notify: true, create: true, cancel: 'ingest' }`
+at the LogWriter injection (`log.md` keeps `notify` — only the guard is dropped) and
+`RAW_WRITE_INTENT { guard: false, notify: false, create: true, cancel: 'ingest' }`
+at the PDF sidecar, whose prose bypass at `wiki-engine.ts:845-851` is now a
+declaration. Routing the sidecar through `rawWrite` also gave it the retry and the
+NFC/NFD recovery the two direct vault calls lacked.
+
+**`guard: false` drops three corrections, not one** (corrected 2026-09-20 in review).
+The paragraph above justifies only the path-prefix repair; the layer also carries
+display-name correction and sources normalization, and both are dropped here too.
+Neither was ever wanted on the log — it has no display name, and its `sources` line
+is a projected link list rather than the note's — so the narrower edit is the correct
+outcome rather than a side effect. Recorded because "the guard is harmful for one
+reason" and "the guard does three things, all unwanted here" are different claims,
+and only the second is checkable.
 
 **A property that had never been tested:** the sidecar's **not-notify** behaviour is
 the entire reason the bypass exists (the comment warns of auto-ingest cascades), yet
@@ -743,6 +753,60 @@ would have broken nothing. It now fails one test.
 **`link-retarget.ts:185` is deliberately out of scope and must stay that way**: it
 receives an injected `process` and never touches the engine's layers, so its
 "declaration" is a type-level statement, not a call-site change.
+
+### Slice 3 reviewed (2026-09-20) — three findings, two of them mine to own
+
+@DocTpoint reviewed the slice and returned CHANGES_REQUESTED with **two shipped-
+behaviour findings and one test finding**. The slice's own three mutations passed
+before he looked, which is the useful part of the record: **mutations cover the
+wiring, and neither of these was a wiring question.**
+
+**1. `markPageComplete` gained `vault.create` and could resurrect a deleted page.**
+My reasoning had been that the old form's `process` callback discarded its `data`, so
+there was no atomicity to lose. That part is true and irrelevant: `rawWrite` adds
+**three** things, and the third is `create`. The old form resolved a `TFile` first and
+did nothing when it was gone; the new one writes it back.
+`markPageComplete` is deliberately un-awaited, so it races the cancel cleanup that
+deletes the page it is stamping — and a stamp that can create writes the page back
+with `generation_complete: true`, which is precisely the state #582/#583 exist to
+prevent. Which side wins is undetermined, so it reproduces intermittently.
+**Fixed by making it a declared layer**: `WriteIntent` gained `create`, every existing
+intent is `create: true`, and `STAMP_WRITE_INTENT` is `create: false`. `rawWrite`
+returns a new `'absent'` outcome rather than an error — nothing happened, on purpose.
+His probe is now a test, as given, with the interleaving pinned rather than timed.
+
+**2. The lint fixers' writes were governed by the ingest's cancel button.**
+`writeFileWithIntent` opened with `checkCancelled()`, which read `abortController` —
+the **ingest** controller. The engine holds two (`lintAbortController` beside it), and
+they overlap because `lint-wiki` is registered with no `isIngesting()` guard. So
+cancelling an ingest aborted an overlapping lint's writes, and cancelling the lint did
+not touch its own. `runRetagViolations` re-throws AbortError deliberately, so the run
+tore down with earlier batches already written and the user was never told.
+**Fixed the same way**: the cancel owner is now a declared field —
+`cancel: 'ingest' | 'lint' | 'none'` — and `LINT_WRITE_INTENT` names `lint`. The check
+had been implicit since it was written, which is exactly the ambiguity the type exists
+to remove.
+
+**3. The contract test's waiver list could not match on Windows.** The waiver is
+`'core/disk-cache.ts'` but `relative()` yields `core\disk-cache.ts` on win32, so the
+lookup missed, `core/disk-cache.ts` stopped being excluded, and both assertions failed
+there — on the one platform CI never runs. **A guard whose value is that it runs
+everywhere must normalise the paths it compares.** Now `relPosix()`.
+
+**Two non-blocking notes, both acted on.** The comment stripper cut each line at its
+first `//` without tracking string literals, so a bypass written after an inline URL
+was invisible — a scanner whose failure mode is "silently reports a clean tree". It is
+a one-pass quote-aware walk now. And `write-gate-layers.test.ts` claimed to protect
+"pollution correction outside the content folders" while writing through
+`createOrUpdateFile` — which production **no longer uses for the log**, the `LogWriter`
+being its sole writer with `guard: false`. So the behaviour it claimed to protect was
+gone and the test still passed. Re-pinned on a path that still takes the full gate,
+with the log named as the counter-example.
+
+**The generalisable part:** a test can be written to protect a *property*, pass for a
+long time, and then be protecting a *spelling* — the same failure as #751's build test,
+found in the same week, in a test written by two different people. The check that
+catches it is asking what the assertion would still pass on.
 
 **Lesson worth keeping: "this does nothing useful" and "this is harmful" are
 different claims, and only the second justifies urgency.** The design pass made the

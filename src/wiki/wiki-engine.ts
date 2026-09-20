@@ -19,6 +19,7 @@ import {
   FULL_WRITE_INTENT,
   LOG_WRITE_INTENT,
   RAW_WRITE_INTENT,
+  STAMP_WRITE_INTENT,
 } from '../types';
 import { PROMPTS } from '../prompts';
 import { getText } from '../core/i18n';
@@ -359,7 +360,16 @@ export class WikiEngine {
         // from an earlier read, so this never had `process`'s atomicity to lose —
         // it only lacked what `rawWrite` adds: the three-attempt retry and the
         // NFC/NFD "already exists" recovery for the path.
-        await this.rawWrite(path, flipped);
+        //
+        // `STAMP_WRITE_INTENT` is `create: false`, and that is the point. The
+        // pre-split form resolved a `TFile` first and did nothing when it was
+        // gone, so it could only update. `rawWrite` also creates. This function
+        // is deliberately un-awaited, so it races the cancel cleanup that deletes
+        // the very page it is stamping — and a stamp that can create writes the
+        // page back with `generation_complete: true`, which is the state #582/#583
+        // exist to prevent and which would make every later trigger skip the
+        // source. Update-only, as before.
+        await this.rawWrite(path, flipped, STAMP_WRITE_INTENT);
       } catch (e) {
         console.warn(`[wiki-engine] markPageComplete failed for ${path}:`, e);
       }
@@ -419,8 +429,10 @@ export class WikiEngine {
     this.onLintEnd?.();
   }
 
-  private checkCancelled(): void {
-    if (this.abortController?.signal.aborted) {
+  private checkCancelled(kind: WriteIntent['cancel']): void {
+    if (kind === 'none') return;
+    const controller = kind === 'lint' ? this.lintAbortController : this.abortController;
+    if (controller?.signal.aborted) {
       throw new DOMException('Ingestion cancelled by user', 'AbortError');
     }
   }
@@ -1089,7 +1101,7 @@ export class WikiEngine {
       console.debug(`[Time] Source analysis phase: ${analysisTime}ms`);
       console.debug('Analysis result:', JSON.stringify(analysis, null, 2));
 
-      this.checkCancelled();
+      this.checkCancelled('ingest');
 
       // Issue #514: a candidate the source only mentions gets no page. Decided
       // from the text before any page is planned — a name the note never says,
@@ -1357,7 +1369,7 @@ export class WikiEngine {
         tasks: pageGenTasks,
         concurrency,
         batchDelayMs: batchDelay,
-        checkCancelled: () => this.checkCancelled(),
+        checkCancelled: () => this.checkCancelled('ingest'),
         apiDelay: (ms: number) => this.apiDelay(ms),
         onProgress: (_id) => {
           step++;
@@ -1445,7 +1457,7 @@ export class WikiEngine {
         tasks: relatedTasks,
         concurrency: relatedConcurrency,
         batchDelayMs: relatedDelay,
-        checkCancelled: () => this.checkCancelled(),
+        checkCancelled: () => this.checkCancelled('ingest'),
         apiDelay: (ms: number) => this.apiDelay(ms),
         onProgress: (id) => {
           const task = relatedTasks.find(t => t.id === id);
@@ -1900,6 +1912,10 @@ export class WikiEngine {
    * outcome in a return value makes the difference checkable instead of hidden in
    * two early `return`s. Whether the recovery paths should stamp is a slice-3
    * decision, not one to make silently here.
+   *
+   * `absent` is the `create: false` outcome: the file was gone and the intent did
+   * not permit writing it back. It is not an error and not a recovery — nothing
+   * happened, on purpose. Only `STAMP_WRITE_INTENT` can produce it today.
    */
   private static readonly RECOVERED = 'recovered' as const;
 
@@ -1936,7 +1952,13 @@ export class WikiEngine {
     // Obsidian inside that window skipped #583's cleanup — the summary page
     // stayed, stamped complete, and every later trigger skipped the source.
     // Outside an ingest there is no controller and this is a no-op.
-    this.checkCancelled();
+    //
+    // The controller is named by the intent, not assumed. The engine holds two
+    // — this one for an ingest and `lintAbortController` for a lint run — and
+    // they can overlap, because `lint-wiki` is registered without an
+    // `isIngesting()` guard. Reading the ingest controller here made the lint
+    // fixers' writes stop on the ingest's cancel button and ignore their own.
+    this.checkCancelled(intent.cancel);
     console.debug('createOrUpdateFile:', path);
 
     const isWikiContentPage = this.isInWikiContentFolder(path, this.settings.wikiFolder);
@@ -1966,7 +1988,7 @@ export class WikiEngine {
       }
     }
 
-    const outcome = await this.rawWrite(path, content);
+    const outcome = await this.rawWrite(path, content, intent);
 
     if (intent.guard && outcome !== WikiEngine.RECOVERED && isWikiContentPage) {
       this.markPageComplete(path);
@@ -1984,7 +2006,7 @@ export class WikiEngine {
    * is what makes it usable by the PDF sidecar, whose comment at `:845-851` is the
    * original evidence that one gate for every write was the wrong shape.
    */
-  private async rawWrite(path: string, content: string): Promise<string> {
+  private async rawWrite(path: string, content: string, intent: WriteIntent): Promise<string> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const file = this.app.vault.getAbstractFileByPath(path);
@@ -2007,6 +2029,16 @@ export class WikiEngine {
             console.debug('Update success (resolved path):', path);
             return 'updated';
           }
+        }
+
+        if (!intent.create) {
+          // Update-only intent. The NFC/NFD scan above already looked, so the file
+          // is genuinely gone and creating it would bring it back — see
+          // `STAMP_WRITE_INTENT` for why that is a correctness requirement rather
+          // than a preference. Stop here instead of retrying: no attempt of this
+          // loop may create, so none of them would differ.
+          console.debug('rawWrite: file absent and this intent may not create it:', path);
+          return 'absent';
         }
 
         // File genuinely does not appear to exist — attempt to create it.

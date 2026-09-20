@@ -1042,6 +1042,27 @@ export interface WriteIntent {
    * The sidecar opts out deliberately.
    */
   notify: boolean;
+  /**
+   * Whether this write may bring a file that is gone back into existence.
+   *
+   * `fallback false` means update-only: if the file is not there, the write does
+   * nothing. `markPageComplete` needs that, and it is the one layer of the three
+   * that is a correctness requirement rather than a preference — see
+   * `STAMP_WRITE_INTENT`.
+   */
+  create: boolean;
+  /**
+   * Which cancellation governs this write.
+   *
+   * The engine holds two independent controllers — `abortController` for an
+   * ingest and `lintAbortController` for a lint run — and they overlap, because
+   * `lint-wiki` is registered without an `isIngesting()` guard. A write that
+   * reads the ingest controller while it is a lint write is stopped by the wrong
+   * button, and a lint write that reads no controller ignores its own.
+   * Naming the owner here is what keeps the two from being confused, rather
+   * than the current run being inferred from whatever is non-null.
+   */
+  cancel: 'ingest' | 'lint' | 'none';
 }
 
 /**
@@ -1049,7 +1070,51 @@ export interface WriteIntent {
  * a named constant so the compatibility path is not a bare literal that later
  * callers copy without noticing what it means.
  */
-export const FULL_WRITE_INTENT: WriteIntent = { guard: true, notify: true };
+export const FULL_WRITE_INTENT: WriteIntent = {
+  guard: true,
+  notify: true,
+  create: true,
+  cancel: 'ingest',
+};
+
+/**
+ * The `generation_complete` stamp — `markPageComplete`.
+ *
+ * Every layer is off except the one that is a requirement: **`create: false`**.
+ * The stamp is deliberately un-awaited, so it runs against whatever happens
+ * next, and what happens next can be a cancelled ingest deleting the summary
+ * page it is stamping (`wiki-engine.ts` cancel cleanup). Granting it `vault.create`
+ * lets it write the page back with `generation_complete: true` — the completion
+ * marker returns, the source is skipped from then on, and which side wins the
+ * race is undetermined, so it reproduces intermittently. #582/#583 removed
+ * exactly that state; this constant is what keeps it removed.
+ *
+ * `guard: false` and `notify: false` match the pre-split form, which was a
+ * `vault.process` on a resolved `TFile` and no notification. What this intent
+ * *adds* over that form is the retry and the NFC/NFD recovery in `rawWrite` —
+ * which is the whole of what was intended.
+ */
+export const STAMP_WRITE_INTENT: WriteIntent = {
+  guard: false,
+  notify: false,
+  create: false,
+  cancel: 'ingest',
+};
+
+/**
+ * The lint fixers' write.
+ *
+ * Identical to `RAW_WRITE_INTENT` except for the cancel owner, and that one
+ * field is the difference between the lint's own stop button working and not.
+ * Kept as a separate named constant rather than reusing the ingest one, so the
+ * next reader can see the choice instead of inferring it.
+ */
+export const LINT_WRITE_INTENT: WriteIntent = {
+  guard: false,
+  notify: false,
+  create: true,
+  cancel: 'lint',
+};
 
 /**
  * The operation log is a journal, not a page (Issue #603 slice 2).
@@ -1063,7 +1128,20 @@ export const FULL_WRITE_INTENT: WriteIntent = { guard: true, notify: true };
  * `notify` stays on: the log is a vault file the watcher and the index must hear
  * about. Only the guard is dropped.
  */
-export const LOG_WRITE_INTENT: WriteIntent = { guard: false, notify: true };
+export const LOG_WRITE_INTENT: WriteIntent = {
+  guard: false,
+  notify: true,
+  create: true,
+  cancel: 'ingest',
+
+  // `guard: false` also drops the display-name correction and the sources
+  // normalization, not only the path-prefix repair the paragraph above justifies.
+  // Neither was ever wanted here — the log has no display name, and its `sources`
+  // line is a projected link list, not the note's — so the narrower edit to the
+  // log is the correct outcome rather than a side effect. Stated because the
+  // design record named only the path-prefix repair, and a later reader deserves
+  // to know the other two were considered.
+};
 
 /**
  * The PDF sidecar wants the write itself and nothing else (Issue #603 slice 2).
@@ -1073,7 +1151,12 @@ export const LOG_WRITE_INTENT: WriteIntent = { guard: false, notify: true };
  * which "could trigger auto-ingest cascades if the source folder is watched". The
  * declaration makes that intent checkable instead of inferable from silence.
  */
-export const RAW_WRITE_INTENT: WriteIntent = { guard: false, notify: false };
+export const RAW_WRITE_INTENT: WriteIntent = {
+  guard: false,
+  notify: false,
+  create: true,
+  cancel: 'ingest',
+};
 
 // Shape returned by wiki/lint/get-existing-pages.ts's getExistingWikiPages, shared
 // with EngineContext's and WikiEngine's own accessors so the three don't drift

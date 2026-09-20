@@ -17,7 +17,7 @@ import { buildWikiLanguageDirective } from '../system-prompts';
 import { TagViolation } from './scanners';
 import { AliasGenerationLLMSchema, TagFixLLMSchema } from '../../llm-sdk/output-schemas';
 import { callLlm } from '../../core/llm-dispatch';
-import { RAW_WRITE_INTENT } from '../../types';
+import { LINT_WRITE_INTENT } from '../../types';
 
 // Issue #94: Status bar "click to cancel" already exists, but the fix-runner
 // functions in this module previously never received the AbortSignal. Each
@@ -135,10 +135,16 @@ export async function runAliasCompletion(
             // `adapter.write` sits below Obsidian's event layer, so the metadata
             // cache never learned the aliases had changed and `vault.on('modify')`
             // never fired — the fix landed on disk and stayed invisible until a
-            // reindex. `RAW_WRITE_INTENT` keeps this a surgical frontmatter edit
+            // reindex. `LINT_WRITE_INTENT` keeps this a surgical frontmatter edit
             // (no guard over the body, no notification) while going through the
             // engine's `rawWrite`, which uses the vault API and retries.
-            await ctx.wikiEngine.writeFileWithIntent(page.path, updated, RAW_WRITE_INTENT);
+            //
+            // It is not `RAW_WRITE_INTENT` because of one field: the cancel owner.
+            // These writes belong to a lint run, and the engine's write gate reads
+            // the controller the intent names — the ingest's would have stopped
+            // them when the user cancelled an ingest, and let them continue when
+            // the user cancelled the lint.
+            await ctx.wikiEngine.writeFileWithIntent(page.path, updated, LINT_WRITE_INTENT);
             results.push(`- [[${pageRel}]]: added ${newAliases} aliases (total ${mergedAliases.length})`);
             return { success: true, name: page.basename, count: newAliases };
           }
@@ -613,8 +619,9 @@ Task: Return a JSON object with a single field "tags" that is an array of string
         // how inconsistent that was with its own neighbours — `:505` resolves the
         // TFile with `getAbstractFileByPath` and `:524` reads it with
         // `vault.read`. That is what settled the design record's open question:
-        // `adapter.write` was an older idiom here, not a considered choice.
-        await ctx.wikiEngine.writeFileWithIntent(v.path, updated, RAW_WRITE_INTENT);
+        // `adapter.write` was an older idiom here, not a considered choice. The
+        // cancel owner is `lint` — see the note on the other site above.
+        await ctx.wikiEngine.writeFileWithIntent(v.path, updated, LINT_WRITE_INTENT);
         return {
           v,
           kind: 'fixed' as const,

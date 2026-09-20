@@ -58,15 +58,25 @@ describe('WikiEngine write gate — pageGuard layer is wired (#603)', () => {
     // The layer boundary this pins: `guard` is *not* "wiki pages only". The
     // pollution patterns and the sources field are corrected on every write —
     // only the heading/provenance normalization is confined to the content
-    // folders. Narrowing the whole layer would silently stop correcting a log.
+    // folders. Narrowing the whole layer would silently stop correcting
+    // anything written outside them.
+    //
+    // The path is deliberately not `wiki/log.md`, which is what this test used to
+    // write. The log stopped being an instance of this boundary when
+    // `LogWriter` became its sole production writer with `LOG_WRITE_INTENT`
+    // (`guard: false`) — so the old form asserted a behaviour that production no
+    // longer reaches, and passed only because `createOrUpdateFile` still applies
+    // the gate to whatever path it is handed. The boundary is the claim worth
+    // keeping; the log is now its counter-example, and the describe block below
+    // covers what the log actually does.
     const h = createWikiEngineHarness({});
 
     await h.engine.createOrUpdateFile(
-      'wiki/log.md',
+      'wiki/notes/Qwen.md',
       'Appended: [[entities/Qwen|entities/Qwen]]'
     );
 
-    const written = h.files.get('wiki/log.md') ?? '';
+    const written = h.files.get('wiki/notes/Qwen.md') ?? '';
     expect(written).toContain('[[entities/Qwen|Qwen]]');
   });
 });
