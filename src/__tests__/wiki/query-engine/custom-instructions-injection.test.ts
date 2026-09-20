@@ -22,9 +22,10 @@ import { describe, it, expect } from 'vitest';
 // code (CLAUDE.md Obsidian Bot rule forbids Node builtins).
 import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
+import { fileURLToPath } from 'node:url';
 
 /** Resolve paths from this test file (uses Node fs/path — test only). */
-const SRC_ROOT = new URL('../../..', import.meta.url).pathname;
+const SRC_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 
 const queryViewPath = resolve(SRC_ROOT, 'wiki/query-engine/QueryView-class.ts');
 const helperImportPath = resolve(SRC_ROOT, 'wiki/query-engine/custom-instructions.ts');
