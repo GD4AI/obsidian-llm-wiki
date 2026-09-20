@@ -58,7 +58,7 @@
     "@ai-sdk/anthropic": "3.0.98",
     "@ai-sdk/openai": "3.0.86",
     "@ai-sdk/openai-compatible": "2.0.62",
-    "ai": "6.0.230",
+    "ai": "7.0.105",
     "fflate": "0.8.3",
     "zod": "^4.6.5"
   }
