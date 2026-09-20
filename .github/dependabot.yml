@@ -45,6 +45,14 @@ updates:
       # brace-expansion is force-pinned by overrides (legacy minimatch peers
       # would pull ^2/^1); a Dependabot PR for it can never merge as-is.
       - dependency-name: "brace-expansion"
+      # @ai-sdk/openai-compatible 3.x is specification v4, and `ai@6.0.230`
+      # accepts v2/v3 (`ai@latest` is 7.0.107). A PR bumping this alone cannot
+      # typecheck — openai-compat-sdk-client.ts:298 fails with "LanguageModelV4
+      # is not assignable to LanguageModel" — so there is nothing to merge until
+      # `ai` and the other @ai-sdk packages move in step. Measured in #728,
+      # tracked as #764. Remove this entry when that lands, not before.
+      - dependency-name: "@ai-sdk/openai-compatible"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions themselves (checkout/setup-node/attest-build-provenance)
   # are supply-chain surface too — a vulnerable action version is as bad as a
