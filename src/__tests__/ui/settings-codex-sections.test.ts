@@ -54,6 +54,7 @@ function createTab(): LLMWikiSettingTab {
     display: vi.fn(),
     renderModelField: (_container: HTMLElement, _field: string, options: { allowCustom?: boolean }) => { modelFields.push(options); },
     setFieldValue: vi.fn(),
+    syncModelsFromPlugin: vi.fn(),
     cascadeUnifiedModelChange: vi.fn(),
     prefillPerTaskFromUnified: vi.fn(),
     markLLMConfigStale: vi.fn(),

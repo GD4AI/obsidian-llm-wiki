@@ -80,10 +80,11 @@ export function renderTestConnectionSection(tab: LLMWikiSettingTab, containerEl:
         tab.tempSettings.thinkingControlCache = tab.plugin.settings.thinkingControlCache;
         if (tab.plugin.settings.provider === 'openai-codex') {
           tab.syncCodexModelsFromPlugin();
-          tab.tempSettings.model = tab.plugin.settings.model;
-          tab.tempSettings.ingestModel = tab.plugin.settings.ingestModel;
-          tab.tempSettings.lintModel = tab.plugin.settings.lintModel;
-          tab.tempSettings.queryModel = tab.plugin.settings.queryModel;
+          // Issue #467: a wholesale sync, not a user edit — so it goes through
+          // the tab (which owns the field and does not cascade) rather than
+          // `setFieldValue`, whose cascade would clear the three per-task values
+          // on the line before they are reassigned from the same source.
+          tab.syncModelsFromPlugin();
         }
         // v1.25.8 HOTFIX: commitTempSettings internally flushes
         // SecretStorage. On flush failure roll back plugin.settings to

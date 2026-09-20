@@ -322,6 +322,30 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     applyCodexModelPolicy(this.tempSettings);
   }
 
+  /**
+   * Adopt the committed model selection wholesale, deliberately without
+   * cascading (Issue #467).
+   *
+   * The distinction the write guard exists to make explicit: a **user edit** to
+   * the unified model must clear the per-task overrides, because `setFieldValue`
+   * expands one field the user changed into a coherent selection and the
+   * overrides would otherwise stay pinned to a model the picker no longer shows.
+   * A **sync** from `plugin.settings` is not an edit — all four fields arrive
+   * together from the source of truth, and clearing three of them only to
+   * reassign them on the next line would flip their `*UseCustom` flags as a side
+   * effect of nothing.
+   *
+   * Lives on the tab because `tempSettings.model` is only assignable here; every
+   * other module goes through `setFieldValue` or this, and
+   * `unified-model-write-guard.test.ts` fails if one starts assigning directly.
+   */
+  public syncModelsFromPlugin(): void {
+    this.tempSettings.model = this.plugin.settings.model;
+    this.tempSettings.ingestModel = this.plugin.settings.ingestModel;
+    this.tempSettings.lintModel = this.plugin.settings.lintModel;
+    this.tempSettings.queryModel = this.plugin.settings.queryModel;
+  }
+
   public async refreshOpenAICodexModels(force: boolean, showSuccess: boolean): Promise<void> { await runCodexModelRefresh({ refresh: () => this.plugin.refreshOpenAICodexModels(force), sync: () => { this.syncCodexModelsFromPlugin(); }, showSuccess: (count) => { if (showSuccess) new Notice(this.getText('codexModelsRefreshSuccess').replace('{}', String(count)), NOTICE_NORMAL); }, showError: (error) => { new Notice(this.getText('codexModelsRefreshFailed').replace('{}', error instanceof Error ? error.message : String(error)), NOTICE_ERROR); }, setBusy: (value) => { this.codexAuthBusy = value; }, render: () => { this.display(); } }); }
 
   public queueStaleCodexModelRefresh(): void {
