@@ -37,6 +37,7 @@ import { resolveModelTaskUiMode } from '../settings-per-task-helpers';
 import { fetchModelsWithFallback } from '../../core/url-fallback';
 import { resolveProviderApiKey } from '../../llm-sdk/provider-api-key-resolver';
 import { classifyFetchError } from '../settings-helpers';
+import { filterModelIds, reconcileModelSelection } from '../../core/model-id-filter';
 import { NOTICE_NORMAL, NOTICE_ERROR } from '../../constants';
 
 export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
@@ -74,13 +75,9 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
           const apiKey = isOllama ? 'ollama' : effectiveApiKey;
           const baseUrl = tempSettings.baseUrl?.trim() || providerConfig?.baseUrl || undefined;
 
-          // OpenRouter uses ':' for catalog variants such as ':free', so keep every valid string ID.
-          const getModelFilter = (provider: string) => {
-            if (provider === 'openrouter') return (id: string) => typeof id === 'string';
-            else if (provider === 'ollama') return (id: string) => !id.includes('/');
-            else return (id: string) => !id.includes(':') && !id.includes('/');
-          };
-          const modelFilter = getModelFilter(tempSettings.provider);
+          // Issue #758: the id filter and the selection reconcile are pure
+          // functions in `core/model-id-filter.ts` — the rule had no test while it
+          // lived here, and it was wrong in a way a test would have caught.
 
           // v1.23.0 P1.5: use fetchModelsWithFallback for all providers.
           // Unified fallback handles missing /v1 suffix (Kimi Anthropic
@@ -165,13 +162,16 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
             throw new Error('All URL candidates failed');
           }
 
-          tempSettings.availableModels = models.filter(modelFilter).sort();
+          tempSettings.availableModels = filterModelIds(tempSettings.provider, models).sort();
           if (tempSettings.availableModels.length > 0) {
             new Notice(tab.getText('fetchSuccess').replace('{}', tempSettings.availableModels.length.toString()), NOTICE_NORMAL);
-            if (!tempSettings.model || !tempSettings.availableModels.includes(tempSettings.model)) {
-              tab.setFieldValue('model', tempSettings.availableModels[0]);
-            }
-            tempSettings.useCustomModel = false;
+            // Issue #758: a model the fetch did not list is left alone. The old
+            // form rewrote it to the first entry and cleared `useCustomModel`,
+            // which silently destroyed a hand-typed id — including one this very
+            // fetch failed to list because the filter dropped it.
+            const patch = reconcileModelSelection(tempSettings.model, tempSettings.availableModels);
+            if (patch.model !== undefined) tab.setFieldValue('model', patch.model);
+            if (patch.useCustomModel !== undefined) tempSettings.useCustomModel = patch.useCustomModel;
           } else {
             new Notice(tab.getText('fetchFailed'), NOTICE_NORMAL);
             tempSettings.useCustomModel = true;
