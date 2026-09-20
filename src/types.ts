@@ -1093,26 +1093,49 @@ export const FULL_WRITE_INTENT: WriteIntent = {
  * `vault.process` on a resolved `TFile` and no notification. What this intent
  * *adds* over that form is the retry and the NFC/NFD recovery in `rawWrite` —
  * which is the whole of what was intended.
+ *
+ * `cancel: 'none'` because nothing gates this call. `markPageComplete` reaches
+ * `rawWrite` directly, and `checkCancelled` lives in `writeFileWithIntent`, so an
+ * `'ingest'` here would be a field the type's own contract says is declared
+ * rather than inferred, sitting unread on the one intent whose comment explains
+ * it. The stamp is not a button-gated operation: `create: false` is what protects
+ * it, since it runs against whatever the ingest did next.
  */
 export const STAMP_WRITE_INTENT: WriteIntent = {
   guard: false,
   notify: false,
   create: false,
-  cancel: 'ingest',
+  cancel: 'none',
 };
 
 /**
  * The lint fixers' write.
  *
- * Identical to `RAW_WRITE_INTENT` except for the cancel owner, and that one
- * field is the difference between the lint's own stop button working and not.
- * Kept as a separate named constant rather than reusing the ingest one, so the
- * next reader can see the choice instead of inferring it.
+ * Identical to `RAW_WRITE_INTENT` except for two fields, and neither is a
+ * preference.
+ *
+ * **`cancel: 'lint'`** — the engine holds two controllers and they overlap,
+ * because `lint-wiki` is registered with no `isIngesting()` guard. Reading the
+ * ingest controller here made the lint writes stop on the ingest's cancel button
+ * and ignore their own.
+ *
+ * **`create: false`** — and this is the half that the cancel fix opened. Both
+ * call sites take their path from a scan of pages that exist, so update-only is
+ * what they already mean; `create: true` was never wanted. It matters because
+ * the retag scanner accepts `pageType === 'source'` (`lint/scanners.ts:427`), so
+ * a summary page is in scope, and that page doubles as the completion marker the
+ * cancelled-ingest cleanup deletes (`wiki-engine.ts:1592`). The retag fixer holds
+ * a `pageMap` snapshot from scan time and writes it back after an LLM batch —
+ * seconds to minutes later — so with `create: true` it could put the marker back,
+ * and every later trigger would skip the source: the #582/#583 state, reached
+ * through the retag path instead of the stamp path. Before the cancel fix the
+ * ingest controller made that write throw, which was wrong for the cancel reason
+ * and incidentally held this door shut. Nothing replaced it.
  */
 export const LINT_WRITE_INTENT: WriteIntent = {
   guard: false,
   notify: false,
-  create: true,
+  create: false,
   cancel: 'lint',
 };
 

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { createWikiEngineHarness } from '../__support__/wiki-engine-harness';
 import { LINT_WRITE_INTENT } from '../../types';
+import type { WriteIntent } from '../../types';
 
 describe('#603 slice 3 — a write that may not create', () => {
   it('leaves a page deleted when it disappears between the stamp read and the stamp write', async () => {
@@ -73,10 +74,84 @@ describe('#603 slice 3 — whose cancellation governs a write', () => {
   });
 
   it('lets a lint write through while the lint is running', async () => {
-    const h = createWikiEngineHarness({});
+    // The page is pre-created: this intent is update-only (see the case below),
+    // and the subject here is the cancel owner, not the create layer. Without
+    // the fixture this test would have been asserting create-on-write by
+    // accident, which is how it read until review pointed it out.
+    const h = createWikiEngineHarness({ files: { 'wiki/entities/X.md': 'old body' } });
     h.engine.startLintOperation();
 
     await h.engine.writeFileWithIntent('wiki/entities/X.md', 'body', LINT_WRITE_INTENT);
     expect(h.files.get('wiki/entities/X.md')).toBe('body');
+  });
+
+  it('does not put back a summary page the cancelled ingest just deleted', async () => {
+    // The second half of the same door, and the reason `create: false` belongs on
+    // the lint intent. `scanTagViolations` accepts `pageType === 'source'`
+    // (`lint/scanners.ts:427`), so a summary page is in retag scope; the retag
+    // fixer writes back a `pageMap` snapshot taken at scan time, after an LLM
+    // batch; and the summary page doubles as the completion marker the
+    // cancelled-ingest cleanup deletes (`wiki-engine.ts:1592`). A lint write that
+    // can create puts the marker back, and every later trigger skips the source
+    // — the #582/#583 state, reached through the retag path.
+    const h = createWikiEngineHarness({
+      files: { 'wiki/sources/Note.md': '---\ngeneration_complete: true\n---\n\nold' },
+    });
+    h.engine.startLintOperation();
+    h.files.delete('wiki/sources/Note.md'); // the cancelled ingest's cleanup
+
+    await h.engine.writeFileWithIntent(
+      'wiki/sources/Note.md',
+      '---\ngeneration_complete: true\n---\n\nnew',
+      LINT_WRITE_INTENT
+    );
+
+    expect(h.files.has('wiki/sources/Note.md')).toBe(false);
+  });
+
+  it('still updates a page that is present, so update-only is not "does nothing"', async () => {
+    // The control. The case above would also pass if the write were simply never
+    // performed, which is the same trap the stamp's test needed a control for.
+    const h = createWikiEngineHarness({
+      files: { 'wiki/sources/Note.md': '---\ngeneration_complete: true\n---\n\nold' },
+    });
+    h.engine.startLintOperation();
+
+    await h.engine.writeFileWithIntent('wiki/sources/Note.md', 'replaced', LINT_WRITE_INTENT);
+
+    expect(h.files.get('wiki/sources/Note.md')).toBe('replaced');
+  });
+});
+
+describe('#603 slice 3 — the layers after the write are consequences of a write', () => {
+  it('does not notify or stamp for a write that did not happen', async () => {
+    // `create: false` is a declared layer, so a future intent can pair it with
+    // `guard` or `notify`. Both are consequences of a write and neither may run
+    // for one that did not happen — otherwise `onFileWrite` fires for an
+    // unwritten path and a completion stamp is spawned for a page that is not
+    // there. No shipped intent has that combination, so this test declares one.
+    //
+    // Written after review pointed out that `writeFileWithIntent` only checked
+    // `recovered`: unreachable then, and exactly where it would have bitten next.
+    const h = createWikiEngineHarness({});
+    const ghost: WriteIntent = { guard: true, notify: true, create: false, cancel: 'none' };
+
+    await h.engine.writeFileWithIntent('wiki/entities/Ghost.md', 'body', ghost);
+
+    expect(h.files.has('wiki/entities/Ghost.md')).toBe(false);
+    expect(h.writtenPaths).not.toContain('wiki/entities/Ghost.md');
+  });
+
+  it('still notifies when the write did happen', async () => {
+    // The control: the guard must not be satisfied by notify being broken
+    // outright. Needs the page to exist, because this intent is update-only —
+    // the first version of this control wrote to a missing path and asserted
+    // notify, which is the same fixture mistake review caught elsewhere.
+    const h = createWikiEngineHarness({ files: { 'wiki/entities/Real.md': 'old' } });
+    const intent: WriteIntent = { guard: false, notify: true, create: false, cancel: 'none' };
+
+    await h.engine.writeFileWithIntent('wiki/entities/Real.md', 'body', intent);
+
+    expect(h.writtenPaths).toContain('wiki/entities/Real.md');
   });
 });

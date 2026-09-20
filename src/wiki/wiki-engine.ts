@@ -1920,6 +1920,14 @@ export class WikiEngine {
   private static readonly RECOVERED = 'recovered' as const;
 
   /**
+   * The `create: false` outcome: the file was gone and the intent did not permit
+   * writing it back. Not an error and not a recovery — nothing happened, on
+   * purpose. `writeFileWithIntent` returns early on it, because the layers after
+   * the write are consequences of a write.
+   */
+  private static readonly ABSENT = 'absent' as const;
+
+  /**
    * The compatibility entry point. Every existing caller already gets the full
    * gate — `writeFileWithIntent` with `FULL_WRITE_INTENT` — so this shorthand
    * changes nothing. New callers that want a subset should name it (Issue #603).
@@ -1989,6 +1997,15 @@ export class WikiEngine {
     }
 
     const outcome = await this.rawWrite(path, content, intent);
+
+    // `absent` means nothing was written: the file was gone and this intent may
+    // not create it. The two layers below are consequences of a write, so they
+    // must not run for one that did not happen — `notify` would fire
+    // `onFileWrite` and invalidate caches for an unwritten path, and `guard`
+    // would spawn a completion stamp for a page that is not there. Unreachable
+    // today (no intent pairs `create: false` with either flag), which is exactly
+    // why the next `create: false` intent is where it would have bitten.
+    if (outcome === WikiEngine.ABSENT) return;
 
     if (intent.guard && outcome !== WikiEngine.RECOVERED && isWikiContentPage) {
       this.markPageComplete(path);
