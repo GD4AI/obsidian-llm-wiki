@@ -1915,15 +1915,19 @@ export class WikiEngine {
    *
    * `absent` is the `create: false` outcome: the file was gone and the intent did
    * not permit writing it back. It is not an error and not a recovery — nothing
-   * happened, on purpose. Only `STAMP_WRITE_INTENT` can produce it today.
+   * happened, on purpose. Named here because `writeFileWithIntent` returns early
+   * on it: the layers after the write are consequences of a write.
    */
   private static readonly RECOVERED = 'recovered' as const;
 
   /**
    * The `create: false` outcome: the file was gone and the intent did not permit
    * writing it back. Not an error and not a recovery — nothing happened, on
-   * purpose. `writeFileWithIntent` returns early on it, because the layers after
-   * the write are consequences of a write.
+   * purpose.
+   *
+   * Both `create: false` intents can produce it: the stamp (`STAMP_WRITE_INTENT`)
+   * and the lint fixers' write (`LINT_WRITE_INTENT`). The lint fixers are the
+   * likelier of the two, because their window contains an LLM call.
    */
   private static readonly ABSENT = 'absent' as const;
 
@@ -1947,6 +1951,16 @@ export class WikiEngine {
    * declared-intent entry needs no new interface member anywhere. The `intent`
    * parameter is required — an optional one would let a call site stay silent,
    * and silence is what let the bypasses in #603 go unnoticed.
+   *
+   * **A known gap, filed separately rather than fixed here (#763).** Returning
+   * `void` means a caller cannot tell an update from a skip, and a `create: false`
+   * intent can decline. The lint fixers are the ones that would notice — they
+   * report a count and a log line per page, and on a page that vanished during
+   * their LLM call the write is now correctly skipped. Before that skip existed
+   * the report was true because the write always landed; wrongly, but it landed,
+   * so the change moved the defect out of the vault and into the log. Telling the
+   * two apart needs a return value, which is a signature change across every
+   * consumer of `createOrUpdateFile` — review scoped it out of this PR.
    */
   async writeFileWithIntent(
     path: string,

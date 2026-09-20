@@ -139,12 +139,20 @@ export async function runAliasCompletion(
             // (no guard over the body, no notification) while going through the
             // engine's `rawWrite`, which uses the vault API and retries.
             //
-            // It is not `RAW_WRITE_INTENT` because of one field: the cancel owner.
-            // These writes belong to a lint run, and the engine's write gate reads
-            // the controller the intent names — the ingest's would have stopped
-            // them when the user cancelled an ingest, and let them continue when
-            // the user cancelled the lint.
+            // It is not `RAW_WRITE_INTENT` because of two fields. The cancel
+            // owner: these writes belong to a lint run, and the engine's write
+            // gate reads the controller the intent names — the ingest's would
+            // have stopped them when the user cancelled an ingest, and let them
+            // continue when the user cancelled the lint. And `create: false`:
+            // this path writes a page the scan already saw, so if it is gone by
+            // the time the LLM returns it must stay gone — see
+            // `LINT_WRITE_INTENT` in `types.ts` for why that is a correctness
+            // requirement.
             await ctx.wikiEngine.writeFileWithIntent(page.path, updated, LINT_WRITE_INTENT);
+            // Known gap (#763): the call cannot tell an update from a skip, so a
+            // page that vanished during the LLM call is still counted as fixed.
+            // Needs a return value, which is a signature change across every
+            // consumer of `createOrUpdateFile`.
             results.push(`- [[${pageRel}]]: added ${newAliases} aliases (total ${mergedAliases.length})`);
             return { success: true, name: page.basename, count: newAliases };
           }
@@ -622,6 +630,8 @@ Task: Return a JSON object with a single field "tags" that is an array of string
         // `adapter.write` was an older idiom here, not a considered choice. The
         // cancel owner is `lint` — see the note on the other site above.
         await ctx.wikiEngine.writeFileWithIntent(v.path, updated, LINT_WRITE_INTENT);
+        // Known gap (#763): still reported as `fixed` when the write was skipped
+        // for a page that vanished during the LLM call. Same signature change.
         return {
           v,
           kind: 'fixed' as const,

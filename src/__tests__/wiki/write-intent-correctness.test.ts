@@ -88,12 +88,13 @@ describe('#603 slice 3 — whose cancellation governs a write', () => {
   it('does not put back a summary page the cancelled ingest just deleted', async () => {
     // The second half of the same door, and the reason `create: false` belongs on
     // the lint intent. `scanTagViolations` accepts `pageType === 'source'`
-    // (`lint/scanners.ts:427`), so a summary page is in retag scope; the retag
-    // fixer writes back a `pageMap` snapshot taken at scan time, after an LLM
-    // batch; and the summary page doubles as the completion marker the
-    // cancelled-ingest cleanup deletes (`wiki-engine.ts:1592`). A lint write that
-    // can create puts the marker back, and every later trigger skips the source
-    // — the #582/#583 state, reached through the retag path.
+    // (`lint/scanners.ts:427`), so a summary page is in retag scope, and that page
+    // doubles as the completion marker the cancelled-ingest cleanup deletes
+    // (`wiki-engine.ts:1592`). The retag fixer resolves and re-reads the file
+    // before its LLM call, so its window is read → LLM → write — wide enough for
+    // the cleanup to land in. A lint write that can create puts the marker back,
+    // and every later trigger skips the source: the #582/#583 state, reached
+    // through the retag path.
     const h = createWikiEngineHarness({
       files: { 'wiki/sources/Note.md': '---\ngeneration_complete: true\n---\n\nold' },
     });

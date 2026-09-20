@@ -1121,16 +1121,21 @@ export const STAMP_WRITE_INTENT: WriteIntent = {
  *
  * **`create: false`** — and this is the half that the cancel fix opened. Both
  * call sites take their path from a scan of pages that exist, so update-only is
- * what they already mean; `create: true` was never wanted. It matters because
- * the retag scanner accepts `pageType === 'source'` (`lint/scanners.ts:427`), so
- * a summary page is in scope, and that page doubles as the completion marker the
- * cancelled-ingest cleanup deletes (`wiki-engine.ts:1592`). The retag fixer holds
- * a `pageMap` snapshot from scan time and writes it back after an LLM batch —
- * seconds to minutes later — so with `create: true` it could put the marker back,
- * and every later trigger would skip the source: the #582/#583 state, reached
- * through the retag path instead of the stamp path. Before the cancel fix the
- * ingest controller made that write throw, which was wrong for the cancel reason
- * and incidentally held this door shut. Nothing replaced it.
+ * what they already mean; `create: true` was never wanted.
+ *
+ * It matters because both fixers write after an LLM call, and the page can go in
+ * that window. The retag fixer is the one with a summary page in scope —
+ * `scanTagViolations` accepts `pageType === 'source'` (`lint/scanners.ts:427`) —
+ * and that page doubles as the completion marker the cancelled-ingest cleanup
+ * deletes (`wiki-engine.ts:1592`); it resolves the file and re-reads it before
+ * the call, so its window is read → LLM → write. The alias fixer has the wider
+ * window, writing back the content the scan captured with no existence check at
+ * all, but runs on entity and concept pages only (`programmatic.ts:37`), so it
+ * cannot restore the marker. With `create: true` the retag path could put the
+ * marker back, and every later trigger would skip the source: the #582/#583
+ * state, reached through the retag path instead of the stamp path. Before the
+ * cancel fix the ingest controller made that write throw, which was wrong for
+ * the cancel reason and incidentally held this door shut. Nothing replaced it.
  */
 export const LINT_WRITE_INTENT: WriteIntent = {
   guard: false,
