@@ -2,10 +2,11 @@
 //
 // Both rules lived inside the settings tab's fetch callback, where no test could
 // reach them. The filter had already shipped wrong: LM Studio's Hub-managed
-// models are keyed `publisher/model`, every non-ollama provider rejected `/`, so
-// those models could not appear in the list at all. The reconcile then rewrote a
-// hand-typed id to the first listed entry and cleared `useCustomModel`, so the
-// user's working value was destroyed as well.
+// models are keyed `publisher/model`, and `/` was rejected for every provider —
+// ollama included; ollama's own exemption was for `:`, not `/`. Only openrouter
+// was unfiltered. So those models could not appear in the list at all. The
+// reconcile then rewrote a hand-typed id to the first listed entry and cleared
+// `useCustomModel`, so the user's working value was destroyed as well.
 
 import { describe, it, expect } from 'vitest';
 import { filterModelIds, isUsableModelId, reconcileModelSelection } from '../../core/model-id-filter';
@@ -19,6 +20,26 @@ describe('#758 — which ids a catalogue may offer', () => {
       'openai/gpt-oss-120b',
     ];
     expect(filterModelIds('lmstudio', ids)).toEqual(ids);
+  });
+
+  it('keeps a namespaced id from a generic OpenAI-compatible endpoint', () => {
+    // #758 asks for this case by name — "lmstudio (and generic openai-compatible)"
+    // — and `org/model` is the ordinary shape of a vLLM or LiteLLM catalogue, not
+    // an edge case. An id the filter drops is an id the picker cannot offer.
+    const ids = ['meta-llama/Llama-3.1-8B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'];
+    expect(filterModelIds('custom', ids)).toEqual(ids);
+    // The separator rules still hold there: `:` is still a variant separator.
+    expect(isUsableModelId('custom', 'foo:bar')).toBe(false);
+  });
+
+  it('leaves the unreported custom-shaped providers narrow — characterization', () => {
+    // Pinned on purpose, not asserted as correct. `custom-responses` and
+    // `anthropic-compatible` have the same unknown-catalogue property as `custom`
+    // and would accept `/` by the same argument, but no user has reported them and
+    // widening a user-visible list shape is its own change to justify. This test
+    // exists so that widening them has to be deliberate rather than incidental.
+    expect(isUsableModelId('custom-responses', 'meta-llama/Llama-3.1-8B')).toBe(false);
+    expect(isUsableModelId('anthropic-compatible', 'vendor/model')).toBe(false);
   });
 
   it('still rejects a variant separator for a provider that does not use it', () => {
@@ -47,12 +68,37 @@ describe('#758 — which ids a catalogue may offer', () => {
 });
 
 describe('#758 — what a successful fetch does to the chosen model', () => {
-  it('leaves a chosen model alone when the fetch did not list it', () => {
+  it('keeps a chosen model the fetch did not list, and hands it back as the user\u2019s own', () => {
     // The bug. `qwen/qwen3.6-35b-a3b` works at request time against this
     // endpoint, and the old form set the field to `availableModels[0]` and
     // `useCustomModel = false` — silently taking away a value the user had
     // already shown to be valid.
-    expect(reconcileModelSelection('qwen/qwen3.6-35b-a3b', ['ornith-1.5-35b-a3b-mlx'])).toEqual({});
+    //
+    // The flag is part of the fix, not decoration. Leaving it `false` renders a
+    // dropdown whose `current` is in no option, so the select falls back to the
+    // "Custom input\u2026" sentinel: the stored id is shown nowhere, and choosing
+    // that already-selected sentinel fires no `change`, so the text field cannot
+    // be opened either. `true` is the state `ModelSelectionPatch` documents for
+    // "the field is the user's own" — nothing returned it before this.
+    expect(reconcileModelSelection('qwen/qwen3.6-35b-a3b', ['ornith-1.5-35b-a3b-mlx'])).toEqual({
+      useCustomModel: true,
+    });
+  });
+
+  it('recovers a listed model that disappears from a later fetch', () => {
+    // The reachable path to the state above: the id came from the catalogue
+    // (`useCustomModel = false`), so the fetch that drops it is the fetch that
+    // has to flip the flag. Reproduced from the field as a two-fetch sequence,
+    // because one fetch cannot produce it.
+    let model: string | undefined = 'qwen/qwen3.6-35b-a3b';
+    let useCustomModel = false;
+    for (const fetched of [['qwen/qwen3.6-35b-a3b', 'other'], ['other']]) {
+      const patch = reconcileModelSelection(model, fetched);
+      if (patch.model !== undefined) model = patch.model;
+      if (patch.useCustomModel !== undefined) useCustomModel = patch.useCustomModel;
+    }
+    expect(model).toBe('qwen/qwen3.6-35b-a3b');
+    expect(useCustomModel).toBe(true);
   });
 
   it('clears the custom flag when the chosen model was in the list', () => {
