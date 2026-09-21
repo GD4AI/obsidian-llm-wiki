@@ -2,9 +2,9 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-16 (**v1.28.0 MINOR planning opened** — design track seeded from the cross-source relation work, issue #729; see the section below)
+**Latest shipped:** v1.27.2 PATCH (2026-09-15, 39 commits / 4144 tests). See [CHANGELOG.md §1.27.2](./CHANGELOG.md#1272---2026-09-15) for the canonical composition record. | **Updated:** 2026-09-21 (**three of the window's four feature items have landed** — #603, #662 and #608 are closed, so #729 Phase 1 is the head of the queue; see the phase schedule below)
 
-**Next MINOR candidate:** Issue #608 — opt-in local Markdown-image analysis. The implementation resolves vault-local Obsidian and Markdown image embeds into 20 MiB visual-evidence packages with no per-note image-count limit; individual images stay capped at 10 MiB and GIFs use their first frame. Images carry their nearest Markdown paragraphs for context, and a default-off source-page audit section can retain the resulting evidence. Remote images, OCR, and caching remain out of scope.
+**Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was hard-blocked on #603 by design and that gate is now open. (#608, which used to be named here, **shipped 2026-09-21 as PR #687** — see "Merged into v1.28.0 so far" below.)
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -22,7 +22,7 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 **Opened 2026-09-16.** Two mandates, per user direction: **feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail for the first item lives in [MEMORY.md §"Design record — cross-source relations"](./MEMORY.md#design-record--cross-source-relations-729-v1280); this section carries only the planning decisions.
 
-> **The live, ROI-ordered task list is [MEMORY.md §"Work list (2026-09-18)"](./MEMORY.md#work-list-2026-09-18--ordered-by-roi).** That file holds the ordering and the reasoning; this one holds the window's scope. When they disagree, MEMORY is the newer document.
+> **The live, ROI-ordered task list is [MEMORY.md §"Work list (2026-09-21)"](./MEMORY.md#work-list-2026-09-21--ordered-by-roi).** That file holds the ordering and the reasoning; this one holds the window's scope. When they disagree, MEMORY is the newer document.
 
 ### Scope groups
 
@@ -32,7 +32,7 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 | **Write-path hardening** (architecture) | **#603** ✅ closed with **#750** · **#662** ✅ closed with **#757** | Both landed 2026-09-20. The gate is split into `rawWrite` / `pageGuard` / `notify` with a defaultless `WriteIntent`, and the page index is held per file. **This was the gate on #729 Phase 1 and it is open** |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
-| **Community** | **#608** + PR **#687** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | Already on the milestone |
+| **Community** | **#608** + PR **#687** ✅ **shipped 2026-09-21** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | #687 landed; #752 is still on the milestone |
 
 ### Landed outside this window, and worth noting
 
@@ -48,6 +48,21 @@ MEMORY's work list. **Decide one, not both.**
 Recorded here, not in CHANGELOG — that entry is written once at release. Detail on
 what each change settled lives in MEMORY.
 
+- **#687** — **#608**: opt-in local Markdown image embeds during ingest, from
+  @Chase07. 30 production files + 4 test files. Closes **#608**. The maintainer-side
+  rebase was the unlock (a fork PR that `maintainer_can_modify` then allowed), and
+  the review's two findings were the message-type split and the degradation
+  contract — see MEMORY §"#687 reviewed".
+- **#774** — **prompts: stop asking the model for what the code writes**, from
+  @DocTpoint. The half that matters is the wire schema: a declared property is a
+  request, and the strict tier lists every property in `required`, so removing the
+  fields from the prompt alone would have left them requested. `Refs #679`.
+- **#656** — config.md's audit-trail metadata on every Apply, in UTC, from
+  @Jan-Heldal. Landed after three review rounds; the last two were on my own fixes.
+- **#778** — the Windows collection failure in the custom-instruction test, from
+  @x0Lazarus (first contribution). Test-only, one file, and the CI run had been
+  waiting on maintainer approval rather than failing.
+- **#776** + **#777** — the docs-only handoff refresh and the ruleset-restore lesson.
 - **#736** — custom request headers, the `opencode` preset, a `(Responses)` variant.
   Closes **#723** and **#735**; both verified end to end by @aisahpA on a real vault
   with a real Go key, and three defects he found in the PR's own code were fixed
@@ -59,7 +74,7 @@ what each change settled lives in MEMORY.
 
 ### Ordering decision (2026-09-16)
 
-**Hardening before the reader — done.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20.**
+**Hardening before the reader — done.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20, and #608 shipped 2026-09-21** — so nothing precedes Phase 1 in the queue.
 
 The four review rounds #750 took are the part worth carrying forward: the slice shipped **two behaviour regressions of its own** despite passing all three of its mutations, and the second of the two was a check it *removed* that had been incidentally holding another door shut. Both findings came from @DocTpoint reading the tree rather than the description.
 
@@ -76,7 +91,7 @@ Dependency-ordered, not priority-ordered. Phase 1 and phase 4 are parallelisable
 | **1 — decouple, take the cheap wins** | **#669** ✅ zod 4 · **#723** ✅ custom headers, OpenCode preset, Responses variant (also closed #735) · **#603 + #662 design pass** ✅ — **complete**, see MEMORY §"Design record — write path and page index" | **nothing — done** |
 | **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". **Sub-phase 0 (centralise the ceilings) — ✅ done 2026-09-17** (behaviour-identical, proven by zero snapshot churn); **sub-phase 1 is next — it is the head of the queue** | **nothing — #603 closed 2026-09-20** |
 | **3 — behaviour layer** | **#664 together with #729's allocation** · **#677** (unblocked with #603) · **#668 after #729's toggle has a home** | phase 2 |
-| **4 — independent features** | **#701** (needs its design decision first) · **#608 + PR #687** · **PR #728** (MAJOR `@ai-sdk/openai-compatible` — verify the request-body shape, and **not last in the window**, so fallout has room) | nothing |
+| **4 — independent features** | **#701** (needs its design decision first) · ~~**#608 + PR #687**~~ ✅ **shipped 2026-09-21** · ~~**PR #728**~~ closed (superseded by the **#764** coordinated v7 upgrade, which now has three red Dependabot PRs behind it: #770 TS 6, #771 `@ai-sdk/anthropic` 4.x, #772 `ai` 7) | nothing |
 
 **Two couplings found during the 2026-09-16 planning pass, now binding:**
 
