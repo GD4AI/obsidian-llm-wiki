@@ -29,7 +29,8 @@ import { formatTaskUsage, snapshotTaskUsage, taskUsageSince } from '../core/llm-
 import { TEXTS } from '../texts';
 import { renderTemplate } from '../core/template-renderer';
 import { slugify, filterRedundantAliases, resolveMinAliasLength } from '../core/slug';
-import { shapeRelatedLists, kindOf } from '../core/related-shaping';
+import { shapeRelatedLists, kindOf, nameKey } from '../core/related-shaping';
+import { buildCoCitationGraph, coCitationCandidates, type CoCitationGraph } from '../core/co-citation';
 import { withAbortSignal } from '../core/llm-abort';
 import { isIngestableSource } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
@@ -72,7 +73,7 @@ import { ContradictionManager } from './contradictions';
 // v1.25.1 Phase C-PR1: buildLogHeader moved into LogWriter.
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
 import { SourceAnalyzer } from './source-analyzer';
-import { TOKENS_PAGE_GENERATION, NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES } from '../constants';
+import { TOKENS_PAGE_GENERATION, NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET } from '../constants';
 import { PageFactory } from './page-factory';
 import { ConversationIngestor, ConversationOrchestration, formatConversation, ConversationHistory } from './conversation-ingest';
 import type { Graph } from '../core/build-graph';
@@ -195,6 +196,21 @@ export class WikiEngine {
   // v1.25.1 Phase C-PR1: extracted to engine-internals/graph-cache.ts;
   // WikiEngine keeps a private holder + facade methods for backward compat.
   private graphCache!: GraphCache;
+  /**
+   * Issue #729 Phase 1: the co-citation graph for the current ingest run.
+   *
+   * `graphCache` is invalidated on every vault write, so a per-note
+   * `getOrBuildGraph` would read every wiki page body once per note — about 526,000
+   * reads on the reference vault, the same class of regression #662 removed. Keyed
+   * by **batch-context identity**, so a folder run builds the graph once and a
+   * single-note run builds it once (there, one note *is* the run). A new batch is a
+   * new object, so no invalidation hook is needed and no stale graph survives a run.
+   *
+   * Pages written *during* the run are deliberately absent: their Related links are
+   * what this graph is used to compute, so including them would make the result
+   * depend on the order pages happened to be written in.
+   */
+  private coCitationRun: { key: object; graph: CoCitationGraph } | null = null;
   // v1.25.1 Phase C-PR1: extracted to engine-internals/index-generator.ts.
   private indexGenerator!: IndexGenerator;
   // v1.25.1 Phase C-PR1: extracted to engine-internals/log-writer.ts.
@@ -567,6 +583,21 @@ export class WikiEngine {
    */
   async getOrBuildGraph(allPaths: Set<string>): Promise<Graph> {
     return this.graphCache.getOrBuild(allPaths);
+  }
+
+  /**
+   * Issue #729 Phase 1 — the co-citation graph for this ingest run, built once.
+   *
+   * `key` is the batch context when there is one: the same object across every
+   * `ingestSource` in a folder run, so the graph is built once for the run. A
+   * single-note ingest passes `undefined` and rebuilds — which is once per run, and
+   * the run is one note.
+   */
+  private async getCoCitationGraph(key: object | undefined, allPaths: Set<string>): Promise<CoCitationGraph> {
+    if (key !== undefined && this.coCitationRun?.key === key) return this.coCitationRun.graph;
+    const built = buildCoCitationGraph(await this.getOrBuildGraph(allPaths));
+    if (key !== undefined) this.coCitationRun = { key, graph: built };
+    return built;
   }
 
   /**
@@ -1251,12 +1282,28 @@ export class WikiEngine {
         const pages = await this.getExistingWikiPages();
         const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
         const prefix = this.settings.wikiFolder + '/';
-        const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
+        const relOf = (path: string) => path.slice(prefix.length).replace(/\.md$/, '');
+        const titleByRel = new Map(pages.map(p => [relOf(p.path), p.title]));
         const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
         const configDir = this.app.vault.configDir;
         const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
           .filter(f => folders.some(w => isIngestableSource(f.path, w, false, this.settings.wikiFolder, configDir)))
           .map(f => f.basename);
+        // Issue #729 Phase 1 (M0): the model-independent floor. Candidates come from
+        // the vault's own link structure via the graph `build-graph` already produces,
+        // so the write-time edges and the query path's PPR graph share one builder and
+        // cannot drift. Built once per run — see coCitationRun for why that matters.
+        const relByKey = new Map<string, string>();
+        for (const p of pages) {
+          const rel = relOf(p.path);
+          const key = nameKey(titleByRel.get(rel) ?? '');
+          if (key && !relByKey.has(key)) relByKey.set(key, rel);
+        }
+        const coCitation = await this.getCoCitationGraph(
+          opts?.batchCtx,
+          new Set(pages.map(p => relOf(p.path))),
+        );
+        const crossSourceCap = RELATED_BUDGET[this.settings.extractionGranularity].crossSource;
         const shaped = shapeRelatedLists(analysis, {
           resolve: name => {
             const rel = resolvePath(name);
@@ -1265,14 +1312,31 @@ export class WikiEngine {
           },
           willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
           vocabulary: domainVocabulary,
+          granularity: this.settings.extractionGranularity,
+          candidates: (self, exclude) => {
+            // `self` arrives as a name and the projection works in graph paths, so
+            // this is the one place the two spaces meet. The subject's own path is
+            // what the graph knows it by; `resolvePath` is the same resolver the
+            // note-grounded names use, so a name it cannot place yields no graph node
+            // and therefore no candidates.
+            const selfRel = resolvePath(self);
+            if (!selfRel) return [];
+            const skip = new Set<string>();
+            for (const k of exclude) {
+              const rel = relByKey.get(k);
+              if (rel) skip.add(rel);
+            }
+            return coCitationCandidates(selfRel, coCitation, { exclude: skip, limit: crossSourceCap })
+              .map(rel => titleByRel.get(rel) ?? rel);
+          },
         });
         analysis.entities = shaped.entities;
         analysis.concepts = shaped.concepts;
-        if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
+        if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0 || shaped.crossSource > 0) {
           const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
           const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
-          console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
-          this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
+          console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.crossSource} cross-source edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
+          this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.crossSource} cross-source edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
         }
       }
 

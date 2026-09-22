@@ -392,11 +392,104 @@ model-dependent is ever opened.
   ```
 - Run at **write time** (the open question on write-vs-query is resolved in
   favour of write time for this phase) so the edges persist and PPR gets the
-  cross-source reach for free rather than re-deriving it per query.
+  cross-source reach for free rather than re-deriving it per query. **The graph
+  itself is built once per ingest run, not per note** — see correction ③ below.
+- **Cap what this phase adds at `RELATED_BUDGET[granularity].crossSource` per
+  item.** This is Phase 2's step 4, moved here because without it the phase is
+  not shippable — see correction ① below. It is a ceiling, not a quota: no
+  candidates, no entries.
 - **Pass condition:** new unit tests for the projection (sharing, ranking order,
-  tie determinism, exclusion) plus the existing suite green **with the dep
-  absent**. **Then re-measure the 95 % figure on a rebuild.** If this phase alone
-  does not move it, stop — the diagnosis is wrong, not the mechanism.
+  tie determinism, exclusion), a test that the cap holds, and the existing suite
+  green **with the dep absent** — asserted as a *zero-diff* on the shaped output,
+  not merely as "it still compiles". **The global 95 % re-measurement moves to
+  after Phase 2** — see correction ② below for why it cannot be read here.
+
+#### Four corrections to Phase 1 (found 2026-09-21, before and while writing it)
+
+All four were found by reading the write path rather than the design, and all four are
+*corrections of the record*, not departures from it. Recorded with their evidence
+because each one is a trap a future reader would fall back into. ①–③ were found before
+any code; ④ was found by the integration test that Phase 1's own pass condition
+required, which is the argument for writing it.
+
+**① The cap cannot wait for Phase 2 — without it Phase 1 is unshippable.**
+
+The record put "fill up to `cross-source` slots" in Phase 2's step 4, leaving
+Phase 1 to add candidates unbounded. **There is no length cap on a Related list
+anywhere in the write path** — `page-factory/related-links.ts` hands the lists to
+`renderRelatedSections`, which appends without slicing; `candidate-gate.ts:517`'s
+`prune` removes *dropped names*, it does not truncate; and the repo contains **zero**
+`related_entities?.length` comparisons. So "the Related cap holds with zero
+violations" in the original measurement means `RELATED_SIBLING_CAP` (the sibling
+rule), not a list length.
+
+Worse, the list is not only rendered — it is joined into a **page-generation prompt
+variable**: `create-page.ts:196-197` and `merge-page.ts:317-318` both do
+`info.related_entities?.join(', ')`. An unbounded addition therefore inflates every
+page's generation prompt, which is a Gate 4 (Token) regression rather than a
+formatting one. And the fan-out is real: `hub-detection.ts` exists because many
+pages cite the same hub, so one hub cited by 500 pages offers each of them ~499
+co-citation candidates.
+
+The cap is a **ceiling, not a quota** — the record already says so, and this
+correction only makes Phase 1 carry it. It is also the *only* thing Phase 1 needs
+from Phase 2: steps 3 and 5 need the `total` concept, and step 3 is the one
+**breaking** change in the window (it truncates note-grounded lists). Phase 1
+therefore adds without ever removing, which makes it non-breaking by construction,
+and Phase 2 keeps the only destructive step.
+
+**② The 95 % re-measurement cannot be read at Phase 1 — the original pass condition
+contradicts itself.**
+
+A gate needs a bound to be meaningful, and once the bound exists the global
+intra-source share is partly a function of the bound rather than of the mechanism.
+Measuring it here would systematically understate M0 and could trigger the record's
+own STOP ("if this phase alone does not move it, stop") for a mechanism that works.
+
+So Phase 1 measures **the mechanism**: how many distinct cross-source candidates the
+projection produces on the reference vault, that the ordering is deterministic, that
+the cap holds, and that the cost is bounded. The global share is re-measured after
+Phase 2, where `total` exists and the number means what the acceptance criteria
+assume it means.
+
+**③ The graph must be built once per run, not per note.**
+
+`GraphCache.invalidate()` is called from `invalidatePageCaches`
+(`wiki-engine.ts:524`, `:535`), which every write reaches (`:2056`, `:2163`). The
+related-shaping block (`:1251`) runs once per source note, so calling
+`getOrBuildGraph` there would **read every wiki page body once per note** — on the
+record's own reference vault that is roughly 413 × 1,274 ≈ **526,000 file reads**,
+the same class of regression #662 had just removed.
+
+The precedent for the fix is already in the repo: `lint/controller.ts:98` builds the
+graph **once for a whole lint run**. Phase 1 does the same for an ingest run —
+lazy, held for the run, released at its end. Freshness is not lost: pages created
+during the run are the note's own siblings, which `willExist` and the sibling rule
+already cover.
+
+**Evaluated and not taken: `app.metadataCache.resolvedLinks`.** It is zero-disk-read
+and updated on write, and my first reason for rejecting it was wrong —
+`wiki-engine.ts:505` already reads `app.metadataCache.getFileCache(...)`, so
+`metadataCache` is an existing dependency rather than a new class of seam. It is not
+taken because the input shape would then differ from the query path's PPR graph,
+which the record explicitly says to reuse; "the write-time edges and the query-time
+graph come from the same builder" is worth more than one vault read per run, and the
+run-scoped memo already turns the cost from O(notes × vault) into O(vault).
+
+**④ The sibling rule pre-empts M0 between pages of the same note — and that is
+correct, not a gap.**
+
+Found by writing Phase 1's integration test, whose first version asserted the wrong
+thing and "failed" against working code. Two pages born from the **same** note are
+siblings; the sibling rule runs first (step 2 before step 4), so it writes the edge,
+`seen` then contains the partner, and the projection is correctly asked to exclude it.
+`crossSource` is 0 for such a pair, and should be: a same-note pair is exactly what M0
+is *not* for — it is the intra-source case the whole issue is about.
+
+So a Phase 1 test must take its pair from **different** notes, and must assert
+`siblings: 0` alongside the cross-source count. Without that second assertion the edge
+is unattributable and the test would pass on the sibling rule alone — which is how the
+first version passed for the wrong reason. `wiki-engine-co-citation.test.ts` does both.
 
 **Phase 2 — allocation (reserved + backfill).**
 

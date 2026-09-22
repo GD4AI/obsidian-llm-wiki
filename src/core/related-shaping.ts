@@ -16,8 +16,8 @@
 // gap stays visible, but not removed.
 
 import { slugKeys } from './slug';
-import { RELATED_SIBLING_CAP } from '../constants';
-import type { EntityInfo, ConceptInfo, SourceAnalysis } from '../types';
+import { RELATED_SIBLING_CAP, RELATED_BUDGET } from '../constants';
+import type { EntityInfo, ConceptInfo, SourceAnalysis, ExtractionGranularity } from '../types';
 
 export type RelatedKind = 'entity' | 'concept';
 
@@ -28,6 +28,25 @@ export interface RelatedShapingDeps {
   willExist: readonly string[];
   /** The active tag vocabulary (`Group/Value` or bare values): a tag is not a page. */
   vocabulary?: readonly string[];
+  /**
+   * Issue #729 Phase 1 (M0): cross-source names for `self`, best first.
+   *
+   * Absent means today's behaviour, exactly — the shaper adds nothing and every
+   * existing caller and test is unaffected. `exclude` carries the keys already
+   * placed for this item (its own name, plus every name written for it), so a
+   * provider that honours it costs the caller nothing to get right.
+   *
+   * A name this returns is a **discovery**, which is why it is dropped when the
+   * vault does not answer it — the opposite of a note-grounded name, which is the
+   * extraction's claim and is kept and counted in `unanswered` even when nothing
+   * answers it.
+   */
+  candidates?: (self: string, exclude: ReadonlySet<string>) => string[];
+  /**
+   * The `RELATED_BUDGET` row `candidates` additions are capped by. Defaults to
+   * `standard`, which is the tier a caller that does not pass one is behaving as.
+   */
+  granularity?: ExtractionGranularity;
 }
 
 export interface RelatedShapingResult {
@@ -37,6 +56,8 @@ export interface RelatedShapingResult {
   unanswered: Array<{ on: string; name: string }>;
   /** Sibling edges added (one per list entry). */
   siblings: number;
+  /** Cross-source entries added by the `candidates` source (one per list entry). */
+  crossSource: number;
   /** Related names that were tag values, not pages — removed. */
   tags: Array<{ on: string; name: string }>;
 }
@@ -76,6 +97,14 @@ export function shapeRelatedLists(
   const unanswered: RelatedShapingResult['unanswered'] = [];
   const tags: RelatedShapingResult['tags'] = [];
   let siblings = 0;
+  let crossSource = 0;
+  // The budget row this phase reads ONE column of. `siblings` stays unread: it is
+  // 2 for `coarse` and 1 for `minimal` where the sibling rule above still uses the
+  // flat RELATED_SIBLING_CAP, so consuming it belongs to Phase 2, where that change
+  // is intended and measured (constants.ts:302).
+  const crossSourceCap = deps.candidates
+    ? RELATED_BUDGET[deps.granularity ?? 'standard'].crossSource
+    : 0;
 
   const shape = (self: string, ents: string[] | undefined, cons: string[] | undefined) => {
     const outE: string[] = []; const outC: string[] = []; const seen = new Set<string>([nameKey(self)]);
@@ -125,6 +154,27 @@ export function shapeRelatedLists(
         if (put(s.name, s.kind, s.kind)) siblings++;
       }
     }
+    // M0 cross-source entries (#729 Phase 1). Placed last, after the note-grounded
+    // names and the sibling rule have had their turn, so nothing this source adds
+    // can displace an entry the page would otherwise have carried — it is a
+    // **ceiling, never a quota**, and a page with no candidates is not made
+    // emptier. Bounded by the tier because a Related list has no length limit
+    // anywhere in the write path and is joined into the page-generation prompt
+    // (`create-page.ts:196`), so an unbounded addition is a token regression.
+    if (deps.candidates && crossSourceCap > 0) {
+      const before = crossSource;
+      for (const name of deps.candidates(self, seen)) {
+        if (crossSource - before >= crossSourceCap) break;
+        const k = nameKey(name);
+        if (!k || seen.has(k)) continue;
+        // A discovery must be answerable. Dropping it here — rather than writing it
+        // and counting it as unanswered — is what keeps this source from adding to
+        // the dead-related-entry count the file header measures.
+        const r = deps.resolve(name);
+        if (!r) continue;
+        if (put(r.title, r.kind, r.kind)) crossSource++;
+      }
+    }
     return { outE, outC };
   };
 
@@ -141,5 +191,5 @@ export function shapeRelatedLists(
     if (outE.length || c.related_entities) next.related_entities = outE;
     return next;
   });
-  return { entities, concepts, unanswered, siblings, tags };
+  return { entities, concepts, unanswered, siblings, tags, crossSource };
 }
