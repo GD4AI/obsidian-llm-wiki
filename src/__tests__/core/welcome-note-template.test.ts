@@ -117,7 +117,7 @@ describe('buildWelcomeNote — "How to use this plugin" section', () => {
     expect(body).toMatch(/\| `Karpathy LLM Wiki: Ingest from folder`/);
     expect(body).toMatch(/\| `Karpathy LLM Wiki: Query Wiki`/);
     expect(body).toMatch(/\| `Karpathy LLM Wiki: Lint wiki`/);
-    expect(body).toMatch(/\| `Karpathy LLM Wiki: View Ingestion History`/);
+    expect(body).toMatch(/\| `Karpathy LLM Wiki: View operation history`/);
     expect(body).toMatch(/\| `Karpathy LLM Wiki: Recreate Wiki Welcome Note`/);
   });
 
@@ -175,10 +175,10 @@ describe('buildWelcomeNote — "Quick start" section', () => {
     expect(body).toMatch(/4\.\s+\*\*/);
   });
 
-  it('mentions the Ingest Multiple Files command (#130) and View Ingestion History', () => {
+  it('mentions the Ingest Multiple Files command (#130) and View operation history', () => {
     const body = buildWelcomeNote(STD_ARGS);
     expect(body).toMatch(/Ingest multiple files/);
-    expect(body).toMatch(/View Ingestion History/);
+    expect(body).toMatch(/View operation history/);
   });
 
   it('mentions the Query Wiki panel', () => {

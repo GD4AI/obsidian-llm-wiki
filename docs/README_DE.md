@@ -126,7 +126,7 @@ Das war's. Das Plugin ändert nichts an deinen ursprünglichen Notizen — es er
 | **⚡ Smart Fix All** | innerhalb des Lint-Modals — One-Click-Reparatur in kausaler Reihenfolge mit Phasenbericht |
 | **📋 Index neu generieren** | `Cmd+P/Ctrl+P` → „Regenerate index" — baue `wiki/index.md` mit aktuellen Seiten und Aliasen neu auf |
 | **⏹ Abbrechen** | `Cmd+P/Ctrl+P` → „Cancel current ingestion" oder auf die Statusleiste klicken — stoppt sauber an der nächsten Batch-Grenze |
-| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „View Ingestion History" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
+| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „View operation history" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Vorher | Nachher |

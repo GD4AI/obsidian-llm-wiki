@@ -124,7 +124,7 @@ Você escreve notas. Elas ficam em pastas. Encontrar o que se relaciona com o qu
 | **⚡ Smart Fix All** | dentro do Modal Lint — reparo em ordem causal com relatório por fase, num clique |
 | **📋 Regenerar índice** | `Cmd+P/Ctrl+P` → "Regenerate index" — reconstrói `wiki/index.md` com páginas e aliases atuais |
 | **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" ou clique na barra de status — para com segurança no próximo limite de lote |
-| **📊 Histórico de ingestão** | `Cmd+P/Ctrl+P` → "View Ingestion History" — UI pesquisável para ingestões passadas, relatórios Lint e execuções de manutenção |
+| **📊 Histórico de ingestão** | `Cmd+P/Ctrl+P` → "View operation history" — UI pesquisável para ingestões passadas, relatórios Lint e execuções de manutenção |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Antes | Depois |
