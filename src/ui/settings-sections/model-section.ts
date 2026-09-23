@@ -75,9 +75,14 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
           const baseUrl = tempSettings.baseUrl?.trim() || providerConfig?.baseUrl || undefined;
 
           // OpenRouter uses ':' for catalog variants such as ':free', so keep every valid string ID.
+          // LM Studio serves Hub-managed models under publisher-prefixed IDs such as
+          // 'qwen/qwen3.6-35b-a3b' or 'openai/gpt-oss-120b', so allow '/' there while
+          // still filtering ':' variants (mirrors the ollama branch which allows ':'
+          // but filters '/').
           const getModelFilter = (provider: string) => {
             if (provider === 'openrouter') return (id: string) => typeof id === 'string';
             else if (provider === 'ollama') return (id: string) => !id.includes('/');
+            else if (provider === 'lmstudio') return (id: string) => !id.includes(':');
             else return (id: string) => !id.includes(':') && !id.includes('/');
           };
           const modelFilter = getModelFilter(tempSettings.provider);
@@ -168,10 +173,17 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
           tempSettings.availableModels = models.filter(modelFilter).sort();
           if (tempSettings.availableModels.length > 0) {
             new Notice(tab.getText('fetchSuccess').replace('{}', tempSettings.availableModels.length.toString()), NOTICE_NORMAL);
-            if (!tempSettings.model || !tempSettings.availableModels.includes(tempSettings.model)) {
+            // Preserve a manually typed model ID in custom mode: only auto-select
+            // the first fetched model (and leave custom mode) when the user has not
+            // explicitly typed an ID. A custom ID that is absent from the fetched
+            // list is kept as-is instead of being silently wiped.
+            const keepCustom = tempSettings.useCustomModel && !!tempSettings.model;
+            if (!keepCustom && (!tempSettings.model || !tempSettings.availableModels.includes(tempSettings.model))) {
               tab.setFieldValue('model', tempSettings.availableModels[0]);
             }
-            tempSettings.useCustomModel = false;
+            if (!keepCustom) {
+              tempSettings.useCustomModel = false;
+            }
           } else {
             new Notice(tab.getText('fetchFailed'), NOTICE_NORMAL);
             tempSettings.useCustomModel = true;
