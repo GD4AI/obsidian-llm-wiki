@@ -304,13 +304,32 @@ recording a decision, means the PR is decided — **stop** and ask, do not revie
 | **Dead-code-as-docs policy** (v1.26.0 Batch 4) — exported symbols with zero production importers have a **half-life of one release cycle**. Wire or delete before next MINOR ships. `pre-release-gate` Phase 2g enforces. | AGENTS.md §"Dead-code-as-docs policy"; [[feedback_dead_code_as_docs]] |
 | **Settings panel scope rule** (v1.26.0 Batch 2 lesson) — `advanced-section.ts` = LLM sampling + provider overrides ONLY. Bottom `advanced-settings-section.ts` = dedup thresholds + per-source toggles + storage flags. New toggle? Decide FIRST which scope. | AGENTS.md §"Settings panel scope rule"; [[feedback_settings_panel_naming_collision]] |
 | **Architect-level contributors** (v1.26.0+) — currently @DocTpoint with Write role on personal repo; "no push to main" enforced by branch protection, not role. | [[project_architect_contributor_policy]] |
-| **Floor / ceiling asymmetry** (2026-09-16, decided with the maintainer on #729) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
+| **Floor / ceiling asymmetry** (2026-09-16, **proposed** on #729 — not "decided", see that section's status banner) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". **@DocTpoint argues the ceiling should come from the notes too, i.e. M2 rejected rather than deferred; the maintainer agrees and the issue still says "deferred".** | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
 
 ---
 
 ## Design record — cross-source relations (#729, v1.28.0)
 
-Recorded 2026-09-16, converged with the maintainer. The planning window lives in
+> ### ⚠️ STATUS: PROPOSED, and the design thread is OPEN
+>
+> **This section is not a settled design and must not be read as one.** It was written
+> 2026-09-16 and for four days said it was "converged with the maintainer"; that was
+> **false when written** — #729's request for dissent went out at 10:42, this was
+> recorded at 11:19 and merged at 11:23, and the first reply to the request arrived two
+> days later.
+>
+> **@DocTpoint's objection of 2026-09-18 is the substantive reply, and it is still
+> open.** It corrects four of the measurements below, shows that acceptance criterion 1
+> cannot fail, and measures that M0 selects by tie-break rather than by signal. The
+> maintainer's answer of 2026-09-23 accepts the corrections and the M0 defect, and
+> leaves the sequencing question (reader before graph) as a decision. **Nothing in the
+> implementation plan below should be built on before that thread concludes.**
+>
+> The four measurement-provenance corrections are applied in §"Measurement provenance"
+> below. They were propagated wrongly here and into #781's PR body; the originals were
+> documented honestly in the source files and the error was mine in transcription.
+
+Recorded 2026-09-16 as a proposal. The planning window lives in
 ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *how*.
 
 > **Start here if you have no context.** Read `### The measurement` and
@@ -318,6 +337,54 @@ ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *h
 > `### Three mechanisms` for the design, and **`### Implementation plan
 > (ordered phases)` to build it**. Everything after that is rationale and
 > guardrails. The issue is #729.
+
+### Measurement provenance (corrected 2026-09-23)
+
+Four figures in this record were attributed wrongly, and the error was mine in
+transcription — the source files documented them honestly. @DocTpoint's vocabulary:
+**"stock"** is unmodified upstream; **"local stack"** is his patched build
+(deterministic Related sections capped at five, an ingest-order picker, a local
+micro-embedding for dedup).
+
+| Figure | Actually from | Holds on `main`? | Can it carry weight? |
+|---|---|---|---|
+| ~95 % of edges intra-source; 9 in 10 pages with no cross-source incoming link | seen on **stock** code in July 2026, again in the rebuild | **yes** | **load-bearing** — it is the premise of #729, and it survives the regime change |
+| Arm C lost 3 of 5 questions | query path, **stock** code | **yes** | **load-bearing** — and it lost at the **lexical seed stage**, wrong seeds and not missing paths |
+| B ≥ A (wiki pages retrieve at least as well as raw notes) | local stack for the corpus | direction only | motivates the work; **too small to justify a default-on change** |
+| M0 re-measured (tie-break behaviour) | local-stack vault, M0 as specified, no model | mechanism yes, numbers approximately | **load-bearing** for how M0 behaves; on `main` there are more links per page, so somewhat fewer ties |
+| 374 dead related entries (5 %) | **local stack only** | **no** | **not** a criterion-4 baseline for a stock build |
+| Related cap of five, zero violations | **local stack only** | **no** | says nothing about `main`'s shaping — `main` has no cap at all |
+
+### The three findings that reopen the plan
+
+**① Acceptance criterion 1 cannot fail.** M0 creates cross-source edges by definition, so
+the intra-source share must fall whether the pairs are useful or not — measured 96 % →
+56 % on his vault. It is a restatement of what the mechanism does, not a test of it.
+Success has to be measured at the reader.
+
+**② M0 decides by tie-break, not by signal — and Phase 1 shipped a biased tie-break.**
+Re-run on the full rebuild with raw count and path-ordered ties: **80 % of the top-3 cuts
+fall inside a group of equally scored candidates**, median 12 in the group; **79 % of the
+chosen entries rest on a single shared target**, and one broad hub alone generates 16.5 %
+of all candidate pairs. Titles beginning with "A" are 9.1 % of pages but **17.1 % of the
+chosen entries**. The source of the bias is `co-citation.ts`'s tie-break, which the PR
+describes as a virtue — a **repeatable arbitary cut is worse than a random one**, because
+it is repeatable *and* systematically biased. Adamic-Adar damping reduces the ties
+(95 % → 84 %) without removing them. A later rebuild (~100 notes) reproduces the shape.
+
+**③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is
+unchanged, so the extractor keeps answering the intra-source question it was asked. And
+the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141`
+pushes them to `unanswered` and then writes them, so they land as dead links. A
+prior-driven path is therefore already running, in the open, **unmeasured**. In the
+control run, 79 % of unresolved Related targets had never been a candidate.
+
+Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**;
+**criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a
+world-knowledge one); and **`keepFrom` keeps existing entries in front
+(`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an
+existing vault without a migration — Phase 2's pass conditions are not testable on a
+rebuild until that is decided.
 
 ### Where the analysis lives — and the two corrections made since
 
@@ -437,7 +504,8 @@ model-dependent is ever opened.
 **Phase 6 — measurement, and the only thing that opens M2.**
 
 - Rebuild a comparable vault, re-measure the intra-source share, re-run the five
-  multi-note questions, and check the dead-related-entry baseline (676 / 870).
+  multi-note questions, and check the dead-related-entry count against the **rebuild's**
+  own control, not against the 676 / 870 control-run figure.
 - Publish the numbers against the staged acceptance criteria below. **M2 (or an
   embedding) is opened by these numbers, never by preference.**
 
@@ -476,7 +544,11 @@ acceptance criteria make that visible.
 3. **M2 justified only if** 1–2 leave the multi-note questions unfixed, or the
    residual gap is demonstrably semantic (*"how knowledge evolves over time"*
    against a page titled *Consolidation kernel*).
-4. Dead related entries do not increase — **676 on 870 pages** is the baseline.
+4. Dead related entries do not increase. **The baseline is *not* 676 / 870** — that is
+   an earlier 136-note alphabetical control run on stock code, 25 % of all Related links.
+   The rebuild's own number is **374 on 2,135 pages (5 %)**, and part of that residual is
+   intended (frontier names are deliberately kept). Both figures come from
+   @DocTpoint's vault and neither is a `main` baseline for a stock build.
 5. No regression on single-note questions; the `related-shaping` /
    `related-sections` suites stay green.
 6. Gate 1 green; no settings-schema break; a disable switch exists and defaults

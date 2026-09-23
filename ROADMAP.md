@@ -28,7 +28,7 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 | Group | Items | Why this window |
 |---|---|---|
-| **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. Research and design concluded 2026-09-16 |
+| **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. **⚠️ Proposed 2026-09-16, NOT concluded**: @DocTpoint's objection of 2026-09-18 is still open and corrects four of the underlying measurements. Do not build on this until #729's thread concludes |
 | **Write-path hardening** (architecture) | **#603** ✅ closed with **#750** · **#662** ✅ closed with **#757** | Both landed 2026-09-20. The gate is split into `rawWrite` / `pageGuard` / `notify` with a defaultless `WriteIntent`, and the page index is held per file. **This was the gate on #729 Phase 1 and it is open** |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
@@ -74,7 +74,9 @@ what each change settled lives in MEMORY.
 
 ### Ordering decision (2026-09-16)
 
-**Hardening before the reader — done.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20, and #608 shipped 2026-09-21** — so nothing precedes Phase 1 in the queue.
+**Hardening before the reader — done for #603/#662, and the *ordering itself* is now contested.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20, and #608 shipped 2026-09-21** — so nothing precedes Phase 1 in the queue.
+
+**⚠️ But @DocTpoint challenges the ordering on measurement (2026-09-18):** arm C lost 3 of 5 multi-note questions **at the lexical seed stage**, not on reachability, so **a denser graph cannot repair a wrong seed** — the work belongs at the stage that actually loses. He also shows criterion 1 cannot fail, that M0 selects by tie-break (80 % of cuts inside a tie, 79 % of chosen entries resting on one shared target), that the extractor's prior is already leaking unmeasured, and that `keepFrom` blocks both allocation variants on existing vaults. **This is a maintainer-level ordering decision, not settled.** Maintainer's answer: #729 comment of 2026-09-23.
 
 The four review rounds #750 took are the part worth carrying forward: the slice shipped **two behaviour regressions of its own** despite passing all three of its mutations, and the second of the two was a check it *removed* that had been incidentally holding another door shut. Both findings came from @DocTpoint reading the tree rather than the description.
 
