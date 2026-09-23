@@ -51,6 +51,10 @@ describe('WikiEngine.ingestSource — related shaping', () => {
     expect(berberinPage).not.toContain('concepts/insulinresistenz');
 
     const msg = h.progressMessages.find(m => m.startsWith('Related lists:'));
-    expect(msg).toBe('Related lists: 1 sibling edges, 2 unanswered names, 2 tag values dropped');
+    // The cross-source count is reported even at zero. Phase 1 (#729) added the
+    // source; this harness's vault has no page pair sharing a link target, so the
+    // count is 0 — which is also the evidence that the written page above is
+    // unchanged by this phase.
+    expect(msg).toBe('Related lists: 1 sibling edges, 0 cross-source edges, 2 unanswered names, 2 tag values dropped');
   });
 });
