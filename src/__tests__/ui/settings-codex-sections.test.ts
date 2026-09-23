@@ -134,10 +134,16 @@ describe('Codex settings section integration', () => {
       expected: ['llama3.2', 'llama3.2:latest'],
     },
     {
-      name: 'preserves current LM Studio filtering',
+      // Was `expected: ['qwen2.5']` until #758. This entry is a characterization
+      // test — the name said "preserves *current* filtering" — so it was pinning
+      // a snapshot, not a claim, and it did its job by failing when the filter
+      // changed. `qwen/qwen2.5` is the shape LM Studio's Hub-managed downloads
+      // come back with, and dropping it made those models unreachable from the
+      // picker at all.
+      name: 'offers a namespaced LM Studio id, and still drops its tagged twin',
       provider: 'lmstudio',
       models: ['qwen2.5', 'qwen2.5:latest', 'qwen/qwen2.5'],
-      expected: ['qwen2.5'],
+      expected: ['qwen/qwen2.5', 'qwen2.5'],
     },
   ])('$name', async ({ provider, models, expected }) => {
     fetchModelsMock.mockResolvedValue(models);
