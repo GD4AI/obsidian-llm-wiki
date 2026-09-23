@@ -109,6 +109,23 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
         files.delete(f.path);
         trashedPaths.push(f.path);
       },
+      // Mirrors Obsidian's processFrontMatter: parse the YAML block, let the
+      // mutator set keys, serialize back. Keys without an existing block get
+      // a fresh one — the shape every frontmatter-writing feature relies on.
+      processFrontMatter: async (f: { path: string }, fn: (fm: Record<string, unknown>) => void) => {
+        const content = files.get(f.path);
+        if (content == null) throw new Error(`processFrontMatter: file not in vault: ${f.path}`);
+        const fm: Record<string, unknown> = parseFrontmatter(content) ?? {};
+        fn(fm);
+        const lines = Object.entries(fm)
+          .filter(([, v]) => v !== undefined)
+          .map(([k, v]) => `${k}: ${String(v)}`);
+        const body = content.startsWith('---')
+          ? content.substring(content.indexOf('\n---', 3) + 5).replace(/^\n/, '')
+          : content;
+        const next = lines.length > 0 ? `---\n${lines.join('\n')}\n---\n\n${body}` : body;
+        files.set(f.path, next);
+      },
     },
     metadataCache: {
       // Reflect stored frontmatter from the in-memory vault so content-hash
