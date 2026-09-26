@@ -45,6 +45,7 @@ function makeResult(text: string): Awaited<ReturnType<typeof generateText>> {
     content: [],
     reasoning: [],
     reasoningText: undefined,
+    finalStep: { reasoning: [], reasoningText: undefined },
     files: [],
     sources: [],
     toolCalls: [],
@@ -87,10 +88,15 @@ function makeResultWithReasoning(
   output?: unknown,
 ): Awaited<ReturnType<typeof generateText>> {
   const base = output !== undefined ? makeResultWithOutput(text, output) : makeResult(text);
+  const reasoningText = typeof reasoning === 'string'
+    ? reasoning
+    : reasoning.map((r) => r.text ?? '').join('');
+  const reasoningParts = typeof reasoning === 'string' ? [{ text: reasoning }] : reasoning;
   return {
     ...(base as object),
     reasoning: Promise.resolve(reasoning),
     reasoningText: undefined,
+    finalStep: { reasoning: reasoningParts, reasoningText },
   } as unknown as Awaited<ReturnType<typeof generateText>>;
 }
 
@@ -313,7 +319,7 @@ describe('OpenAICompatSdkClient', () => {
         ...(makeResultWithReasoning('', '*   Target: Update the "Burnout" wiki page…') as object),
         finishReason: 'length',
         usage: { inputTokens: 9000, outputTokens: 32767, totalTokens: 41767, reasoningTokens: 32765, cachedInputTokens: undefined },
-      } as Awaited<ReturnType<typeof generateText>>;
+      } as unknown as Awaited<ReturnType<typeof generateText>>;
       mockGenerateText.mockResolvedValue(runaway);
       const client = new OpenAICompatSdkClient({
         apiKey: 'sk-test',
@@ -333,7 +339,7 @@ describe('OpenAICompatSdkClient', () => {
         ...(makeResultWithReasoning('', 'endless format rumination…') as object),
         finishReason: 'length',
         usage: { inputTokens: 9000, outputTokens: 16000, totalTokens: 25000, reasoningTokens: 15997, cachedInputTokens: undefined },
-      } as Awaited<ReturnType<typeof generateText>>;
+      } as unknown as Awaited<ReturnType<typeof generateText>>;
       mockGenerateText.mockResolvedValue(runaway);
       const client = new OpenAICompatSdkClient({
         apiKey: 'sk-test',
@@ -1748,7 +1754,7 @@ describe('OpenAICompatSdkClient', () => {
       const resolved = {
         ...makeResultWithReasoning('', 'truncated json from the reasoning channel'),
         finishReason: 'length',
-      } as Awaited<ReturnType<typeof generateText>>;
+      } as unknown as Awaited<ReturnType<typeof generateText>>;
       // The output getter throws AFTER resolution — mirrors ai@6.0.230's
       // readOutput path where Output.json() finds nothing parseable.
       Object.defineProperty(resolved, 'output', {

@@ -5,7 +5,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - license: Apache-2.0
 - language: TypeScript
 - runtime: Obsidian >= 1.11.4（デスクトップ + モバイル）
-- dependencies: ランタイム依存ゼロ（Vercel AI SDK v6 を同梱）
+- dependencies: ランタイム依存ゼロ（Vercel AI SDK v7 を同梱）
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
@@ -397,7 +397,7 @@ Apache License, Version 2.0 — [LICENSE](../LICENSE)、[NOTICE](../NOTICE)、[T
 **ベースとなったもの：**
 - 💡 [Andrej KarpathyのLLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — オリジナルコンセプト
 - 🛠️ [Obsidian Plugin API](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
-- 🔌 [Vercel AI SDK v6](https://ai-sdk.dev/)（`@ai-sdk/openai`、`@ai-sdk/anthropic`、`@ai-sdk/openai-compatible`）via Obsidian `requestUrl`
+- 🔌 [Vercel AI SDK v7](https://ai-sdk.dev/)（`@ai-sdk/openai`、`@ai-sdk/anthropic`、`@ai-sdk/openai-compatible`）via Obsidian `requestUrl`
 - 🧮 [Personalized PageRank（Haveliwala 2002）](https://www-cs.stanford.edu/~taherh/papers/topic-sensitive-pagerank-tkde.pdf) と [Monte Carlo PPR（Fogaras 2005）](https://www.cs.cmu.edu/~dpelleg/download/pagerank.pdf) — 検索アルゴリズム
 
 **メンテナー：** [@green-dalii](https://github.com/green-dalii)
