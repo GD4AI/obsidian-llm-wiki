@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Lint no longer counts alias or tag fixes as successful when a page disappears before the write. Skipped writes leave the page deleted and do not add a false success entry to the lint report (#763).
+
 ### Added
 
 - **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian and processed in 20 MiB visual-evidence packages, so a source has no image-count limit. Each image remains capped at 10 MiB; GIFs send a static first frame; remote URLs are never downloaded. The visual request includes each image's nearest Markdown paragraphs. An additional default-off setting saves per-image context, evidence, and skip reasons in a replaceable collapsible source-page audit section.

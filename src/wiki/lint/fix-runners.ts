@@ -149,11 +149,10 @@ export async function runAliasCompletion(
             // the time the LLM returns it must stay gone — see
             // `LINT_WRITE_INTENT` in `types.ts` for why that is a correctness
             // requirement.
-            await ctx.wikiEngine.writeFileWithIntent(page.path, updated, LINT_WRITE_INTENT);
-            // Known gap (#763): the call cannot tell an update from a skip, so a
-            // page that vanished during the LLM call is still counted as fixed.
-            // Needs a return value, which is a signature change across every
-            // consumer of `createOrUpdateFile`.
+            const written = await ctx.wikiEngine.writeFileWithIntent(page.path, updated, LINT_WRITE_INTENT);
+            if (!written) {
+              return { success: false, name: page.basename, reason: 'File not found' };
+            }
             results.push(`- [[${pageRel}]]: added ${newAliases} aliases (total ${mergedAliases.length})`);
             return { success: true, name: page.basename, count: newAliases };
           }
@@ -632,9 +631,8 @@ Task: Return a JSON object with a single field "tags" that is an array of string
         // `vault.read`. That is what settled the design record's open question:
         // `adapter.write` was an older idiom here, not a considered choice. The
         // cancel owner is `lint` — see the note on the other site above.
-        await ctx.wikiEngine.writeFileWithIntent(v.path, updated, LINT_WRITE_INTENT);
-        // Known gap (#763): still reported as `fixed` when the write was skipped
-        // for a page that vanished during the LLM call. Same signature change.
+        const written = await ctx.wikiEngine.writeFileWithIntent(v.path, updated, LINT_WRITE_INTENT);
+        if (!written) return { v, kind: 'missing' as const };
         return {
           v,
           kind: 'fixed' as const,

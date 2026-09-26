@@ -18,6 +18,8 @@ type LLMRequest = Parameters<LLMClient['createMessage']>[0];
 
 export interface WikiEngineHarness {
   engine: WikiEngine;
+  /** The same in-memory Obsidian adapter used by the engine. */
+  app: App;
   /** Every request handed to the LLM stub, in order. Lets a test assert on the
    *  prompt the engine built, not just on what the stub returned. */
   llmRequests: LLMRequest[];
@@ -159,7 +161,7 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
   );
 
   return {
-    engine, llmRequests, writtenPaths, reports, files, stats, startedFilenames, progressMessages, trashedPaths,
+    engine, app, llmRequests, writtenPaths, reports, files, stats, startedFilenames, progressMessages, trashedPaths,
     // Getter, not a field: a bare number is copied by value at construction and
     // would stay 0 however often the hook fires (the arrays above are references).
     get endedCount() { return endedCount; },
