@@ -95,6 +95,27 @@ export function extractReasoningText(reasoning: unknown): string {
   return '';
 }
 
+type ReasoningStep = {
+  reasoning?: unknown;
+  reasoningText?: string;
+};
+
+/**
+ * AI SDK v7 deprecates top-level `result.reasoning`. Read `finalStep`
+ * instead. generateText exposes it synchronously; streamText as a
+ * PromiseLike. `reasoningText` is the concatenated form when present.
+ */
+export async function extractResultReasoning(result: {
+  finalStep?: ReasoningStep | PromiseLike<ReasoningStep>;
+}): Promise<string> {
+  if (result.finalStep === undefined) return '';
+  const step = await result.finalStep;
+  if (typeof step.reasoningText === 'string' && step.reasoningText.length > 0) {
+    return step.reasoningText;
+  }
+  return extractReasoningText(step.reasoning);
+}
+
 /**
  * Issue #470: restore the reasoning-only guard that shipped in v1.19.0 for
  * Issue #99 and was dropped with `src/llm-client.ts` in the v1.23.0 AI-SDK

@@ -39,7 +39,7 @@ import {
   resolveBaseUrlWithFallback,
   isUrlError,
 } from '../core/url-fallback';
-import { reportFinish } from './finish-reason';
+import { extractResultReasoning, reportFinish } from './finish-reason';
 import { buildSamplingArgs } from './sampling-args';
 import { ReasoningStripProber } from './reasoning-strip-probe';
 
@@ -465,16 +465,10 @@ export class OpenAISdkClient implements LLMClient {
       }
       console.debug(`[STREAM-CHUNK] [openai] total chunks forwarded: ${chunkCount} in ${Date.now() - streamStartTime}ms`);
 
-      // Collect reasoning content (if any) from the post-stream Promise.
-      // AI-SDK v6 resolves `result.reasoning` after the stream completes.
+      // Collect reasoning content (if any) from the final stream step.
       let reasoningContent = '';
       try {
-        const reasoning = await result.reasoning;
-        if (typeof reasoning === 'string' && reasoning) {
-          reasoningContent = reasoning;
-        } else if (Array.isArray(reasoning)) {
-          reasoningContent = reasoning.map((r) => (r as { text?: string }).text || '').join('');
-        }
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         // No reasoning for this provider (most non-reasoning models) — ignore.
       }
@@ -521,12 +515,7 @@ export class OpenAISdkClient implements LLMClient {
 
         let reasoningContent = '';
         try {
-          const reasoning = await result.reasoning;
-          if (typeof reasoning === 'string' && reasoning) {
-            reasoningContent = reasoning;
-          } else if (Array.isArray(reasoning)) {
-            reasoningContent = reasoning.map((r) => (r as { text?: string }).text || '').join('');
-          }
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         if (reasoningContent) {
           fullText = wrapReasoningContent(reasoningContent, fullText);
@@ -570,12 +559,7 @@ export class OpenAISdkClient implements LLMClient {
         }
         let reasoningContent = '';
         try {
-          const reasoning = await result.reasoning;
-          if (typeof reasoning === 'string' && reasoning) {
-            reasoningContent = reasoning;
-          } else if (Array.isArray(reasoning)) {
-            reasoningContent = reasoning.map((r) => (r as { text?: string }).text || '').join('');
-          }
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         // Bug-3: markStrip AFTER retry succeeds. If the stream throws,
         // the cache stays untouched and the outer catch propagates.

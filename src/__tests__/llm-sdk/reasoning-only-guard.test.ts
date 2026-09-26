@@ -13,7 +13,7 @@
 // cases the 2026 code base produces and the 2025 one did not.
 
 import { describe, it, expect } from 'vitest';
-import { assertNotReasoningOnly, normalizeUsage } from '../../llm-sdk/finish-reason';
+import { assertNotReasoningOnly, extractResultReasoning, normalizeUsage } from '../../llm-sdk/finish-reason';
 
 const REASONING_ONLY = { inputTokens: 100, outputTokens: 600, reasoningTokens: 600 };
 
@@ -95,5 +95,29 @@ describe('normalizeUsage', () => {
   it('passes through a missing usage object', () => {
     expect(normalizeUsage(undefined)).toBeUndefined();
     expect(normalizeUsage(null)).toBeUndefined();
+  });
+});
+
+describe('extractResultReasoning (AI SDK v7 finalStep)', () => {
+  it('prefers reasoningText when present', async () => {
+    await expect(extractResultReasoning({
+      finalStep: { reasoning: [{ text: 'parts' }], reasoningText: 'concatenated' },
+    })).resolves.toBe('concatenated');
+  });
+
+  it('falls back to reasoning parts when reasoningText is empty', async () => {
+    await expect(extractResultReasoning({
+      finalStep: { reasoning: [{ text: 'a' }, { text: 'b' }], reasoningText: '' },
+    })).resolves.toBe('ab');
+  });
+
+  it('awaits a PromiseLike finalStep (streamText shape)', async () => {
+    await expect(extractResultReasoning({
+      finalStep: Promise.resolve({ reasoning: [{ text: 'streamed' }], reasoningText: undefined }),
+    })).resolves.toBe('streamed');
+  });
+
+  it('returns empty when finalStep is missing', async () => {
+    await expect(extractResultReasoning({})).resolves.toBe('');
   });
 });

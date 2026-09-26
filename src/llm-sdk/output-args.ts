@@ -80,7 +80,7 @@
 //   });
 
 import { jsonSchema, Output, zodSchema } from 'ai';
-import type { Schema } from 'ai';
+import type { JSONSchema7, Schema } from 'ai';
 import type { z } from 'zod';
 import type { OutputMode } from './output-mode-prober';
 import { strictSchemaFor } from './strict-schema';
@@ -113,6 +113,67 @@ function isZodSchema(schema: Record<string, unknown> | z.ZodType): schema is z.Z
     && schema !== null
     && 'safeParse' in schema
     && typeof (schema as unknown as { safeParse?: unknown }).safeParse === 'function';
+}
+
+function isPromiseLike<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {
+  return typeof (value as { then?: unknown })?.then === 'function';
+}
+
+function isEmptyObjectSchema(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0;
+}
+
+/**
+ * AI SDK v7's zod→JSON-Schema converter emits `additionalProperties: {}`
+ * (an empty schema = open) where v6 + zod 4 emitted `false`. `{}` is
+ * semantically `true`: grammar-decoding backends may invent extra keys.
+ * Walk object nodes that have fixed `properties` and restore `false`.
+ * Open maps (`additionalProperties` as a non-empty schema, no fixed keys)
+ * stay open.
+ */
+function closeEmptyAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
+  const node: JSONSchema7 = { ...schema };
+  if (node.properties !== undefined) {
+    const extra = node.additionalProperties;
+    if (extra === undefined || extra === true || isEmptyObjectSchema(extra)) {
+      node.additionalProperties = false;
+    } else if (typeof extra === 'object' && extra !== null && !Array.isArray(extra)) {
+      node.additionalProperties = closeEmptyAdditionalProperties(extra);
+    }
+    const next: Record<string, JSONSchema7 | boolean> = {};
+    for (const [key, child] of Object.entries(node.properties)) {
+      next[key] = typeof child === 'object' && child !== null
+        ? closeEmptyAdditionalProperties(child)
+        : child;
+    }
+    node.properties = next;
+  }
+  if (node.items !== undefined) {
+    node.items = Array.isArray(node.items)
+      ? node.items.map((item) => (typeof item === 'object' && item !== null ? closeEmptyAdditionalProperties(item) : item))
+      : typeof node.items === 'object' && node.items !== null
+        ? closeEmptyAdditionalProperties(node.items)
+        : node.items;
+  }
+  for (const key of ['anyOf', 'oneOf', 'allOf'] as const) {
+    const branches = node[key];
+    if (Array.isArray(branches)) {
+      node[key] = branches.map((branch) => (
+        typeof branch === 'object' && branch !== null ? closeEmptyAdditionalProperties(branch) : branch
+      ));
+    }
+  }
+  return node;
+}
+
+function withClosedAdditionalProperties<T>(adapted: Schema<T>): Schema<T> {
+  return jsonSchema<T>(
+    () => {
+      const raw = adapted.jsonSchema;
+      return isPromiseLike(raw) ? raw.then(closeEmptyAdditionalProperties) : closeEmptyAdditionalProperties(raw);
+    },
+    { validate: adapted.validate },
+  );
 }
 
 export interface ResponseFormatWithSchema {
@@ -213,11 +274,14 @@ export function buildOutputArgs(
   // adapter produced it; see `strict-schema.ts` for what changes and why the
   // validator is wrapped alongside. The plain tier sends the adapter's own
   // body, so a backend that accepts it (measured: LM Studio) is unaffected.
-  const adapted = mode === 'json_schema_strict' ? strictSchemaFor(schema, adapt) : adapt();
-  // #669: on the plain tier the body carries `additionalProperties: false`,
-  // set by the AI SDK's zod→JSON-Schema converter for zod 4 (zod 3's
-  // `.passthrough()` used to emit `true` here). Kept deliberately rather than
-  // rewritten back to `true`:
+  const adapted = mode === 'json_schema_strict'
+    ? strictSchemaFor(schema, adapt)
+    : withClosedAdditionalProperties(adapt());
+  // #669: on the plain tier the body carries `additionalProperties: false`.
+  // v6 + zod 4's converter emitted that itself (zod 3's `.passthrough()`
+  // used to emit `true`). AI SDK v7 emits `{}` instead — an empty schema,
+  // which is open. `withClosedAdditionalProperties` restores `false` so
+  // the wire contract does not regress:
   //   - nothing reads unknown keys off a parsed response — `confidence` /
   //     `score` appear only in `output-schemas.ts` comments;
   //   - client-side tolerance comes from the zod parse, not from the wire

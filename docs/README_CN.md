@@ -5,7 +5,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - license: Apache-2.0
 - language: TypeScript
 - runtime: Obsidian >= 1.11.4 (桌面端 + 移动端)
-- dependencies: 零运行时依赖（Vercel AI SDK v6 已打包）
+- dependencies: 零运行时依赖（Vercel AI SDK v7 已打包）
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
@@ -405,7 +405,7 @@ Apache License, Version 2.0 — 详见 [LICENSE](../LICENSE)、[NOTICE](../NOTIC
 **构建于：**
 - 💡 [Andrej Karpathy 的 LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — 原始概念
 - 🛠️ [Obsidian Plugin API](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
-- 🔌 [Vercel AI SDK v6](https://ai-sdk.dev/)（`@ai-sdk/openai`、`@ai-sdk/anthropic`、`@ai-sdk/openai-compatible`）通过 Obsidian `requestUrl`
+- 🔌 [Vercel AI SDK v7](https://ai-sdk.dev/)（`@ai-sdk/openai`、`@ai-sdk/anthropic`、`@ai-sdk/openai-compatible`）通过 Obsidian `requestUrl`
 - 🧮 [Personalized PageRank (Haveliwala 2002)](https://www-cs.stanford.edu/~taherh/papers/topic-sensitive-pagerank-tkde.pdf) 和 [Monte Carlo PPR (Fogaras 2005)](https://www.cs.cmu.edu/~dpelleg/download/pagerank.pdf) — 检索算法
 
 **维护者：** [@green-dalii](https://github.com/green-dalii)

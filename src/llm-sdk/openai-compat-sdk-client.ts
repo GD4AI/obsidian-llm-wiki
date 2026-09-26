@@ -39,7 +39,7 @@ import {
 import { TokenKeyProber } from './token-key-probe';
 import { ReasoningStripProber } from './reasoning-strip-probe';
 import { OutputModeProber, type OutputMode } from './output-mode-prober';
-import { assertNotReasoningOnly, isReasoningRunaway, normalizeUsage, reportFinish, extractReasoningText } from './finish-reason';
+import { assertNotReasoningOnly, extractResultReasoning, isReasoningRunaway, normalizeUsage, reportFinish } from './finish-reason';
 import { buildSamplingArgs } from './sampling-args';
 import { buildOutputArgs } from './output-args';
 import { JSON_ENFORCEMENT_SYSTEM_PREFIX, forcedTextPromptSystem } from './json-prompt-prefix';
@@ -399,25 +399,12 @@ export class OpenAICompatSdkClient implements LLMClient {
       // LMStudio + Qwen3.5 routes structured output into `reasoning_content`
       // and leaves the visible `content` empty. `generateText` returns the
       // visible text only — reasoning arrives via the separate
-      // `result.reasoning` promise. Prepend it so parseJsonResponse's
-      // balanced-JSON finder can reach the JSON-shaped payload.
+      // `finalStep.reasoning` / `reasoningText`. Prepend it so
+      // parseJsonResponse's balanced-JSON finder can reach the JSON-shaped
+      // payload.
       let reasoningContent = '';
       try {
-        // AI SDK 6.0.230: `result.reasoning` is a sync getter returning
-        // Array<ReasoningOutput> in the DefaultGenerateTextResult class
-        // (line 5096-5098 of ai/dist/index.mjs). The .d.ts signature
-        // misleadingly declares `PromiseLike<Array<ReasoningOutput>>` —
-        // there is no actual Promise to await. `await` on a non-Thenable
-        // value wraps it in a resolved Promise immediately, so the code
-        // path still works; the cast below silences the await-thenable
-        // lint without changing runtime behaviour.
-        const reasoningRaw = await (result.reasoning as unknown as Promise<unknown>);
-        const reasoningArr: ReadonlyArray<{ text?: string }> = Array.isArray(reasoningRaw)
-          ? (reasoningRaw as ReadonlyArray<{ text?: string }>)
-          : typeof reasoningRaw === 'string'
-            ? [{ text: reasoningRaw }]
-            : [];
-        reasoningContent = reasoningArr.map((r) => r.text ?? '').join('');
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         /* No reasoning field on this provider. */
       }
@@ -978,22 +965,14 @@ export class OpenAICompatSdkClient implements LLMClient {
       // Issue #443 follow-up (v1.26.x PATCH) — LMStudio + Qwen3.5 routes the
       // structured output into `reasoning_content` and leaves the visible
       // `content` empty. AI SDK's `generateText` does not include reasoning
-      // in `result.text` (it goes into the separate `result.reasoning`
-      // promise, mirroring the streaming pattern at line 1078). Without
+      // in `result.text` (it goes into `finalStep.reasoning` /
+      // `reasoningText`, mirroring the streaming pattern). Without
       // this prepend, `result.text` is `''` and parseJsonResponse sees
       // empty body — losing the JSON-shaped reasoning payload. Mirrors
-      // the streaming variant at line 1078–1093.
+      // the streaming variant.
       let reasoningContent = '';
       try {
-        // See createMessage comment for the PromiseLike<Array<...>> vs
-        // sync-getter mismatch in the AI SDK 6.0.230 type signature.
-        const reasoningRaw = await (result.reasoning as unknown as Promise<unknown>);
-        const reasoningArr: ReadonlyArray<{ text?: string }> = Array.isArray(reasoningRaw)
-          ? (reasoningRaw as ReadonlyArray<{ text?: string }>)
-          : typeof reasoningRaw === 'string'
-            ? [{ text: reasoningRaw }]
-            : [];
-        reasoningContent = reasoningArr.map((r) => r.text ?? '').join('');
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         /* No reasoning field on this provider. */
       }
@@ -1510,8 +1489,8 @@ export class OpenAICompatSdkClient implements LLMClient {
       //
       // Fix: consume ONLY textStream. For reasoning content (DeepSeek
       // doesn't emit reasoning; OpenAI o1-series does), read from
-      // `result.reasoning` (a Promise<string>) after stream completes —
-      // this is the AI-SDK v6 recommended pattern.
+      // `result.finalStep` after stream completes —
+      // this is the AI-SDK v7 recommended pattern.
       const result = streamText({
         model: languageModel,
         ...(system ? { system } : {}),
@@ -1558,16 +1537,11 @@ export class OpenAICompatSdkClient implements LLMClient {
         /* finishReason unavailable on this provider — leave as unknown */
       }
 
-      // Collect reasoning content (if any) from the post-stream Promise.
+      // Collect reasoning content (if any) from the final stream step.
       // OpenAI o-series and reasoning-capable providers populate this.
       let reasoningContent = '';
       try {
-        const reasoning = await result.reasoning;
-        if (typeof reasoning === 'string' && reasoning) {
-          reasoningContent = reasoning;
-        } else if (Array.isArray(reasoning)) {
-          reasoningContent = reasoning.map((r) => (r as { text?: string }).text || '').join('');
-        }
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         // No reasoning field for this provider (DeepSeek, etc.) — ignore.
       }
@@ -1610,7 +1584,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         }
         let reasoningContent = '';
         try {
-          reasoningContent = extractReasoningText(await result.reasoning);
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         if (reasoningContent) {
           fullText = wrapReasoningContent(reasoningContent, fullText);
@@ -1661,7 +1635,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         }
         let reasoningContent = '';
         try {
-          reasoningContent = extractReasoningText(await result.reasoning);
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         // Bug-3: markStrip AFTER the retry succeeds. If the stream
         // throws (network blip, transient 5xx), the cache is not
@@ -1700,7 +1674,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         }
         let reasoningContent = '';
         try {
-          reasoningContent = extractReasoningText(await result.reasoning);
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         if (reasoningContent) {
           fullText = wrapReasoningContent(reasoningContent, fullText);
