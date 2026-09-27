@@ -383,6 +383,10 @@ export class WikiEngine {
     this.onDone = cb;
   }
 
+  getDoneCallback(): ((report: IngestReport) => void) | null {
+    return this.onDone;
+  }
+
   setIngestionCallbacks(onStart: ((filename?: string) => void) | null, onEnd: (() => void) | null): void {
     this.onIngestionStart = onStart;
     this.onIngestionEnd = onEnd;
