@@ -67,6 +67,20 @@ client returns `text: ''` with only a `console.debug`, so an empty answer can st
 invisible to the user. It fires only when the output getter throws, which means
 schema-backed calls, so it does not affect Query. Found while reviewing #799.
 
+### The ruleset restore can fail, and only the re-read catches it (2026-10-03)
+
+While merging #800 the ruleset restore returned `Put ... : EOF` and **the bypass actor
+stayed active** (`bypass_actors=1`). The write looked like it had been issued. Nothing in
+the merge output said the restore failed — the error was one line above a summary line
+that had already printed success for the merge.
+
+**So the restore needs two things it did not have:** its own retry loop (the API returns
+intermittent EOFs), and a **re-read of the ruleset** as the only accepted proof. "Never
+suppress the restore output" was already a rule here and it was not enough, because the
+output was present and wrong. What caught this was reading `bypass_actors` back a second
+time after the restore call returned; `1` where `0` was expected. Check it before moving
+on to anything else, and do not treat a printed restore line as the evidence.
+
 > **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
 > maintainer"**, with a recommendation per row. This file carries the *reasoning*
 > behind those recommendations and the record of what was learned; it does not
