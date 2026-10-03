@@ -40,7 +40,23 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 This is the first section to read after a compact. Each row is a decision, not a task:
 the work is done or scoped, and what is missing is a call. Everything here now sits on
-`v1.29.0 MINOR` or `v1.27.x PATCH`; nothing here blocks v1.28.0, which shipped 2026-10-04.
+`v1.29.0 MINOR` or `v1.28.x PATCH`; nothing here blocks v1.28.0, which shipped 2026-10-04.
+
+**Milestone map (restructured 2026-10-04, when v1.28.0 shipped).** Three windows are open,
+and together they hold every open issue and PR — nothing is unassigned:
+
+| Milestone | Open | What belongs in it |
+|---|---|---|
+| `v1.28.x PATCH` | 12 | Bug fixes, docs and engineering hygiene. No new features |
+| `v1.29.0 MINOR` | 16 | New capabilities, and the #729 design track's head |
+| `v1.27.0+ research` | 16 | Ideas with no committed version — experimental, or awaiting a design conversation |
+
+The restructure replaced two milestones that had outlived their names. **`v1.27.x PATCH`**
+still held 11 items under a title naming a window that closed with v1.27.2 on 2026-09-15; its
+10 PATCH-scale items moved to `v1.28.x PATCH` and #568 (an `enhancement`, not a fix) moved to
+`v1.29.0 MINOR`. **`v1.27.0 MINOR`** was empty and released, so it was closed. Both rules came
+from the same place: *a released milestone may not carry unstarted work* — the reason
+`v1.28.0 MINOR` was emptied before its own release.
 
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
@@ -54,7 +70,7 @@ the work is done or scoped, and what is missing is a call. Everything here now s
 | **#701** | Stamp a `wiki-ingested` marker on sources, from @weqoocu | Its premise **does not hold**: the marker it proposes to write is what the plugin already reads | Close it with the analysis, or re-scope it to the real need |
 | **#785** | "Full Reindex" request | It touches **incremental accumulation**, a core design premise | Defer to research |
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note | Accept into the next window |
-| **#792** | Saving a query conversation fails: the generated filename contains `:` | A real bug with a **full report** (the earlier note here calling the body empty was wrong — it is not). Unlabelled and unmilestoned | Label it `bug` / `v1.27.x PATCH`, then fix: `slug.ts` already strips `:`, so the conversation path is not using it |
+| **#792** | Saving a query conversation fails: the generated filename contains `:` | A real bug with a **full report** (the earlier note here calling the body empty was wrong — it is not). Labelled `bug` and milestoned `v1.28.x PATCH` on 2026-10-04; the fix itself is unstarted | Fix it: `slug.ts` already strips `:`, so the conversation-save path is not using it |
 | **#793** | Ten translated READMEs quote English command names, and the command name is stored twice per locale | Filed as the #780 follow-up | `good first issue` — the shape is mechanical once the name has one source |
 
 **Not waiting on a decision, just unstarted:** **#703** (ingest hangs — diagnosis first),
@@ -180,7 +196,7 @@ Obsidian's ignore-matching semantics. It sits on the research milestone.
 
 **Triggered by:** v1.27.0 MINOR shipped 2026-08-27 (`3464cce`). PATCH backlog is the union of (a) v1.27.0 ship-day bugs from architect-level triage, (b) deferred items from v1.27.0 review threads, (c) post-MINOR new Issues filed by @DocTpoint (2026-08-28 onwards: #567 / #568 / #605–#620 series).
 
-**Milestone note (2026-09-04):** the `v1.27.0 MINOR` GitHub milestone is CLOSED (released 2026-08-27) and must not carry new work. All open PATCH/feature items live under `v1.27.x PATCH` until a future MINOR milestone is created.
+**Milestone note (2026-09-04, superseded 2026-10-04):** the `v1.27.0 MINOR` GitHub milestone is CLOSED (released 2026-08-27) and must not carry new work. Open PATCH/feature items used to live under `v1.27.x PATCH`. That milestone was closed on 2026-10-04 for the same reason — its window ended with v1.27.2 — and its items moved to `v1.28.x PATCH` / `v1.29.0 MINOR`. See the milestone map above the decision queue.
 
 ### Shipped into v1.27.x PATCH — waves A–F (2026-08-27 → 09-15)
 

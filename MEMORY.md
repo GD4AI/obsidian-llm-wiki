@@ -25,7 +25,10 @@ changed — only which release number it lands in.** The milestone moved to
 milestone does not carry unstarted work. The direction call (A/B/C) is still open and
 **A** is the recommendation — see §"Design record — cross-source relations".
 
-**Open counts:** **33 issues** and **11 PRs**.
+**Open counts:** **33 issues** and **11 PRs**. All of them carry a milestone — the
+open windows are `v1.28.x PATCH` (12), `v1.29.0 MINOR` (16) and `v1.27.0+ research` (16);
+see the milestone map in ROADMAP §"Open decisions". Three of those 11 PRs (#770/#771/#772,
+the MAJOR dependency bumps) sit on `v1.29.0 MINOR` with the coordinated AI SDK v7 work.
 
 ### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
 
