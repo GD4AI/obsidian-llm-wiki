@@ -39,6 +39,34 @@ before this was noticed, on the reasoning that a docs-only or one-line change ca
 a gate that is already red — **that reasoning is wrong to act on even when the outcome is
 benign**. Red means stop and diagnose.
 
+### The reasoning-shape family, and which clients guard it (2026-10-03)
+
+**#799** fixed the shape where a gateway inlines its reasoning into `content` inside a
+thinking block. Two facts are worth keeping.
+
+**Only `OpenAICompatSdkClient` carries the guard.** `create-llm-client.ts` sends `openai`
+(and `useOfficialOpenAI`, and `apiShape: 'responses'`) to `OpenAISdkClient`, sends
+`anthropic` and `anthropic-compatible` to `AnthropicSdkClient`, and sends **everything
+else** to the compat client. So most built-in providers are guarded, and "custom
+provider" is **not** the boundary — the shape is a property of the wire format, not of who
+hosts the endpoint.
+
+**The other two clients do not need it today, and their own docs are the evidence.**
+OpenAI's Responses API returns reasoning as its own item type (`summary_text` /
+`reasoning_text`), and Chat Completions returns no reasoning text at all — never inline in
+the answer. Anthropic returns `thinking` blocks separately from `text` blocks. The one
+counter-example found: Anthropic itself returns the reasoning **as a `text` block with
+literal `<thinking>` tags** for a thinking-only response followed by `tool_use`
+(`anthropics/claude-code#21849`). **This plugin never creates that trigger — it sends no
+tools — so the case was not filed and not fixed.** If a report ever arrives on one of
+these clients, the wiring is small: the predicate is shared in `finish-reason.ts`, so each
+call site needs `result.text` plus the `rescued` value.
+
+**Still silent, and worth its own look:** the `NoOutputGeneratedError` arm in the compat
+client returns `text: ''` with only a `console.debug`, so an empty answer can still be
+invisible to the user. It fires only when the output getter throws, which means
+schema-backed calls, so it does not affect Query. Found while reviewing #799.
+
 > **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
 > maintainer"**, with a recommendation per row. This file carries the *reasoning*
 > behind those recommendations and the record of what was learned; it does not

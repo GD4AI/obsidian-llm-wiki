@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Fix Dead Links" prefers a page's real display name over its filename slug, and the double-nested link repair now reaches the file (#653, #720).
 - A stub's incoming link is given its name back before the stub is deleted (#726).
 - The welcome note and all eleven READMEs name the history command as Obsidian registers it (#780).
+- A reasoning model that writes its thinking into the answer field is now reported instead of returning an empty answer in silence. Some OpenAI-compatible gateways inline the reasoning in the answer field, wrapped in `<think>` tags, and send nothing after it; the guard only recognized a completely empty answer field, so those replies looked like the plugin had not answered at all (#791).
 
 ### Notes
 
