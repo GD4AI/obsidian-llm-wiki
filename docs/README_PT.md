@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — uma reescrita truncada no limite de tokens não sobrescreve mais a página, uma forma única para `updated_pages` para que o re-pointamento de links veja cada página, colchetes de notas de proveniência reparados, fallback de saída estruturada de gateways corporativos, ciclo de vida de ingestão liberado ao pular, o cancelamento alcança a chamada ao modelo; 39 commits, 4144 tests)
+- latest: v1.28.0 (MINOR — análise de imagens Markdown locais incorporadas durante a ingestão, cabeçalhos de requisição por provedor com um preset OpenCode e uma variante `(Responses)`, um fallback de streaming `node:https` de desktop para origens bloqueadas, e um único vocabulário de tags para configurações, tags de nota e de página; além da correção de build que faz duas funções já publicadas realmente funcionarem; 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
@@ -196,6 +196,9 @@ Cinco caminhos, alternáveis por ingestão:
 - **🌍 11 idiomas de interface** — Inglês, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. O idioma da UI e da saída wiki são independentes — sua wiki pode estar em chinês enquanto a interface está em inglês.
 - **📚 11 idiomas de saída wiki** — o mesmo conjunto; escolha em Configurações → Configuração Wiki. Opção *Custom input* para prompts ad-hoc.
 - **Todas as strings de UI traduzidas por locale** — cada rótulo, modal e aviso. Adicionar um 12º idioma é orientado por contribuidores (padrão PR #159).
+- **🖼 Análise de imagens incorporadas durante a ingestão de Markdown** — opcional (*Analyze embedded images during Markdown ingestion*, desativado por padrão). Cada incorporação local `![[…]]` / `![…](…)` elegível de uma nota é resolvida através do Obsidian e analisada junto com os parágrafos vizinhos, em pacotes de 20 MiB; cada imagem é limitada a 10 MiB, GIFs enviam um primeiro quadro estático e URLs remotas nunca são baixadas.
+- **🔧 Cabeçalhos personalizados por provedor** — um campo de texto livre logo abaixo da API Base URL. Uma linha `Name: value` por linha, enviada em cada requisição. Inclui um preset OpenCode e uma variante `(Responses)` para endpoints que falam `/v1/responses`.
+- **📡 Um streaming que sobrevive a uma origem bloqueada** — quando uma requisição cross-origin é recusada, o streaming é reexecutado por um transporte `node:https` de desktop em vez de recair numa resposta em buffer, e um fallback que falha fica registrado em vez de ser engolido.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-10-03
 
-**Current state pointer:** see [ROADMAP.md](./ROADMAP.md#current-status) for active development phase + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.27.2 PATCH (2026-09-15, 4144 tests / 294 files).
+**Current state pointer:** see [ROADMAP.md](./ROADMAP.md) for the active plan and the decision queue + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
 
 ---
 
@@ -436,7 +436,7 @@ Plugin exposes a **complementary query surface**, not fidelity-to-source maximiz
 
 **Hard rule:** plugin MUST NOT attempt to make wiki pages win every query. When a user complains "the raw note beats the wiki for query X", the answer is *"that is the division of labour — the wiki serves a different query"*, not "fix the wiki to win X". **Practical implications:** "self-improving over time" = periodic consolidation pass with LLM judgement on past decisions, NOT a smarter ingest path. Smallest kernel of Karpathy cycle = Preview-Confirm gate + identity ambiguity record + stable mutation interface, NOT an agent framework refactor.
 
-Planning: [ROADMAP §v1.27.0 MINOR track](./ROADMAP.md#v1270-minor-design-track). Rationale: #330 reply comment + #358 tracking issue.
+Planning: [ROADMAP §Design track](./ROADMAP.md#design-track--the-complementary-memory-model-items-358--330). Rationale: #330 reply comment + #358 tracking issue.
 
 ### ⚠️ Architect-level contributors (v1.26.0+)
 

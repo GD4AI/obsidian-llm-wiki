@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — una riscrittura troncata al limite di token non sovrascrive più la pagina, una forma unica per `updated_pages` così il re-pointing dei link vede ogni pagina, parentesi delle note di provenienza riparate, fallback dell'output strutturato dei gateway aziendali, ciclo di vita dell'ingestione rilasciato allo skip, l'annullamento raggiunge la chiamata al modello; 39 commits, 4144 tests)
+- latest: v1.28.0 (MINOR — analisi delle immagini Markdown locali incorporate durante l'ingestione, header di richiesta per provider con un preset OpenCode e una variante `(Responses)`, un fallback di streaming `node:https` desktop per origini bloccate, e un unico vocabolario di tag per impostazioni, tag di nota e di pagina; più la correzione di build che fa funzionare davvero due funzioni già pubblicate; 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basato su grafo, RAG senza embedding, recupero Personalized PageRank, secondo cervello Obsidian
 - search-intents: "Obsidian RAG senza embedding", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recupero note basato su grafo", "implementazione Karpathy LLM Wiki", "generazione automatica base di conoscenza Obsidian", "Obsidian Graph View + AI", "plugin second brain Obsidian", "grafo dei link tra note Obsidian AI", "plugin Obsidian 11 lingue", "plugin Obsidian 16 provider LLM", "RAG senza DB vettoriale", "Obsidian ingest PDF AI", "Obsidian Codex OAuth", "plugin Bedrock Obsidian", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingest Word PPT Excel", "credenziali IAM Obsidian"
@@ -195,6 +195,9 @@ Cinque percorsi, commutabili per ingest:
 - **🌍 11 lingue per l'interfaccia** — Inglese, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. L'interfaccia e la lingua di output del wiki sono indipendenti — il tuo wiki può essere in cinese mentre l'interfaccia è in inglese.
 - **📚 11 lingue per l'output del wiki** — stesso set; scegli in Impostazioni → Configurazione Wiki. Opzione *Input personalizzato* per prompt ad-hoc.
 - **Tutte le stringhe UI tradotte per locale** — ogni etichetta, modale e notifica. Aggiungere una dodicesima lingua è guidato dai contributori (pattern PR #159).
+- **🖼 Analisi delle immagini incorporate durante l'ingestione Markdown** — opzionale (*Analyze embedded images during Markdown ingestion*, disattivato per impostazione predefinita). Ogni incorporazione locale `![[…]]` / `![…](…)` idonea di una nota viene risolta tramite Obsidian e analizzata insieme ai paragrafi vicini, in pacchetti da 20 MiB; ogni immagine è limitata a 10 MiB, le GIF inviano un primo fotogramma statico e gli URL remoti non vengono mai scaricati.
+- **🔧 Header personalizzati per provider** — un campo di testo libero subito sotto l'API Base URL. Una riga `Name: value` per riga, inviata con ogni richiesta. Include un preset OpenCode e una variante `(Responses)` per endpoint che parlano `/v1/responses`.
+- **📡 Uno streaming che sopravvive a un'origine bloccata** — quando una richiesta cross-origin viene rifiutata, lo streaming viene ritentato su un trasporto `node:https` desktop invece di degradare a una risposta bufferizzata, e un fallback fallito viene registrato anziché inghiottito.
 
 ---
 
