@@ -8,14 +8,25 @@
 
 ---
 
-## Current state (2026-10-03)
+## Current state (2026-10-04)
 
-**Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = **`8bb496db`**, Gate 1 green
-at **313 files / 4363 tests**. **v1.28.0 MINOR is in flight and its scope is NOT
-settled** — see §"Design record — cross-source relations" and its PROPOSED banner.
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
+see CHANGELOG §1.28.0). It shipped with **four opt-in capabilities** (#608 image embeds,
+#723/#735 per-provider headers and the OpenCode preset, #741 the desktop streaming
+fallback, #672 one tag vocabulary) plus **#751**, which made two already-shipped features
+actually run in a release build. The release commit and tag are the last step of the
+2026-10-04 cycle; `main` = **`24135566`** before that commit, Gate 1 green at
+**313 files / 4372 tests**.
 
-**Open counts:** **34 issues** and **11 PRs**.
+**v1.28.0 shipped WITHOUT its named head.** #729 Phase 1 (the M0 co-citation projection)
+was the plan of record for this release and did not go in, because its design record is
+still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
+changed — only which release number it lands in.** The milestone moved to
+`v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
+milestone does not carry unstarted work. The direction call (A/B/C) is still open and
+**A** is the recommendation — see §"Design record — cross-source relations".
+
+**Open counts:** **33 issues** and **11 PRs**.
 
 ### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
 
@@ -95,7 +106,7 @@ available is deciding, not building.
 **Landed since the previous state block (2026-09-21).** #784 (**#763**) · #789
 (**#788**) · #780 · #774 · #687 · #656 · #778 · #773 · #782 · #779. The authoritative
 list is ROADMAP §"Merged into v1.28.0 so far", sourced from
-`git log --oneline --since="2026-09-15" origin/main` (**45 commits** since v1.27.2).
+`git log --oneline --since="2026-09-15" origin/main` (**52 commits** since v1.27.2).
 
 **Closed in the same pass:** #608, #662, #603, #665, #672, #699, #725, #751, #763,
 #788 — and #753 as superseded.

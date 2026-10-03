@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2（PATCH — 被 token 上限截断的重写不再覆盖页面、`updated_pages` 统一形状使链接重指向看见每一页、provenance 脚注括号修复、企业网关结构化输出降级、跳过文件释放摄入生命周期、取消抵达模型调用；39 commits, 4144 tests）
+- latest: v1.28.0（MINOR — 摄入时分析本地 Markdown 图片嵌入、按服务商设置请求头并新增 OpenCode 预设与 `(Responses)` 变体、跨域受限时的桌面端 `node:https` 流式回退、设置/笔记标签/页面标签统一为一套词表；外加让两个已发布功能在正式构建中真正生效的构建修复；4372 tests）
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
@@ -203,6 +203,9 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - **🌍 11 种界面语言** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский。界面和 Wiki 输出语言相互独立——你的 Wiki 可以是中文而界面是英文。
 - **📚 11 种 Wiki 输出语言** — 同一集合；在设置 → Wiki 配置中选择。*自定义输入* 选项用于临时提示。
 - **📝 UI 字符串全部按语种本地化** — 每个标签、弹窗与通知。添加第 12 种语言由贡献者驱动（PR #159 模式）。
+- **🖼 Markdown 入库时分析嵌入图片** — 可选（*Analyze embedded images during Markdown ingestion*，默认关闭）。笔记中每个符合条件的本地 `![[…]]` / `![…](…)` 嵌入都会通过 Obsidian 解析，并与相邻段落一起分析，按 20 MiB 分包；单张图片上限 10 MiB，GIF 只发送静态首帧，远程 URL 从不下载。
+- **🔧 按服务商设置自定义请求头** — API Base URL 正下方的自由文本字段。每行一条 `Name: value`，随每个请求发送。附带 OpenCode 预设，以及面向 `/v1/responses` 端点的 `(Responses)` 变体。
+- **📡 跨域被拒时流式仍可用** — 跨域请求被拒时，流式改走桌面端 `node:https` 传输重试，而不是降级成缓冲式回答；回退失败会被记录，不再被吞掉。
 
 ---
 
