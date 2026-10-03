@@ -302,8 +302,9 @@ export class WikiEngine {
       // #603 slice 2: the log declares its intent instead of inheriting the
       // full gate. `guard: false` — see `LOG_WRITE_INTENT`: the path-prefix
       // repair turns this journal's correct page links into dead links.
-      writeFile: (path: string, content: string) =>
-        this.writeFileWithIntent(path, content, LOG_WRITE_INTENT),
+      writeFile: async (path: string, content: string) => {
+        await this.writeFileWithIntent(path, content, LOG_WRITE_INTENT);
+      },
     });
   }
 
@@ -1964,7 +1965,7 @@ export class WikiEngine {
    * changes nothing. New callers that want a subset should name it (Issue #603).
    */
   async createOrUpdateFile(path: string, content: string): Promise<void> {
-    return this.writeFileWithIntent(path, content, FULL_WRITE_INTENT);
+    await this.writeFileWithIntent(path, content, FULL_WRITE_INTENT);
   }
 
   /**
@@ -1979,21 +1980,17 @@ export class WikiEngine {
    * parameter is required — an optional one would let a call site stay silent,
    * and silence is what let the bypasses in #603 go unnoticed.
    *
-   * **A known gap, filed separately rather than fixed here (#763).** Returning
-   * `void` means a caller cannot tell an update from a skip, and a `create: false`
-   * intent can decline. The lint fixers are the ones that would notice — they
-   * report a count and a log line per page, and on a page that vanished during
-   * their LLM call the write is now correctly skipped. Before that skip existed
-   * the report was true because the write always landed; wrongly, but it landed,
-   * so the change moved the defect out of the vault and into the log. Telling the
-   * two apart needs a return value, which is a signature change across every
-   * consumer of `createOrUpdateFile` — review scoped it out of this PR.
+   * Returns whether content was written, including a recovered write. A missing
+   * target with `create: false` returns false so lint fixers do not count a page
+   * that disappeared during their LLM call as fixed (#763). Write errors and
+   * cancellation still reject; callers that do not need the result can use the
+   * void compatibility entry point, `createOrUpdateFile`.
    */
   async writeFileWithIntent(
     path: string,
     content: string,
     intent: WriteIntent
-  ): Promise<void> {
+  ): Promise<boolean> {
     // #646: a cancelled ingest stops at the next page write. The abort signal
     // reaches the model call only since the same fix; before, every call ran
     // to its end and the cancel was honoured at three checkpoints per ingest.
@@ -2046,7 +2043,7 @@ export class WikiEngine {
     // would spawn a completion stamp for a page that is not there. Unreachable
     // today (no intent pairs `create: false` with either flag), which is exactly
     // why the next `create: false` intent is where it would have bitten.
-    if (outcome === WikiEngine.ABSENT) return;
+    if (outcome === WikiEngine.ABSENT) return false;
 
     if (intent.guard && outcome !== WikiEngine.RECOVERED && isWikiContentPage) {
       this.markPageComplete(path);
@@ -2055,6 +2052,7 @@ export class WikiEngine {
       this.onFileWrite?.(path);
       this.invalidatePageCaches(path);
     }
+    return true;
   }
 
   /**
