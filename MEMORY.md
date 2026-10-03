@@ -11,12 +11,11 @@
 ## Current state (2026-10-04)
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
-see CHANGELOG §1.28.0). It shipped with **four opt-in capabilities** (#608 image embeds,
-#723/#735 per-provider headers and the OpenCode preset, #741 the desktop streaming
-fallback, #672 one tag vocabulary) plus **#751**, which made two already-shipped features
-actually run in a release build. The release commit and tag are the last step of the
-2026-10-04 cycle; `main` = **`24135566`** before that commit, Gate 1 green at
-**313 files / 4372 tests**.
+see CHANGELOG §1.28.0). **Published** as release `1.28.0` with three assets and a
+Discussion in `announcements`; the tag and the merge commit are both `c47c25a7`. It shipped
+with **four opt-in capabilities** (#608 image embeds, #723/#735 per-provider headers and the
+OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary) plus **#751**,
+which made two already-shipped features actually run in a release build.
 
 **v1.28.0 shipped WITHOUT its named head.** #729 Phase 1 (the M0 co-citation projection)
 was the plan of record for this release and did not go in, because its design record is
