@@ -123,7 +123,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 | **⚡ Smart Fix All** | Lintモーダル内 — ワンクリック因果順修復（フェーズごとにレポート表示） |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → 「Regenerate index」 — `wiki/index.md`を現在のページとエイリアスで再構築 |
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → 「Cancel current ingestion」またはステータスバーをクリック — 次のバッチ境界でクリーンに停止 |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「View Ingestion History」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「View operation history」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Before | After |

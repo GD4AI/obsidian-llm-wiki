@@ -125,7 +125,7 @@ C'est tout. Le plugin ne modifie rien dans vos notes originales — il crée uni
 | **⚡ Smart Fix All** | dans le modal Lint — réparation en un clic par ordre causal avec rapport par phase |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → « Regenerate index » — reconstruit `wiki/index.md` avec les pages et alias actuels |
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → « Cancel current ingestion » ou cliquez sur la barre d'état — s'arrête proprement à la prochaine limite de lot |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → « View Ingestion History » — UI consultable pour les ingestions passées, rapports Lint et maintenances |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → « View operation history » — UI consultable pour les ingestions passées, rapports Lint et maintenances |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Avant | Après |

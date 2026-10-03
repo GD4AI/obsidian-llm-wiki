@@ -122,7 +122,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⚡ Smart Fix All** | Lint 모달 내부 — 원클릭 인과순서 수리, 단계별 보고서 제공 |
 | **📋 인덱스 재생성** | `Cmd+P/Ctrl+P` → "Regenerate index" — 현재 페이지와 alias로 `wiki/index.md` 재구축 |
 | **⏹ 작업 취소** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 중지 |
-| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "View Ingestion History" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
+| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "View operation history" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | 전 | 후 |

@@ -125,7 +125,7 @@ That's it. The plugin modifies nothing in your original notes — only creates n
 | **⚡ Smart Fix All** | inside Lint Modal — one-click causal-order repair with per-phase report |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerate index" — rebuild `wiki/index.md` with current pages and aliases |
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View Ingestion History" — searchable UI for past ingestions, lint reports, maintenance runs |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, maintenance runs |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 
