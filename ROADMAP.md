@@ -34,6 +34,28 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
 | **Community** | **#608** + PR **#687** ✅ **shipped 2026-09-21** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | #687 landed; #752 is still on the milestone |
 
+### ⛔ Open decisions — the queue awaiting the maintainer (2026-10-03)
+
+This is the first section to read after a compact. Each row is a decision, not a task:
+the work is done or scoped, and what is missing is a call.
+
+| # | What it is | Why it is waiting | Recommendation |
+|---|---|---|---|
+| **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. Three options in MEMORY §"Seed stage" | **A**: accept the ordering — measure where the extractor's out-of-scope names come from before building M0 |
+| **#783** vs **#760** | **The same bug fixed twice** (#758) | A duplicate, and one must be chosen | Take **#783**'s 14-line fix with **#760**'s pure-function structure |
+| **#786** | AI SDK v7 upgrade, `Closes #764`, 29 files `+345/-439` | Four MAJOR dependencies plus wire behaviour — **not** obviously safe, so it was not merged with the rest | Review the wire snapshots, then merge; **#770/#771/#772 become superseded** |
+| **#775** | One sanctioned write path for the unified model | @DocTpoint's review found **four holes in the guard**, and the guard is the PR's whole value | Fix the four, then re-offer |
+| **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled | Do not merge until #729 concludes |
+| **#785** | "Full Reindex" request | It touches **incremental accumulation**, a core design premise | Defer to research |
+| **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note | Accept into this window |
+| **#791** | Query answers arrive reasoning-only — the text sits inside `<think>` and nothing follows it | A real user bug, not yet diagnosed | Reproduce and fix |
+| **#792** | Saving a query conversation fails: the generated filename contains `:` | **Body is empty** — but the title names the cause, so the slug path can be checked without waiting | Check the slug generator for a colon filter, then ask for the title |
+| **#793** | Ten translated READMEs quote English command names, and the command name is stored twice per locale | Filed as the #780 follow-up | `good first issue` — the shape is mechanical once the name has one source |
+
+**Not waiting on a decision, just unstarted:** **#703** (ingest hangs — diagnosis first),
+**#468**, **#567**, **#676**, **#752**, **#756**, **#668**, **#664**, **#677**, **#701**,
+**#763** ✅ closed.
+
 ### Landed outside this window, and worth noting
 
 **#751** sits on `v1.27.x PATCH` rather than here, deliberately: it is one line in
@@ -46,31 +68,54 @@ MEMORY's work list. **Decide one, not both.**
 ### Merged into v1.28.0 so far (unreleased)
 
 Recorded here, not in CHANGELOG — that entry is written once at release. Detail on
-what each change settled lives in MEMORY.
+what each change settled lives in MEMORY. **This list is maintained; when a PR lands,
+it goes here.** `git log --oneline --since="2026-09-15" origin/main` is the authority,
+and it currently carries **45 commits** since v1.27.2.
+
+**User-facing:**
 
 - **#687** — **#608**: opt-in local Markdown image embeds during ingest, from
-  @Chase07. 30 production files + 4 test files. Closes **#608**. The maintainer-side
-  rebase was the unlock (a fork PR that `maintainer_can_modify` then allowed), and
-  the review's two findings were the message-type split and the degradation
-  contract — see MEMORY §"#687 reviewed".
-- **#774** — **prompts: stop asking the model for what the code writes**, from
-  @DocTpoint. The half that matters is the wire schema: a declared property is a
-  request, and the strict tier lists every property in `required`, so removing the
-  fields from the prompt alone would have left them requested. `Refs #679`.
-- **#656** — config.md's audit-trail metadata on every Apply, in UTC, from
-  @Jan-Heldal. Landed after three review rounds; the last two were on my own fixes.
-- **#778** — the Windows collection failure in the custom-instruction test, from
-  @x0Lazarus (first contribution). Test-only, one file, and the CI run had been
-  waiting on maintainer approval rather than failing.
-- **#776** + **#777** — the docs-only handoff refresh and the ruleset-restore lesson.
-- **#736** — custom request headers, the `opencode` preset, a `(Responses)` variant.
-  Closes **#723** and **#735**; both verified end to end by @aisahpA on a real vault
-  with a real Go key, and three defects he found in the PR's own code were fixed
-  before merge.
-- **#739** — **#729 Phase 0**: the Related and extraction ceilings centralised into
-  `src/constants.ts`, behaviour-identical and proven by zero snapshot churn.
-- **#733** — zod 4 migration (**#669**), proven by byte-identical wire snapshots.
-- **#737** + **#734** — AGENTS.md process rules.
+  @Chase07. 30 production files + 4 test files.
+- **#789** — **#788**: the manual-ingest progress Notice shows the engine's stage, and
+  a finished batch closes it. From @DocTpoint.
+- **#784** — **#763**: `writeFileWithIntent` returns whether content was written, so
+  lint stops counting a write that was skipped. From @x0Lazarus.
+- **#780** — the welcome note and eleven READMEs name the history command as Obsidian
+  registers it. From @NotAFlightRisk. Follow-up filed as **#793**.
+- **#774** — **prompts: stop asking the model for what the code writes**. The wire
+  schema is the half that matters: a declared property is a request, and the strict
+  tier lists every property in `required`. From @DocTpoint. `Refs #679`.
+- **#656** — `config.md`'s audit-trail metadata on every Apply, in UTC. From
+  @Jan-Heldal.
+- **#750** — **#603 slices 2 + 3**: the write-path contract, in three movements. Its
+  four review rounds are the most instructive of the cycle.
+- **#757** — **#662**: the page index is held per file. From @DocTpoint.
+- **#759** — **#751**: the build-config one-liner that made two shipped features work.
+  Transitive **#665**.
+- **#726** · **#653** · **#720** — three lint repairs: a stub's incoming link keeps its
+  name, dead-link repair prefers the display name, and the double-nested repair reaches
+  the file.
+
+**Zero-embedding positioning, kept:**
+
+- **#773** — **#699**: third-party licence notices generated from the built bundle.
+- **#762** + **#673** — one tag vocabulary (**#672**), landed as two PRs on purpose
+  because merging either alone makes nine locales assert the opposite of what ships.
+- **#746** + **#744** — **#741**: streaming for origins that block the renderer, over a
+  desktop `node:https` transport, with the fallback's failures recorded.
+- **#736** — **#723** + **#735**: custom request headers, an OpenCode preset, a
+  `(Responses)` variant.
+- **#761** · **#737** · **#734** · **#745** · **#715** — AGENTS.md process rules.
+
+**Dependencies and internal:**
+
+- **#769** · **#765** · **#767** · **#733** — dependency work: two deliberate holds with
+  their measurements, the `yaml` bump, and the zod 4 migration (**#669**).
+- **#739** — **#729 Phase 0**: the Related and extraction ceilings centralised,
+  behaviour-identical and proven by zero snapshot churn.
+- **#748** — the write gate split into `pageGuard` / `rawWrite` / `notify`.
+- **#776** · **#777** · **#779** · **#782** · **#730** · **#731** · **#732** · **#742** ·
+  **#743** · **#747** · **#749** · **#754** — MEMORY/ROADMAP records and handoffs.
 
 ### Ordering decision (2026-09-16)
 
