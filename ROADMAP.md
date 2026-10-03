@@ -70,10 +70,15 @@ MEMORY's work list. **Decide one, not both.**
 Recorded here, not in CHANGELOG — that entry is written once at release. Detail on
 what each change settled lives in MEMORY. **This list is maintained; when a PR lands,
 it goes here.** `git log --oneline --since="2026-09-15" origin/main` is the authority,
-and it currently carries **45 commits** since v1.27.2.
+and it currently carries **47 commits** since v1.27.2.
 
 **User-facing:**
 
+- **#799** — **#791**: a gateway that inlines its reasoning into the answer field is
+  now reported instead of returning an empty answer in silence. The guard had tested the
+  raw field before the thinking block was stripped, and that line dates from v1.19.0 —
+  eight later commits all fixed the separate-channel shape, so the inline shape was never
+  covered rather than regressed.
 - **#687** — **#608**: opt-in local Markdown image embeds during ingest, from
   @Chase07. 30 production files + 4 test files.
 - **#789** — **#788**: the manual-ingest progress Notice shows the engine's stage, and
