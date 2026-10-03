@@ -7,13 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Lint no longer counts alias or tag fixes as successful when a page disappears before the write. Skipped writes leave the page deleted and do not add a false success entry to the lint report (#763).
-
 ### Added
 
 - **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian and processed in 20 MiB visual-evidence packages, so a source has no image-count limit. Each image remains capped at 10 MiB; GIFs send a static first frame; remote URLs are never downloaded. The visual request includes each image's nearest Markdown paragraphs. An additional default-off setting saves per-image context, evidence, and skip reasons in a replaceable collapsible source-page audit section.
+- **Custom request headers, per provider (Issue #723), plus an OpenCode preset and a `(Responses)` variant (Issue #735).** Headers are entered below the API Base URL and apply to the OpenAI-compatible and OpenAI requests.
+- **One tag vocabulary (Issue #672).** The settings list, note tags and page tags are now read as a single list by the prompt, the candidate gate, the lint and the retag paths, instead of three sources that could disagree.
+- **Desktop streaming for origins that block the renderer (Issue #741).** A blocked cross-origin request is remembered and the stream is retried over a `node:https` transport on desktop, so a buffered answer is no longer the only outcome. The fallback's own failures are now recorded instead of being invisible.
+
+### Changed
+
+- **zod 4 (Issue #669).** The deprecated `.passthrough()` is replaced throughout; wire snapshots are byte-identical.
+- The Related and extraction ceilings are centralised in `src/constants.ts` (`RELATED_BUDGET`, `EXTRACTION_LIMITS`). Behaviour-identical.
+
+### Fixed
+
+- **Two shipped features that never ran in a release build (Issue #751).** `esbuild.config.mjs` now emits a loadable form for external `node:` imports, which fixes the Codex browser login and the desktop streaming transport above. Both worked in a dev build and neither worked in a release one.
+- **The wiki page index is held per file (Issue #662).** `getExistingWikiPages` no longer walks the vault once per written page, so a large ingest no longer pays for the index on every page.
+- Lint no longer counts alias or tag fixes as successful when a page disappears before the write. Skipped writes leave the page deleted and do not add a false success entry to the lint report (#763).
+- The manual-ingest progress Notice shows the engine's stage instead of staying on its start line, and a finished batch closes it (#788).
+- `config.md`'s audit-trail metadata is written on every Apply, in UTC, so `updated:` and `applied_suggestion:` cross-reference the `suggestions.md` entry exactly (#656).
+- The source-page prompt no longer asks the model for the fields the code writes (the note path, the extraction time), and the wire schema no longer declares them. At the `json_schema_strict` tier a declared property is required, so the prompt alone could not stop the request.
+- "Fix Dead Links" prefers a page's real display name over its filename slug, and the double-nested link repair now reaches the file (#653, #720).
+- A stub's incoming link is given its name back before the stub is deleted (#726).
+- The welcome note and all eleven READMEs name the history command as Obsidian registers it (#780).
+
+### Notes
+
+- **v1.28.0 is not released and its scope is not settled.** The cross-source relations work (#729) is at the design stage: its record is marked *proposed* and an objection to it is unresolved. See ROADMAP §"v1.28.0 MINOR — Design track".
+- Third-party licence notices are generated from the built bundle into `THIRD-PARTY-NOTICES.md` rather than hand-listed (Issue #699).
 
 ## [1.27.2] - 2026-09-15
 
