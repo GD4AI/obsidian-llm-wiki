@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Settings changes that rebuild the panel now preserve its scroll position instead of jumping back to the top (#752).
 - Lint no longer counts alias or tag fixes as successful when a page disappears before the write. Skipped writes leave the page deleted and do not add a false success entry to the lint report (#763).
 
 ### Added

@@ -600,6 +600,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     //     block, NOT at the end of the tab - matching pre-PR2 layout
     //     users have muscle memory for.
     const { containerEl } = this;
+    const scrollTop = containerEl.scrollTop;
     containerEl.empty();
     if (this.tempSettings.provider === 'openai-codex') applyCodexModelPolicy(this.tempSettings);
 
@@ -618,5 +619,6 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     // v1.26.0 (#382 item 2): bottom-most section — generic advanced-user
     // settings (lint thresholds, Welcome note) with a section-level toggle.
     renderAdvancedSettingsSection(this, containerEl);
+    containerEl.scrollTop = scrollTop;
   }
 }
