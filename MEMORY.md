@@ -11,11 +11,33 @@
 ## Current state (2026-10-03)
 
 **Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = **`73e6ca49`**, Gate 1 green
+see CHANGELOG §1.27.2). Nothing released since. `main` = **`8bb496db`**, Gate 1 green
 at **313 files / 4363 tests**. **v1.28.0 MINOR is in flight and its scope is NOT
 settled** — see §"Design record — cross-source relations" and its PROPOSED banner.
 
 **Open counts:** **34 issues** and **11 PRs**.
+
+### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
+
+`main`'s CI had been failing since at least 2026-09-27. **Nothing in the tree caused it:**
+the failing step is `.github/workflows/pr-ci.yml:79`,
+`pnpm audit --audit-level high --ignore-registry-errors`, and **that step is not part of
+`pnpm gate:1`** (`lint && typecheck && build && test && css-lint`). CI runs **six** checks;
+the local alias runs **five**. Two advisories published that day made the pin stale:
+`brace-expansion` (override existed at `5.0.9`, advisories want `>=5.0.11`) via the eslint
+chain, and `undici` (no override at all, `>=8.10.2` wanted) via `jsdom` — **both dev-only,
+both patched inside their own minor line** ⇒ not breaking. Fixed in **#796** by bumping
+`brace-expansion` to `5.0.12` and adding `undici: 8.10.2`, in `pnpm-workspace.yaml` **and**
+`package.json`, regenerating **both** lockfiles (`npm` does not read pnpm's — the #501/#652
+class). Proof it is fixed: `8bb496db` = `success` while `eadfaee1` / `73e6ca49` / `127f35be`
+= `failure`. The two surviving moderates are left alone on purpose — the gate is
+`--audit-level high`.
+
+**The durable rule: a green `gate:1` is not evidence that CI will be green.** The only
+signal that the two gates differ is CI's colour. Three PRs were merged on a red signal
+before this was noticed, on the reasoning that a docs-only or one-line change cannot break
+a gate that is already red — **that reasoning is wrong to act on even when the outcome is
+benign**. Red means stop and diagnose.
 
 > **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
 > maintainer"**, with a recommendation per row. This file carries the *reasoning*
