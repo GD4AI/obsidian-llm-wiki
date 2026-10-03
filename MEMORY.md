@@ -17,6 +17,36 @@ settled** — see §"Design record — cross-source relations" and its PROPOSED 
 
 **Open counts:** **34 issues** and **11 PRs**.
 
+### 🔴 CI IS RED ON `main`, AND IT IS NOT OUR CODE (found 2026-10-03)
+
+**Do this before #791.** `pnpm gate:1` is green (313 files / 4363 tests) while GitHub's
+`Gate 1 / Five-Gate` fails on **every** commit, including a docs-only one (#795) — which
+is the proof that no code change caused it.
+
+The failing step is **not part of `gate:1`**. `.github/workflows/pr-ci.yml:79` runs a
+sixth check: `pnpm audit --audit-level high --ignore-registry-errors`. It fails with
+**`16 vulnerabilities found — 3 low | 8 moderate | 5 high`**, reproducible locally with
+`pnpm audit --audit-level=high`. The five high findings are two packages:
+
+| Package | Vulnerable | Patched | Arrives via | Pinned today? |
+|---|---|---|---|---|
+| `undici` | `>=8.0.0 <8.10.2` (3 advisories) | `>=8.10.2` | `jsdom` (dev) | **no** |
+| `brace-expansion` | `>=4.0.0 <5.0.11` (2 advisories) | `>=5.0.11` | `@typescript-eslint > … > minimatch` (dev) | **yes, and stale: `5.0.9`** |
+
+**The fix is two override bumps** — `brace-expansion` `5.0.9 → 5.0.11` in
+`pnpm-workspace.yaml` **and** `package.json` (the project keeps both in step), plus a new
+`undici: 8.10.2` override. **#501** closed the previous `npm audit HIGH=1` the same way.
+Both are transitive **dev** dependencies and both bumps are patch-level, so it is not a
+breaking change — but it changes both lockfiles, so it needs `pnpm install` and a full
+Gate 1, which is why it was not attempted at the end of a session.
+
+**The durable part: `gate:1` and CI are not the same gate.** `gate:1` is
+`lint && typecheck && build && test && css-lint`; CI adds the audit and a lockfile-sync
+check. **A green `gate:1` is not evidence that CI will be green** — this session merged
+three PRs on a red signal as a result. When CI is red, stop and diagnose; the colour is
+the only signal that the two gates differ.
+
+
 > **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
 > maintainer"**, with a recommendation per row. This file carries the *reasoning*
 > behind those recommendations and the record of what was learned; it does not
