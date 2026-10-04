@@ -14,7 +14,7 @@ import {
 } from '../../core/dead-link-detector';
 import { selectCandidateWindow, contextAround } from '../../core/candidate-window';
 import { FixDeadLinkSchema, type FixDeadLink } from '../../llm-sdk/output-schemas';
-import { localDateStamp } from '../../core/format';
+import { buildStubFrontmatter } from '../page-factory/stub-page';
 
 /** Characters to each side of the dead link that describe what it points to (300 in all, the dedup summary length). */
 const DEAD_LINK_CONTEXT_RADIUS = 150;
@@ -105,7 +105,6 @@ export interface StubContentParams {
 
 export function buildStubContent(params: StubContentParams): string {
   const { title, stubType, referringPageRel } = params;
-  const today = localDateStamp();
   const defaultTag = stubType === 'entity' ? 'other' : 'term';
   // Emit `sources:` as block-style so the v1.25.11 provenance-stamp
   // writer in create-page.ts's `appendSourceSlugToFrontmatter` (which
@@ -123,7 +122,8 @@ export function buildStubContent(params: StubContentParams): string {
   // right after the write, and unflipped it would hand the page to the startup
   // Phase-3 cleaner). merge-page.ts reads it to keep a stub from being
   // skip-frozen, and strips it when a treating source fills the page.
-  return `---\ntype: ${stubType}\ncreated: ${today}\nsources:\n  - "[[${referringPageRel}]]"\ntags: [${defaultTag}]\nstub: true\ngeneration_complete: false\n---\n# ${title}\n\n> Stub created by Fix Dead Links — referenced by [[${referringPageRel}]]. Will be filled by next ingest of an actual source that defines this entity.\n`;
+  const frontmatter = buildStubFrontmatter({ stubType, source: referringPageRel, tags: [defaultTag] });
+  return `${frontmatter}\n# ${title}\n\n> Stub created by Fix Dead Links — referenced by [[${referringPageRel}]]. Will be filled by next ingest of an actual source that defines this entity.\n`;
 }
 
 /**

@@ -16,6 +16,8 @@ import { describe, it, expect } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import { appendSourceSlugToFrontmatter } from '../../../wiki/page-factory/create-page';
 import { enforceFrontmatterConstraints } from '../../../core/frontmatter';
+import { buildDissentStubContent } from '../../../wiki/page-factory/stub-page';
+import { buildStubContent } from '../../../wiki/lint/fix-dead-link';
 
 /** Extract the first `---`-delimited frontmatter block and YAML-parse it. */
 function parseFrontmatter(content: string): Record<string, unknown> {
@@ -137,6 +139,46 @@ describe('appendSourceSlugToFrontmatter (#399)', () => {
       .filter(l => /^[a-z_]+:/.test(l))
       .map(l => l.split(':')[0]);
     expect(keys).toEqual(['type', 'created', 'updated', 'sources', 'tags', 'aliases']);
+  });
+
+  // #808: the two hand-written stub templates. Both are born with a block
+  // `sources:`, so the stamp merges into it and never reaches the `tags:`
+  // anchor — the order holds for either tag shape. Pinned so a template that
+  // drops its `sources:` block, or a stamp that stops merging, shows up here.
+  it.each([
+    [
+      'the dissent stub',
+      () =>
+        buildDissentStubContent({
+          item: { name: 'X', type: 'other', summary: '', mentions_in_source: [] },
+          stubType: 'entity',
+          sourceSlug: 'born-from',
+          cell: 'prose+named',
+        }),
+      '[[sources/born-from]]',
+    ],
+    [
+      'the Fix Dead Links stub',
+      () =>
+        buildStubContent({
+          title: 'X',
+          stubType: 'entity',
+          wikiFolder: 'wiki',
+          referringPageRel: 'entities/Referrer',
+        }),
+      '[[entities/Referrer]]',
+    ],
+  ])('stamps %s with one sources block, before tags', (_name, build, bornWith) => {
+    const out = appendSourceSlugToFrontmatter(build(), 'First');
+    const keys = out
+      .split('\n---')[0]
+      .split('\n')
+      .filter(l => /^[a-z_]+:/.test(l))
+      .map(l => l.split(':')[0]);
+    expect(keys).toEqual(['type', 'created', 'sources', 'tags', 'stub', 'generation_complete']);
+    const fm = parseFrontmatter(out);
+    expect(fm.sources).toEqual([bornWith, '[[sources/First]]']);
+    expect(fm.tags).toEqual(['other']);
   });
 
   // PR #405 review — parser-shape regression guard.

@@ -83,8 +83,14 @@ describe('buildDissentStubContent', () => {
     expect(content).toContain('- "[[sources/adhs]]"');
     // Tag-Achse Stufe 4 (S137): one field — identity value + belonging values
     // share `tags:`, no `domains:` block is born.
-    expect(content).toContain('tags: [other, Pharmakologie]');
+    expect(parseFrontmatter(content)?.tags).toEqual(['other', 'Pharmakologie']);
     expect(content).not.toContain('domains:');
+  });
+
+  // #808: the shape, not only the values — a second form of the `tags:` line
+  // is what every reader of that line had to know about.
+  it('writes tags as the block list every other writer emits', () => {
+    expect(content).toContain('\ntags:\n  - "other"\n  - "Pharmakologie"\nstub: true\n');
   });
 
   it('body is the paid-for extraction: summary, one mention, the cell named', () => {
@@ -108,7 +114,7 @@ describe('buildDissentStubContent', () => {
       cell: 'aside+covered',
     });
     expect(bare).toContain('# X');
-    expect(bare).toContain('tags: [other]');
+    expect(bare).toContain('tags:\n  - "other"\n');
     expect(bare).not.toContain('" — [[sources/s]]');
   });
 });
@@ -190,7 +196,9 @@ describe('buildDissentStubContent — identity tag faces the harvest (S142)', ()
       cell: 'prose+named',
       vocabulary: VOCAB,
     });
-    expect(content).toContain('tags: []');
+    // An empty list is the bare key — the shape the gate writes (emitEmptyTags).
+    expect(content).toContain('\ntags:\nstub: true\n');
+    expect(parseFrontmatter(content)?.tags).toEqual([]);
     expect(content).not.toContain('person');
   });
 
@@ -202,7 +210,7 @@ describe('buildDissentStubContent — identity tag faces the harvest (S142)', ()
       cell: 'prose+named',
       vocabulary: [...VOCAB, 'method'],
     });
-    expect(content).toContain('tags: [method, Thema/Diagnostik]');
+    expect(content).toContain('tags:\n  - "method"\n  - "Thema/Diagnostik"\n');
   });
 
   it('writes no other/term fallback under a vocabulary — empty stays empty', () => {
@@ -213,7 +221,9 @@ describe('buildDissentStubContent — identity tag faces the harvest (S142)', ()
       cell: 'aside+covered',
       vocabulary: VOCAB,
     });
-    expect(content).toContain('tags: []');
+    // An empty list is the bare key — the shape the gate writes (emitEmptyTags).
+    expect(content).toContain('\ntags:\nstub: true\n');
+    expect(parseFrontmatter(content)?.tags).toEqual([]);
     expect(content).not.toContain('term');
   });
 });
