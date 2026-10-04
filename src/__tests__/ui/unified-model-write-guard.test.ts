@@ -64,8 +64,69 @@ const OWNER = 'ui/settings.ts';
 function writers(): string[] {
   return productionFiles(SRC)
     .map(f => ({ rel: relPosix(f), code: stripComments(readFileSync(f, 'utf8')) }))
-    .filter(({ rel, code }) => rel !== OWNER && /\btempSettings\.model\s*=/.test(code))
+    // `(?!=)` because the guard is about assignment: `tempSettings.model === ''`
+    // is a read, and it failed here as "a writer bypassed setFieldValue".
+    .filter(({ rel, code }) => rel !== OWNER && /\btempSettings\.model\s*=(?!=)/.test(code))
     .map(({ rel }) => rel);
+}
+
+/**
+ * Functions outside the tab that assign `.model` on a settings object they
+ * **receive**, instead of on `this.tempSettings`.
+ *
+ * A literal search cannot see that shape, and it is not hypothetical: the Codex
+ * policy module writes the field twice this way, through a parameter typed
+ * `CodexModelPolicyTarget` — which is why the sentence that used to sit above
+ * `syncModelsFromPlugin`, "`tempSettings.model` is only assignable here", was
+ * false. #467's own risk case is this shape too, because a preset or profile
+ * helper is most naturally written as `applyPreset(tab.tempSettings, preset)`.
+ *
+ * So the guard names the sanctioned holders instead of the syntax. Declared
+ * rather than inferred, because a third one appearing has to be a decision: an
+ * unlisted writer is reported, including one in an already-listed file.
+ */
+const PARAM_WRITER_ALLOWLIST = [
+  'core/openai-codex-model-policy.ts:applyCodexModelPolicy',
+  'core/openai-codex-model-policy.ts:preserveCodexRuntimeModelState',
+];
+
+/**
+ * The parameter names and types that mean "this object is the temp settings".
+ * Two ways to qualify, and the second exists because the policy module does not
+ * name its parameter `tempSettings`: a `CodexModelPolicyTarget` annotation, or
+ * the name itself.
+ */
+function paramAcceptsSettings(code: string, ident: string): boolean {
+  if (ident === 'tempSettings') return true;
+  return new RegExp(`\\b${ident}\\s*:\\s*CodexModelPolicyTarget`).test(code);
+}
+
+/**
+ * Nearest preceding top-level `function` declaration.
+ *
+ * `interface` members and arrow-with-name shapes are not matched, which is why
+ * an unrecognised writer reports `<unknown>` and fails the allow-list rather
+ * than being skipped. Failing closed is the point: the guard is allowed to be
+ * shallow about *where* the function starts, but not about whether it exists.
+ */
+function enclosingFunction(code: string, index: number): string {
+  const before = code.slice(0, index);
+  const decls = [...before.matchAll(/(?:^|\n)(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/g)];
+  return decls.length > 0 ? decls[decls.length - 1][1] : '<unknown>';
+}
+
+function paramWriters(): string[] {
+  const found: string[] = [];
+  for (const file of productionFiles(SRC)) {
+    const rel = relPosix(file);
+    if (rel === OWNER) continue; // `this.tempSettings` is the owner's own field
+    const code = stripComments(readFileSync(file, 'utf8'));
+    for (const m of code.matchAll(/(?<!this\.)\b([A-Za-z_$][\w$]*)\.model\s*=(?!=)/g)) {
+      if (!paramAcceptsSettings(code, m[1])) continue;
+      found.push(`${rel}:${enclosingFunction(code, m.index ?? 0)}`);
+    }
+  }
+  return found;
 }
 
 describe('#467 — the unified model has one sanctioned write path', () => {
@@ -120,5 +181,36 @@ describe('#467 — the unified model has one sanctioned write path', () => {
     // one and this test's premise is gone.
     const sync = owner.slice(owner.indexOf('syncModelsFromPlugin'));
     expect(sync.slice(0, 400)).not.toContain('cascadeUnifiedModelChange');
+  });
+
+  it('names every holder allowed to write the model through a parameter', () => {
+    // The literal search above is blind to this shape, and the shape already
+    // exists: `applyCodexModelPolicy` and `preserveCodexRuntimeModelState` both
+    // assign `.model` on an object they were handed. Declaring them here is what
+    // makes the set closed — a third one fails, including inside a file that is
+    // already listed.
+    expect(paramWriters().sort()).toEqual([...PARAM_WRITER_ALLOWLIST].sort());
+  });
+
+  it('does not route a wholesale sync through the cascading entry', () => {
+    // The comment above `syncModelsFromPlugin` used to justify this with the
+    // three per-task values and their `*UseCustom` flags, and neither has an
+    // effect on the method's only caller: those values are reassigned from the
+    // same source on the next lines, and the flags are already `false` because
+    // `syncCodexModelsFromPlugin` runs first.
+    //
+    // The reason that does hold is `llmReady`. `setFieldValue` always ends with
+    // `markLLMConfigStale()`, so a *successful* Codex connection test would
+    // commit `llmReady = false` and `requireLLMReady` would then reject every
+    // ingest and query. The earlier version of this test asserted that the
+    // following 400 characters do not contain the word `cascadeUnifiedModelChange`
+    // — which a call to `setFieldValue` also does not contain, so an editor who
+    // read the comment, concluded the flag flip was harmless, and switched the
+    // sync to `setFieldValue` passed and shipped the bug.
+    const owner = stripComments(readFileSync(join(SRC, OWNER), 'utf8'));
+    const sync = owner.slice(owner.indexOf('public syncModelsFromPlugin'));
+    const body = sync.slice(0, sync.indexOf('\n  }'));
+    expect(body).not.toMatch(/setFieldValue/);
+    expect(body).not.toMatch(/markLLMConfigStale/);
   });
 });

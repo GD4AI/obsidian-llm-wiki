@@ -331,13 +331,26 @@ export class LLMWikiSettingTab extends PluginSettingTab {
    * expands one field the user changed into a coherent selection and the
    * overrides would otherwise stay pinned to a model the picker no longer shows.
    * A **sync** from `plugin.settings` is not an edit — all four fields arrive
-   * together from the source of truth, and clearing three of them only to
-   * reassign them on the next line would flip their `*UseCustom` flags as a side
-   * effect of nothing.
+   * together from the source of truth.
    *
-   * Lives on the tab because `tempSettings.model` is only assignable here; every
-   * other module goes through `setFieldValue` or this, and
-   * `unified-model-write-guard.test.ts` fails if one starts assigning directly.
+   * The reason a sync must not go through `setFieldValue` is `llmReady`, and it
+   * is worth naming because the two reasons that look right do not hold on this
+   * method's only caller (`test-connection-section.ts`): clearing the three
+   * per-task values has no effect there, since they are reassigned from the same
+   * source on the next line, and the `*UseCustom` flags are already `false`
+   * because `syncCodexModelsFromPlugin` → `applyCodexModelPolicy` ran first.
+   * What does hold is that `setFieldValue` always ends with
+   * `markLLMConfigStale()`, so a **successful** Codex connection test would commit
+   * `llmReady = false`, and `requireLLMReady` would then reject every ingest and
+   * query.
+   *
+   * This method is one of two sanctioned write entries, and it is **not** the
+   * only place `tempSettings.model` is assigned:
+   * `openai-codex-model-policy.ts` assigns it twice through a parameter
+   * (`applyCodexModelPolicy`, `preserveCodexRuntimeModelState`), which a
+   * literal-text search cannot see. `unified-model-write-guard.test.ts`
+   * therefore also checks parameter-mediated writers against a declared
+   * allow-list, so a third one fails the test instead of landing unseen.
    */
   public syncModelsFromPlugin(): void {
     this.tempSettings.model = this.plugin.settings.model;
