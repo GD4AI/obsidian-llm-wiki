@@ -15,6 +15,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import { appendSourceSlugToFrontmatter } from '../../../wiki/page-factory/create-page';
+import { enforceFrontmatterConstraints } from '../../../core/frontmatter';
 
 /** Extract the first `---`-delimited frontmatter block and YAML-parse it. */
 function parseFrontmatter(content: string): Record<string, unknown> {
@@ -107,6 +108,35 @@ describe('appendSourceSlugToFrontmatter (#399)', () => {
     const out = appendSourceSlugToFrontmatter(before, 'First');
     expect(out).toContain('sources:\n  - "[[sources/First]]"');
     expect(out).toContain('tags: [term]');
+  });
+
+  // The create path runs `enforceFrontmatterConstraints` and then this stamp.
+  // The anchor is the `tags:` block header, so it only finds its place when the
+  // gate writes a block list. While the gate wrote `tags: [x]` inline, the
+  // anchor missed and `sources:` fell to the end, after `aliases:`.
+  it('stamps sources before tags on a page that came through the gate', () => {
+    const gated = enforceFrontmatterConstraints(
+      [
+        '---',
+        'type: entity',
+        'tags: [person]',
+        'aliases:',
+        '  - "Alt"',
+        '---',
+        '',
+        '# Title',
+        '',
+      ].join('\n'),
+      'entity',
+      undefined
+    );
+    const out = appendSourceSlugToFrontmatter(gated, 'First');
+    const keys = out
+      .split('\n---')[0]
+      .split('\n')
+      .filter(l => /^[a-z_]+:/.test(l))
+      .map(l => l.split(':')[0]);
+    expect(keys).toEqual(['type', 'created', 'updated', 'sources', 'tags', 'aliases']);
   });
 
   // PR #405 review — parser-shape regression guard.
