@@ -27,7 +27,7 @@ import {
   type LLMFinishReason,
   type LLMFinishMeta,
   type LLMUsage,
-  type MessageContentPart,
+  type LLMMessage,
 } from '../types';
 import { obsidianFetchBridge, streamWithFallback } from '../core/obsidian-fetch-bridge';
 import { mapAiSdkError } from './openai-sdk-client';
@@ -39,7 +39,7 @@ import {
 import { TokenKeyProber } from './token-key-probe';
 import { ReasoningStripProber } from './reasoning-strip-probe';
 import { OutputModeProber, type OutputMode } from './output-mode-prober';
-import { assertNotReasoningOnly, isReasoningRunaway, normalizeUsage, reportFinish, extractReasoningText } from './finish-reason';
+import { assertNotReasoningOnly, isReasoningOnly, normalizeUsage, reportFinish, extractReasoningText } from './finish-reason';
 import { buildSamplingArgs } from './sampling-args';
 import { buildOutputArgs } from './output-args';
 import { JSON_ENFORCEMENT_SYSTEM_PREFIX, forcedTextPromptSystem } from './json-prompt-prefix';
@@ -382,7 +382,8 @@ export class OpenAICompatSdkClient implements LLMClient {
       const result = await generateText({
         model: languageModel,
         ...(system ? { system } : {}),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages,
+        ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
         ...outputArgs,
         providerOptions: this.buildProviderOptions({
@@ -421,19 +422,20 @@ export class OpenAICompatSdkClient implements LLMClient {
         /* No reasoning field on this provider. */
       }
       // S143: the reasoning-channel rescue below exists for backends that put
-      // the ANSWER into `reasoning_content`. When the usage says the budget
-      // went to reasoning and content is empty at `length`, the reasoning is
-      // a runaway think, not an answer — skip the prepend so the #470 assert
-      // sees the empty answer and throws (see isReasoningRunaway).
+      // the ANSWER into `reasoning_content`. When the reasoning is only
+      // reasoning — never an answer — skip the prepend so the #470 assert
+      // sees it and throws (see isReasoningOnly).
       const usage = normalizeUsage(result.usage);
-      const finalText = reasoningContent
-          && !isReasoningRunaway(result.text, result.finishReason, usage)
+      const reasoningIsTheAnswer = reasoningContent !== ''
+          && !isReasoningOnly(result.text, result.finishReason, usage);
+      const finalText = reasoningIsTheAnswer
         ? prependReasoningForParse(reasoningContent, result.text)
         : result.text;
-      // Issue #470: empty answer + `length` + the budget spent on reasoning is
-      // a thinking-control failure, not a parse failure. Checked on finalText
-      // so the reasoning-channel prepend above counts as content.
-      assertNotReasoningOnly(finalText, result.finishReason, usage);
+      // Issue #470: a thinking-control failure is not a parse failure. Issue
+      // #791: the guard reads the PROVIDER's text, and `reasoningIsTheAnswer`
+      // states whether the prepend above supplied the answer — the fact S143
+      // used to express by checking the post-prepend string instead.
+      assertNotReasoningOnly(result.text, result.finishReason, usage, reasoningIsTheAnswer);
       return finalText;
     } catch (err) {
       // v1.26.3 PATCH Path 2 fix (DocTpoint CHANGES_REQUESTED
@@ -557,7 +559,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -642,7 +644,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -780,7 +782,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           const result = await generateText({
             model: retryLanguageModel,
             ...(retrySystem ? { system: retrySystem } : {}),
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            messages,
             maxOutputTokens: max_tokens,
             ...buildOutputArgs(response_format, demotedMode),
             providerOptions: this.buildProviderOptions({
@@ -843,7 +845,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -898,7 +900,7 @@ export class OpenAICompatSdkClient implements LLMClient {
     max_tokens: number;
     abortSignal?: AbortSignal;
     system?: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | MessageContentPart[] }>;
+    messages: LLMMessage[];
     response_format?: { type: 'json_object'; schema?: Record<string, unknown> | z.ZodType };
     task?: string;
     outputModeOverride?: OutputMode;
@@ -962,7 +964,7 @@ export class OpenAICompatSdkClient implements LLMClient {
       const result = await generateText({
         model: languageModel,
         ...(system ? { system } : {}),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages,
         maxOutputTokens: max_tokens,
         ...outputArgs,
         providerOptions: this.buildProviderOptions({
@@ -996,10 +998,11 @@ export class OpenAICompatSdkClient implements LLMClient {
       } catch {
         /* No reasoning field on this provider. */
       }
-      // S143: same runaway gate as the plain path — see createMessage.
+      // S143: same gate as the plain path — see createMessage.
       const usage = normalizeUsage(result.usage);
-      const text = reasoningContent
-          && !isReasoningRunaway(result.text, result.finishReason, usage)
+      const reasoningIsTheAnswer = reasoningContent !== ''
+          && !isReasoningOnly(result.text, result.finishReason, usage);
+      const text = reasoningIsTheAnswer
         ? prependReasoningForParse(reasoningContent, result.text)
         : result.text;
       recoveredText = text;
@@ -1011,7 +1014,7 @@ export class OpenAICompatSdkClient implements LLMClient {
       // visible text is empty, so only the case with nothing at all can be a
       // reasoning-only response.
       if (output === undefined) {
-        assertNotReasoningOnly(text, result.finishReason, usage);
+        assertNotReasoningOnly(result.text, result.finishReason, usage, reasoningIsTheAnswer);
       }
       return {
         text,
@@ -1085,7 +1088,7 @@ export class OpenAICompatSdkClient implements LLMClient {
               const retryResult = await generateText({
                 model: retryLanguageModel,
                 ...(retrySystem ? { system: retrySystem } : {}),
-                messages: messages.map((m) => ({ role: m.role, content: m.content })),
+                messages,
                 maxOutputTokens: max_tokens,
                 ...buildOutputArgs(response_format, 'text_prompt'),
                 providerOptions: this.buildProviderOptions({
@@ -1186,7 +1189,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({
@@ -1250,7 +1253,7 @@ export class OpenAICompatSdkClient implements LLMClient {
             const result = await generateText({
               model: retryLanguageModel,
               ...(retrySystem ? { system: retrySystem } : {}),
-              messages: messages.map((m) => ({ role: m.role, content: m.content })),
+              messages,
               maxOutputTokens: max_tokens,
               ...buildOutputArgs(response_format, demotedMode),
               providerOptions: this.buildProviderOptions({
@@ -1290,7 +1293,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const result = await generateText({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           maxOutputTokens: max_tokens,
           ...outputArgs,
           providerOptions: this.buildProviderOptions({

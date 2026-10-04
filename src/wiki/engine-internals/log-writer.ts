@@ -26,7 +26,7 @@
  *     inject a custom writeFile and reuse the append-only invariants.
  */
 
-import type { ContradictionInfo, SourceAnalysis } from '../../types';
+import type { ContradictionInfo, EmbeddedImageAnalysisReport, SourceAnalysis } from '../../types';
 import { getLogLabels } from '../../core/log-labels';
 import { dedupPages } from './dedup-pages';
 import { buildLogHeader } from '../../core/log-header';
@@ -37,6 +37,7 @@ export interface IngestMetrics {
   durationSec?: number;
   model?: string;
   sourceBytes?: number;
+  embeddedImageAnalysis?: EmbeddedImageAnalysisReport;
 }
 
 export interface LogWriterOptions {
@@ -86,6 +87,10 @@ export class LogWriter {
     let entry = `\n\n## [${date} ${time}] ${operation} | ${analysis.source_title}${h2Suffix}\n\n`;
     entry += `**${labels.createdPages}**：${this.pageLinks(analysis.created_pages)}\n\n`;
     entry += `**${labels.updatedPages}**：${this.pageLinks(analysis.updated_pages)}\n\n`;
+    if (metrics?.embeddedImageAnalysis) {
+      const image = metrics.embeddedImageAnalysis;
+      entry += `**Embedded images**: ${image.analyzed}/${image.discovered} analyzed; ${image.sent} sent from ${image.queued} queued in ${image.packages} package(s); ${image.convertedGifs} GIF first frame(s) converted; ${image.skipped.length} skipped; ${image.failedPackages} package(s) failed\n\n`;
+    }
 
     if (contradictions.length > 0) {
       entry += `**${labels.contradictionsFound}**：\n`;

@@ -66,32 +66,11 @@
                     "string",
                     "null"
                   ]
-                },
-                "source_path": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source_slug": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "extracted_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 }
               },
               "required": [
                 "quote",
-                "translation",
-                "source_path",
-                "source_slug",
-                "extracted_at"
+                "translation"
               ],
               "type": "object"
             },
@@ -202,32 +181,11 @@
                     "string",
                     "null"
                   ]
-                },
-                "source_path": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source_slug": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "extracted_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 }
               },
               "required": [
                 "quote",
-                "translation",
-                "source_path",
-                "source_slug",
-                "extracted_at"
+                "translation"
               ],
               "type": "object"
             },

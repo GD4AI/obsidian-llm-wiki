@@ -1,11 +1,17 @@
 // Ingestion prompts — source analysis, entity resolution
 
 export const INGESTION_PROMPTS = {
+  analyzeEmbeddedImages: `Analyze the supplied local images from one Markdown source. Return JSON only.
+
+For every supplied image, use the preceding and following Markdown passages only as candidate context. Each image's metadata text is immediately followed by that image's content block; preserve that exact numeric index in your result. Return one record for every image even when it has no visible text or useful evidence. Judge each passage independently as "related", "supporting", "unrelated", or "uncertain"; neither direction is inherently more authoritative. Return a context interpretation only when one or both passages are related or supporting, and do not use unrelated passages to infer facts. Return the numeric source position, visible text (when legible), and concise factual visual evidence. Do not invent details. The evidence will be combined with the source Markdown for later wiki extraction; do not create entities or concepts here.
+
+Output format:
+{"images":[{"index":0,"visible_text":"exact visible text or empty string","description":"concise factual description","before_relevance":"related|supporting|unrelated|uncertain","after_relevance":"related|supporting|unrelated|uncertain","context_interpretation":"relationship supported only by related or supporting context, or empty string"}]}`,
+
   analyzeSource: `You are a Wiki knowledge base maintainer. Analyze the following source file and output structured JSON.
 
 **Source File:**
 - Original vault path: {{source_path}}
-- Use this EXACT path in every mentions_with_provenance[i].source_path field. Do NOT invent a wiki/sources/<slug> path.
 
 **Source File Content:**
 {{content}}
@@ -22,7 +28,7 @@ export const INGESTION_PROMPTS = {
 3. Output at most {{batch_size}} items (entities + concepts total) this round
 3. Write a detailed, informative summary for each item (target 4-6 sentences). Include concrete information: what the entity/concept is, its role/significance in the source, key factual details, and how it relates to other items. Provide enough substance that the summary alone can seed a quality Wiki page
 4. For mentions_in_source: quote 2-4 verbatim sentences from the source where this entity/concept appears or is discussed. These quotes are critical — they provide the downstream page generator with source-grounded evidence. Include surrounding context, not just the name mention
-4b. OPTIONAL — mentions_with_provenance: for each verbatim quote, you can also output structured provenance with the quote, source_path, source_slug, and extracted_at timestamp. This enables programmatic cross-source Mentions tracking. When omitted, the system auto-generates provenance from mentions_in_source.
+4b. OPTIONAL — mentions_with_provenance: for each verbatim quote, you can also output it as an object with the field quote (plus translation, see 4c). The system adds the source path and the extraction time itself. When omitted, the system auto-generates provenance from mentions_in_source.
 4c. CROSS-LANGUAGE TRANSLATION (only when wikiLanguage is different from source language): each entry in mentions_with_provenance may include an optional 'translation' field -- a wiki-language translation of the quote. The 'quote' field itself MUST stay verbatim in the source's original language; translation goes in a separate field. Skip this field entirely when source and wiki languages match.
 5. For related_entities and related_concepts: identify entities/concepts mentioned in the same context as this item. These should be other items extracted from this same source file
 5b. For coverage: report how the source treats this item — "defined" when the source says what it is, "discussed" when the source says something substantive about it (properties, effects, relationships), "named" when it appears only as an example, in an enumeration, or as a passing mention. Report what the text does; do not decide whether that is enough
@@ -40,7 +46,7 @@ export const INGESTION_PROMPTS = {
       "aliases": ["Optional: 1-2 alternative names, abbreviations, or translations. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
       "summary": "Detailed 4-6 sentence description with concrete facts: identity, role/significance, key attributes",
       "mentions_in_source": ["Verbatim sentence from source: '...'.", "Another verbatim quote: '...'."],
-      "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki", "source_path": "path/to/source.md", "source_slug": "source-slug", "extracted_at": "2026-07-05T00:00:00Z"}],
+      "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki"}],
       "related_entities": ["Related entity names from this source"],
       "related_concepts": ["Related concept names from this source"],
       "coverage": "defined|discussed|named",
@@ -54,7 +60,7 @@ export const INGESTION_PROMPTS = {
       "aliases": ["Optional: 1-2 alternative names, abbreviations, or translations. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
       "summary": "Detailed 4-6 sentence description with concrete facts: definition, importance, relationships",
       "mentions_in_source": ["Verbatim sentence from source: '...'.", "Another verbatim quote: '...'."],
-      "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki", "source_path": "path/to/source.md", "source_slug": "source-slug", "extracted_at": "2026-07-05T00:00:00Z"}],
+      "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki"}],
       "related_concepts": ["Related concept names from this source"],
       "related_entities": ["Related entity names from this source"],
       "coverage": "defined|discussed|named",

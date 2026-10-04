@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySchemaSuggestion } from '../../schema/apply-suggestion';
+import { applySchemaSuggestion, bumpSchemaMetadata } from '../../schema/apply-suggestion';
 import { App, TFile } from 'obsidian'; // mocked in setup.ts
 
 // v1.22.0 #97: business logic for "apply a Schema suggestion" — the
@@ -173,5 +173,224 @@ describe('applySchemaSuggestion (#97)', () => {
       onCacheInvalidate: () => { invalidated++; },
     });
     expect(invalidated).toBe(1);
+  });
+
+  // spliceBody preserves the original frontmatter verbatim, so `updated`/`auto_suggestion_count` must be bumped separately — see bumpSchemaMetadata.
+  describe('audit-trail metadata bump (#597)', () => {
+    it('sets updated to the apply date and increments auto_suggestion_count', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        now: () => new Date('2026-06-22T10:30:00.000Z'),
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-06-22');
+      expect(written).not.toContain('updated: 2026-06-21');
+      expect(written).toContain('auto_suggestion_count: 1');
+      expect(written).toContain('version: 1');
+    });
+
+    it('increments auto_suggestion_count again on a second apply', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        now: () => new Date('2026-06-22T10:30:00.000Z'),
+      });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: '# Wiki Schema\n\n## Wiki Structure\n- Entity pages (custom v2)\n',
+        now: () => new Date('2026-06-23T09:00:00.000Z'),
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-06-23');
+      expect(written).toContain('auto_suggestion_count: 2');
+    });
+
+    // Apply can happen arbitrarily later than suggestion generation. `updated:` must
+    // still be the apply-time local date — the suggestion's own timestamp goes to a
+    // separate `applied_suggestion:` field instead, verbatim.
+    it('writes applied_suggestion verbatim from suggestionTimestamp, without changing updated', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        // Deliberately different day than the suggestion timestamp, to prove `updated:` doesn't come from it.
+        // Midday UTC so the local calendar date is unambiguous regardless of the machine's own time zone.
+        now: () => new Date('2026-09-05T12:00:00.000Z'),
+        suggestionTimestamp: '2026-09-04T11:38:14.724Z',
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).toContain('updated: 2026-09-05');
+      expect(written).toContain('applied_suggestion: 2026-09-04T11:38:14.724Z');
+    });
+
+    it('omits applied_suggestion entirely when no suggestionTimestamp is given', async () => {
+      const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+      await applySchemaSuggestion({
+        app: vault as unknown as App,
+        currentPath: 'wiki/schema/config.md',
+        newBody: NEW_BODY,
+        now: () => new Date('2026-06-22T10:30:00.000Z'),
+      });
+
+      const written = vault.vault.files.get('wiki/schema/config.md')!;
+      expect(written).not.toContain('applied_suggestion');
+    });
+
+    // Pin a timezone far enough ahead of UTC (UTC+14) that a UTC instant just before midnight already falls on the next calendar day locally — the exact condition where a local-time value and a UTC value disagree — so this test is deterministic regardless of the machine it runs on.
+    it('uses the LOCAL date (not UTC) for updated, with no applied_suggestion when none given', async () => {
+      // Node/V8 caches the resolved zone on first use and does not notice
+      // `delete process.env.TZ` afterwards, only an explicit new value — so
+      // restore by assigning the system's own resolved zone name, never by
+      // deleting the var, or later tests silently keep running as Kiritimati.
+      const systemTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      process.env.TZ = 'Pacific/Kiritimati'; // UTC+14
+      try {
+        const vault = mkMockVault({ 'wiki/schema/config.md': CURRENT_FILE });
+        const fixedNow = new Date('2026-06-22T23:30:00.000Z'); // already 2026-06-23 locally at UTC+14
+        await applySchemaSuggestion({
+          app: vault as unknown as App,
+          currentPath: 'wiki/schema/config.md',
+          newBody: NEW_BODY,
+          now: () => fixedNow,
+        });
+
+        const written = vault.vault.files.get('wiki/schema/config.md')!;
+        expect(written).toContain('updated: 2026-06-23');
+        expect(written).not.toContain(fixedNow.toISOString());
+        expect(written).not.toContain('updated: 2026-06-22');
+        expect(written).not.toContain('applied_suggestion');
+      } finally {
+        process.env.TZ = systemTz;
+      }
+    });
+  });
+});
+
+describe('bumpSchemaMetadata (#597)', () => {
+  it('rewrites updated and increments auto_suggestion_count, leaving other lines untouched', () => {
+    const result = bumpSchemaMetadata(CURRENT_FILE, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('version: 1');
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).toContain(CURRENT_BODY.trim());
+  });
+
+  it('adds applied_suggestion verbatim when suggestionTimestamp is given', () => {
+    const result = bumpSchemaMetadata(
+      CURRENT_FILE,
+      new Date('2026-06-22T10:30:00.000Z'),
+      '2026-06-21T08:00:00.000Z'
+    );
+    expect(result).toContain('applied_suggestion: 2026-06-21T08:00:00.000Z');
+  });
+
+  it('appends all three fields fresh when none are present in the frontmatter', () => {
+    const noMeta = '---\nversion: 1\n---\n\n# Body\n';
+    const result = bumpSchemaMetadata(noMeta, new Date('2026-06-22T10:30:00.000Z'), '2026-06-21T08:00:00.000Z');
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).toContain('applied_suggestion: 2026-06-21T08:00:00.000Z');
+  });
+
+  it('creates a fresh frontmatter block when content has none', () => {
+    const noFm = '# Just a body\n';
+    const result = bumpSchemaMetadata(noFm, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).toContain('# Just a body');
+  });
+
+  it('is a no-op on content with unterminated frontmatter', () => {
+    const unterminated = '---\nversion: 1\n\n# Body with no closing delimiter\n';
+    expect(bumpSchemaMetadata(unterminated, new Date('2026-06-22T10:30:00.000Z'))).toBe(unterminated);
+  });
+
+  it('bumps fields and drops a leading BOM before an otherwise-valid, terminated block', () => {
+    const withBom = '\uFEFF' + CURRENT_FILE;
+    const result = bumpSchemaMetadata(withBom, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result).not.toContain('\uFEFF');
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('bumps fields and drops leading whitespace before an otherwise-valid, terminated block', () => {
+    const withLeadingWs = '  \n\n' + CURRENT_FILE;
+    const result = bumpSchemaMetadata(withLeadingWs, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result.startsWith('---')).toBe(true);
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('bumps fields and fixes a wrong dash-count opening on an otherwise-valid, terminated block', () => {
+    const wrongDashes = CURRENT_FILE.replace(/^---/, '----');
+    const result = bumpSchemaMetadata(wrongDashes, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toContain('updated: 2026-06-22');
+    expect(result).toContain('auto_suggestion_count: 1');
+    expect(result.startsWith('---\n')).toBe(true);
+    expect(result.match(/^---$/gm)?.length).toBe(2);
+  });
+
+  it('does not let normalization rescue a block that is still unterminated afterward', () => {
+    const bomButUnterminated = '\uFEFF---\nversion: 1\n\n# Body with no closing delimiter\n';
+    const result = bumpSchemaMetadata(bomButUnterminated, new Date('2026-06-22T10:30:00.000Z'));
+    expect(result).toBe(bomButUnterminated);
+  });
+});
+
+// Review findings, 2026-09-14. The dash-count repair is the author's own extra
+// over what #597 asks for, and it is the part that could write into prose:
+// `----` is both a damaged opening delimiter and a Markdown thematic break.
+describe('bumpSchemaMetadata — the dash-count repair cannot write into prose', () => {
+  it('writes nothing when the document opens with a thematic break', () => {
+    // Reproduced before the guard: `----` was rewritten to `---`, so
+    // `parseFrontmatter` matched the `---` further down and treated the prose
+    // between them as frontmatter. The audit fields landed in the body.
+    const input = '----\n\n## Extraction\n\nSome prose.\n\n---\n\n## Merge\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('writes nothing when the whole document is a rule and prose', () => {
+    const input = '----\n\nJust a note. No frontmatter here at all.\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('still bumps a genuinely damaged opening', () => {
+    // The guard must not cost the case the repair was added for.
+    const out = bumpSchemaMetadata(
+      '--\nversion: 1\nupdated: 2026-01-01\nauto_suggestion_count: 0\n---\n\n# Body\n',
+      new Date('2026-09-21T10:00:00Z')
+    );
+    expect(out).toContain('updated: 2026-09-21');
+    expect(out).toContain('auto_suggestion_count: 1');
+  });
+
+  it('leaves a CRLF file unchanged, and that is pinned rather than promised', () => {
+    // `parseFrontmatter` matches `\n` only, so CRLF content takes the
+    // "unrecognized opening" path and comes back untouched. The behaviour is a
+    // known limit, not a regression: this test exists so the doc comment cannot
+    // drift back into claiming CRLF is handled end to end. Accepting `\r?\n` in
+    // `parseFrontmatter` touches every caller of it and belongs in its own PR.
+    const input = '---\r\nupdated: 2026-01-01\r\nauto_suggestion_count: 0\r\n---\r\n\r\nText.\r\n';
+    expect(bumpSchemaMetadata(input, new Date('2026-09-21T10:00:00Z'))).toBe(input);
+  });
+
+  it('creates a block without eating leading blank lines', () => {
+    // `trimStart()` ran before the decision, so the no-frontmatter path also
+    // lost the document's opening blank lines as a side effect.
+    const out = bumpSchemaMetadata('\n\n# Config\n\nText.\n', new Date('2026-09-21T10:00:00Z'));
+    expect(out).toContain('updated: 2026-09-21');
+    expect(out.endsWith('\n\n# Config\n\nText.\n')).toBe(true);
   });
 });

@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — 39 commits since v1.27.1: a rewrite cut off at the token limit no longer overwrites the page, one shape for updated_pages so link repointing sees every page, provenance footnote brackets repaired, corporate-gateway structured-output demotion, ingest lifecycle released on skip, cancel reaches the model call; 4144 tests)
+- latest: v1.28.0 (MINOR — local Markdown image embeds analysed during ingest, per-provider request headers with an OpenCode preset and a `(Responses)` variant, a desktop `node:https` streaming fallback for blocked origins, and one tag vocabulary across settings, note tags and page tags; plus the build fix that made two already-shipped features actually run in a release build; 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
@@ -125,7 +125,7 @@ That's it. The plugin modifies nothing in your original notes — only creates n
 | **⚡ Smart Fix All** | inside Lint Modal — one-click causal-order repair with per-phase report |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerate index" — rebuild `wiki/index.md` with current pages and aliases |
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View Ingestion History" — searchable UI for past ingestions, lint reports, maintenance runs |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, maintenance runs |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 
@@ -156,6 +156,7 @@ Five on-ramps, switchable per ingest:
 3. **🖥️ Local OCR on Apple Silicon** — [oMLX](https://github.com/jundot/omlx) bundles Microsoft Markitdown as a built-in PDF→Markdown backend. Enable Markitdown in oMLX, load [Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) (3B / 570M-active, open-sourced 2026-06) as the vision model, point the plugin at oMLX as a Custom OpenAI-Compatible provider, turn on **Force PDF Support**, pick the multimodal model oMLX is serving. The PDF never leaves your machine.
 4. **🛠️ Third-party extractor (MinerU online UI)** — use the [MinerU Extractor online service](https://mineru.net/OpenSourceTools/Extractor) for a quick manual UI when you don't want to wire up an API token. Download the converted `.md`, drop it in your vault outside the wiki folder, and ingest as a regular Markdown note.
 5. **🔌 Force PDF Support** — for any other OpenAI/Anthropic-compatible endpoint that accepts file parts, the plugin attempts the call (Settings → LLM Configuration → Advanced). The endpoint decides; failures surface as a localized Notice.
+6. **🖼️ Embedded Markdown images** — turn on *Analyze embedded images during Markdown ingestion* in Advanced settings to analyze every eligible local `![[image.png]]` and `![alt](image.png)` embed. Each image is analyzed with its nearest Markdown paragraphs, sent in 20 MiB visual-evidence packages, and capped at 10 MiB; remote URLs are never downloaded. For testable per-image output, optionally enable *Save embedded image visual evidence to source page* to add a collapsible audit section to the generated source page.
 
 **Caveat for Office formats:** Obsidian does not natively render `.docx` / `.xlsx` / `.pptx` ([file-formats](https://obsidian.md/help/file-formats)), so the practical workflow for Office files is: MinerU converts to `.md`, the plugin ingests that `.md` into wiki pages, and the original Office file is kept around for reference. Use a community plugin like Pandoc Plugin / Docxer / Md Importer / Office Reader if you need to inline-preview Office files.
 
@@ -198,6 +199,9 @@ Five on-ramps, switchable per ingest:
 - **🌍 11 UI languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI and wiki-output language are independent — your wiki can be Chinese while the interface is English.
 - **📚 11 wiki-output languages** — same set; pick in Settings → Wiki Configuration. *Custom input* option for ad-hoc prompts.
 - **All UI strings translated per locale** — every label, modal, and notice. Adding a 12th language is contributor-driven (PR #159 pattern).
+- **🖼 Embedded image analysis during Markdown ingest** — opt-in (*Analyze embedded images during Markdown ingestion*, off by default). Every eligible local `![[…]]` / `![…](…)` embed in a note is resolved through Obsidian and analysed together with its neighbouring paragraphs, in 20 MiB packages; each image is capped at 10 MiB, GIFs send a static first frame, and remote URLs are never downloaded.
+- **🔧 Custom Headers per provider** — a free-text field directly below the API Base URL. One `Name: value` per line, sent with every request. Ships with an OpenCode preset and a `(Responses)` variant for endpoints that speak `/v1/responses`.
+- **📡 A stream that survives a blocked origin** — when a cross-origin request is refused, the stream is retried over a desktop `node:https` transport instead of degrading to a buffered answer, and a failed fallback is recorded rather than swallowed.
 
 ---
 

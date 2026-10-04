@@ -1,8 +1,38 @@
 # LLM Wiki Plugin Project Development Standards
 
-**Last Updated:** 2026-08-27
+**Last Updated:** 2026-10-03
 
-**Current state pointer:** see [ROADMAP.md](./ROADMAP.md#current-status) for active development phase + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.27.2 PATCH (2026-09-15, 4144 tests / 294 files).
+**Current state pointer:** see [ROADMAP.md](./ROADMAP.md) for the active plan and the decision queue + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
+
+---
+
+## 🗣️ Communication standard — write so the reader can decide
+
+Use **ASD-STE100 Simplified Technical English at about 80% strength** in every reply
+to the maintainer. Keep the meaning exact. Drop the ceremony.
+
+The maintainer reads a reply to make a decision. A dense reply hides that decision.
+A clear reply lets them answer in one reading.
+
+| Rule | Write this | Not this |
+|---|---|---|
+| One idea per sentence | Stop at about 20 words. | Chain four clauses with dashes and semicolons. |
+| Active voice | "The guard reads the raw field." | "The raw field is read by the guard." |
+| One word, one meaning | Pick one word for one thing, then reuse it. | Call the same thing a guard, a predicate, a check, and a gate. |
+| Verbs, not nouns | "The code strips the tags." | "Tag-stripping behaviour occurs." |
+| No idiom or metaphor | "This breaks the LMStudio case." | "This is a footgun", "whack-a-mole", "the hole". |
+| No hedge | "I did not measure this." State what is measured. | "probably", "seems", "arguably", "should be fine". |
+| Numbers, not adjectives | "8 commits touched this file." | "many commits", "a lot of churn". |
+| Symbols are labels | State the fact in words, then mark it `✓` or `✗`. | Let `✗` carry the meaning alone. |
+| Show the trade-off | Name each option and its cost. | Present one option as obviously correct. |
+
+**The 20% you may drop:** the full STE-100 dictionary and its approved-word list. The
+project keeps its domain terms (`slug`, `frontmatter`, `Gate 1`). Explain each one in
+plain words the first time it appears in a reply.
+
+**This applies to every reply to the maintainer, in any language.** For Chinese: keep
+sentences short. Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer
+the common word.
 
 ---
 
@@ -406,7 +436,7 @@ Plugin exposes a **complementary query surface**, not fidelity-to-source maximiz
 
 **Hard rule:** plugin MUST NOT attempt to make wiki pages win every query. When a user complains "the raw note beats the wiki for query X", the answer is *"that is the division of labour — the wiki serves a different query"*, not "fix the wiki to win X". **Practical implications:** "self-improving over time" = periodic consolidation pass with LLM judgement on past decisions, NOT a smarter ingest path. Smallest kernel of Karpathy cycle = Preview-Confirm gate + identity ambiguity record + stable mutation interface, NOT an agent framework refactor.
 
-Planning: [ROADMAP §v1.27.0 MINOR track](./ROADMAP.md#v1270-minor-design-track). Rationale: #330 reply comment + #358 tracking issue.
+Planning: [ROADMAP §Design track](./ROADMAP.md#design-track--the-complementary-memory-model-items-358--330). Rationale: #330 reply comment + #358 tracking issue.
 
 ### ⚠️ Architect-level contributors (v1.26.0+)
 

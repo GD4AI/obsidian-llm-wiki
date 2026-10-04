@@ -154,16 +154,9 @@ aliases: ["Alternative name or translation"]  # REQUIRED: at least 1 alias, must
 type: source
 created: {{date}}
 updated: {{date}}
-source_file: "[[{{source_file}}]]"
 tags: [{{tags}}]
 aliases: ["Alternative title or translation"]  # REQUIRED: at least 1 alias, must NOT be empty
 ---
-
-# {{source_title}} - Summary
-
-## {{section_source}}
-- Original file: [[{{source_file}}]]
-- Ingested: {{date}}
 
 ## {{section_core_content}}
 [100-200 word summary with bidirectional links]

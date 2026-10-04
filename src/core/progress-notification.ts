@@ -58,3 +58,14 @@ export function decideProgressDisplay(
     reason: `user-triggered${longHint} operation; show persistent Notice + status bar`,
   };
 }
+
+/**
+ * The line an open progress Notice shows while the engine reports a stage.
+ * A user-triggered ingest opens the Notice with its own line (the file, or a
+ * batch's "[3/10] file"); the engine's stage messages were routed as a
+ * watcher ingest and never reached it, so a single ingest showed its start
+ * line until the end. The stage now stands beside the opened line.
+ */
+export function noticeWithStage(opened: string, stage: string): string {
+  return stage ? `${opened} · ${stage}` : opened;
+}

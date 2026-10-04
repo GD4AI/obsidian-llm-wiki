@@ -52,14 +52,14 @@ function makeAnalysis(): SourceAnalysis {
 /**
  * The `{{tags}}` value the engine substituted into the summary prompt.
  *
- * Anchored to the `source_file:` line of the source-page frontmatter template:
+ * Anchored to the `type: source` block of the source-page frontmatter template:
  * the prompt also embeds the source note's own body (`{{content}}`), whose
  * frontmatter can carry an unrelated `tags:` line that appears first.
  */
 function tagsInPrompt(h: ReturnType<typeof createWikiEngineHarness>): string {
   const request = h.llmRequests.at(-1);
   const content = request?.messages?.[0]?.content ?? '';
-  const match = /source_file: "\[\[[^\]]*\]\]"\ntags:\s*\[(.*)\]/.exec(
+  const match = /type: source\ncreated: [^\n]*\nupdated: [^\n]*\ntags:\s*\[(.*)\]/.exec(
     typeof content === 'string' ? content : ''
   );
   expect(match, 'expected the source-page tags: line in the summary prompt').not.toBeNull();

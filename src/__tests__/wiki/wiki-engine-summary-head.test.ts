@@ -42,20 +42,39 @@ function analysis(): SourceAnalysis {
   };
 }
 
+/** One summary run over NOTE, in a German wiki, answered with MODEL_PAGE. */
+async function summarize() {
+  const h = createWikiEngineHarness({
+    files: { [NOTE]: 'Signalproteine des Immunsystems.\n' },
+    llmResponses: [MODEL_PAGE],
+    settings: { wikiLanguage: 'de' },
+  });
+  const file = Object.assign(new TFile(), { path: NOTE, basename: 'Zytokine', extension: 'md' });
+  return { h, pagePath: await h.engine.createSummaryPage(file, analysis(), []) };
+}
+
 describe('WikiEngine.createSummaryPage — the page head comes from the code', () => {
   it('renders H1 and Source section from title, path and date, in the wiki language', async () => {
-    const h = createWikiEngineHarness({
-      files: { [NOTE]: 'Signalproteine des Immunsystems.\n' },
-      llmResponses: [MODEL_PAGE],
-      settings: { wikiLanguage: 'de' },
-    });
-    const file = Object.assign(new TFile(), { path: NOTE, basename: 'Zytokine', extension: 'md' });
-    const written = h.files.get(await h.engine.createSummaryPage(file, analysis(), []))!;
+    const { h, pagePath } = await summarize();
+    const written = h.files.get(pagePath)!;
 
     expect(written).toContain('# Zytokine - Zusammenfassung\n');
     expect(written).toMatch(/## Quelle\n\n- Originaldatei: \[\[Notizen\/Zytokine\.md\]\]\n- Importiert: \d{4}-\d{2}-\d{2}\n/);
     expect(written).not.toContain('Zytokines');
     expect(written).not.toContain('2026-01-01');
     expect(written).toContain('## Kerninhalt');
+  });
+
+  // What the code writes, the template no longer asks the model for: no
+  // `source_file:` line, no H1, no Source section to copy.
+  it('does not ask the model for the head or the note path', async () => {
+    const { h } = await summarize();
+
+    const prompt = h.llmRequests[0].messages[0].content as string;
+    const outputFormat = prompt.slice(prompt.indexOf('**Output Format:**'));
+    expect(outputFormat).not.toContain('source_file');
+    expect(outputFormat).not.toMatch(/^# /m);
+    expect(outputFormat).not.toContain('## Quelle');
+    expect(outputFormat).not.toContain(NOTE);
   });
 });

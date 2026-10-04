@@ -23,7 +23,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Key Concepts', main_points: 'Main Points',
     new_claim: 'New Claim',
     existing_knowledge: 'Existing Knowledge', resolution_suggestion: 'Resolution Suggestion',
-    source_page: 'Source Page', related_pages: 'Related Pages', updated: 'Updated',
+    source_page: 'Source Page', related_pages: 'Related Pages', updated: 'Updated', embedded_image_evidence: 'Embedded Image Visual Evidence',
   },
   zh: {
     basic_information: '基本信息', description: '描述',
@@ -35,7 +35,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: '关键概念', main_points: '要点',
     new_claim: '新主张',
     existing_knowledge: '已有知识', resolution_suggestion: '解决建议',
-    source_page: '来源页面', related_pages: '相关页面', updated: '更新于',
+    source_page: '来源页面', related_pages: '相关页面', updated: '更新于', embedded_image_evidence: '内嵌图片视觉证据',
   },
   // v1.22.0: Traditional Chinese (zh-Hant) for HK/MO/TW/MY/SG users
   'zh-Hant': {
@@ -48,7 +48,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: '關鍵概念', main_points: '要點',
     new_claim: '新主張',
     existing_knowledge: '已有知識', resolution_suggestion: '解決建議',
-    source_page: '來源頁面', related_pages: '相關頁面', updated: '更新於',
+    source_page: '來源頁面', related_pages: '相關頁面', updated: '更新於', embedded_image_evidence: '內嵌圖片視覺證據',
   },
   ja: {
     basic_information: '基本情報', description: '説明',
@@ -60,7 +60,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: '主要概念', main_points: '要点',
     new_claim: '新しい主張',
     existing_knowledge: '既存の知識', resolution_suggestion: '解決案',
-    source_page: 'ソースページ', related_pages: '関連ページ', updated: '更新日',
+    source_page: 'ソースページ', related_pages: '関連ページ', updated: '更新日', embedded_image_evidence: '埋め込み画像の視覚的証拠',
   },
   ko: {
     basic_information: '기본 정보', description: '설명',
@@ -72,7 +72,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: '주요 개념', main_points: '주요 사항',
     new_claim: '새 주장',
     existing_knowledge: '기존 지식', resolution_suggestion: '해결 제안',
-    source_page: '출처 페이지', related_pages: '관련 페이지', updated: '업데이트',
+    source_page: '출처 페이지', related_pages: '관련 페이지', updated: '업데이트', embedded_image_evidence: '포함된 이미지 시각 증거',
   },
   de: {
     basic_information: 'Grundlegende Informationen', description: 'Beschreibung',
@@ -84,7 +84,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Wichtige Konzepte', main_points: 'Hauptpunkte',
     new_claim: 'Neue Behauptung',
     existing_knowledge: 'Bestehendes Wissen', resolution_suggestion: 'Lösungsvorschlag',
-    source_page: 'Quellseite', related_pages: 'Verwandte Seiten', updated: 'Aktualisiert',
+    source_page: 'Quellseite', related_pages: 'Verwandte Seiten', updated: 'Aktualisiert', embedded_image_evidence: 'Visuelle Evidenz eingebetteter Bilder',
   },
   fr: {
     basic_information: 'Informations de base', description: 'Description',
@@ -96,7 +96,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Concepts clés', main_points: 'Points principaux',
     new_claim: 'Nouvelle affirmation',
     existing_knowledge: 'Connaissances existantes', resolution_suggestion: 'Suggestion de résolution',
-    source_page: 'Page source', related_pages: 'Pages associées', updated: 'Mis à jour',
+    source_page: 'Page source', related_pages: 'Pages associées', updated: 'Mis à jour', embedded_image_evidence: 'Preuves visuelles des images intégrées',
   },
   es: {
     basic_information: 'Información básica', description: 'Descripción',
@@ -108,7 +108,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Conceptos clave', main_points: 'Puntos principales',
     new_claim: 'Nueva afirmación',
     existing_knowledge: 'Conocimiento existente', resolution_suggestion: 'Sugerencia de resolución',
-    source_page: 'Página de origen', related_pages: 'Páginas relacionadas', updated: 'Actualizado',
+    source_page: 'Página de origen', related_pages: 'Páginas relacionadas', updated: 'Actualizado', embedded_image_evidence: 'Evidencia visual de imágenes incrustadas',
   },
   pt: {
     basic_information: 'Informações básicas', description: 'Descrição',
@@ -120,7 +120,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Conceitos principais', main_points: 'Pontos principais',
     new_claim: 'Nova afirmação',
     existing_knowledge: 'Conhecimento existente', resolution_suggestion: 'Sugestão de resolução',
-    source_page: 'Página de origem', related_pages: 'Páginas relacionadas', updated: 'Atualizado',
+    source_page: 'Página de origem', related_pages: 'Páginas relacionadas', updated: 'Atualizado', embedded_image_evidence: 'Evidências visuais de imagens incorporadas',
   },
   it: {
     basic_information: 'Informazioni di base', description: 'Descrizione',
@@ -132,7 +132,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Concetti chiave', main_points: 'Punti principali',
     new_claim: 'Nuova affermazione',
     existing_knowledge: 'Conoscenza esistente', resolution_suggestion: 'Suggerimento di risoluzione',
-    source_page: 'Pagina sorgente', related_pages: 'Pagine correlate', updated: 'Aggiornato',
+    source_page: 'Pagina sorgente', related_pages: 'Pagine correlate', updated: 'Aggiornato', embedded_image_evidence: 'Evidenza visiva delle immagini incorporate',
   },
   // v1.26.0: Russian (ru) section labels
   ru: {
@@ -145,7 +145,7 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     key_concepts: 'Ключевые концепции', main_points: 'Основные пункты',
     new_claim: 'Новое утверждение',
     existing_knowledge: 'Существующее знание', resolution_suggestion: 'Предложение по разрешению',
-    source_page: 'Страница-источник', related_pages: 'Связанные страницы', updated: 'Обновлено',
+    source_page: 'Страница-источник', related_pages: 'Связанные страницы', updated: 'Обновлено', embedded_image_evidence: 'Визуальные свидетельства встроенных изображений',
   },
 };
 

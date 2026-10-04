@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Settings changes that rebuild the panel now preserve its scroll position instead of jumping back to the top (#752).
+- **Namespaced model ids can be fetched again (Issue #758).** LM Studio's Hub-managed downloads (`qwen/qwen3.6-35b-a3b`, `openai/gpt-oss-120b`) and generic OpenAI-compatible endpoints (`org/model`, the ordinary shape for vLLM and LiteLLM) no longer have their models dropped by the filter, so "Fetch Available Models" can reach them. A model that is already chosen is also no longer overwritten by the first entry of a later catalogue when it is absent from that listing.
+
+## [1.28.0] - 2026-10-04
+
+52 commits since v1.27.2 (2026-09-15 → 10-04, 156 files, +10826/−1311 LOC, 4144 → 4372 tests). **MINOR** — four opt-in capabilities landed, and two shipped features that had never run in a release build now do. Local Markdown image embeds are analysed during ingest (#608); request headers can be set per provider, with an OpenCode preset and a `(Responses)` variant (#723, #735); a blocked cross-origin stream is retried over a desktop `node:https` transport instead of falling back to a buffered answer (#741); and the settings list, note tags and page tags are read as one tag vocabulary (#672). The `esbuild` fix that made the last two of those work in a release build is #751. The cycle also carries the per-file page index (#662), the write-path contract in three movements (#603, #750), zod 4 (#669), and a correctness wave across lint, ingest notices, `config.md` metadata, the source-page prompt and reasoning-only replies.
+
+### Added
+
+- **Markdown embedded-image analysis (Issue #608).** Opt-in local vault image embeds (`![[...]]` and `![...](...)`) are resolved through Obsidian and processed in 20 MiB visual-evidence packages, so a source has no image-count limit. Each image remains capped at 10 MiB; GIFs send a static first frame; remote URLs are never downloaded. The visual request includes each image's nearest Markdown paragraphs. An additional default-off setting saves per-image context, evidence, and skip reasons in a replaceable collapsible source-page audit section.
+- **Custom request headers, per provider (Issue #723), plus an OpenCode preset and a `(Responses)` variant (Issue #735).** Headers are entered below the API Base URL and apply to the OpenAI-compatible and OpenAI requests.
+- **One tag vocabulary (Issue #672).** The settings list, note tags and page tags are now read as a single list by the prompt, the candidate gate, the lint and the retag paths, instead of three sources that could disagree.
+- **Desktop streaming for origins that block the renderer (Issue #741).** A blocked cross-origin request is remembered and the stream is retried over a `node:https` transport on desktop, so a buffered answer is no longer the only outcome. The fallback's own failures are now recorded instead of being invisible.
+
+### Changed
+
+- **zod 4 (Issue #669).** The deprecated `.passthrough()` is replaced throughout; wire snapshots are byte-identical.
+- The Related and extraction ceilings are centralised in `src/constants.ts` (`RELATED_BUDGET`, `EXTRACTION_LIMITS`). Behaviour-identical.
+
+### Fixed
+
+- **Two shipped features that never ran in a release build (Issue #751).** `esbuild.config.mjs` now emits a loadable form for external `node:` imports, which fixes the Codex browser login and the desktop streaming transport above. Both worked in a dev build and neither worked in a release one.
+- **The wiki page index is held per file (Issue #662).** `getExistingWikiPages` no longer walks the vault once per written page, so a large ingest no longer pays for the index on every page.
+- Lint no longer counts alias or tag fixes as successful when a page disappears before the write. Skipped writes leave the page deleted and do not add a false success entry to the lint report (#763).
+- The manual-ingest progress Notice shows the engine's stage instead of staying on its start line, and a finished batch closes it (#788).
+- `config.md`'s audit-trail metadata is written on every Apply, in UTC, so `updated:` and `applied_suggestion:` cross-reference the `suggestions.md` entry exactly (#656).
+- The source-page prompt no longer asks the model for the fields the code writes (the note path, the extraction time), and the wire schema no longer declares them. At the `json_schema_strict` tier a declared property is required, so the prompt alone could not stop the request.
+- "Fix Dead Links" prefers a page's real display name over its filename slug, and the double-nested link repair now reaches the file (#653, #720).
+- A stub's incoming link is given its name back before the stub is deleted (#726).
+- The welcome note and all eleven READMEs name the history command as Obsidian registers it (#780).
+- A reasoning model that writes its thinking into the answer field is now reported instead of returning an empty answer in silence. Some OpenAI-compatible gateways inline the reasoning in the answer field, wrapped in `<think>` tags, and send nothing after it; the guard only recognized a completely empty answer field, so those replies looked like the plugin had not answered at all (#791).
+
+### Notes
+
+- **v1.28.0 is not released and its scope is not settled.** The cross-source relations work (#729) is at the design stage: its record is marked *proposed* and an objection to it is unresolved. See ROADMAP §"v1.28.0 MINOR — Design track".
+- Third-party licence notices are generated from the built bundle into `THIRD-PARTY-NOTICES.md` rather than hand-listed (Issue #699).
+
 ## [1.27.2] - 2026-09-15
 
 39 merge commits since v1.27.1 (2026-09-06 → 09-15, 128 files, +4243/−1802 LOC, 3993 → 4144 tests). **PATCH** — a rewrite cut off at the token limit no longer overwrites a page (#704), one shape for `updated_pages` so link repointing sees every page (#713), provenance footnote brackets repaired (#702), corporate-gateway structured-output demotion (#711), strict structured-output as a negotiated tier (#658), ingest lifecycle released on skip (#688), cancel reaches the running model call (#646), plus the wave-C correctness wave (#644-#684) and a main-is-red regression fixed at the source (#722).
@@ -234,7 +275,7 @@ A surgical PATCH that closes five UX blind spots the maintainer discovered while
 - **Five PRs land in this PATCH.** **#447** (LLM pipeline, 39 commits, Phase A 3-tier + Path 2 + Phase B 11 caller migrations + per-model placeholder demotion) + **#448** (UX fixes, 10 commits, B1-B3 + B2.5 + Toast i18n) + **#453** (Issue #414 dialect, 4 commits: client + wire-shape tests + Anthropic drop + 400-strip documentation) + **#450** (Issue #438 sources-loss, 1 commit for Finding 1; Finding 2 follows separately) + **#454** (placeholder detector widening + repetitionPenalty UX, 4 commits: detector + UX + simplify/code-review cleanup + provider gate). #450 + #454 still awaiting DocTpoint re-review at tag time; release is held until both clear.
 - **No settings-schema change, no migration, no key rename.** **21 new i18n keys** (18 B2.5 status-bar + 3 Toast) added across all 10 locales + the `fetchErrorNetwork` value change + 1 `repetitionPenaltyErrorHint` key + the existing `repetitionPenaltyDesc` extension. i18n-parity guards (bidirectional + placeholder-drift + non-empty) pin all new content; existing fetch-flow regression guards pin the HTTP-status re-throw behaviour; new dialect-dispatch tests pin the per-id-key passthrough at the wire boundary; new `wiki-engine-repetition-penalty-hint.test.ts` pins the throw-site wiring.
 - **Test count growth.** v1.26.2 → v1.26.3: **2992 → 3305 tests** (+313 / +12 net files after 5 PRs land). Per-PR deltas: #447 +135 / #448 +58 / #453 +3 / #450 +4 / #454 +5. Composition and full regression-guard list in [ROADMAP v1.26.3 PATCH track](./ROADMAP.md).
-- **CLI repo split is now live in v1.27.0 scope (see [ROADMAP §v1.27.0](./ROADMAP.md#v1270-minor-design-track)).** The in-tree `tools/llm-wiki-cli/` remains the canonical CLI source until v1.27.0 ships; the README §Headless CLI was rewritten to point at the published `karpathywiki-cli` npm package + the standalone sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli). No code change; only user-facing docs.
+- **CLI repo split is now live in v1.27.0 scope (see [ROADMAP §Design track](./ROADMAP.md#design-track--the-complementary-memory-model-items-358--330)).** The in-tree `tools/llm-wiki-cli/` remains the canonical CLI source until v1.27.0 ships; the README §Headless CLI was rewritten to point at the published `karpathywiki-cli` npm package + the standalone sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli). No code change; only user-facing docs.
 
 ## [1.26.1] - 2026-08-08
 

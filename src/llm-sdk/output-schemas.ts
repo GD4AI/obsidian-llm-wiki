@@ -162,12 +162,14 @@ export type QueryViewValue = z.infer<typeof QueryViewValueSchema>;
  * Making them required on Tier 0 would turn a single entity missing one
  * field into a whole-response `NoObjectGeneratedError` → repair roundtrip.
  */
+// `source_path`, `source_slug` and `extracted_at` are not declared (#679):
+// `fillMentionsWithProvenance` stamps all three, and a declared property is a
+// request — the `json_schema_strict` tier lists every property in `required`,
+// so the model had to emit them on every quote after the prompt stopped asking.
+// `.loose()` still lets a model that sends them through on the plain tier.
 const MentionWithProvenanceItem = z.object({
   quote: z.string().optional(),
   translation: z.string().optional(),
-  source_path: z.string().optional(),
-  source_slug: z.string().optional(),
-  extracted_at: z.string().optional(),
 }).loose();
 
 const EntityItem = z.object({
@@ -347,3 +349,16 @@ export const WelcomeTranslationLLMSchema = z.object({
   translated: z.string(),
 }).loose();
 export type WelcomeTranslationLLM = z.infer<typeof WelcomeTranslationLLMSchema>;
+
+/** Factual evidence extracted from one bounded package of embedded images. */
+export const EmbeddedImageEvidenceSchema = z.object({
+  images: z.array(z.object({
+    index: z.number(),
+    visible_text: z.string().optional(),
+    description: z.string().optional(),
+    before_relevance: z.string().optional(),
+    after_relevance: z.string().optional(),
+    context_interpretation: z.string().optional(),
+  }).loose()),
+}).loose();
+export type EmbeddedImageEvidence = z.infer<typeof EmbeddedImageEvidenceSchema>;

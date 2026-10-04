@@ -111,6 +111,54 @@ export function parseFrontmatter(content: string): FrontmatterData | null {
 }
 
 /**
+ * Repairs a recoverable, damaged frontmatter *opening* delimiter in place: a leading BOM or other
+ * leading whitespace before the `---` (both stripped as leading Unicode whitespace via
+ * `trimStart()`), or a first line of the wrong dash count (e.g. `--`/`----`). A no-op (returns
+ * content unchanged) once the content already starts with `---`. Deliberately does not
+ * detect frontmatter missing its opening delimiter entirely — that's ambiguous with plain body text.
+ * A CRLF-terminated delimiter is recognized and left alone (or correctly repaired preserving the
+ * CRLF), never flipped to LF.
+ */
+export function normalizeFrontmatterOpening(content: string): string {
+  const trimmed = content.trimStart();
+  const leadingTrimmed = trimmed !== content;
+
+  const newlineIdx = trimmed.indexOf('\n');
+  const firstLine = newlineIdx === -1 ? trimmed : trimmed.slice(0, newlineIdx);
+  const hasTrailingCr = firstLine.endsWith('\r');
+  const firstLineNoCr = hasTrailingCr ? firstLine.slice(0, -1) : firstLine;
+
+  if (firstLineNoCr === '---') {
+    // Already a valid opening. Report the trimmed form only when trimming
+    // removed something — a BOM or leading blank lines — because that removal is
+    // itself the repair. Returning the trimmed form unconditionally would drop
+    // leading blank lines from a document whose frontmatter was never damaged.
+    return leadingTrimmed ? trimmed : content;
+  }
+
+  if (!/^-{2,}\s*$/.test(firstLineNoCr)) {
+    // No opening to repair. Return the original rather than the trimmed form:
+    // stripping leading blank lines here is a side effect of asking the
+    // question, and it is outside what the function's name promises.
+    return content;
+  }
+
+  // A run of dashes is only a damaged *opening delimiter* if a YAML key follows
+  // it. `----` is also a Markdown thematic break, and the first line alone
+  // cannot tell the two apart. Repairing a rule hands `parseFrontmatter` the
+  // NEXT `---` in the document — so it parses a block that begins in the middle
+  // of the prose, and `bumpSchemaMetadata` writes `updated:` and
+  // `auto_suggestion_count:` into the body. Reported in review, 2026-09-14.
+  const rest = newlineIdx === -1 ? '' : trimmed.slice(newlineIdx + 1);
+  const nextBreak = rest.indexOf('\n');
+  const nextLine = (nextBreak === -1 ? rest : rest.slice(0, nextBreak)).replace(/\r$/, '');
+  if (!/^[A-Za-z_][\w.-]*\s*:/.test(nextLine)) return content;
+
+  const openingLine = '---' + (hasTrailingCr ? '\r' : '');
+  return newlineIdx === -1 ? openingLine : openingLine + trimmed.slice(newlineIdx);
+}
+
+/**
  * The origin notes a `sources/` page was built from, normalized to vault
  * paths.
  *
