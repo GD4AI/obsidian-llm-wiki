@@ -56,13 +56,17 @@ const UNFILTERED_PROVIDERS = new Set(['openrouter']);
  * anywhere else. `/` is a namespace, which is a valid id shape; it is rejected
  * except where a catalogue is known to use it, because ollama's `/api/tags` lists
  * both a bare name and its `library/`-qualified twin and offering both is noise.
- * That ollama rule is kept as it was: this fixes the providers that were
- * reported, and widening a filter beyond the report is its own change to justify.
+ * Keeping that ollama rule means the `/` test has to be written into the `:` line
+ * as well, because the `:` line returns first: without it, `library/llama3.2:latest`
+ * would be kept for ollama and its namespace-less twin would not, which is the
+ * noise the rule exists to prevent. No other provider's list changes shape — this
+ * fixes the providers that were reported, and widening a filter beyond the report
+ * is its own change to justify.
  */
 export function isUsableModelId(provider: string, id: unknown): boolean {
   if (typeof id !== 'string') return false;
   if (UNFILTERED_PROVIDERS.has(provider)) return true;
-  if (id.includes(':')) return provider === 'ollama';
+  if (id.includes(':')) return provider === 'ollama' && !id.includes('/');
   if (id.includes('/')) return NAMESPACED_ID_PROVIDERS.has(provider);
   return true;
 }

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Namespaced model ids can be fetched again (Issue #758).** LM Studio's Hub-managed downloads (`qwen/qwen3.6-35b-a3b`, `openai/gpt-oss-120b`) and generic OpenAI-compatible endpoints (`org/model`, the ordinary shape for vLLM and LiteLLM) no longer have their models dropped by the filter, so "Fetch Available Models" can reach them. A model that is already chosen is also no longer overwritten by the first entry of a later catalogue when it is absent from that listing.
+
 ## [1.28.0] - 2026-10-04
 
 52 commits since v1.27.2 (2026-09-15 → 10-04, 156 files, +10826/−1311 LOC, 4144 → 4372 tests). **MINOR** — four opt-in capabilities landed, and two shipped features that had never run in a release build now do. Local Markdown image embeds are analysed during ingest (#608); request headers can be set per provider, with an OpenCode preset and a `(Responses)` variant (#723, #735); a blocked cross-origin stream is retried over a desktop `node:https` transport instead of falling back to a buffered answer (#741); and the settings list, note tags and page tags are read as one tag vocabulary (#672). The `esbuild` fix that made the last two of those work in a release build is #751. The cycle also carries the per-file page index (#662), the write-path contract in three movements (#603, #750), zod 4 (#669), and a correctness wave across lint, ingest notices, `config.md` metadata, the source-page prompt and reasoning-only replies.

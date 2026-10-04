@@ -57,6 +57,13 @@ describe('#758 — which ids a catalogue may offer', () => {
     expect(isUsableModelId('openrouter', 'liquid/lfm-2.5-2.6b:free')).toBe(true);
     expect(isUsableModelId('ollama', 'llama3.2:latest')).toBe(true);
     expect(isUsableModelId('ollama', 'library/llama3.2')).toBe(false);
+    // The twin with a tag, which carries BOTH separators. This is the assertion
+    // that holds the rule in place: the two cases above pass either way, because
+    // a namespace-less id never reaches the `/` test and a tag-less one never
+    // reaches the `:` test. A colon id resolves on its own line, so the `/`
+    // rejection has to be restated there or this shape is kept.
+    expect(isUsableModelId('ollama', 'library/llama3.2:latest')).toBe(false);
+    expect(isUsableModelId('ollama', 'hf.co/bartowski/X-GGUF:Q4_K_M')).toBe(false);
     expect(isUsableModelId('openai', 'qwen/qwen3.6-35b-a3b')).toBe(false);
   });
 
