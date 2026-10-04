@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Settings changes that rebuild the panel now preserve its scroll position instead of jumping back to the top (#752).
+- **Namespaced model ids can be fetched again (Issue #758).** LM Studio's Hub-managed downloads (`qwen/qwen3.6-35b-a3b`, `openai/gpt-oss-120b`) and generic OpenAI-compatible endpoints (`org/model`, the ordinary shape for vLLM and LiteLLM) no longer have their models dropped by the filter, so "Fetch Available Models" can reach them. A model that is already chosen is also no longer overwritten by the first entry of a later catalogue when it is absent from that listing.
 
 ## [1.28.0] - 2026-10-04
 
