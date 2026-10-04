@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2（PATCH — 被 token 上限截斷的重寫不再覆蓋頁面、`updated_pages` 統一形狀使連結重指向看見每一頁、provenance 腳註括號修復、企業閘道結構化輸出降級、跳過檔案釋放攝入生命週期、取消抵達模型呼叫；39 commits, 4144 tests）
+- latest: v1.28.0（MINOR — 攝入時分析本地 Markdown 圖片嵌入、按服務商設定請求標頭並新增 OpenCode 預設與 `(Responses)` 變體、跨域受限時的桌面端 `node:https` 串流回退、設定/筆記標籤/頁面標籤統一為一套詞彙表；外加讓兩個已發佈功能在正式建置中真正生效的建置修復；4372 tests）
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
@@ -197,6 +197,9 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🌍 11 種 UI 語言** — 英文、簡體中文、繁體中文、日文、韓文、德文、法文、西班牙文、葡萄牙文、義大利文、俄文。UI 和 Wiki 輸出語言互相獨立——你的 Wiki 可以是中文而介面是英文。
 - **📚 11 種 Wiki 輸出語言** — 同上；在設定 → Wiki Configuration 中選擇。*自訂輸入* 選項用於臨時提示。
 - **UI 字串在每個語系都已完整翻譯** — 每個標籤、彈窗和通知。新增第 12 種語言由貢獻者驅動（PR #159 模式）。
+- **🖼 Markdown 攝入時分析嵌入圖片** — 可選（*Analyze embedded images during Markdown ingestion*，預設關閉）。筆記中每個符合條件的本地 `![[…]]` / `![…](…)` 嵌入都會透過 Obsidian 解析，並與相鄰段落一併分析，以 20 MiB 分包；單張圖片上限 10 MiB，GIF 只送出靜態首幀，遠端 URL 從不下載。
+- **🔧 按服務商設定自訂請求標頭** — API Base URL 正下方的自由文字欄位。每行一條 `Name: value`，隨每個請求送出。附帶 OpenCode 預設，以及面向 `/v1/responses` 端點的 `(Responses)` 變體。
+- **📡 跨域被拒時串流仍可用** — 跨域請求被拒時，串流改走桌面端 `node:https` 傳輸重試，而不是降級為緩衝式回答；回退失敗會被記錄，不再被吞掉。
 
 ---
 

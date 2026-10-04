@@ -8,18 +8,110 @@
 
 ---
 
-## Current state (2026-09-21)
+## Current state (2026-10-04)
 
-**Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = **`2a4a99b3`**, Gate 1 green
-at **311 files / 4349 tests**. **v1.28.0 MINOR is in flight.**
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
+see CHANGELOG §1.28.0). **Published** as release `1.28.0` with three assets and a
+Discussion in `announcements`; the tag and the merge commit are both `c47c25a7`. It shipped
+with **four opt-in capabilities** (#608 image embeds, #723/#735 per-provider headers and the
+OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary) plus **#751**,
+which made two already-shipped features actually run in a release build.
 
-**Open counts:** **30 issues** (15 `v1.27.0+ research` · 8 `v1.28.0 MINOR` · 7
-`v1.27.x PATCH`) and **7 PRs** (#701, #755, #760, #770, #771, #772, #775).
+**v1.28.0 shipped WITHOUT its named head.** #729 Phase 1 (the M0 co-citation projection)
+was the plan of record for this release and did not go in, because its design record is
+still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
+changed — only which release number it lands in.** The milestone moved to
+`v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
+milestone does not carry unstarted work. The direction call (A/B/C) is still open and
+**A** is the recommendation — see §"Design record — cross-source relations".
 
-**⭐ Both v1.28.0 gates are closed, so #729 Phase 1 is the head of the chain** —
-#603 ✅ (#750) and #662 ✅ (#757) landed 2026-09-20, and **#608 ✅ closed 2026-09-21**
-when #687 merged. The chain is #729 P1 → P2 + #664 → P3-6.
+**Open counts:** **33 issues** and **11 PRs**. All of them carry a milestone — the
+open windows are `v1.28.x PATCH` (12), `v1.29.0 MINOR` (16) and `v1.27.0+ research` (16);
+see the milestone map in ROADMAP §"Open decisions". Three of those 11 PRs (#770/#771/#772,
+the MAJOR dependency bumps) sit on `v1.29.0 MINOR` with the coordinated AI SDK v7 work.
+
+### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
+
+`main`'s CI had been failing since at least 2026-09-27. **Nothing in the tree caused it:**
+the failing step is `.github/workflows/pr-ci.yml:79`,
+`pnpm audit --audit-level high --ignore-registry-errors`, and **that step is not part of
+`pnpm gate:1`** (`lint && typecheck && build && test && css-lint`). CI runs **six** checks;
+the local alias runs **five**. Two advisories published that day made the pin stale:
+`brace-expansion` (override existed at `5.0.9`, advisories want `>=5.0.11`) via the eslint
+chain, and `undici` (no override at all, `>=8.10.2` wanted) via `jsdom` — **both dev-only,
+both patched inside their own minor line** ⇒ not breaking. Fixed in **#796** by bumping
+`brace-expansion` to `5.0.12` and adding `undici: 8.10.2`, in `pnpm-workspace.yaml` **and**
+`package.json`, regenerating **both** lockfiles (`npm` does not read pnpm's — the #501/#652
+class). Proof it is fixed: `8bb496db` = `success` while `eadfaee1` / `73e6ca49` / `127f35be`
+= `failure`. The two surviving moderates are left alone on purpose — the gate is
+`--audit-level high`.
+
+**The durable rule: a green `gate:1` is not evidence that CI will be green.** The only
+signal that the two gates differ is CI's colour. Three PRs were merged on a red signal
+before this was noticed, on the reasoning that a docs-only or one-line change cannot break
+a gate that is already red — **that reasoning is wrong to act on even when the outcome is
+benign**. Red means stop and diagnose.
+
+### The reasoning-shape family, and which clients guard it (2026-10-03)
+
+**#799** fixed the shape where a gateway inlines its reasoning into `content` inside a
+thinking block. Two facts are worth keeping.
+
+**Only `OpenAICompatSdkClient` carries the guard.** `create-llm-client.ts` sends `openai`
+(and `useOfficialOpenAI`, and `apiShape: 'responses'`) to `OpenAISdkClient`, sends
+`anthropic` and `anthropic-compatible` to `AnthropicSdkClient`, and sends **everything
+else** to the compat client. So most built-in providers are guarded, and "custom
+provider" is **not** the boundary — the shape is a property of the wire format, not of who
+hosts the endpoint.
+
+**The other two clients do not need it today, and their own docs are the evidence.**
+OpenAI's Responses API returns reasoning as its own item type (`summary_text` /
+`reasoning_text`), and Chat Completions returns no reasoning text at all — never inline in
+the answer. Anthropic returns `thinking` blocks separately from `text` blocks. The one
+counter-example found: Anthropic itself returns the reasoning **as a `text` block with
+literal `<thinking>` tags** for a thinking-only response followed by `tool_use`
+(`anthropics/claude-code#21849`). **This plugin never creates that trigger — it sends no
+tools — so the case was not filed and not fixed.** If a report ever arrives on one of
+these clients, the wiring is small: the predicate is shared in `finish-reason.ts`, so each
+call site needs `result.text` plus the `rescued` value.
+
+**Still silent, and worth its own look:** the `NoOutputGeneratedError` arm in the compat
+client returns `text: ''` with only a `console.debug`, so an empty answer can still be
+invisible to the user. It fires only when the output getter throws, which means
+schema-backed calls, so it does not affect Query. Found while reviewing #799.
+
+### The ruleset restore can fail, and only the re-read catches it (2026-10-03)
+
+While merging #800 the ruleset restore returned `Put ... : EOF` and **the bypass actor
+stayed active** (`bypass_actors=1`). The write looked like it had been issued. Nothing in
+the merge output said the restore failed — the error was one line above a summary line
+that had already printed success for the merge.
+
+**So the restore needs two things it did not have:** its own retry loop (the API returns
+intermittent EOFs), and a **re-read of the ruleset** as the only accepted proof. "Never
+suppress the restore output" was already a rule here and it was not enough, because the
+output was present and wrong. What caught this was reading `bypass_actors` back a second
+time after the restore call returned; `1` where `0` was expected. Check it before moving
+on to anything else, and do not treat a printed restore line as the evidence.
+
+> **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
+> maintainer"**, with a recommendation per row. This file carries the *reasoning*
+> behind those recommendations and the record of what was learned; it does not
+duplicate the table.
+
+**Why the queue matters more than the code right now.** Five of the open items are
+**done work waiting on a call**, not work waiting on effort: #783 and #760 are the same
+bug fixed twice, #786 is a finished four-MAJOR upgrade, #775's guard needs four holes
+closed, and #781 implements a design that is not settled. The cheapest progress
+available is deciding, not building.
+
+**Landed since the previous state block (2026-09-21).** #784 (**#763**) · #789
+(**#788**) · #780 · #774 · #687 · #656 · #778 · #773 · #782 · #779. The authoritative
+list is ROADMAP §"Merged into v1.28.0 so far", sourced from
+`git log --oneline --since="2026-09-15" origin/main` (**52 commits** since v1.27.2).
+
+**Closed in the same pass:** #608, #662, #603, #665, #672, #699, #725, #751, #763,
+#788 — and #753 as superseded.
 
 **Merged 2026-09-21 (this round, unreleased):**
 
@@ -71,6 +163,63 @@ hardening-before-reader ordering, and the open decisions. This file carries the
 *why* and the *how*, never the window schedule.
 
 ---
+
+## Work list (2026-10-03) — ordered by ROI
+
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction
+cost ranks below a medium-impact one that is measured, because the second ships.
+
+**The queue itself is ROADMAP §"Open decisions"**; what follows is the *reasoning*
+behind its recommendations, which is the part a table cannot carry.
+
+### Tier 0 — decide, do not build
+
+**Five open items are finished work waiting on a call, not on effort:** #783 vs #760
+(the same bug twice), #786 (a completed four-MAJOR upgrade), #775 (four holes in its
+own guard), #781 (implements an unsettled design), and #729 itself. The cheapest
+available progress is choosing.
+
+### Tier 1 — the two bugs with a user watching
+
+**#791** — a Query answer arrives **reasoning-only**: every character sits inside
+`<think>…</think>` and nothing follows the closing tag, so the user sees a collapsible
+block and no answer. Reported on a custom OpenAI-compatible endpoint with a
+reasoning-capable model. **Highest-impact unstarted item: the symptom is a blank
+answer, not a wrong one.** The project already has a reasoning-strip probe
+(`reasoning-strip-probe.ts`), so the first question is whether this is a strip that
+produced nothing or a strip that never ran.
+
+**#792** — saving a query conversation fails because the generated filename contains
+`:`. **The body is empty, but the title names the cause**, so the slug path can be
+checked without waiting for the reporter — do that first, and only then ask for the
+title that triggered it. If the slug generator has no colon filter, the fix does not
+need a reply at all.
+
+### Tier 2 — accept into the window, scoped but not started
+
+**#787** — the source-lemma guarantee assumes a note's filename names a knowledge
+subject. True for `Klotho.md`; false for a meeting note or a log. A real modelling
+defect with a clean boundary, and it sits in the same region as #729's domain axis.
+
+**#468** — Anthropic `createMessageStream` lacks cache breakpoints. Narrow, and #687
+touched that exact client, so the file is warm.
+
+### Tier 3 — diagnosis first
+
+**#703** — a single-file ingest hangs and `cancelIngestion()` cannot abort it. The
+highest impact and the lowest certainty: it needs the reporter's file, and it is
+labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause
+down, then decide.
+
+### Tier 4 — the rest
+
+**#567** · **#676** · **#752** · **#756** · **#668** · **#664** · **#677** · **#701**
+(needs a product decision; premise refuted) · **#785** (defer — it touches incremental
+accumulation) · **#793** (`good first issue`). Design anchors rather than tasks:
+**#330** · **#358**. Measurement research: **#479** · **#480**.
+
+> **Superseded 2026-10-03:** the 2026-09-21 block below is the previous snapshot. Kept
+> for archaeology — do not update it.
 
 ## Work list (2026-09-21) — ordered by ROI
 
@@ -1313,6 +1462,68 @@ workflow".
 
 ---
 
+## Lessons learned (2026-10-03 session — the dissent I never answered, and the report that was not a review)
+
+### Durable lessons
+
+**1. Explaining a technical dispute twice is part of the work, not a failure of the
+audience.** A first explanation of @DocTpoint's objection was dense enough that the
+reader asked for it again, and the second attempt was shorter, plainer and better. The
+signal to watch is not “did they understand the code” but “can they make the decision”.
+If a summary of a dispute does not end in a choice the reader can make, it is not a
+summary — it is more of the dispute.
+
+**2. `converged with the maintainer` written 37 minutes after asking for dissent is a
+false record, not an optimistic one.** The request went out at 10:42, the record was
+written at 11:19 and merged at 11:23, and the first reply arrived two days later. The
+specific damage is that **the record then outranked the dissent**: Phase 1 was built
+against a document that said the design was settled, while the objection that disputed
+it sat unanswered in the thread the document pointed at. **When a document records a
+decision, the only evidence that it was a decision is a reply.** Absent one, the word
+is `proposed` — and if a direction changes after review has begun, the change and its
+reason belong in the record the same day, because a stale record is read as current.
+
+**3. A retry loop whose *read* is unreliable duplicates the write.** This session
+produced **five** identical APPROVED events on #784, two days after the same mistake on
+#656, and the guard I had installed was the wrong shape: it re-read the reviews list
+after each attempt, and that read was itself returning empty. **When the read is
+flaky, loop on the read alone** — write once, then poll the read until it answers, and
+never put the write back inside the loop. The audit trail survived both times only
+because an approval before a merge is still an approval; the next variant of this may
+not be so forgiving.
+
+**4. A duplicated fix is a decision, not a queue entry.** #783 and #760 fix the same
+bug (#758) in two shapes — 1 file of 14 lines versus 4 files with a pure-function
+seam and its own test file. Neither is wrong, and the right answer is a choice rather
+than a merge of both. **The cheap-looking one keeps the rule where tests cannot reach
+it; the structured one carries a guard with four known holes.** Naming which property
+is worth more than either diff.
+
+**5. Two providers with the same wire format are still two providers.** #786 upgrades
+four packages together (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`,
+`@ai-sdk/openai-compatible`) and `Closes #764`. It is the correct shape — the three
+Dependabot attempts proved the individual bumps cannot typecheck — but it is **four
+MAJORs plus wire behaviour across 29 files**, which is why it was not merged with the
+three small fixes in the same pass. **A contributor having done the work is not the
+same as the work being safe.**
+
+**6. A report's scale can change between two API calls.** A check for #789 returned
+`404`, the next day the same number was a live PR from the maintainer's most active
+reviewer. **A 404 on a low number near the current maximum is “not yet”, not
+“does not exist”** — say which one you checked and when, rather than telling the person
+who asked that the thing they named is not real.
+
+### State pointers (2026-10-03)
+
+- `main` = **`73e6ca49`** · Gate 1 **313 files / 4363 tests** · ruleset clean.
+- Queued and unstarted: **#791** (reasoning-only answers), **#792** (colon in a saved
+conversation's filename — inspect the slug path without waiting for the reporter).
+- Newly filed this session: **#793** (ten translated READMEs quote English command
+names, and the command name is stored twice per locale — `ru.ts` disagrees with
+itself, one line Russian and one English).
+
+---
+
 ## Lessons learned (2026-09-21 session — #687/#656/#774/#778 merges, #760 review round, the CI that never ran)
 
 ### Durable lessons
@@ -1573,22 +1784,37 @@ most of what follows came from @DocTpoint's reviews rather than from my own pass
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
 
-### Resume point (post-compact handoff, 2026-09-21)
+### Resume point (post-compact handoff, 2026-10-03)
 
-**Read in this order if context was lost:** this file's `## Current state` (where
-things stand) → **`## Work list (2026-09-21)`** (what to do next, ROI-ordered) →
-ROADMAP §"v1.28.0 MINOR — Design track" (the window's scope) → then the design record
-for whichever item is next. **The next substantive work is #729 Phase 1** — all three
-of the chain's gates (#603, #662, #608) are closed, and nothing precedes it.
+**Read in this order if context was lost:** this file's `## Current state` (factual
+anchors) → **ROADMAP §"Open decisions — the queue awaiting the maintainer"** (the
+decisions, with a recommendation each) → then this file's `## Work list` for the
+*reasoning* behind those recommendations → then the design record for whichever item
+is next.
 
-**State at handoff:** `main` = **`2a4a99b3`**, Gate 1 green at **311 files / 4349
-tests**. Merged this window: #656, #687, #774, #778, #750, #757, #759, #761, #762,
-#765, #767, #769, #773, #776, #777. Closed: #603, #608, #662, #665, #672, #699,
-#751, #725, plus the Dependabot PRs #728/#766/#768 and #753 (superseded). The
-working tree is clean and the stash is empty. **Two branches are live and equal to
-their PR heads:** `refactor/467-unified-model-setter` @ `033e1842` = PR **#775**,
-and `fix/758-lmstudio-model-ids` @ `a127feb6` = PR **#760**. The `pr-687` rebase
-branch was deleted after #687 merged — it no longer needs protecting.
+**The next actions are #791 and #792's self-check, in that order.** #791 is a blank
+answer (a reasoning-only reply), #792's slug path can be inspected without waiting for
+its reporter, and neither depends on the #729 decision.
+
+**State at handoff:** `main` = **`73e6ca49`**, Gate 1 green at **313 files / 4363
+tests**. Open: **34 issues, 11 PRs**. Working tree clean, stash empty. Local branches
+that matter: `feat/729-phase1-co-citation` @ `7b01a61b` (**PR #781, held**),
+`fix/758-lmstudio-model-ids` @ `a127feb6` (**PR #760, superseded by #783 unless kept
+for its structure**), `docs/729-status-and-provenance` (merged as #782).
+
+**The queue is the work.** Five items are finished and waiting on a call — choosing
+between #783 and #760, closing #770/#771/#772 once #786 lands, and answering #729.
+None of them needs an implementation pass, and building on any of them before the call
+is the mistake this session was spent learning.
+
+**One open decision blocks a later phase, not this one:** #729's toggle placement
+(bottom Advanced panel vs a home created by #668) — needed before Phase 4.
+
+**The ruleset is clean and verified** (`bypass_actors=0`, `enforcement=active`).
+Docs-only merges by the maintainer need the temporary bypass actor; other people's PRs
+do not, because a cross-account `--approve` satisfies the ruleset (#784, #789, #780 all
+merged that way). **Never silence the restore** — see the 2026-09-21 lessons.
+
 
 **Pushing to a fork PR, the `action_required` CI class, the ruleset restore, and the
 retry-that-duplicates-its-own-side-effect are all in this file's `## Lessons learned
