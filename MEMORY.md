@@ -8,107 +8,259 @@
 
 ---
 
-## Current state (2026-09-20)
+## Current state (2026-10-04)
 
-**Latest shipped release:** **v1.27.2 PATCH** (2026-09-15, 4144 tests / 294 files —
-see CHANGELOG §1.27.2). Nothing released since. `main` = **`4f56b475`**, Gate 1 green
-at **308 files / 4285 tests**. **v1.28.0 MINOR is in flight.**
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
+see CHANGELOG §1.28.0). **Published** as release `1.28.0` with three assets and a
+Discussion in `announcements`; the tag and the merge commit are both `c47c25a7`. It shipped
+with **four opt-in capabilities** (#608 image embeds, #723/#735 per-provider headers and the
+OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary) plus **#751**,
+which made two already-shipped features actually run in a release build.
 
-**⭐ #603 is CLOSED** (#750 merged), so the write-path contract holds and **#729
-Phase 1 is unblocked** — that was the head of the v1.28.0 chain. The chain is now
-#662 ✅ (shipped in #757) → #729 P1 → P2 + #664 → P3-6.
+**v1.28.0 shipped WITHOUT its named head.** #729 Phase 1 (the M0 co-citation projection)
+was the plan of record for this release and did not go in, because its design record is
+still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
+changed — only which release number it lands in.** The milestone moved to
+`v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
+milestone does not carry unstarted work. The direction call (A/B/C) is still open and
+**A** is the recommendation — see §"Design record — cross-source relations".
 
-**Merged into v1.28.0 so far (unreleased):**
+**Open counts:** **33 issues** and **11 PRs**. All of them carry a milestone — the
+open windows are `v1.28.x PATCH` (12), `v1.29.0 MINOR` (16) and `v1.27.0+ research` (16);
+see the milestone map in ROADMAP §"Open decisions". Three of those 11 PRs (#770/#771/#772,
+the MAJOR dependency bumps) sit on `v1.29.0 MINOR` with the coordinated AI SDK v7 work.
 
-- **#750** — **#603 slices 2 + 3**, and the four rounds it took are the most
-  instructive review of the cycle. Closes **#603**. Three blocking findings, two of
-  them behaviour regressions the slice introduced, each now covered by a test that
-  fails without its fix. See §"Slice 3 reviewed" for the chain and §"Write path"
-  for the shape.
-- **#757** — **#662**: `getExistingWikiPages` no longer walks the vault per written
-  page. From @DocTpoint; closes **#662**.
-- **#759** — **#751**: the build-config one-liner that made two shipped features
-  work. Closes **#751** and, transitively, **#665**. See §"The build test that was
-  protecting the bug".
-- **#773** — **#699**: third-party licence notices generated from the built bundle
-  rather than hand-listed. Closes **#699**. See §"Third-party notices" for the two
-  things the packages' own files did not settle, and §"Notices scope decision" for
-  why they live in the repository rather than in the artifact.
-- **#762** + **#673** — one change to a user-visible claim, landed as two PRs on
-  purpose (EN + DE in one, the other nine locales in the other) because merging
-  either alone makes nine locales assert the opposite of what ships. Closes **#672**.
-- **#769** — dependabot holds for `obsidian` and `@types/node`, each entry carrying
-  the measurement that says why. See §"Two bumps that read opposite to their cost".
-- **#765** — dependabot hold for `@ai-sdk/openai-compatible` 3.x, which cannot
-  typecheck without `ai@7`; tracked as **#764**.
-- **#761** — an AGENTS.md rule: a squash merge is how a contributor's trailer
-  reaches a maintainer commit. See §"Main's own commits".
-- **#767** — the `yaml` devDependency bump.
-- Earlier: #726 (#725), #748 (#603 slice 1), #744 + #746 (#741), #736 (#723/#735),
-  #739 (#729 Phase 0), #733 (#669), #737 + #734, #707/#708, #727.
+### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
 
-**In review:** **#775** (#467, Gate 1 green, waiting on @DocTpoint); **#760** (#758);
-**#656** (@Jan-Heldal's audit-trail fix, which now supersedes an implementation of
-mine — see §"The issue that was already being fixed").
+`main`'s CI had been failing since at least 2026-09-27. **Nothing in the tree caused it:**
+the failing step is `.github/workflows/pr-ci.yml:79`,
+`pnpm audit --audit-level high --ignore-registry-errors`, and **that step is not part of
+`pnpm gate:1`** (`lint && typecheck && build && test && css-lint`). CI runs **six** checks;
+the local alias runs **five**. Two advisories published that day made the pin stale:
+`brace-expansion` (override existed at `5.0.9`, advisories want `>=5.0.11`) via the eslint
+chain, and `undici` (no override at all, `>=8.10.2` wanted) via `jsdom` — **both dev-only,
+both patched inside their own minor line** ⇒ not breaking. Fixed in **#796** by bumping
+`brace-expansion` to `5.0.12` and adding `undici: 8.10.2`, in `pnpm-workspace.yaml` **and**
+`package.json`, regenerating **both** lockfiles (`npm` does not read pnpm's — the #501/#652
+class). Proof it is fixed: `8bb496db` = `success` while `eadfaee1` / `73e6ca49` / `127f35be`
+= `failure`. The two surviving moderates are left alone on purpose — the gate is
+`--audit-level high`.
 
-**Blocked on other people:** **#687** — @Chase07 confirmed the implementation is
-complete and the WIP description was stale, and asked for the maintainer-side
-rebase; **it is done and green (309 files / 4298 tests) and cannot be pushed**
-because `maintainer_can_modify` is `false`. Waiting on one checkbox. **#755** —
-waiting on @weqoocu to strip a version bump (the two features still need the
-"one PR or two" answer). **#701** — premise refuted; a product decision.
+**The durable rule: a green `gate:1` is not evidence that CI will be green.** The only
+signal that the two gates differ is CI's colour. Three PRs were merged on a red signal
+before this was noticed, on the reasoning that a docs-only or one-line change cannot break
+a gate that is already red — **that reasoning is wrong to act on even when the outcome is
+benign**. Red means stop and diagnose.
 
-**New from Dependabot on 2026-09-20:** **#772** (`ai` 6 → 7.0.105), **#771**
-(`@ai-sdk/anthropic`), **#770** (TypeScript 5.9.3 → 6). #772 is the piece **#764**
-was filed for; the coordinated upgrade is now three PRs that have to move together,
-and `@ai-sdk/openai-compatible` is still held so it will not join them.
+### The reasoning-shape family, and which clients guard it (2026-10-03)
 
-**Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups,
-the hardening-before-reader ordering, and the open decisions. This file carries
-the *why* and the *how*, never the window schedule.
+**#799** fixed the shape where a gateway inlines its reasoning into `content` inside a
+thinking block. Two facts are worth keeping.
+
+**Only `OpenAICompatSdkClient` carries the guard.** `create-llm-client.ts` sends `openai`
+(and `useOfficialOpenAI`, and `apiShape: 'responses'`) to `OpenAISdkClient`, sends
+`anthropic` and `anthropic-compatible` to `AnthropicSdkClient`, and sends **everything
+else** to the compat client. So most built-in providers are guarded, and "custom
+provider" is **not** the boundary — the shape is a property of the wire format, not of who
+hosts the endpoint.
+
+**The other two clients do not need it today, and their own docs are the evidence.**
+OpenAI's Responses API returns reasoning as its own item type (`summary_text` /
+`reasoning_text`), and Chat Completions returns no reasoning text at all — never inline in
+the answer. Anthropic returns `thinking` blocks separately from `text` blocks. The one
+counter-example found: Anthropic itself returns the reasoning **as a `text` block with
+literal `<thinking>` tags** for a thinking-only response followed by `tool_use`
+(`anthropics/claude-code#21849`). **This plugin never creates that trigger — it sends no
+tools — so the case was not filed and not fixed.** If a report ever arrives on one of
+these clients, the wiring is small: the predicate is shared in `finish-reason.ts`, so each
+call site needs `result.text` plus the `rescued` value.
+
+**Still silent, and worth its own look:** the `NoOutputGeneratedError` arm in the compat
+client returns `text: ''` with only a `console.debug`, so an empty answer can still be
+invisible to the user. It fires only when the output getter throws, which means
+schema-backed calls, so it does not affect Query. Found while reviewing #799.
+
+### The ruleset restore can fail, and only the re-read catches it (2026-10-03)
+
+While merging #800 the ruleset restore returned `Put ... : EOF` and **the bypass actor
+stayed active** (`bypass_actors=1`). The write looked like it had been issued. Nothing in
+the merge output said the restore failed — the error was one line above a summary line
+that had already printed success for the merge.
+
+**So the restore needs two things it did not have:** its own retry loop (the API returns
+intermittent EOFs), and a **re-read of the ruleset** as the only accepted proof. "Never
+suppress the restore output" was already a rule here and it was not enough, because the
+output was present and wrong. What caught this was reading `bypass_actors` back a second
+time after the restore call returned; `1` where `0` was expected. Check it before moving
+on to anything else, and do not treat a printed restore line as the evidence.
+
+> **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
+> maintainer"**, with a recommendation per row. This file carries the *reasoning*
+> behind those recommendations and the record of what was learned; it does not
+duplicate the table.
+
+**Why the queue matters more than the code right now.** Five of the open items are
+**done work waiting on a call**, not work waiting on effort: #783 and #760 are the same
+bug fixed twice, #786 is a finished four-MAJOR upgrade, #775's guard needs four holes
+closed, and #781 implements a design that is not settled. The cheapest progress
+available is deciding, not building.
+
+**Landed since the previous state block (2026-09-21).** #784 (**#763**) · #789
+(**#788**) · #780 · #774 · #687 · #656 · #778 · #773 · #782 · #779. The authoritative
+list is ROADMAP §"Merged into v1.28.0 so far", sourced from
+`git log --oneline --since="2026-09-15" origin/main` (**52 commits** since v1.27.2).
+
+**Closed in the same pass:** #608, #662, #603, #665, #672, #699, #725, #751, #763,
+#788 — and #753 as superseded.
+
+**Merged 2026-09-21 (this round, unreleased):**
+
+- **#687** — **#608**, local Markdown image embeds during ingest, from @Chase07. 30
+  production files + 4 test files; closes **#608**. The maintainer-side rebase was
+  the unlock — see §"The rebase that could not be pushed" for the fork mechanic,
+  and §"#687 reviewed" for what the review turned on.
+- **#656** — config.md's audit-trail metadata on every Apply, in UTC, from
+  @Jan-Heldal. Closes nothing (the issue it answers was already closed); three
+  review rounds, the last two on my own fixes.
+- **#774** — **prompts: stop asking the model for what the code writes**, from
+  @DocTpoint. Closes nothing (`Refs #679`). The half that matters is the wire
+  schema: a declared property is a request, and the strict tier lists every
+  property in `required`.
+- **#778** — the Windows collection failure in the custom-instruction test, from
+  @x0Lazarus (first contribution). Test-only, one file.
+- **#776** + **#777** — the docs-only handoff refresh and the ruleset-restore
+  lesson.
+
+**Merged earlier in v1.28.0 (unreleased):** #750 (#603 slices 2+3, §"Slice 3
+reviewed" — the most instructive review of the cycle) · #757 (#662) · #759 (#751,
+and transitively #665) · #773 (#699) · #762 + #673 (#672) · #769 · #765 · #761 ·
+#767 · #726 (#725) · #748 · #744 + #746 · #736 (#723/#735) · #739 (#729 Phase 0) ·
+#733 (#669).
+
+**In review:** **#775** (#467) — @DocTpoint was requested 2026-09-21, so this is
+his now, not a queue item; the guard is the deliverable (§"The unified-model guard
+was wrong twice"). **#760** (#758) — my three review points are addressed on
+`a127feb6`, rebased onto `2a4a99b3`; awaiting @DocTpoint's re-review.
+
+**Blocked on other people:** **#755** (@weqoocu — the "one PR or two" answer; the
+version bump is three files and we can strip it) · **#701** (a product decision;
+premise refuted, §"#701's premise does not hold") · **#770 / #771 / #772**
+(Dependabot, all three **CI red** — see the next paragraph).
+
+**The Dependabot trio is red, with a different reason each — and that is now the
+evidence #764 needed:** **#772** (`ai` 6 → 7.0.105) · **#771**
+(`@ai-sdk/anthropic` 3.0.98 → **4.0.56**, a MAJOR: `LanguageModelV4` is not
+assignable to `LanguageModel`, the same spec-v4 mismatch #728 hit) · **#770**
+(TypeScript 5.9.3 → **6.0.3**: `TS2564` on four `main.ts` fields that are
+definitely assigned in the constructor, plus parameter-bivariance errors across
+the settings sections — dozens of sites, not a PATCH-shaped bump).
+`@ai-sdk/openai-compatible` stays held. **These three need the hold recorded in
+`.github/dependabot.yml` rather than explained weekly** — the same shape as the
+existing `eslint` and `brace-expansion` entries, per #765/#769.
+
+**Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups, the
+hardening-before-reader ordering, and the open decisions. This file carries the
+*why* and the *how*, never the window schedule.
 
 ---
 
-## Work list (2026-09-20) — ordered by ROI
+## Work list (2026-10-03) — ordered by ROI
+
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction
+cost ranks below a medium-impact one that is measured, because the second ships.
+
+**The queue itself is ROADMAP §"Open decisions"**; what follows is the *reasoning*
+behind its recommendations, which is the part a table cannot carry.
+
+### Tier 0 — decide, do not build
+
+**Five open items are finished work waiting on a call, not on effort:** #783 vs #760
+(the same bug twice), #786 (a completed four-MAJOR upgrade), #775 (four holes in its
+own guard), #781 (implements an unsettled design), and #729 itself. The cheapest
+available progress is choosing.
+
+### Tier 1 — the two bugs with a user watching
+
+**#791** — a Query answer arrives **reasoning-only**: every character sits inside
+`<think>…</think>` and nothing follows the closing tag, so the user sees a collapsible
+block and no answer. Reported on a custom OpenAI-compatible endpoint with a
+reasoning-capable model. **Highest-impact unstarted item: the symptom is a blank
+answer, not a wrong one.** The project already has a reasoning-strip probe
+(`reasoning-strip-probe.ts`), so the first question is whether this is a strip that
+produced nothing or a strip that never ran.
+
+**#792** — saving a query conversation fails because the generated filename contains
+`:`. **The body is empty, but the title names the cause**, so the slug path can be
+checked without waiting for the reporter — do that first, and only then ask for the
+title that triggered it. If the slug generator has no colon filter, the fix does not
+need a reply at all.
+
+### Tier 2 — accept into the window, scoped but not started
+
+**#787** — the source-lemma guarantee assumes a note's filename names a knowledge
+subject. True for `Klotho.md`; false for a meeting note or a log. A real modelling
+defect with a clean boundary, and it sits in the same region as #729's domain axis.
+
+**#468** — Anthropic `createMessageStream` lacks cache breakpoints. Narrow, and #687
+touched that exact client, so the file is warm.
+
+### Tier 3 — diagnosis first
+
+**#703** — a single-file ingest hangs and `cancelIngestion()` cannot abort it. The
+highest impact and the lowest certainty: it needs the reporter's file, and it is
+labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause
+down, then decide.
+
+### Tier 4 — the rest
+
+**#567** · **#676** · **#752** · **#756** · **#668** · **#664** · **#677** · **#701**
+(needs a product decision; premise refuted) · **#785** (defer — it touches incremental
+accumulation) · **#793** (`good first issue`). Design anchors rather than tasks:
+**#330** · **#358**. Measurement research: **#479** · **#480**.
+
+> **Superseded 2026-10-03:** the 2026-09-21 block below is the previous snapshot. Kept
+> for archaeology — do not update it.
+
+## Work list (2026-09-21) — ordered by ROI
 
 **ROI = (impact × certainty) / effort.** Certainty is how confident we are the fix
 lands *and* stays landed. A high-impact item with unknown reproduction cost ranks
 below a medium-impact one that is measured, because the second actually ships.
 
-### Tier 0 — **closed on 2026-09-20**
+### Tier 0 — closed since the last planning pass
 
-**#751 landed as #759.** The build-config one-liner is in `main`: `esbuild.config.mjs`
-now sets `supported: { 'dynamic-import': false }`, so `await import('node:module')`
-compiles to `require` and the renderer can load it. It fixed **two** shipped features —
-Codex browser login (#665, closed) and the desktop streaming transport from #746, which
-had never loaded once in a release build. **#753 was closed as superseded** on the layer
-decision, with the author's diagnosis credited in the closing comment.
+**#608 closed 2026-09-21** with **#687** — the third of the v1.28.0 chain's gates
+and the one that was a contributor's to ship. Closed against the issue's own six
+acceptance criteria, mapped one by one in the closing comment, and the three
+"possible options" not taken (no note-wide image cap, first-frame GIF only, no
+analysis cache) were named as decisions rather than left to read as gaps.
 
-Measured by @DocTpoint rather than by me, and his form is stronger: he built the branch
-twice, one line apart, and diffed the artifacts — **two lines differ in 4,539,124 bytes**,
-both at the intended sites, and the ~30 other runtime `import()` calls were already
-require-based under `format: 'cjs'`. "The global switch is safe, not merely untested."
+Earlier in the window: **#603** with #750, **#662** with #757, **#751** with #759
+(carrying **#665**), **#672** with #762 + #673, **#699** with #773, **#725** with
+#726.
 
 ### Tier 0′ — the v1.28.0 chain's head is now unblocked
 
 **#729 Phase 1** (M0 co-citation projection) was hard-blocked on #603 by design: a
 reader's acceptance metric is meaningless while the write path's contract does not hold.
-**#603 closed with #750**, and **#662 closed with #757**, so both gates are open and
-Phase 1 is the highest-ROI substantive work left in the window.
+**All three gates are now open** — #603 ✅, #662 ✅, #608 ✅ (the last one was not a
+gate on Phase 1 but it was the window's other feature) — so **Phase 1 is the
+highest-ROI substantive work left in the window and nothing is ahead of it.**
 
 Read `## Design record — cross-source relations (#729, v1.28.0)` for the phase plan and
 the two corrections made after the issue was written — in particular that
 **`RELATED_BUDGET.siblings` must not be read until Phase 2**, since it is 3/3/2/1/3 while
 today every granularity gets a flat 3.
 
-### Tier 1 — unblock the queue (zero new work)
+### Tier 1 — unblock the queue (no new work for me)
 
 | Item | What it waits on | Effort |
 |---|---|---|
-| **#687** (@Chase07) | **One checkbox.** The author confirmed the implementation is complete and the WIP wording was stale, and asked for the maintainer-side rebase. It is **done and green** — 7 commits, one conflict (an import block in `source-analyzer.ts`), Gate 1 at 309 files / 4298 tests — and **cannot be pushed**: `maintainer_can_modify` is `false`, so the push is rejected `permission denied`. The branch is parked at `pr-687` @ `e3273353`; push it the moment "Allow edits by maintainers" is ticked. The conflict resolution is described on the PR for him to review | none |
-| **#656** (@Jan-Heldal) | @DocTpoint. **Three fixes of mine are already on the branch** (`4c6d2fb1`), pushed as a fast-forward after `gh pr update-branch --rebase`. See §"The issue that was already being fixed" | none |
-| **#755** (@weqoocu) | The author, for the "one PR or two" answer. The version bump can be stripped by us — it is three files (`manifest.json`, `package.json`, `CHANGELOG.md`) | small |
+| **#775** (#467) | **@DocTpoint, requested 2026-09-21.** Gate 1 green, closes #467. Nothing left on our side — the request is filed and the guard's two false negatives are described on the PR | none |
+| **#760** (#758) | **@DocTpoint's re-review.** All three points addressed on `a127feb6`, rebased onto `2a4a99b3`, Gate 1 at 312 files / 4361 tests. My reply records that one of the three was *his* question being right about the report and me being wrong about it | none |
+| **#755** (@weqoocu) | The author, for the "one PR or two" answer. The version bump can be stripped by us — three files (`manifest.json`, `package.json`, `CHANGELOG.md`) | small |
 | **#701** (@weqoocu) | A product decision. The premise is refuted — see §"#701's premise does not hold" | none |
+| **#770 / #771 / #772** | Nothing — they are red on purpose. What is owed is a `.github/dependabot.yml` entry per hold, with the reason, so they stop arriving weekly without context | small |
 
 ### Tier 2 — the v1.28.0 feature track (the window's purpose)
 
@@ -116,39 +268,45 @@ Dependency-ordered; each is blocked by the one before it.
 
 1. ✅ **#603** — slices 2+3 landed in **#750**; the issue is closed.
 2. ✅ **#662** — landed in **#757**; the page index is held per file and the issue is closed.
-3. **#729 Phase 1** (M0 co-citation projection) — hard-blocked on #603 by design: a reader's acceptance metric is meaningless while the write path's contract does not hold.
-4. **#729 Phase 2** + **#664 together** — *“they ship together”*: #729 adds Related entries while #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open.
-5. **#729 Phases 3–6**, then **#668 + #752 together** — #668 restructures the settings tab and #752 is the sibling bug (the panel also jumps back to the top), so fixing the scroll before the restructure means doing it twice. #729's toggle placement is also gated on #668.
+3. ✅ **#608** — landed in **#687**; closed 2026-09-21.
+4. **#729 Phase 1** (M0 co-citation projection) — **unblocked, and the head of the queue.** Nothing precedes it now.
+5. **#729 Phase 2** + **#664 together** — *"they ship together"*: #729 adds Related entries while #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open.
+6. **#729 Phases 3–6**, then **#668 + #752 together** — #668 restructures the settings tab and #752 is the sibling bug (the panel also jumps back to the top), so fixing the scroll before the restructure means doing it twice. #729's toggle placement is also gated on #668.
 
 ### Tier 3 — user-facing bugs worth a PATCH
 
 | Item | Why it ranks here |
 |---|---|
-| **#703** — ingest hangs indefinitely on one file, `cancelIngestion()` cannot abort it. **High impact, low certainty**: the v1.27.2 release notes already carry it as a Known Issue, but it needs the reporter's file, and it is labelled `help wanted` |
-| **#665** | Closed by #751 — do not fix separately |
-| **#676**, **#567**, **#597** | Real bugs with narrow reach; #597 already has the #656 PR in review |
-| **#699** | Docs: the shipped bundle carries no third-party licence. Cheap and it is a compliance-shaped gap |
+| **#703** — ingest hangs indefinitely on one file, `cancelIngestion()` cannot abort it. **Highest impact, lowest certainty.** The v1.27.2 release notes already carry it as a Known Issue, it needs the reporter's file, and it is labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause down, then decide whether it is this window's |
+| **#468** — Anthropic `createMessageStream` lacks cache breakpoints. Narrow and well-scoped, and **#687 has just touched that exact client** (`anthropic-sdk-client.ts`), so the file is warm | 
+| **#763** — `writeFileWithIntent` returns `void`, so a skipped lint write is logged as a fix that happened. Review scoped it out of #750; scope is 8 production declarations plus ~20 test doubles |
+| **#676** · **#567** — real bugs with narrow reach. #567 needs reading before it can be ranked |
+| **#752** · **#756** — UX. #752 is coupled to #668 above; #756 (the Query panel's conversation crowding out the layout) is independent | 
 
 ### Tier 4 — backlog and design
+
+**#764** is now backed by evidence rather than a hunch: three Dependabot PRs, three
+different failure modes (#772 spec-v4, #771 the same mismatch in the Anthropic SDK,
+#770 TS 6's definite-assignment and variance tightening). It is a coordinated
+upgrade, not a bump.
 
 **#701** awaits a product decision, not code: it writes a marker into the user's own
 notes, and §“#701 — the premise does not hold” below records why the two scenarios it
 cites are already handled. **#330 / #358** are design anchors rather than tasks.
 **#479 / #480** are measurement research. **#91, #112, #142, #168, #184, #220, #285,
-#295, #317, #326, #467, #468, #503, #568** are unstarted enhancements on
-`v1.27.x PATCH` or older milestones and should be re-triaged at the next planning
-pass rather than carried indefinitely.
+#295, #317, #326, #467, #468, #503, #568** are unstarted enhancements on older
+milestones and should be re-triaged at the next planning pass rather than carried
+indefinitely — **with one correction that is owed now: #568's milestone is
+`v1.27.x PATCH` and it belongs on `v1.28.0 MINOR`**, since the write-side domain axis
+is a MINOR-track design item and it is the prerequisite research for #729.
 
-**Open PRs (2026-09-20):** **#775** (#467, Gate 1 green — the guard is the deliverable,
-see §"The unified-model guard was wrong twice") · **#760** (#758) · **#774** (@DocTpoint,
-prompts) · **#770 / #771 / #772** (Dependabot: TypeScript 6, `@ai-sdk/anthropic`, and
-**`ai` 6 → 7** — #772 is the piece **#764** was filed for, so those three move together
-and `@ai-sdk/openai-compatible` stays held).
+**Open PRs (2026-09-21):** **#775** (#467, review requested) · **#760** (#758,
+awaiting re-review) · **#755** · **#701** · **#770 / #771 / #772** (all red, see
+Tier 1) · plus **#774** and **#687** merged this round.
 
 **Newly filed, unstarted:** **#763** — `writeFileWithIntent` returns `void`, so a
-skipped lint write is logged as a fix that happened. Needs a return value; review scoped
-it out of #750 and the scope is 8 production declarations plus ~20 test doubles. **#764**
-— the coordinated AI SDK v7 upgrade.
+skipped lint write is logged as a fix that happened. Needs a return value. **#764**
+— the coordinated AI SDK v7 upgrade, now with three red PRs behind it.
 
 > **Superseded 2026-09-17:** the 2026-09-16 block below is the previous snapshot.
 > Kept for archaeology — do not update the old block.
@@ -295,13 +453,32 @@ recording a decision, means the PR is decided — **stop** and ask, do not revie
 | **Dead-code-as-docs policy** (v1.26.0 Batch 4) — exported symbols with zero production importers have a **half-life of one release cycle**. Wire or delete before next MINOR ships. `pre-release-gate` Phase 2g enforces. | AGENTS.md §"Dead-code-as-docs policy"; [[feedback_dead_code_as_docs]] |
 | **Settings panel scope rule** (v1.26.0 Batch 2 lesson) — `advanced-section.ts` = LLM sampling + provider overrides ONLY. Bottom `advanced-settings-section.ts` = dedup thresholds + per-source toggles + storage flags. New toggle? Decide FIRST which scope. | AGENTS.md §"Settings panel scope rule"; [[feedback_settings_panel_naming_collision]] |
 | **Architect-level contributors** (v1.26.0+) — currently @DocTpoint with Write role on personal repo; "no push to main" enforced by branch protection, not role. | [[project_architect_contributor_policy]] |
-| **Floor / ceiling asymmetry** (2026-09-16, decided with the maintainer on #729) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
+| **Floor / ceiling asymmetry** (2026-09-16, **proposed** on #729 — not "decided", see that section's status banner) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". **@DocTpoint argues the ceiling should come from the notes too, i.e. M2 rejected rather than deferred; the maintainer agrees and the issue still says "deferred".** | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
 
 ---
 
 ## Design record — cross-source relations (#729, v1.28.0)
 
-Recorded 2026-09-16, converged with the maintainer. The planning window lives in
+> ### ⚠️ STATUS: PROPOSED, and the design thread is OPEN
+>
+> **This section is not a settled design and must not be read as one.** It was written
+> 2026-09-16 and for four days said it was "converged with the maintainer"; that was
+> **false when written** — #729's request for dissent went out at 10:42, this was
+> recorded at 11:19 and merged at 11:23, and the first reply to the request arrived two
+> days later.
+>
+> **@DocTpoint's objection of 2026-09-18 is the substantive reply, and it is still
+> open.** It corrects four of the measurements below, shows that acceptance criterion 1
+> cannot fail, and measures that M0 selects by tie-break rather than by signal. The
+> maintainer's answer of 2026-09-23 accepts the corrections and the M0 defect, and
+> leaves the sequencing question (reader before graph) as a decision. **Nothing in the
+> implementation plan below should be built on before that thread concludes.**
+>
+> The four measurement-provenance corrections are applied in §"Measurement provenance"
+> below. They were propagated wrongly here and into #781's PR body; the originals were
+> documented honestly in the source files and the error was mine in transcription.
+
+Recorded 2026-09-16 as a proposal. The planning window lives in
 ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *how*.
 
 > **Start here if you have no context.** Read `### The measurement` and
@@ -309,6 +486,54 @@ ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *h
 > `### Three mechanisms` for the design, and **`### Implementation plan
 > (ordered phases)` to build it**. Everything after that is rationale and
 > guardrails. The issue is #729.
+
+### Measurement provenance (corrected 2026-09-23)
+
+Four figures in this record were attributed wrongly, and the error was mine in
+transcription — the source files documented them honestly. @DocTpoint's vocabulary:
+**"stock"** is unmodified upstream; **"local stack"** is his patched build
+(deterministic Related sections capped at five, an ingest-order picker, a local
+micro-embedding for dedup).
+
+| Figure | Actually from | Holds on `main`? | Can it carry weight? |
+|---|---|---|---|
+| ~95 % of edges intra-source; 9 in 10 pages with no cross-source incoming link | seen on **stock** code in July 2026, again in the rebuild | **yes** | **load-bearing** — it is the premise of #729, and it survives the regime change |
+| Arm C lost 3 of 5 questions | query path, **stock** code | **yes** | **load-bearing** — and it lost at the **lexical seed stage**, wrong seeds and not missing paths |
+| B ≥ A (wiki pages retrieve at least as well as raw notes) | local stack for the corpus | direction only | motivates the work; **too small to justify a default-on change** |
+| M0 re-measured (tie-break behaviour) | local-stack vault, M0 as specified, no model | mechanism yes, numbers approximately | **load-bearing** for how M0 behaves; on `main` there are more links per page, so somewhat fewer ties |
+| 374 dead related entries (5 %) | **local stack only** | **no** | **not** a criterion-4 baseline for a stock build |
+| Related cap of five, zero violations | **local stack only** | **no** | says nothing about `main`'s shaping — `main` has no cap at all |
+
+### The three findings that reopen the plan
+
+**① Acceptance criterion 1 cannot fail.** M0 creates cross-source edges by definition, so
+the intra-source share must fall whether the pairs are useful or not — measured 96 % →
+56 % on his vault. It is a restatement of what the mechanism does, not a test of it.
+Success has to be measured at the reader.
+
+**② M0 decides by tie-break, not by signal — and Phase 1 shipped a biased tie-break.**
+Re-run on the full rebuild with raw count and path-ordered ties: **80 % of the top-3 cuts
+fall inside a group of equally scored candidates**, median 12 in the group; **79 % of the
+chosen entries rest on a single shared target**, and one broad hub alone generates 16.5 %
+of all candidate pairs. Titles beginning with "A" are 9.1 % of pages but **17.1 % of the
+chosen entries**. The source of the bias is `co-citation.ts`'s tie-break, which the PR
+describes as a virtue — a **repeatable arbitary cut is worse than a random one**, because
+it is repeatable *and* systematically biased. Adamic-Adar damping reduces the ties
+(95 % → 84 %) without removing them. A later rebuild (~100 notes) reproduces the shape.
+
+**③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is
+unchanged, so the extractor keeps answering the intra-source question it was asked. And
+the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141`
+pushes them to `unanswered` and then writes them, so they land as dead links. A
+prior-driven path is therefore already running, in the open, **unmeasured**. In the
+control run, 79 % of unresolved Related targets had never been a candidate.
+
+Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**;
+**criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a
+world-knowledge one); and **`keepFrom` keeps existing entries in front
+(`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an
+existing vault without a migration — Phase 2's pass conditions are not testable on a
+rebuild until that is decided.
 
 ### Where the analysis lives — and the two corrections made since
 
@@ -428,7 +653,8 @@ model-dependent is ever opened.
 **Phase 6 — measurement, and the only thing that opens M2.**
 
 - Rebuild a comparable vault, re-measure the intra-source share, re-run the five
-  multi-note questions, and check the dead-related-entry baseline (676 / 870).
+  multi-note questions, and check the dead-related-entry count against the **rebuild's**
+  own control, not against the 676 / 870 control-run figure.
 - Publish the numbers against the staged acceptance criteria below. **M2 (or an
   embedding) is opened by these numbers, never by preference.**
 
@@ -467,7 +693,11 @@ acceptance criteria make that visible.
 3. **M2 justified only if** 1–2 leave the multi-note questions unfixed, or the
    residual gap is demonstrably semantic (*"how knowledge evolves over time"*
    against a page titled *Consolidation kernel*).
-4. Dead related entries do not increase — **676 on 870 pages** is the baseline.
+4. Dead related entries do not increase. **The baseline is *not* 676 / 870** — that is
+   an earlier 136-note alphabetical control run on stock code, 25 % of all Related links.
+   The rebuild's own number is **374 on 2,135 pages (5 %)**, and part of that residual is
+   intended (frontier names are deliberately kept). Both figures come from
+   @DocTpoint's vault and neither is a `main` baseline for a stock build.
 5. No regression on single-note questions; the `related-shaping` /
    `related-sections` suites stay green.
 6. Gate 1 green; no settings-schema break; a disable switch exists and defaults
@@ -1232,6 +1462,190 @@ workflow".
 
 ---
 
+## Lessons learned (2026-10-03 session — the dissent I never answered, and the report that was not a review)
+
+### Durable lessons
+
+**1. Explaining a technical dispute twice is part of the work, not a failure of the
+audience.** A first explanation of @DocTpoint's objection was dense enough that the
+reader asked for it again, and the second attempt was shorter, plainer and better. The
+signal to watch is not “did they understand the code” but “can they make the decision”.
+If a summary of a dispute does not end in a choice the reader can make, it is not a
+summary — it is more of the dispute.
+
+**2. `converged with the maintainer` written 37 minutes after asking for dissent is a
+false record, not an optimistic one.** The request went out at 10:42, the record was
+written at 11:19 and merged at 11:23, and the first reply arrived two days later. The
+specific damage is that **the record then outranked the dissent**: Phase 1 was built
+against a document that said the design was settled, while the objection that disputed
+it sat unanswered in the thread the document pointed at. **When a document records a
+decision, the only evidence that it was a decision is a reply.** Absent one, the word
+is `proposed` — and if a direction changes after review has begun, the change and its
+reason belong in the record the same day, because a stale record is read as current.
+
+**3. A retry loop whose *read* is unreliable duplicates the write.** This session
+produced **five** identical APPROVED events on #784, two days after the same mistake on
+#656, and the guard I had installed was the wrong shape: it re-read the reviews list
+after each attempt, and that read was itself returning empty. **When the read is
+flaky, loop on the read alone** — write once, then poll the read until it answers, and
+never put the write back inside the loop. The audit trail survived both times only
+because an approval before a merge is still an approval; the next variant of this may
+not be so forgiving.
+
+**4. A duplicated fix is a decision, not a queue entry.** #783 and #760 fix the same
+bug (#758) in two shapes — 1 file of 14 lines versus 4 files with a pure-function
+seam and its own test file. Neither is wrong, and the right answer is a choice rather
+than a merge of both. **The cheap-looking one keeps the rule where tests cannot reach
+it; the structured one carries a guard with four known holes.** Naming which property
+is worth more than either diff.
+
+**5. Two providers with the same wire format are still two providers.** #786 upgrades
+four packages together (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`,
+`@ai-sdk/openai-compatible`) and `Closes #764`. It is the correct shape — the three
+Dependabot attempts proved the individual bumps cannot typecheck — but it is **four
+MAJORs plus wire behaviour across 29 files**, which is why it was not merged with the
+three small fixes in the same pass. **A contributor having done the work is not the
+same as the work being safe.**
+
+**6. A report's scale can change between two API calls.** A check for #789 returned
+`404`, the next day the same number was a live PR from the maintainer's most active
+reviewer. **A 404 on a low number near the current maximum is “not yet”, not
+“does not exist”** — say which one you checked and when, rather than telling the person
+who asked that the thing they named is not real.
+
+### State pointers (2026-10-03)
+
+- `main` = **`73e6ca49`** · Gate 1 **313 files / 4363 tests** · ruleset clean.
+- Queued and unstarted: **#791** (reasoning-only answers), **#792** (colon in a saved
+conversation's filename — inspect the slug path without waiting for the reporter).
+- Newly filed this session: **#793** (ten translated READMEs quote English command
+names, and the command name is stored twice per locale — `ru.ts` disagrees with
+itself, one line Russian and one English).
+
+---
+
+## Lessons learned (2026-09-21 session — #687/#656/#774/#778 merges, #760 review round, the CI that never ran)
+
+### Durable lessons
+
+**1. A report's summary of the rule is not the rule. Read the code.**
+
+#758's excerpt of the offending filter quotes two lines and omits the `openrouter`
+branch that precedes them, so its prose — "drops every id containing `/` for all
+providers except ollama" — inherits the omission. Both halves are wrong: `/` was
+rejected for ollama too (ollama's exemption is `:`), and openrouter was the provider
+left unfiltered. **I copied the report's sentence into three files** (module header,
+test header, PR body) and @DocTpoint caught it, along with the file contradicting
+itself two paragraphs later.
+
+The report's *diagnosis of the symptom* was exact and its repro was solid — verified
+HTTP 200 for a namespaced id. Only its summary of what it was measuring against was
+wrong. **Write the rule from the code, and if you are quoting a report, say so.**
+
+The same review found a second, subtler inversion in the same block: "Widening the
+filter is the smaller change" said the opposite of the paragraph it sat in, which
+argues for *listing* providers instead. A comment can be locally grammatical and
+still carry the negation of its own argument.
+
+**2. A documented-but-unreachable state is worse than an undescribed one.**
+
+`ModelSelectionPatch.useCustomModel` has documented `true` as "the field is the
+user's own" since the PR opened, and **no branch returned it**. So a model that was
+picked from the catalogue and later vanishes from the endpoint kept the id in
+settings and showed the dropdown's "Custom input…" sentinel — the value visible
+nowhere, and re-choosing the already-selected sentinel fires no `change`, so the text
+field cannot be opened either. The value survives and is unreachable, which is a
+different failure from the one the PR was fixing and not a better one. **When a
+type's doc comment describes a state, grep for who produces it.**
+
+**3. A graceful-degradation path must name exactly which error it swallows.**
+
+#687's image analysis is the model to copy:
+
+```ts
+if (error instanceof DOMException && error.name === 'AbortError') throw error;  // cancel still cancels
+if (!isVisionInputRejected(error)) throw error;                                 // everything else propagates
+report.failedPackages++;                                                        // only then degrade
+```
+
+Three outcomes, three explicit classes, and the swallow is the narrow one. The
+alternative — `catch { /* no evidence */ }` — converts auth failures, rate limits and
+network errors into "the model found nothing", which is indistinguishable from a
+working feature on an unhelpful image. **`isVisionInputRejected` is a bidirectional
+80-char regex** (`image|vision|multimodal|content_type` against
+`unsupported|not supported|invalid|reject`, either order), and a false **negative**
+propagates rather than degrading silently — the right failure direction.
+
+**4. Interleaving text with each media part is how you bind context to it.**
+
+#687 sends, per image, a text part (`Image N`, its path, its nearest before/after
+paragraphs, and the sentence "The image content block immediately following this text
+is Image N") **immediately followed by** that image. One text block followed by N
+images leaves the association for the model to guess, and it guesses wrong on
+transcripts of screenshots. The same design makes each package's response
+**verifiable**: the code checks every returned index against the indices it sent,
+ignores and warns on invalid or duplicate ones, and counts the missing ones.
+
+**5. Removing a "redundant" mapping is a change with a reason.**
+
+`messages: messages.map((m) => ({ role: m.role, content: m.content }))` appeared in
+four provider clients and looked like a no-op. It was what **blocked multimodal
+parts** — and what made removing it safe is the type union that replaced the inline
+type: `user` accepts `MessageContentPart[]`, `assistant` is
+`Exclude<MessageContentPart, ImageContentPart>[]`, so both arms still have exactly
+`role`/`content` and nothing can leak. The type change and the mapping removal are
+one change, not two.
+
+**6. A push to a fork PR goes to the fork, and its ref name is not your branch name.**
+
+#687's head repo is `Chase07/obsidian-llm-wiki` and its ref is
+`feat/608-embedded-markdown-images`. `git push origin pr-687:refs/heads/feat/analyze-embedded-images`
+printed `[new branch]` — success, zero effect — and created a stray branch in **our**
+repo. Read `head.repo.full_name` and `head.ref` from the PR first. **`git ls-remote --heads
+origin <ref>` returning nothing is the tell**: the ref does not live there.
+
+**7. A PR with no CI status may be waiting for maintainer approval.**
+
+Five runs sat in `action_required` — @x0Lazarus's first contribution, @Chase07's
+rebase, and all three Dependabot PRs — so **none of them had ever run**, and the
+absence read as "CI is broken" or "the change is fine". `gh api
+'repos/.../actions/runs?status=action_required'` lists them; `POST .../runs/<id>/approve`
+releases one. Check this before reading a missing status as a code fact.
+
+**8. Retrying a command whose output you cannot read duplicates its side effects.**
+
+A `gh pr review --approve` retry loop that grepped stdout produced **three identical
+APPROVED events**. The audit trail stayed correct (a review preceded the merge), but
+the confirmation to write is a **read** of `pulls/<N>/reviews`, never the exit status
+of the command that wrote it. Same class as the ruleset restore: the write and the
+verification must go through different surfaces.
+
+**9. Verify the commit is what the message says — including after `--amend`.**
+
+Carried forward from #736, and it held: `git status --porcelain` must be empty right
+after every commit, and an amend that changes *content* needs `git add` first.
+
+**10. Two mechanical traps, both hit again this session.**
+
+`sed` on a line containing `/` needs a different delimiter, and a `s#...#...#` that
+contains `#` fails with an opaque `bad flag in substitute command` — **the file is
+left unmodified and no error propagates to the commit**. And the pre-commit hook runs
+the tools-bot lint over `main.js` and `tools/`, producing **669 pre-existing findings**
+that block an unrelated docs commit; `--no-verify` is legitimate there because the
+project's own `lint:tools-bot` is documented as informational and exits 0.
+
+### State pointers (2026-09-21)
+
+- `main` = **`2a4a99b3`**, Gate 1 **311 files / 4349 tests**.
+- Local branches equal to open PR heads: `refactor/467-unified-model-setter` @
+  `033e1842` (#775), `fix/758-lmstudio-model-ids` @ `a127feb6` (#760).
+- The `pr-687` rebase branch was deleted once #687 merged; it needed protecting for
+  exactly one turn.
+- **14 local branches** remain from earlier sessions with unpushed commits — harmless,
+  but they are what a `git branch | wc -l` reconciliation should not mistake for work.
+
+---
+
 ## Lessons learned (2026-09-20 session — skill audit, build-config layer, three dependency holds)
 
 **Trigger:** compact-prep after a long working session. Merged #757, #759, #761, #762,
@@ -1370,45 +1784,51 @@ most of what follows came from @DocTpoint's reviews rather than from my own pass
 - **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
   placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
 
-### Resume point (post-compact handoff, 2026-09-20)
+### Resume point (post-compact handoff, 2026-10-03)
 
-**Read in this order if context was lost:** this file's `## Current state` (where
-things stand) → **`## Work list (2026-09-20)`** (what to do next, ROI-ordered) →
-ROADMAP §"v1.28.0 MINOR — Design track" (the window's scope) → then the design record
-for whichever item is next. **The next substantive work is #729 Phase 1** — both of its
-gates (#603, #662) closed on 2026-09-20.
+**Read in this order if context was lost:** this file's `## Current state` (factual
+anchors) → **ROADMAP §"Open decisions — the queue awaiting the maintainer"** (the
+decisions, with a recommendation each) → then this file's `## Work list` for the
+*reasoning* behind those recommendations → then the design record for whichever item
+is next.
 
-**State at handoff:** `main` = **`4f56b475`**, Gate 1 green at **308 files / 4285
-tests**. Merged this window: #757, #759, #761, #762, #765, #767, #769, #773, **#750**.
-Closed: #603, #662, #665, #672, #699, #751, #753 (superseded), plus the Dependabot PRs
-#726/#728/#766/#768. **The working tree is clean and the stash is empty.**
+**The next actions are #791 and #792's self-check, in that order.** #791 is a blank
+answer (a reasoning-only reply), #792's slug path can be inspected without waiting for
+its reporter, and neither depends on the #729 decision.
 
-**One branch is parked and must not be lost:** `pr-687` @ **`e3273353`** — the rebase
-of @Chase07's PR, 7 commits, Gate 1 green at 309 files / 4298 tests, **unpushable
-until he ticks "Allow edits by maintainers"**. If context is lost and that branch is
-gone, re-deriving it is cheap (one conflict, an import block in `source-analyzer.ts`:
-keep main's `foldToVocabulary` import, add his `EmbeddedImageEvidenceSchema` to the
-`output-schemas` line). One other local branch, `refactor/467-unified-model-setter` @
-`033e1842`, is PR **#775** and is already pushed.
+**State at handoff:** `main` = **`73e6ca49`**, Gate 1 green at **313 files / 4363
+tests**. Open: **34 issues, 11 PRs**. Working tree clean, stash empty. Local branches
+that matter: `feat/729-phase1-co-citation` @ `7b01a61b` (**PR #781, held**),
+`fix/758-lmstudio-model-ids` @ `a127feb6` (**PR #760, superseded by #783 unless kept
+for its structure**), `docs/729-status-and-provenance` (merged as #782).
 
-**The ruleset needs ~15 s to propagate, not 6 s — and one more thing about bypasses:**
-verify the merge returned `merged=true` **before** restoring the ruleset. Restoring
-first left #773 open while the script reported success, and the failure only surfaced
-on the next status read. A cross-account `gh pr review --approve` still satisfies the
-ruleset on someone else's PR, so most merges need no bypass at all — that is how #750
-merged.
-
-**This environment's reads are intermittently empty, not wrong.** The GraphQL surface
-returns EOFs and `/pulls/<N>/files` sometimes returns `[]`; a status read that comes
-back blank is a retry, not a fact. `gh api repos/.../pulls/<N>` is more reliable than
-`gh pr view`.
+**The queue is the work.** Five items are finished and waiting on a call — choosing
+between #783 and #760, closing #770/#771/#772 once #786 lands, and answering #729.
+None of them needs an implementation pass, and building on any of them before the call
+is the mistake this session was spent learning.
 
 **One open decision blocks a later phase, not this one:** #729's toggle placement
 (bottom Advanced panel vs a home created by #668) — needed before Phase 4.
 
-**One open decision blocks a later phase, not this one:** #729's toggle
-placement (bottom Advanced panel vs a home created by #668) — needed before
-Phase 4.
+**The ruleset is clean and verified** (`bypass_actors=0`, `enforcement=active`).
+Docs-only merges by the maintainer need the temporary bypass actor; other people's PRs
+do not, because a cross-account `--approve` satisfies the ruleset (#784, #789, #780 all
+merged that way). **Never silence the restore** — see the 2026-09-21 lessons.
+
+
+**Pushing to a fork PR, the `action_required` CI class, the ruleset restore, and the
+retry-that-duplicates-its-own-side-effect are all in this file's `## Lessons learned
+(2026-09-21 session ...)` — read them there rather than here.** They are mechanics,
+not state, and the Resume point carries only what changes between sessions.
+
+**This environment's reads are intermittently empty, not wrong.** The GraphQL surface
+returns EOFs, `/pulls/<N>/files` sometimes returns `[]`, and `gh api ... --jq .body`
+returned empty for a PR whose body was complete — **four times in one session**, once
+nearly producing a request that the body be written. A blank read is a retry, not a
+fact. `gh api repos/.../pulls/<N>` is more reliable than `gh pr view`.
+
+**One open decision blocks a later phase, not this one:** #729's toggle placement
+(bottom Advanced panel vs a home created by #668) — needed before Phase 4.
 
 ---
 

@@ -31,7 +31,7 @@ const makeCtx = (overrides: Partial<LintContext> = {}): LintContext => {
       // #603 slice 3: the lint fixers write through the engine's declared-intent
       // entry rather than `app.vault.adapter.write`, so this is the capture point
       // the write-assertions below read from.
-      writeFileWithIntent: vi.fn().mockResolvedValue(undefined),
+      writeFileWithIntent: vi.fn().mockResolvedValue(true),
     } as unknown as LintContext['wikiEngine'],
     onAnalyzeSchema: vi.fn(),
   };
@@ -181,6 +181,7 @@ describe('runAliasCompletion — frontmatter write correctness', () => {
       wikiEngine: {
         writeFileWithIntent: vi.fn().mockImplementation(async (path: string, data: string) => {
           writes.push({ path, data });
+          return true;
         }),
       } as unknown as LintContext['wikiEngine'],
       llmClient: {
@@ -710,7 +711,7 @@ describe('runAliasCompletion — typed-output migration (#443 expanded scope)', 
       // `adapter.write` stub above is kept only because other assertions in this
       // block still reference it.
       wikiEngine: {
-        writeFileWithIntent: vi.fn().mockResolvedValue(undefined),
+        writeFileWithIntent: vi.fn().mockResolvedValue(true),
       } as unknown as LintContext['wikiEngine'],
       llmClient: client,
       settings: { wikiFolder: 'wiki', language: 'en' } as LintContext['settings'],

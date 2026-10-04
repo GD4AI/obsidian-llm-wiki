@@ -221,6 +221,10 @@ export const ingestCommands = {
 
     const reports: IngestReport[] = [];
 
+    // The batch borrows the done callback to collect its reports and gives it
+    // back afterwards; kept, every later single or watcher ingest of the
+    // session reported into this array — no report, the Notice never closed.
+    const previousDone = this.wikiEngine.getDoneCallback();
     this.wikiEngine.setDoneCallback((report: IngestReport) => {
       reports.push(report);
     });
@@ -267,6 +271,7 @@ export const ingestCommands = {
       }
     }
 
+    this.wikiEngine.setDoneCallback(previousDone);
     this.batchProgress = null;
     this.dismissProgress();
 

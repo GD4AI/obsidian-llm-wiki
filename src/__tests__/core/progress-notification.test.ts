@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideProgressDisplay, ProgressScope } from '../../core/progress-notification';
+import { decideProgressDisplay, noticeWithStage, ProgressScope } from '../../core/progress-notification';
 
 describe('decideProgressDisplay', () => {
   it('shows notice+status for manual user-triggered short operations', () => {
@@ -40,5 +40,19 @@ describe('decideProgressDisplay', () => {
   it('flags unknown long user ops for notice+status', () => {
     const result = decideProgressDisplay('unknown' as ProgressScope, true, true);
     expect(result.display).toBe('notice+status-bar');
+  });
+});
+
+describe('noticeWithStage', () => {
+  it('keeps the line the Notice was opened with and adds the engine stage', () => {
+    expect(noticeWithStage('Ingesting: Vitamin D', 'Step 3/6: writing pages')).toBe('Ingesting: Vitamin D · Step 3/6: writing pages');
+  });
+
+  it('keeps a batch counter in front of the stage', () => {
+    expect(noticeWithStage('[3/10] Vitamin D', 'Step 3/6: writing pages')).toBe('[3/10] Vitamin D · Step 3/6: writing pages');
+  });
+
+  it('shows the opened line alone for an empty stage', () => {
+    expect(noticeWithStage('[3/10] Vitamin D', '')).toBe('[3/10] Vitamin D');
   });
 });
