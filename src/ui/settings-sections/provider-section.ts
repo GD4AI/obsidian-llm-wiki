@@ -77,7 +77,10 @@ export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLE
         tempSettings.llmReady = false;
         tempSettings.availableModels = [];
         tempSettings.useCustomModel = false;
-        tempSettings.model = '';
+        // Issue #467: through the sanctioned entry rather than assigning the field.
+        // An empty value does not cascade — `setFieldValue` only clears the
+        // per-task overrides for a non-empty one — so this behaves as it did.
+        tab.setFieldValue('model', '');
         const config = PREDEFINED_PROVIDERS[value];
         if (config && value !== 'custom') tempSettings.baseUrl = config.baseUrl;
         // v1.25.0 PR3: if the user just switched to a native-PDF provider
@@ -223,7 +226,8 @@ export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLE
           tempSettings.llmReady = false;
           tempSettings.availableModels = [];
           tempSettings.useCustomModel = false;
-          tempSettings.model = '';
+          // Issue #467 — see the provider dropdown above for why empty is safe.
+          tab.setFieldValue('model', '');
         });
       });
 

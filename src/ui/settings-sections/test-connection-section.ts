@@ -80,10 +80,16 @@ export function renderTestConnectionSection(tab: LLMWikiSettingTab, containerEl:
         tab.tempSettings.thinkingControlCache = tab.plugin.settings.thinkingControlCache;
         if (tab.plugin.settings.provider === 'openai-codex') {
           tab.syncCodexModelsFromPlugin();
-          tab.tempSettings.model = tab.plugin.settings.model;
-          tab.tempSettings.ingestModel = tab.plugin.settings.ingestModel;
-          tab.tempSettings.lintModel = tab.plugin.settings.lintModel;
-          tab.tempSettings.queryModel = tab.plugin.settings.queryModel;
+          // Issue #467: a wholesale sync, not a user edit — so it goes through
+          // the tab, which owns the field and does not cascade. What rules out
+          // `setFieldValue` here is `llmReady`, not the three per-task values:
+          // those are reassigned from the same source on the next line, and their
+          // `*UseCustom` flags are already false because
+          // `syncCodexModelsFromPlugin` → `applyCodexModelPolicy` ran above. But
+          // `setFieldValue` always ends with `markLLMConfigStale()`, so routing a
+          // *successful* test through it would commit `llmReady = false` and
+          // `requireLLMReady` would reject every later ingest and query.
+          tab.syncModelsFromPlugin();
         }
         // v1.25.8 HOTFIX: commitTempSettings internally flushes
         // SecretStorage. On flush failure roll back plugin.settings to
