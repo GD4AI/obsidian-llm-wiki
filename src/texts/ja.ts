@@ -666,7 +666,7 @@ export const JA_TEXTS = {
 
     // Ingest Report Modal
     ingestReportTitle: '取り込みレポート',
-    ingestReportSourceFile: 'ソースファイル',
+    ingestReportSourceFile: 'ソース',
     ingestReportCreated: '作成',
     ingestReportUpdated: '更新',
     ingestReportContradictions: '矛盾を発見',

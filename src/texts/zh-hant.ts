@@ -665,7 +665,7 @@ export const ZH_HANT_TEXTS = {
 
     // 摄入报告弹窗
     ingestReportTitle: '攝入報告',
-    ingestReportSourceFile: '原始檔',
+    ingestReportSourceFile: '來源',
     ingestReportCreated: '已建立',
     ingestReportUpdated: '已更新',
     ingestReportContradictions: '發現矛盾',

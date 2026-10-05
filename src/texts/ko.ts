@@ -721,7 +721,7 @@ export const KO_TEXTS = {
 
     // Ingest Report Modal
     ingestReportTitle: '수집 보고서',
-    ingestReportSourceFile: '소스 파일',
+    ingestReportSourceFile: '소스',
     ingestReportCreated: '생성됨',
     ingestReportUpdated: '업데이트됨',
     ingestReportContradictions: '모순 발견',
