@@ -728,7 +728,7 @@ export const IT_TEXTS = {
 
     // Modale Report Acquisizione
     ingestReportTitle: 'Report acquisizione',
-    ingestReportSourceFile: 'File sorgente',
+    ingestReportSourceFile: 'Origine',
     ingestReportCreated: 'Create',
     ingestReportUpdated: 'Aggiornate',
     ingestReportContradictions: 'Contraddizioni trovate',

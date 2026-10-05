@@ -720,7 +720,7 @@ export const DE_TEXTS = {
 
     // Ingest Report Modal
     ingestReportTitle: 'Aufnahmebericht',
-    ingestReportSourceFile: 'Quelldatei',
+    ingestReportSourceFile: 'Quelle',
     ingestReportCreated: 'Erstellt',
     ingestReportUpdated: 'Aktualisiert',
     ingestReportContradictions: 'Widersprüche gefunden',

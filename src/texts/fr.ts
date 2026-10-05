@@ -670,7 +670,7 @@ export const FR_TEXTS = {
 
     // Ingest Report Modal
     ingestReportTitle: "Rapport d'import",
-    ingestReportSourceFile: 'Fichier source',
+    ingestReportSourceFile: 'Source',
     ingestReportCreated: 'Créées',
     ingestReportUpdated: 'Mises à jour',
     ingestReportContradictions: 'Contradictions trouvées',
