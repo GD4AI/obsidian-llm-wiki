@@ -60,24 +60,54 @@ from the same place: *a released milestone may not carry unstarted work* — the
 
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
-| **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. Three options in MEMORY §"Seed stage". The milestone moved to `v1.29.0` on 2026-10-04 and it is now the head of that queue | **A**: accept the ordering — measure where the extractor's out-of-scope names come from before building M0 |
-| **#783** vs **#760** | **The same bug fixed twice** (#758) | A duplicate, and one must be chosen | Take **#783**'s 14-line fix with **#760**'s pure-function structure |
+| **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The milestone moved to `v1.29.0` on 2026-10-04 and it is now the head of that queue. The three directions are set out in §"#729 — the three directions" below | **A** |
 | **#786** | AI SDK v7 upgrade, `Closes #764`, 29 files `+345/-439`, CI green | Four MAJOR dependencies plus wire behaviour — **not** obviously safe, so it was not merged with the rest | Review the wire snapshots, then merge; **#770/#771/#772 become superseded** |
-| **#775** | One sanctioned write path for the unified model | @DocTpoint's review found **four holes in the guard**, and the guard is the PR's whole value | Fix the four, then re-offer |
 | **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled | Do not merge until #729 concludes |
-| **#794** | The settings panel loses its scroll position when it rebuilds | New, from @abhinav-neander, and **not yet reviewed** | Review it — small, user-visible, and unrelated to any open design question |
 | **#755** | Extraction focus and content-requirement settings, from @weqoocu | Two new prompt-level settings — a content-generation behaviour, so it needs the Settings-panel scope call and a decision on whether the prompt should carry them at all | Review the scope first; the settings belong in the bottom Advanced panel either way |
 | **#701** | Stamp a `wiki-ingested` marker on sources, from @weqoocu | Its premise **does not hold**: the marker it proposes to write is what the plugin already reads | Close it with the analysis, or re-scope it to the real need |
 | **#785** | "Full Reindex" request | It touches **incremental accumulation**, a core design premise | Defer to research |
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note | Accept into the next window |
-| **#792** | Saving a query conversation fails: the generated filename contains `:` | A real bug with a **full report** (the earlier note here calling the body empty was wrong — it is not). Labelled `bug` and milestoned `v1.28.x PATCH` on 2026-10-04; the fix itself is unstarted | Fix it: `slug.ts` already strips `:`, so the conversation-save path is not using it |
-| **#793** | Ten translated READMEs quote English command names, and the command name is stored twice per locale | Filed as the #780 follow-up | `good first issue` — the shape is mechanical once the name has one source |
 
 **Not waiting on a decision, just unstarted:** **#703** (ingest hangs — diagnosis first),
 **#468**, **#567**, **#676**, **#756**, **#668**, **#664**, **#677**.
 
-**Shipped since this queue was written (2026-10-03):** **#791** ✅ fixed by #799 ·
-**#751** ✅ shipped in v1.28.0 · **#753** closed as superseded by #751.
+**Waiting on someone else, not on a decision:** **#792** — the label that misled the reporter
+is in #810, and the reporter was asked to confirm on the next patch. **#793** — the
+`good first issue` label came off on 2026-10-04, and the work remains documentation: the ten
+translated READMEs quote English command names, and the command name is stored twice per locale.
+A verification pass on 2026-10-04 corrected its own table — `README_RU.md` and
+`README_ZH-Hant.md` are already clean, so the count is 7 files rather than 10, and `README_RU.md`
+is the better reference because it already quotes translated names.
+
+**Resolved since this queue was written (2026-10-03):** **#791** ✅ fixed by #799 ·
+**#751** ✅ shipped in v1.28.0 · **#753** closed as superseded by #751 · **#467** ✅ closed by
+#775, whose four review findings are fixed and mutation-checked · **#758** ✅ closed by #760 ·
+**#752** ✅ closed by #794, which merged after two conflict resolutions in `CHANGELOG.md` alone ·
+**#783** closed in favour of #760, with @newdeme credited as co-author on the fix ·
+**#806** ✅ merged as `4b616c0c`, and its CHANGELOG entry as `0cdbbf4a` · **#808** filed for the
+two hand-written templates that #806 left out.
+
+### #729 — the three directions
+
+The decision queue used to say "Three options in MEMORY §'Seed stage'". **That section does not
+exist**, and no other file held the three options — the row named three and wrote down one. They
+are set out here, on the axis of what each one commits to.
+
+| | What it commits to | What it costs |
+|---|---|---|
+| **A** | **M0, with one measurement in front of it.** Measure where the extractor's out-of-scope names come from, then build the co-citation projection as planned | #729 waits for the measurement pass. If the measurement shows the loss is at the seed stage, M0 is built anyway and may not fix the loss that was reported |
+| **B** | **The reader, before any graph work.** Fix how a query picks the pages it starts from, and leave the graph as it is | The premise that opened #729 — 95 % of edges intra-source — stays unfixed for another window. #781 is closed or stays held with no date. The reader work has no design record yet |
+| **C** | **Nothing until the measurement lands.** Run it with no commitment to either order, and set the next step from the result | One window ships nothing for #729, because the measurement is the deliverable. It may show both are needed, which is the outcome that costs the most calendar time |
+
+**Why A is the recommendation.** The measurement is cheap: one instrumented run, no product code.
+B and C each risk a window on a design whose ordering is still disputed. A spends the same
+measurement and keeps the plan. Its known weakness is that it can end with M0 built and the
+reported loss unfixed, which is a real cost — and the reason the measurement comes first.
+
+@DocTpoint's four conditions for trusting that measurement are on #729 (comment of 2026-09-24): it
+must run on the default regime rather than his local cap, cover resolved entries as well as dead
+ones, carry a positive control that can find a name known to be absent, and sample by hand the
+class it attributes to the extractor's prior.
 
 ### Merged into v1.28.0 — RELEASED 2026-10-04
 
