@@ -33,6 +33,7 @@ import type { StubCandidate, StubIdentity } from '../../core/candidate-gate';
 import { slugify } from '../../core/slug';
 import { selectDomains } from '../../core/domain-axis';
 import { localDateStamp } from '../../core/format';
+import { serializeFrontmatter } from '../../core/frontmatter';
 
 interface ExistingPageLike {
   path: string;
@@ -102,6 +103,27 @@ export function stripStubMarker(frontmatterBlock: string): string {
 }
 
 /**
+ * The frontmatter both stub templates share (this module and
+ * fix-dead-link.ts). It goes through `serializeFrontmatter`, so a stub is born
+ * with the list shape every other writer emits (#808) — both templates used to
+ * write `tags: [x]` by hand. The serializer has no stub fields, and its
+ * passthrough slot sits above `sources:`; the two markers are appended instead,
+ * which keeps the key order stubs have always had.
+ */
+export function buildStubFrontmatter(params: {
+  stubType: 'entity' | 'concept';
+  /** Wikilink target of the page or source the stub is born from. */
+  source: string;
+  tags: string[];
+}): string {
+  const { stubType, source, tags } = params;
+  return serializeFrontmatter(
+    { type: stubType, created: localDateStamp(), sources: [`[[${source}]]`], tags },
+    { emitEmptyTags: true }
+  ).replace(/\n---$/, '\nstub: true\ngeneration_complete: false\n---');
+}
+
+/**
  * The stub page content. Frontmatter matches the Fix Dead Links stub
  * (block-style quoted `sources:` wikilink — see the YAML notes in
  * fix-dead-link.ts — and the #170 birth stamp), plus `stub: true` (see the
@@ -121,7 +143,6 @@ export function buildDissentStubContent(params: {
   vocabulary?: readonly string[];
 }): string {
   const { item, stubType, sourceSlug, cell, vocabulary } = params;
-  const today = localDateStamp();
   // Tag-Achse Stufe 4 (S137): one field — the identity value (the extraction
   // type) and the validated belonging values share `tags:`; no `domains:`.
   // S142: the identity fallback leaked the settings typelist (`person`,
@@ -133,11 +154,11 @@ export function buildDissentStubContent(params: {
     ? (item.type ? selectDomains([item.type], vocabulary).kept[0] ?? '' : '')
     : item.type || (stubType === 'entity' ? 'other' : 'term');
   const tagValues = [...(identity ? [identity] : []), ...(item.domains ?? []).filter(d => d !== identity)];
-  const tag = tagValues.join(', ');
+  const frontmatter = buildStubFrontmatter({ stubType, source: `sources/${sourceSlug}`, tags: tagValues });
   const quote = item.mentions_with_provenance?.[0]?.quote ?? item.mentions_in_source?.[0];
   const summary = (item.summary ?? '').trim();
   const quoteBlock = quote ? `\n> "${quote.trim()}" — [[sources/${sourceSlug}]]\n` : '';
-  return `---\ntype: ${stubType}\ncreated: ${today}\nsources:\n  - "[[sources/${sourceSlug}]]"\ntags: [${tag}]\nstub: true\ngeneration_complete: false\n---\n# ${item.name}\n\n> Stub created by the ingest candidate gate (${cell}) — [[sources/${sourceSlug}]] names this without treating it. Will be filled by the next ingest of a source that does.\n${summary ? `\n${summary}\n` : ''}${quoteBlock}`;
+  return `${frontmatter}\n# ${item.name}\n\n> Stub created by the ingest candidate gate (${cell}) — [[sources/${sourceSlug}]] names this without treating it. Will be filled by the next ingest of a source that does.\n${summary ? `\n${summary}\n` : ''}${quoteBlock}`;
 }
 
 export interface StubBirthDeps {
