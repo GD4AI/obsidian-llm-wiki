@@ -4,7 +4,7 @@
 
 **Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-05
 
-**Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was the named head of v1.28.0 and **v1.28.0 shipped without it**, because its design record is still *proposed* and an objection to it is unresolved. The milestone was moved to `v1.29.0 MINOR` on 2026-10-04 so a released milestone would not carry unstarted work. Nothing about the plan changed — only which release number it lands in. The four capabilities that did ship in v1.28.0 are in CHANGELOG §1.28.0.
+**Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was the named head of v1.28.0 and **v1.28.0 shipped without it**. On 2026-10-05 the ordering was **decided: direction A** — one measurement pass comes first, then M0. The measurement's definition, and the defect it also has to fix, are in §"#729 — the three directions" below. The milestone was moved to `v1.29.0 MINOR` on 2026-10-04 so a released milestone would not carry unstarted work. Nothing about the plan changed — only which release number it lands in. The four capabilities that did ship in v1.28.0 are in CHANGELOG §1.28.0.
 
 **Milestone move (2026-10-04).** `v1.28.0 MINOR`'s 12 open items moved to the new `v1.29.0 MINOR`: #787 #764 #756 #752 #729 #677 #668 #664, plus the four open PRs #786 #781 #755 #701. `v1.28.0 MINOR` is now empty and closes with the release.
 
@@ -30,7 +30,7 @@ Process standards live in [AGENTS.md §"🛡️ Six-Gate Quality Closure"](./AGE
 
 | Group | Items | Why this window |
 |---|---|---|
-| **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. **⚠️ Proposed 2026-09-16, NOT concluded**: @DocTpoint's objection of 2026-09-18 is still open and corrects four of the underlying measurements. Do not build on this until #729's thread concludes |
+| **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. **Decided 2026-10-05 (direction A)**: @DocTpoint's objection of 2026-09-18 is accepted — it corrects four of the underlying measurements and names a defect in the mechanism itself. The measurement pass runs first, then M0 in a corrected shape |
 | **Write-path hardening** (architecture) | **#603** ✅ closed with **#750** · **#662** ✅ closed with **#757** | Both landed 2026-09-20. The gate is split into `rawWrite` / `pageGuard` / `notify` with a defaultless `WriteIntent`, and the page index is held per file. **This was the gate on #729 Phase 1 and it is open** |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
 | **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
@@ -60,7 +60,7 @@ from the same place: *a released milestone may not carry unstarted work* — the
 
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
-| **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The milestone moved to `v1.29.0` on 2026-10-04 and it is now the head of that queue. The three directions are set out in §"#729 — the three directions" below | **A** |
+| **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The milestone moved to `v1.29.0` on 2026-10-04 and it is now the head of that queue. The three directions are set out in §"#729 — the three directions" below | **A — chosen 2026-10-05** |
 | **#786** | AI SDK v7 upgrade, `Closes #764`, 29 files `+345/-439`, CI green | Four MAJOR dependencies plus wire behaviour — **not** obviously safe, so it was not merged with the rest | Review the wire snapshots, then merge; **#770/#771/#772 become superseded** |
 | **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled | Do not merge until #729 concludes |
 | **#755** | Extraction focus and content-requirement settings, from @weqoocu | Two new prompt-level settings — a content-generation behaviour, so it needs the Settings-panel scope call and a decision on whether the prompt should carry them at all | Review the scope first; the settings belong in the bottom Advanced panel either way |
@@ -88,6 +88,28 @@ is the better reference because it already quotes translated names.
 two hand-written templates that #806 left out.
 
 ### #729 — the three directions
+
+**Chosen 2026-10-05: A.** M0 proceeds, with one measurement in front of it. #781 stays held until
+that measurement lands. B and C are kept in the table because their cost is the reason A was
+chosen; a later pass that reverses this writes the reason on the issue instead of quietly
+re-planning.
+
+**What A commits to measuring.** The prior-driven path is **already running and unmeasured**:
+`related-shaping.ts:140-141` pushes the extractor's out-of-scope names into `unanswered` and then
+writes them, so they land as dead links. In the control run **79 % of unresolved Related targets
+had never been a candidate** — that is the number this pass exists to explain. The run has to
+separate out-of-scope-and-absent (the extractor's prior) from out-of-scope-but-present (candidate
+generation missed a name that is in the text), because only the second points at the reader's
+lexical seed stage, where the Arm-C loss of 3 of 5 questions was measured. @DocTpoint's four
+conditions decide whether the result may be trusted; if any is unmet the run repeats rather than
+gets interpreted.
+
+**M0 is built after that run** — and not in the shape #781 carries today. The dissent's second
+finding is a defect in the mechanism as written: 80 % of the top-3 cuts fall inside a group of
+equally scored candidates, and titles beginning with "A" are 9.1 % of pages but 17.1 % of the
+chosen entries, so the tie-break is systematic rather than arbitrary. A repeatable biased cut is
+worse than a random one. That is a change to make on #781, and it is why A reads "measure, then
+M0" rather than "merge M0 now".
 
 The decision queue used to say "Three options in MEMORY §'Seed stage'". **That section does not
 exist**, and no other file held the three options — the row named three and wrote down one. They
@@ -174,7 +196,7 @@ and it currently carries **52 commits** since v1.27.2.
 
 **Hardening before the reader — done for #603/#662, and the *ordering itself* is now contested.** #603's contract now holds and #662's index is held per file, so the store the acceptance criteria read from is telling the truth. **#729 Phase 1 is unblocked as of 2026-09-20, and #608 shipped 2026-09-21** — so nothing precedes Phase 1 in the queue.
 
-**⚠️ But @DocTpoint challenges the ordering on measurement (2026-09-18):** arm C lost 3 of 5 multi-note questions **at the lexical seed stage**, not on reachability, so **a denser graph cannot repair a wrong seed** — the work belongs at the stage that actually loses. He also shows criterion 1 cannot fail, that M0 selects by tie-break (80 % of cuts inside a tie, 79 % of chosen entries resting on one shared target), that the extractor's prior is already leaking unmeasured, and that `keepFrom` blocks both allocation variants on existing vaults. **This is a maintainer-level ordering decision, not settled.** Maintainer's answer: #729 comment of 2026-09-23.
+**⚠️ But @DocTpoint challenges the ordering on measurement (2026-09-18):** arm C lost 3 of 5 multi-note questions **at the lexical seed stage**, not on reachability, so **a denser graph cannot repair a wrong seed** — the work belongs at the stage that actually loses. He also shows criterion 1 cannot fail, that M0 selects by tie-break (80 % of cuts inside a tie, 79 % of chosen entries resting on one shared target), that the extractor's prior is already leaking unmeasured, and that `keepFrom` blocks both allocation variants on existing vaults. **This was a maintainer-level ordering decision, and it was settled on 2026-10-05 as direction A.** Maintainer's answer: #729 comment of 2026-09-23; the decision, with the measurement it buys, is in §"#729 — the three directions".
 
 The four review rounds #750 took are the part worth carrying forward: the slice shipped **two behaviour regressions of its own** despite passing all three of its mutations, and the second of the two was a check it *removed* that had been incidentally holding another door shut. Both findings came from @DocTpoint reading the tree rather than the description.
 
@@ -189,7 +211,7 @@ Dependency-ordered, not priority-ordered. **Phases 1 and 4 have shipped; phase 2
 | Phase | Items | Status |
 |---|---|---|
 | **1 — decouple, take the cheap wins** | #669 zod 4 · #723 custom headers, OpenCode preset, Responses variant (also closed #735) · #603 + #662 design pass | ✅ **shipped in v1.28.0** |
-| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". Sub-phase 0 (centralise the ceilings) ✅ done 2026-09-17, behaviour-identical. **Sub-phase 1 is the head of the queue.** | **not started — needs the direction call below** |
+| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". Sub-phase 0 (centralise the ceilings) ✅ done 2026-09-17, behaviour-identical. **Sub-phase 1 is the head of the queue.** | **not started — the direction is chosen (A); the measurement pass comes before any code** |
 | **3 — behaviour layer** | #664 together with #729's allocation · #677 (unblocked when #603 closed) · #668 after #729's toggle has a home | blocked by phase 2 |
 | **4 — independent features** | #608 + PR #687 ✅ shipped · #701 (needs its design decision first) · #755, #786 | ✅ shipped, except the three noted |
 
@@ -198,7 +220,7 @@ Dependency-ordered, not priority-ordered. **Phases 1 and 4 have shipped; phase 2
 - **#729 ↔ #664.** #729 *adds* Related entries; #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open — and the measurement that would catch it (Related length over a rebuild) is exactly the one each would blame the other for. **They ship together.**
 - **#729 ↔ #668.** #729 introduces a settings toggle that defaults on; #668 restructures the settings tab. Land the toggle *after* #668's structure is settled, or it gets re-homed twice. Per the Settings-panel scope rule it is bottom-Advanced-panel either way (content-generation behaviour, not LLM sampling).
 
-**Open decisions for phase 2** — the direction call (A / B / C), whether the projection runs at **write time** or **query time**, **reserved vs additive** cross-source allocation, and where the toggle lands. All four are in #729's thread and in MEMORY §"Design record — cross-source relations"; the maintainer's recommendation is **A**, which defers the projection until the extractor's out-of-scope names have been measured.
+**Open decisions for phase 2** — whether the projection runs at **write time** or **query time**, **reserved vs additive** cross-source allocation, and where the toggle lands. Three, not four: the direction call was **decided on 2026-10-05 as A**. All are in #729's thread and in MEMORY §"Design record — cross-source relations".
 
 ---
 

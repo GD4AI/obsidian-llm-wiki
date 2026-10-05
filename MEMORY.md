@@ -22,10 +22,10 @@ was the plan of record for this release and did not go in, because its design re
 still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
 changed — only which release number it lands in.** The milestone moved to
 `v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
-milestone does not carry unstarted work. **The direction call is still open, and A is the
-recommendation.** The three directions were named in the queue and written down nowhere
-until 2026-10-04 — the row pointed at a MEMORY section that does not exist — so they now
-live in ROADMAP §"#729 — the three directions", priced by what each one commits to.
+milestone does not carry unstarted work. **The direction call was decided on 2026-10-05: A** —
+one measurement pass comes first, then M0 in a corrected shape. The measurement's definition,
+and the tie-break defect the dissent found in the mechanism itself, are in ROADMAP §"#729 — the
+three directions".
 
 **Seven merges landed after the release and none is released yet.** `fb44868d` #760 ·
 `46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 ·
@@ -1491,6 +1491,14 @@ workflow".
 ---
 
 ## Lessons learned (2026-10-04 session — the release went out, then seven merges)
+
+**A slash command can move the working tree under you.** `/review pr 809` checks the pull request
+out locally, so this session's branch silently became `fix/808-stub-template-tag-shape` while
+`docs/compact-prep-2026-10-05` held the work being edited. The next edit failed to match its
+anchor in `ROADMAP.md`, and the first reading of that failure was "my anchor text is wrong"
+rather than "this is the wrong file". `pi-review` registers only slash commands, so it cannot be
+called as a tool and returns nothing to read. **After `/review`, check `git branch --show-current`
+before editing anything**, and treat a suddenly-unmatchable anchor as a branch signal.
 
 **The uncommitted-work rule, violated by the person who recorded it.** The first draft of
 the decision-queue rewrite sat uncommitted while `git checkout main` and
