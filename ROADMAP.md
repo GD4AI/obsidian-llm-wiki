@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-04
+**Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-05
 
 **Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was the named head of v1.28.0 and **v1.28.0 shipped without it**, because its design record is still *proposed* and an objection to it is unresolved. The milestone was moved to `v1.29.0 MINOR` on 2026-10-04 so a released milestone would not carry unstarted work. Nothing about the plan changed — only which release number it lands in. The four capabilities that did ship in v1.28.0 are in CHANGELOG §1.28.0.
 

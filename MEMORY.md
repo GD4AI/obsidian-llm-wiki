@@ -8,7 +8,7 @@
 
 ---
 
-## Current state (2026-10-04)
+## Current state (2026-10-05)
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
 see CHANGELOG §1.28.0). **Published** as release `1.28.0` with three assets and a
@@ -22,13 +22,29 @@ was the plan of record for this release and did not go in, because its design re
 still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
 changed — only which release number it lands in.** The milestone moved to
 `v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
-milestone does not carry unstarted work. The direction call (A/B/C) is still open and
-**A** is the recommendation — see §"Design record — cross-source relations".
+milestone does not carry unstarted work. **The direction call is still open, and A is the
+recommendation.** The three directions were named in the queue and written down nowhere
+until 2026-10-04 — the row pointed at a MEMORY section that does not exist — so they now
+live in ROADMAP §"#729 — the three directions", priced by what each one commits to.
 
-**Open counts:** **33 issues** and **11 PRs**. All of them carry a milestone — the
-open windows are `v1.28.x PATCH` (12), `v1.29.0 MINOR` (16) and `v1.27.0+ research` (16);
-see the milestone map in ROADMAP §"Open decisions". Three of those 11 PRs (#770/#771/#772,
-the MAJOR dependency bumps) sit on `v1.29.0 MINOR` with the coordinated AI SDK v7 work.
+**Seven merges landed after the release and none is released yet.** `fb44868d` #760 ·
+`46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 ·
+`dcf161ca` #811. **`main` = `dcf161ca`.** CHANGELOG §Unreleased carries four `Fixed` entries
+and one `Notes` entry for them.
+
+**Open counts:** **31 issues** and **8 PRs**, every one with a milestone — `v1.28.x PATCH`
+(7), `v1.29.0 MINOR` (15), `v1.27.0+ research` (16). The milestone map and the decision
+queue are in ROADMAP §"Open decisions".
+
+### Open, small, and not started (2026-10-05)
+
+- **`AGENTS.md:443` links to `MEMORY.md#architect-level-contributors`, and MEMORY has no such
+  heading.** The anchor is broken on `main` and `git show origin/main:AGENTS.md` also carries
+  it, so it predates this session. It was left out of #811 because a broken doc link is a
+  different change from a planning queue. A go/no-go was offered and not yet answered.
+- **#786** (AI SDK v7) is the last unread PR on `v1.29.0 MINOR`, and it touches
+  `finish-reason.ts`, which #799 changed on 2026-10-03 — review the wire snapshots with that
+  collision in mind.
 
 ### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
 
@@ -397,6 +413,18 @@ it, and a closed PR reads to a contributor as *rejected*.
   keyword was unintended, here it was **deliberately negated and still armed**.
 - **The target decides the damage:** aimed at an issue it closes the issue
   (intended); aimed at a PR it closes the PR.
+- **A comment is a surface too.** GitHub parses closing keywords in issue and PR
+  **comments**, not only in a body and a commit. A reply to a reporter can close the issue
+  it replies to, so the same scan runs on the comment before it is posted.
+- **Print the number, never the verdict.** 2026-10-04: a scan ran with `grep -c -inE`, found
+  one hit, and the next line of the same command printed "（空 ✓）" — a verdict typed by hand
+  beside a count that contradicted it. The output read clean while the hit sat two lines
+  above. The count decides the branch and the branch prints the conclusion; the shell never
+  asserts a result the grep did not produce.
+- **Fix the sentence, not the check.** The hit was `I did not close #792.` — the #744
+  hazard again, a sentence denying the action. Rewritten to `I left the issue open.`, the
+  scan re-run to 0, and the **remote** body read back and re-scanned, because the local file
+  is not what GitHub merges.
 - Scan before merging:
   `gh pr view <N> --json title,body --jq '.title, .body' | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'`
 - **Count it, do not eyeball the grep.** `grep ... | sed` in a pipeline exits with
@@ -1461,6 +1489,41 @@ contributor lands a ≥5-PR cluster. Decision documented in AGENTS.md "PR merge
 workflow".
 
 ---
+
+## Lessons learned (2026-10-04 session — the release went out, then seven merges)
+
+**The uncommitted-work rule, violated by the person who recorded it.** The first draft of
+the decision-queue rewrite sat uncommitted while `git checkout main` and
+`git reset --hard origin/main` ran in the same shell command. `reset --hard` overwrote the
+working tree, the edit existed nowhere else, and nothing was staged, so there was no stash
+to recover from. The content was rewritten and committed before any branch operation ran.
+The rule was already in this file — uncommitted work is the only real handoff risk — so
+this was not a knowledge gap; the command was written without a `git status` first.
+**Commit before any command that can reset the worktree, and never combine a branch switch
+with `reset --hard` while holding edits.**
+
+**A push that succeeded at the wrong ref.** #760's fix went to
+`fix/lmstudio-hub-model-ids`; the PR head was `fix/758-lmstudio-model-ids`. The push exited
+0, the PR head did not move, and a stray branch on the base repo had to be deleted. **Read
+the PR's `head.ref` and `head.repo.full_name` before pushing, and re-read the head SHA
+after** — `git push` succeeding is not evidence that the PR moved.
+
+**A test that passed for the wrong reason, caught by reading its output.** A #792 test
+asserted that no prompt contained `[[Conversation:`. It passed, and the real output showed
+why: that placeholder is rendered inside the page factory, which the harness replaces with
+a stub, so the prompt never existed to be asserted on. The test was deleted rather than
+kept. Same rule as `feedback_tdd_standard`: a green test that cannot fail is worse than no
+test.
+
+**An `edit` that silently removed a line.** One `oldText` ended inside a comment, so the
+line above the anchor was dropped and the remaining comment began mid-sentence. **Read the
+file after an edit, not only before it.** `git diff` is the check.
+
+**A queue that named three options and wrote one.** ROADMAP's #729 row said "Three options
+in MEMORY §'Seed stage'". That section existed in no file, so the decision could not be
+taken, and more than one planning pass read the row and moved on. **A decision row must
+contain the options it asks someone to choose between, or name a destination that
+exists.**
 
 ## Lessons learned (2026-10-03 session — the dissent I never answered, and the report that was not a review)
 
