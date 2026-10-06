@@ -53,7 +53,8 @@
   },
   "overrides": {
     "brace-expansion": "5.0.12",
-    "undici": "8.10.2"
+    "undici": "8.10.2",
+    "source-map-js": "1.2.2"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.65",
