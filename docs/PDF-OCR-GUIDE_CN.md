@@ -4,7 +4,7 @@
 
 Karpathy LLM Wiki 插件通过四条路径摄入文档，四条路径共享同一个 Markdown 输出缓存 —— 区别在于**由谁来跑模型**。插件可以：(a) 把 PDF 直接发送到云端 provider 的 `/v1/chat/completions` 或（Anthropic 的）`/v1/messages` 端点作为文件部分，(b) 把 PDF / 图片 / Office 文档路由到**内置的 MinerU 后端**（v1.27.0+，零额外配置），(c) 在 Apple Silicon 上通过 [oMLX](https://github.com/jundot/omlx) + Markitdown 跑完全本地流水线，或 (d) 接受外部转换好的 Markdown（MinerU 在线 extractor —— 适合偏好 UI 而非 API token 的用户）作为普通文本源摄入。本页面按"最简单 → 最灵活"的顺序覆盖全部四条路径。
 
-> 📖 快速配置引导在 [README → PDF 摄入](../README.md#-pdf-ingest-v1250-mineru-backend-v1270) 章节。本页面是详细版。
+> 📖 快速配置步骤在 README 的[快速开始表格](../README.md#-quick-start)。本页面是详细版。
 
 ---
 

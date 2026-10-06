@@ -24,7 +24,7 @@ pnpm build
 
 ## Quality Checks
 
-All five checks must pass before submitting any change. **Order is non-negotiable: build before test** — `openai-codex-loopback-flow.test.ts:39` reads `main.js` to verify esbuild bundle shape, so a test-before-build run on a fresh clone fails ENOENT:
+All five checks must pass before submitting any change. **Order is non-negotiable: build before test.** `openai-codex-loopback-flow.test.ts:39` reads `main.js` to verify the esbuild bundle shape. So a test-before-build run on a fresh clone fails ENOENT:
 
 ```bash
 pnpm lint          # ESLint with Obsidian plugin rules (0 errors, 0 warnings)
@@ -45,8 +45,8 @@ The composite alias `pnpm gate:1` runs all five in the correct order.
 - **Booleans**: prefix with `is/has/can` (e.g., `isValid`, `hasContent`)
 - **Commit messages**: English, conventional commits format (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 - **Obsidian Bot compliance**: 15 `eslint-plugin-obsidianmd` rules enforced by `pnpm lint`
-- **llmReady guard**: New core features must call `requireLLMReady()` at entry points. The plugin requires a successful connection test before core features are available.
-- **i18n**: UI strings use the TEXTS system. English strings in `src/texts/en.ts` are the canonical source; all 9 other languages must be updated in lockstep.
+- **llmReady guard**: New core features must call `requireLLMReady()` at entry points. The plugin needs a successful connection test first.
+- **i18n**: UI strings use the TEXTS system. English strings in `src/texts/en.ts` are canonical; all 9 other languages update in lockstep.
 
 > **Historical release notes** (v1.23.0+llm-client removal, v1.24.0 splits, v1.24.1 Bedrock + PPR + page-factory, v1.25.0 PDF Ingest): see [CHANGELOG.md](CHANGELOG.md). Keep a Changelog format is the canonical record; this file documents the project structure as it stands.
 
@@ -242,12 +242,13 @@ tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-
         └── exit-code.ts         # Exit-code mapping
 ```
 
-> **Note on `tools/`:** since v1.27.0 (PR #511) the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors: it runs the real `WikiEngine` against real LLM spend and keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
+> **Note on `tools/`:** since v1.27.0 (PR #511) the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors. It runs the real `WikiEngine` against real LLM spend. It also keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
 
 ## Internationalization
 
 - **UI**: 11 locales (EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397), text keys in `src/texts/`. `en.ts` is the canonical source; `texts.ts` is the barrel.
-- **New text**: add the key to `en.ts` first, then translate to all 10 other languages (in lockstep). The i18n-parity test (`src/__tests__/root/i18n-parity.test.ts`) prevents silent EN fallback if a locale is missing keys.
+- **New text**: add the key to `en.ts` first, then translate it to all 10 other languages (in lockstep). The i18n-parity test
+  (`src/__tests__/root/i18n-parity.test.ts`) prevents silent EN fallback when a locale is missing keys.
 - **Wiki output**: 11 languages independent of UI, with custom input option
 
 ## Testing
@@ -312,7 +313,8 @@ graph TD
 
 These four patterns appear throughout the engine. New contributors should recognize them before reading the code:
 
-- **Tier 1/2 duplicate detection** — Tier 1 candidates are always LLM-verified (high-precision, low-recall); Tier 2 fills the remaining token budget (lower-precision, higher-recall). Implemented in `src/wiki/lint/duplicate-detection.ts` (`classifyTiers`) and used by `dedup-phase.ts`.
+- **Tier 1/2 duplicate detection** — Tier 1 candidates are always LLM-verified (high-precision, low-recall). Tier 2 fills the remaining token
+  budget (lower-precision, higher-recall). Implemented in `src/wiki/lint/duplicate-detection.ts` (`classifyTiers`) and used by `dedup-phase.ts`.
 - **`Promise.allSettled` error isolation** — One failed batch in a parallel scan does not crash the entire batch. Standard pattern in `dedup-phase.ts` and all parallel fix-runners.
 - **Pollution defense at write gate** — A centralised regex catches polluted `sources:`` frontmatter before any vault write. Single source of truth at `src/wiki/source-safety.ts` (or equivalent). Don't bypass it with inline checks.
 - **LLM semantic page selection** — Seed selection uses meaning-based matching (LLM or heuristic), not keyword match. Implemented in `query-engine.ts` seed selection.

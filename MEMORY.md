@@ -8,334 +8,154 @@
 
 ---
 
-## Current state (2026-10-05)
+## Contents
 
-**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files —
-see CHANGELOG §1.28.0). **Published** as release `1.28.0` with three assets and a
-Discussion in `announcements`; the tag and the merge commit are both `c47c25a7`. It shipped
-with **four opt-in capabilities** (#608 image embeds, #723/#735 per-provider headers and the
-OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary) plus **#751**,
-which made two already-shipped features actually run in a release build.
+One file, indexed. Read the row you need. Do not read this file top to bottom.
 
-**v1.28.0 shipped WITHOUT its named head.** #729 Phase 1 (the M0 co-citation projection)
-was the plan of record for this release and did not go in, because its design record is
-still *proposed* and @DocTpoint's objection to it is unresolved. **Nothing about the plan
-changed — only which release number it lands in.** The milestone moved to
-`v1.29.0 MINOR` on 2026-10-04 with its 12 open items and 4 open PRs, so a released
-milestone does not carry unstarted work. **The direction call was decided on 2026-10-05: A** —
-one measurement pass comes first, then M0 in a corrected shape. The measurement's definition,
-and the tie-break defect the dissent found in the mechanism itself, are in ROADMAP §"#729 — the
-three directions".
+| Need | Where |
+|---|---|
+| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-06) |
+| The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
+| Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
+| The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
+| Invariants that must never change | [Architectural invariants](#architectural-invariants-write-once) |
+| A rule from a past session, and the incident behind it | [Lessons learned](#lessons-learned-from-session-memory) → [Appendix B](#appendix-b--session-log-dated-blocks-verbatim) |
+| Why a shipped decision looks odd, before reopening it | [Appendix A](#appendix-a--design-records-verbatim-moved-back-from-docs) |
+| Where the other documents live | [Where to look](#where-to-look) |
 
-**Seven merges landed after the release and none is released yet.** `fb44868d` #760 ·
-`46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 ·
-`dcf161ca` #811. **`main` = `dcf161ca`.** CHANGELOG §Unreleased carries four `Fixed` entries
-and one `Notes` entry for them.
+**Appendix A** holds the four design records; **Appendix B** holds the dated session blocks.
+Both are kept in this file so there is one artifact to index and one place to search. Neither
+is current state.
 
-**Open counts:** **31 issues** and **8 PRs**, every one with a milestone — `v1.28.x PATCH`
-(7), `v1.29.0 MINOR` (15), `v1.27.0+ research` (16). The milestone map and the decision
-queue are in ROADMAP §"Open decisions".
+## Current state (2026-10-06)
 
-### Open, small, and not started (2026-10-05)
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
-- **`AGENTS.md:443` links to `MEMORY.md#architect-level-contributors`, and MEMORY has no such
-  heading.** The anchor is broken on `main` and `git show origin/main:AGENTS.md` also carries
-  it, so it predates this session. It was left out of #811 because a broken doc link is a
-  different change from a planning queue. A go/no-go was offered and not yet answered.
-- **#786** (AI SDK v7) is the last unread PR on `v1.29.0 MINOR`, and it touches
-  `finish-reason.ts`, which #799 changed on 2026-10-03 — review the wire snapshots with that
-  collision in mind.
+**v1.28.0 shipped without its named head.** #729 Phase 1 was the plan of record; it did not go in.
+Its design record is still *proposed* and @DocTpoint's objection is unanswered.
+**The plan did not change. Only the release number did.**
+The milestone moved to `v1.29.0 MINOR` on 2026-10-04, with its 12 open items and 4 open PRs, because a released milestone carries no unstarted work.
+**The direction was decided on 2026-10-05: A** — one measurement pass first, then M0 in a corrected shape.
+The measurement's definition and the tie-break defect the dissent found are in ROADMAP §"#729 — the three directions".
+
+**Ten merges landed after the release, and none is released yet:** `fb44868d` #760 · `46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 · `dcf161ca` #811 · `fd2a1aa3` #809 · `0c96df1b` #812 · `9a3332c0` #813. **`main` = `9a3332c0`.**
+
+**#813 unblocked every PR's Gate 1.** Main's audit step was green at 2026-10-05T14:53 and failed at 2026-10-06T06:41 on #786, which carried no dependency change of its own; unpatched main failed the same audit locally. A new `source-map-js` advisory appeared between the two runs. The fix pins `source-map-js` 1.2.1 → 1.2.2 in both override lists and regenerates both lockfiles. **CI runs `Audit` before `Five-Gate`**, so a fresh advisory hides the five checks behind it and a docs-only PR reads as a code failure.
+
+**Open counts:** **30 issues** and **6 PRs**, each with a milestone — `v1.28.x PATCH` (7), `v1.29.0 MINOR` (15), `v1.27.0+ research` (16). See ROADMAP §"Open decisions".
+
+### Documentation consolidation (2026-10-06)
+
+Five live documents went through the four checks in AGENTS.md §"Document lifecycle". Every
+ceiling is now met.
+
+| File | Before | After | Ceiling |
+|---|---|---|---|
+| `MEMORY.md` | 2032 | **1089** | 1500 |
+| `AGENTS.md` | 471 | **515** | 600 |
+| `ROADMAP.md` | 382 | **381** | 500 |
+| `CONTRIBUTING.md` | 362 | **363** | 450 |
+| `NOTICE` | 51 | **51** | — |
+
+The pass added three mechanisms, all in AGENTS.md §"Document lifecycle":
+
+1. **`MEMORY.md` carries a `## Contents` index at its top.** A section that cannot be described in
+   one index row is two sections.
+2. **`MEMORY.md` takes no new dated section.** Eight had accumulated. Their rules merged into
+   §"Lessons learned (from session memory)"; their dated halves moved to Appendix B.
+3. **Compress in place; do not relocate.** Moving a block to a new file creates a second file to
+   maintain, and the words are unchanged. Two files created during this pass were deleted for
+   that reason.
+
+**Acceptance:** every ceiling met · all restored rule headlines byte-verbatim against `HEAD` ·
+`AGENTS.md`, `CONTRIBUTING.md` and `NOTICE` lost **zero** facts · `ROADMAP.md` lost two alias
+tokens whose meaning is still stated in one line · `MEMORY.md` dropped 23 superseded state
+pointers by design, plus 4 stale-path tokens · `shazam_verify` PASS.
+
+**Six subagent writers ran in two rounds, and all six hit the 30-minute cap.** Four produced
+usable work. Two died mid-reformat with no report, so the acceptance above is mine and carries
+my own uncertainty. **Round 1 gave each writer a whole file and failed. Round 2 gave one file
+per writer, an explicit line target, and a read-only inventory step first, and worked.** One
+writer asked whether "≤382 lines" and "wrap at 100 chars" could both hold. It measured, showed
+they cannot, and offered three options with costs. **It was right to ask.** The answer: hold the
+ceiling, widen the wrap, never trade a fact for a line.
+
+### Open, small, and not started (2026-10-06)
+
+- **✅ RESOLVED 2026-10-06 — the `AGENTS.md` → `MEMORY.md` anchor.** `AGENTS.md` linked to `#architect-level-contributors`, a heading MEMORY never had.
+That content is the **Architect-level contributors** row of §"Key design decisions (canonical references)", and the link now names that section.
+The same pass fixed four siblings: a `~/.pi/skills/…` release-skill path that does not exist (canonical is `~/.agents/skills/…`); `docs/PDF-OCR-GUIDE{,_CN}.md` pointing at a README section the README does not have; a stale test path in AGENTS.md's Gate-1 note; and "10 READMEs (EN + 9 i18n)", which is 11.
+The README defect was in the sentence, not only the anchor: its 13 H2s carry no PDF heading.
+- **#786** (AI SDK v7) is **reviewed**, and CI is green end to end. Four tests in `reasoning-only-guard.test.ts:172-194` pin the `finalStep` shape, so the SDK contract is verified at the type level; the only unknown left is provider-backend behaviour. A dev build for live testing is at `~/Desktop/llm-wiki-786-dev/`. It waits on that test, not on review.
 
 ### ✅ RESOLVED 2026-10-03 — CI was red on every commit, and `gate:1` could not see it
 
-`main`'s CI had been failing since at least 2026-09-27. **Nothing in the tree caused it:**
-the failing step is `.github/workflows/pr-ci.yml:79`,
-`pnpm audit --audit-level high --ignore-registry-errors`, and **that step is not part of
-`pnpm gate:1`** (`lint && typecheck && build && test && css-lint`). CI runs **six** checks;
-the local alias runs **five**. Two advisories published that day made the pin stale:
-`brace-expansion` (override existed at `5.0.9`, advisories want `>=5.0.11`) via the eslint
-chain, and `undici` (no override at all, `>=8.10.2` wanted) via `jsdom` — **both dev-only,
-both patched inside their own minor line** ⇒ not breaking. Fixed in **#796** by bumping
-`brace-expansion` to `5.0.12` and adding `undici: 8.10.2`, in `pnpm-workspace.yaml` **and**
-`package.json`, regenerating **both** lockfiles (`npm` does not read pnpm's — the #501/#652
-class). Proof it is fixed: `8bb496db` = `success` while `eadfaee1` / `73e6ca49` / `127f35be`
-= `failure`. The two surviving moderates are left alone on purpose — the gate is
-`--audit-level high`.
+`main`'s CI had been failing since at least 2026-09-27. **Nothing in the tree caused it:** the failing step is `.github/workflows/pr-ci.yml:79`, `pnpm audit --audit-level high --ignore-registry-errors`, and **that step is not part of `pnpm gate:1`** (`lint && typecheck && build && test && css-lint`). CI runs **six** checks; the local alias runs **five**. Two advisories published that day made the pin stale — `brace-expansion` (override existed at `5.0.9`, advisories want `>=5.0.11`) via the eslint chain, and `undici` (no override at all, `>=8.10.2` wanted) via `jsdom`, **both dev-only and both patched inside their own minor line** ⇒ not breaking. Fixed in **#796** by bumping `brace-expansion` to `5.0.12` and adding `undici: 8.10.2`, in `pnpm-workspace.yaml` **and** `package.json`, regenerating **both** lockfiles (`npm` does not read pnpm's — the #501/#652 class). Proof: `8bb496db` = `success` while `eadfaee1` / `73e6ca49` / `127f35be` = `failure`. The two surviving moderates are left alone on purpose — the gate is `--audit-level high`.
 
-**The durable rule: a green `gate:1` is not evidence that CI will be green.** The only
-signal that the two gates differ is CI's colour. Three PRs were merged on a red signal
-before this was noticed, on the reasoning that a docs-only or one-line change cannot break
-a gate that is already red — **that reasoning is wrong to act on even when the outcome is
-benign**. Red means stop and diagnose.
+**The durable rule: a green `gate:1` is not evidence that CI will be green.** The only signal that the two gates differ is CI's colour. Three PRs were merged on a red signal before this was noticed, on the reasoning that a docs-only or one-line change cannot break an already-red gate — **that reasoning is wrong to act on even when the outcome is benign**. Red means stop and diagnose.
 
 ### The reasoning-shape family, and which clients guard it (2026-10-03)
 
-**#799** fixed the shape where a gateway inlines its reasoning into `content` inside a
-thinking block. Two facts are worth keeping.
+**#799** fixed the shape where a gateway inlines its reasoning into `content` inside a thinking block. **Only `OpenAICompatSdkClient` carries the guard.** `create-llm-client.ts` sends `openai` (and `useOfficialOpenAI`, and `apiShape: 'responses'`) to `OpenAISdkClient`, sends `anthropic` and `anthropic-compatible` to `AnthropicSdkClient`, and sends **everything else** to the compat client — so most built-in providers are guarded, and "custom provider" is **not** the boundary: the shape is a property of the wire format, not of who hosts the endpoint.
 
-**Only `OpenAICompatSdkClient` carries the guard.** `create-llm-client.ts` sends `openai`
-(and `useOfficialOpenAI`, and `apiShape: 'responses'`) to `OpenAISdkClient`, sends
-`anthropic` and `anthropic-compatible` to `AnthropicSdkClient`, and sends **everything
-else** to the compat client. So most built-in providers are guarded, and "custom
-provider" is **not** the boundary — the shape is a property of the wire format, not of who
-hosts the endpoint.
+**The other two clients do not need it today, and their own docs are the evidence.** OpenAI's Responses API returns reasoning as its own item type (`summary_text` / `reasoning_text`).
+Chat Completions returns no reasoning text at all — never inline in the answer.
+Anthropic returns `thinking` blocks separately from `text` blocks.
+The one counter-example found: Anthropic itself returns the reasoning **as a `text` block with literal `<thinking>` tags** for a thinking-only response followed by `tool_use` (`anthropics/claude-code#21849`).
+**This plugin never creates that trigger — it sends no tools — so the case was not filed and not fixed.**
+If a report ever arrives on one of these clients, the wiring is small: the predicate is shared in `finish-reason.ts`, so each call site needs `result.text` plus the `rescued` value.
 
-**The other two clients do not need it today, and their own docs are the evidence.**
-OpenAI's Responses API returns reasoning as its own item type (`summary_text` /
-`reasoning_text`), and Chat Completions returns no reasoning text at all — never inline in
-the answer. Anthropic returns `thinking` blocks separately from `text` blocks. The one
-counter-example found: Anthropic itself returns the reasoning **as a `text` block with
-literal `<thinking>` tags** for a thinking-only response followed by `tool_use`
-(`anthropics/claude-code#21849`). **This plugin never creates that trigger — it sends no
-tools — so the case was not filed and not fixed.** If a report ever arrives on one of
-these clients, the wiring is small: the predicate is shared in `finish-reason.ts`, so each
-call site needs `result.text` plus the `rescued` value.
-
-**Still silent, and worth its own look:** the `NoOutputGeneratedError` arm in the compat
-client returns `text: ''` with only a `console.debug`, so an empty answer can still be
-invisible to the user. It fires only when the output getter throws, which means
-schema-backed calls, so it does not affect Query. Found while reviewing #799.
+**Still silent, and worth its own look:** the `NoOutputGeneratedError` arm in the compat client returns `text: ''` with only a `console.debug`, so an empty answer can still be invisible to the user. It fires only when the output getter throws, which means schema-backed calls, so it does not affect Query. Found while reviewing #799.
 
 ### The ruleset restore can fail, and only the re-read catches it (2026-10-03)
 
-While merging #800 the ruleset restore returned `Put ... : EOF` and **the bypass actor
-stayed active** (`bypass_actors=1`). The write looked like it had been issued. Nothing in
-the merge output said the restore failed — the error was one line above a summary line
-that had already printed success for the merge.
+While merging #800 the ruleset restore returned `Put ... : EOF` and **the bypass actor stayed active** (`bypass_actors=1`); the write looked issued, and nothing in the merge output said the restore failed. **So the restore needs two things it did not have:** its own retry loop (the API returns intermittent EOFs), and a **re-read of the ruleset** as the only accepted proof. "Never suppress the restore output" was already a rule here and it was not enough, because the output was present and wrong. What caught this was reading `bypass_actors` back after the restore call returned — `1` where `0` was expected. Check it before moving on, and do not treat a printed restore line as the evidence.
 
-**So the restore needs two things it did not have:** its own retry loop (the API returns
-intermittent EOFs), and a **re-read of the ruleset** as the only accepted proof. "Never
-suppress the restore output" was already a rule here and it was not enough, because the
-output was present and wrong. What caught this was reading `bypass_actors` back a second
-time after the restore call returned; `1` where `0` was expected. Check it before moving
-on to anything else, and do not treat a printed restore line as the evidence.
+> **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the maintainer"**, with a recommendation per row. This file carries the *reasoning* behind those recommendations; it does not duplicate the table.
 
-> **The decision queue lives in ROADMAP §"Open decisions — the queue awaiting the
-> maintainer"**, with a recommendation per row. This file carries the *reasoning*
-> behind those recommendations and the record of what was learned; it does not
-duplicate the table.
+**Why the queue matters more than the code right now.** Five open items are **done work waiting on a call**, and none waits on effort: #783 and #760 fix the same bug twice; #786 is a finished four-MAJOR upgrade; #775's guard needs four holes closed; #781 implements a design that is not settled. The cheapest progress available is deciding, not building.
 
-**Why the queue matters more than the code right now.** Five of the open items are
-**done work waiting on a call**, not work waiting on effort: #783 and #760 are the same
-bug fixed twice, #786 is a finished four-MAJOR upgrade, #775's guard needs four holes
-closed, and #781 implements a design that is not settled. The cheapest progress
-available is deciding, not building.
-
-**Landed since the previous state block (2026-09-21).** #784 (**#763**) · #789
-(**#788**) · #780 · #774 · #687 · #656 · #778 · #773 · #782 · #779. The authoritative
-list is ROADMAP §"Merged into v1.28.0 so far", sourced from
-`git log --oneline --since="2026-09-15" origin/main` (**52 commits** since v1.27.2).
-
-**Closed in the same pass:** #608, #662, #603, #665, #672, #699, #725, #751, #763,
-#788 — and #753 as superseded.
+**Landed since the previous state block (2026-09-21).** #784 (**#763**) · #789 (**#788**) · #780 · #774 · #687 · #656 · #778 · #773 · #782 · #779 — the authoritative list is ROADMAP §"Merged into v1.28.0 so far", sourced from `git log --oneline --since="2026-09-15" origin/main` (**52 commits** since v1.27.2). **Closed in the same pass:** #608, #662, #603, #665, #672, #699, #725, #751, #763, #788 — and #753 as superseded.
 
 **Merged 2026-09-21 (this round, unreleased):**
 
-- **#687** — **#608**, local Markdown image embeds during ingest, from @Chase07. 30
-  production files + 4 test files; closes **#608**. The maintainer-side rebase was
-  the unlock — see §"The rebase that could not be pushed" for the fork mechanic,
-  and §"#687 reviewed" for what the review turned on.
-- **#656** — config.md's audit-trail metadata on every Apply, in UTC, from
-  @Jan-Heldal. Closes nothing (the issue it answers was already closed); three
-  review rounds, the last two on my own fixes.
-- **#774** — **prompts: stop asking the model for what the code writes**, from
-  @DocTpoint. Closes nothing (`Refs #679`). The half that matters is the wire
-  schema: a declared property is a request, and the strict tier lists every
-  property in `required`.
-- **#778** — the Windows collection failure in the custom-instruction test, from
-  @x0Lazarus (first contribution). Test-only, one file.
-- **#776** + **#777** — the docs-only handoff refresh and the ruleset-restore
-  lesson.
+- **#687** — **#608**, local Markdown image embeds during ingest, from @Chase07. 30 production files + 4 test files; closes **#608**. The maintainer-side rebase was the unlock — see §"The rebase that could not be pushed" for the fork mechanic, and §"#687 reviewed" for what the review turned on.
+- **#656** — config.md's audit-trail metadata on every Apply, in UTC, from @Jan-Heldal. Closes nothing (the issue it answers was already closed); three review rounds, the last two on my own fixes.
+- **#774** — **prompts: stop asking the model for what the code writes**, from @DocTpoint. Closes nothing (`Refs #679`). The half that matters is the wire schema: a declared property is a request, and the strict tier lists every property in `required`.
+- **#778** — the Windows collection failure in the custom-instruction test, from @x0Lazarus (first contribution). Test-only, one file.
+- **#776** + **#777** — the docs-only handoff refresh and the ruleset-restore lesson.
 
-**Merged earlier in v1.28.0 (unreleased):** #750 (#603 slices 2+3, §"Slice 3
-reviewed" — the most instructive review of the cycle) · #757 (#662) · #759 (#751,
-and transitively #665) · #773 (#699) · #762 + #673 (#672) · #769 · #765 · #761 ·
-#767 · #726 (#725) · #748 · #744 + #746 · #736 (#723/#735) · #739 (#729 Phase 0) ·
-#733 (#669).
+**Merged earlier in v1.28.0 (unreleased):** #750 (#603 slices 2+3) · #757 (#662) · #759 (#751, and transitively #665) · #773 (#699) · #762 + #673 (#672) · #769 · #765 · #761 · #767 · #726 (#725) · #748 · #744 + #746 · #736 (#723/#735) · #739 (#729 Phase 0) · #733 (#669). #750's review is the most instructive of the cycle; see §"Slice 3 reviewed".
 
-**In review:** **#775** (#467) — @DocTpoint was requested 2026-09-21, so this is
-his now, not a queue item; the guard is the deliverable (§"The unified-model guard
-was wrong twice"). **#760** (#758) — my three review points are addressed on
-`a127feb6`, rebased onto `2a4a99b3`; awaiting @DocTpoint's re-review.
+**Closed since that snapshot.** **#775** — merged `b3e5a412`; #467 closed. **#760** — merged `fb44868d`; #758 closed. **#701** — closed by decision; its premise does not hold, see §"#701's premise does not hold". **#809** — merged `fd2a1aa3`; #808 auto-closed.
 
-**Blocked on other people:** **#755** (@weqoocu — the "one PR or two" answer; the
-version bump is three files and we can strip it) · **#701** (a product decision;
-premise refuted, §"#701's premise does not hold") · **#770 / #771 / #772**
-(Dependabot, all three **CI red** — see the next paragraph).
+**Still blocked on other people.** **#755** (@weqoocu) — the version bump is three files and can be stripped; the author has not pushed since the review on 2026-10-05. **#786** (iveteamorim) — CI is green end to end; it waits on a live-provider test.
 
-**The Dependabot trio is red, with a different reason each — and that is now the
-evidence #764 needed:** **#772** (`ai` 6 → 7.0.105) · **#771**
-(`@ai-sdk/anthropic` 3.0.98 → **4.0.56**, a MAJOR: `LanguageModelV4` is not
-assignable to `LanguageModel`, the same spec-v4 mismatch #728 hit) · **#770**
-(TypeScript 5.9.3 → **6.0.3**: `TS2564` on four `main.ts` fields that are
-definitely assigned in the constructor, plus parameter-bivariance errors across
-the settings sections — dozens of sites, not a PATCH-shaped bump).
-`@ai-sdk/openai-compatible` stays held. **These three need the hold recorded in
-`.github/dependabot.yml` rather than explained weekly** — the same shape as the
-existing `eslint` and `brace-expansion` entries, per #765/#769.
+**The Dependabot trio resolved into one PR** — the outcome #764 needed. **#771** (`@ai-sdk/anthropic` → 4.0.56) and **#772** (`ai` → 7.0.105) are **superseded by #786**, which moves `ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai` and `@ai-sdk/openai-compatible` in step to strictly newer versions and removes the `.github/dependabot.yml` hold entry — do not merge them separately. **#770** (TypeScript 5.9.3 → **6.0.3**) stays held on its own: Gate 1 fails on it in CI, and it is a full-codebase type migration, not a PATCH-shaped bump.
 
-**Planning lives in ROADMAP §"v1.28.0 MINOR — Design track"** — scope groups, the
-hardening-before-reader ordering, and the open decisions. This file carries the
-*why* and the *how*, never the window schedule.
+**Planning lives in ROADMAP §"v1.29.0 MINOR — Design track"** — scope groups, the hardening-before-reader ordering, and the open decisions. §"v1.28.0 MINOR — Design track" no longer exists; v1.28.0 shipped and its composition record is CHANGELOG §1.28.0. This file carries the *why* and the *how*, never the window schedule.
 
 ---
 
-## Work list (2026-10-03) — ordered by ROI
+## Work lists — the ROI rule (tier tables archived)
 
-**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction
-cost ranks below a medium-impact one that is measured, because the second ships.
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost
+ranks below a medium-impact one that is measured, because the second actually ships.
+Certainty is how confident we are the fix lands *and* stays landed.
 
-**The queue itself is ROADMAP §"Open decisions"**; what follows is the *reasoning*
-behind its recommendations, which is the part a table cannot carry.
-
-### Tier 0 — decide, do not build
-
-**Five open items are finished work waiting on a call, not on effort:** #783 vs #760
-(the same bug twice), #786 (a completed four-MAJOR upgrade), #775 (four holes in its
-own guard), #781 (implements an unsettled design), and #729 itself. The cheapest
-available progress is choosing.
-
-### Tier 1 — the two bugs with a user watching
-
-**#791** — a Query answer arrives **reasoning-only**: every character sits inside
-`<think>…</think>` and nothing follows the closing tag, so the user sees a collapsible
-block and no answer. Reported on a custom OpenAI-compatible endpoint with a
-reasoning-capable model. **Highest-impact unstarted item: the symptom is a blank
-answer, not a wrong one.** The project already has a reasoning-strip probe
-(`reasoning-strip-probe.ts`), so the first question is whether this is a strip that
-produced nothing or a strip that never ran.
-
-**#792** — saving a query conversation fails because the generated filename contains
-`:`. **The body is empty, but the title names the cause**, so the slug path can be
-checked without waiting for the reporter — do that first, and only then ask for the
-title that triggered it. If the slug generator has no colon filter, the fix does not
-need a reply at all.
-
-### Tier 2 — accept into the window, scoped but not started
-
-**#787** — the source-lemma guarantee assumes a note's filename names a knowledge
-subject. True for `Klotho.md`; false for a meeting note or a log. A real modelling
-defect with a clean boundary, and it sits in the same region as #729's domain axis.
-
-**#468** — Anthropic `createMessageStream` lacks cache breakpoints. Narrow, and #687
-touched that exact client, so the file is warm.
-
-### Tier 3 — diagnosis first
-
-**#703** — a single-file ingest hangs and `cancelIngestion()` cannot abort it. The
-highest impact and the lowest certainty: it needs the reporter's file, and it is
-labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause
-down, then decide.
-
-### Tier 4 — the rest
-
-**#567** · **#676** · **#752** · **#756** · **#668** · **#664** · **#677** · **#701**
-(needs a product decision; premise refuted) · **#785** (defer — it touches incremental
-accumulation) · **#793** (`good first issue`). Design anchors rather than tasks:
-**#330** · **#358**. Measurement research: **#479** · **#480**.
-
-> **Superseded 2026-10-03:** the 2026-09-21 block below is the previous snapshot. Kept
-> for archaeology — do not update it.
-
-## Work list (2026-09-21) — ordered by ROI
-
-**ROI = (impact × certainty) / effort.** Certainty is how confident we are the fix
-lands *and* stays landed. A high-impact item with unknown reproduction cost ranks
-below a medium-impact one that is measured, because the second actually ships.
-
-### Tier 0 — closed since the last planning pass
-
-**#608 closed 2026-09-21** with **#687** — the third of the v1.28.0 chain's gates
-and the one that was a contributor's to ship. Closed against the issue's own six
-acceptance criteria, mapped one by one in the closing comment, and the three
-"possible options" not taken (no note-wide image cap, first-frame GIF only, no
-analysis cache) were named as decisions rather than left to read as gaps.
-
-Earlier in the window: **#603** with #750, **#662** with #757, **#751** with #759
-(carrying **#665**), **#672** with #762 + #673, **#699** with #773, **#725** with
-#726.
-
-### Tier 0′ — the v1.28.0 chain's head is now unblocked
-
-**#729 Phase 1** (M0 co-citation projection) was hard-blocked on #603 by design: a
-reader's acceptance metric is meaningless while the write path's contract does not hold.
-**All three gates are now open** — #603 ✅, #662 ✅, #608 ✅ (the last one was not a
-gate on Phase 1 but it was the window's other feature) — so **Phase 1 is the
-highest-ROI substantive work left in the window and nothing is ahead of it.**
-
-Read `## Design record — cross-source relations (#729, v1.28.0)` for the phase plan and
-the two corrections made after the issue was written — in particular that
-**`RELATED_BUDGET.siblings` must not be read until Phase 2**, since it is 3/3/2/1/3 while
-today every granularity gets a flat 3.
-
-### Tier 1 — unblock the queue (no new work for me)
-
-| Item | What it waits on | Effort |
-|---|---|---|
-| **#775** (#467) | **@DocTpoint, requested 2026-09-21.** Gate 1 green, closes #467. Nothing left on our side — the request is filed and the guard's two false negatives are described on the PR | none |
-| **#760** (#758) | **@DocTpoint's re-review.** All three points addressed on `a127feb6`, rebased onto `2a4a99b3`, Gate 1 at 312 files / 4361 tests. My reply records that one of the three was *his* question being right about the report and me being wrong about it | none |
-| **#755** (@weqoocu) | The author, for the "one PR or two" answer. The version bump can be stripped by us — three files (`manifest.json`, `package.json`, `CHANGELOG.md`) | small |
-| **#701** (@weqoocu) | A product decision. The premise is refuted — see §"#701's premise does not hold" | none |
-| **#770 / #771 / #772** | Nothing — they are red on purpose. What is owed is a `.github/dependabot.yml` entry per hold, with the reason, so they stop arriving weekly without context | small |
-
-### Tier 2 — the v1.28.0 feature track (the window's purpose)
-
-Dependency-ordered; each is blocked by the one before it.
-
-1. ✅ **#603** — slices 2+3 landed in **#750**; the issue is closed.
-2. ✅ **#662** — landed in **#757**; the page index is held per file and the issue is closed.
-3. ✅ **#608** — landed in **#687**; closed 2026-09-21.
-4. **#729 Phase 1** (M0 co-citation projection) — **unblocked, and the head of the queue.** Nothing precedes it now.
-5. **#729 Phase 2** + **#664 together** — *"they ship together"*: #729 adds Related entries while #664 says those lists already grow ~2 per source and are never pruned. Designed separately, one raises the ceiling while the other leaves the floor open.
-6. **#729 Phases 3–6**, then **#668 + #752 together** — #668 restructures the settings tab and #752 is the sibling bug (the panel also jumps back to the top), so fixing the scroll before the restructure means doing it twice. #729's toggle placement is also gated on #668.
-
-### Tier 3 — user-facing bugs worth a PATCH
-
-| Item | Why it ranks here |
-|---|---|
-| **#703** — ingest hangs indefinitely on one file, `cancelIngestion()` cannot abort it. **Highest impact, lowest certainty.** The v1.27.2 release notes already carry it as a Known Issue, it needs the reporter's file, and it is labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause down, then decide whether it is this window's |
-| **#468** — Anthropic `createMessageStream` lacks cache breakpoints. Narrow and well-scoped, and **#687 has just touched that exact client** (`anthropic-sdk-client.ts`), so the file is warm | 
-| **#763** — `writeFileWithIntent` returns `void`, so a skipped lint write is logged as a fix that happened. Review scoped it out of #750; scope is 8 production declarations plus ~20 test doubles |
-| **#676** · **#567** — real bugs with narrow reach. #567 needs reading before it can be ranked |
-| **#752** · **#756** — UX. #752 is coupled to #668 above; #756 (the Query panel's conversation crowding out the layout) is independent | 
-
-### Tier 4 — backlog and design
-
-**#764** is now backed by evidence rather than a hunch: three Dependabot PRs, three
-different failure modes (#772 spec-v4, #771 the same mismatch in the Anthropic SDK,
-#770 TS 6's definite-assignment and variance tightening). It is a coordinated
-upgrade, not a bump.
-
-**#701** awaits a product decision, not code: it writes a marker into the user's own
-notes, and §“#701 — the premise does not hold” below records why the two scenarios it
-cites are already handled. **#330 / #358** are design anchors rather than tasks.
-**#479 / #480** are measurement research. **#91, #112, #142, #168, #184, #220, #285,
-#295, #317, #326, #467, #468, #503, #568** are unstarted enhancements on older
-milestones and should be re-triaged at the next planning pass rather than carried
-indefinitely — **with one correction that is owed now: #568's milestone is
-`v1.27.x PATCH` and it belongs on `v1.28.0 MINOR`**, since the write-side domain axis
-is a MINOR-track design item and it is the prerequisite research for #729.
-
-**Open PRs (2026-09-21):** **#775** (#467, review requested) · **#760** (#758,
-awaiting re-review) · **#755** · **#701** · **#770 / #771 / #772** (all red, see
-Tier 1) · plus **#774** and **#687** merged this round.
-
-**Newly filed, unstarted:** **#763** — `writeFileWithIntent` returns `void`, so a
-skipped lint write is logged as a fix that happened. Needs a return value. **#764**
-— the coordinated AI SDK v7 upgrade, now with three red PRs behind it.
-
-> **Superseded 2026-09-17:** the 2026-09-16 block below is the previous snapshot.
-> Kept for archaeology — do not update the old block.
-
----
+**The queue itself is ROADMAP §"Open decisions".** The tier tables here were that queue's
+ancestor. The two dated copies disagreed with each other within two weeks. They also
+disagreed with the milestones. They are condensed in [Appendix B](#appendix-b--session-log-dated-blocks-verbatim),
+with their reasoning intact. They get the same rule the pre-release snapshots got: a stale
+"Next:" list reads as current.
 
 ## Superseded snapshots (2026-09-05 → 2026-09-15)
 
-Three pre-release snapshots used to sit here — the v1.27.2 ship day, the v1.27.1
-ship day, and the wave-C merge — each with its own "Next:" list. They are
-removed rather than archived in place, because **the per-version composition
-record is canonical in [CHANGELOG.md](./CHANGELOG.md)** and a stale "Next:" list is
-worse than no list: it reads as current.
+Three pre-release snapshots used to sit here: the v1.27.2 ship day, the v1.27.1 ship
+day, and the wave-C merge. Each had its own "Next:" list. They are removed, not archived,
+because **the per-version composition record is canonical in
+[CHANGELOG.md](./CHANGELOG.md)**. A stale "Next:" list is worse than no list. It reads as
+current.
 
 For what shipped, read CHANGELOG §1.27.0 / §1.27.1 / §1.27.2. For the planning
 view at any point in the past, read ROADMAP's wave sections.
@@ -474,834 +294,31 @@ recording a decision, means the PR is decided — **stop** and ask, do not revie
 | Decision | Pointer |
 |----------|---------|
 | **Schema 三层分离** (Issue #328 Phase 1) — `schema/config.md` owns user domain knowledge, settings panel injects runtime params at call time, engine ships facts in code. Adding user params to schema file = dual-source drift. | ROADMAP §"Schema 三层分离"; AGENTS.md §"Schema 三层分离" |
-| **Complementary memory model** (Issue #358) — wiki pages serve *different* queries than raw notes; do NOT try to make wiki win every query. "Self-improving" = periodic consolidation pass with LLM judgement on past decisions, NOT a smarter ingest path. | AGENTS.md §"Complementary memory model"; ROADMAP §v1.27.0 MINOR Design track |
+| **Complementary memory model** (Issue #358) — wiki pages serve *different* queries than raw notes; do NOT try to make wiki win every query. "Self-improving" = periodic consolidation pass with LLM judgement on past decisions, NOT a smarter ingest path. | AGENTS.md §"Complementary memory model"; ROADMAP §"Design track — the complementary-memory-model items" |
 | **Codex OAuth discipline** — credentials in Obsidian SecretStorage ONLY, never in `data.json` / logs / Notices / docs / test fixtures. Sign-out overwrites secret with empty value + clears in-memory state. SecretStorage requires Obsidian 1.11.4 — `manifest.json`/badges MUST NOT advertise older minimum. | AGENTS.md §"Codex OAuth provider architecture" |
 | **Bedrock SSO/IAM** (v1.27.0 #425) — three auth modes (API key / SSO / IAM), zero AWS SDK, hand-rolled IAM Identity Center OIDC + SigV4, secrets in `karpathywiki-bedrock-sso` / `karpathywiki-bedrock-iam` SecretStorage only. Three isolated constants (`BEDROCK_MANTLE_SIGNING_SERVICE='bedrock'`, content-sha256 switch, portal-host bearer scheme) are the only dials a real-AWS E2E would need. | CHANGELOG §1.27.0 — Bedrock Stage 2 |
 | **Force-disable thinking** (v1.26.0 Batch 6 + PR #411) — Layer 1 `reasoningEffort: 'none'` + Layer 3 400-strip retry via `reasoning-strip-probe.ts` + Layer 4 prompt-level "do not reason step by step". Never write `thinking.type` or `chat_template_kwargs` into provider options — AI SDK zod silently drops them. | AGENTS.md §"Force-disable thinking"; [[feedback_force_disable_thinking_openai_compat_noop]] |
 | **Dead-code-as-docs policy** (v1.26.0 Batch 4) — exported symbols with zero production importers have a **half-life of one release cycle**. Wire or delete before next MINOR ships. `pre-release-gate` Phase 2g enforces. | AGENTS.md §"Dead-code-as-docs policy"; [[feedback_dead_code_as_docs]] |
 | **Settings panel scope rule** (v1.26.0 Batch 2 lesson) — `advanced-section.ts` = LLM sampling + provider overrides ONLY. Bottom `advanced-settings-section.ts` = dedup thresholds + per-source toggles + storage flags. New toggle? Decide FIRST which scope. | AGENTS.md §"Settings panel scope rule"; [[feedback_settings_panel_naming_collision]] |
 | **Architect-level contributors** (v1.26.0+) — currently @DocTpoint with Write role on personal repo; "no push to main" enforced by branch protection, not role. | [[project_architect_contributor_policy]] |
-| **Floor / ceiling asymmetry** (2026-09-16, **proposed** on #729 — not "decided", see that section's status banner) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". **@DocTpoint argues the ceiling should come from the notes too, i.e. M2 rejected rather than deferred; the maintainer agrees and the issue still says "deferred".** | ROADMAP §v1.28.0 Design track; MEMORY §"Design record — cross-source relations" |
+| **Floor / ceiling asymmetry** (2026-09-16, **proposed** on #729 — not "decided", see that section's status banner) — a `source → LLM → wiki` flow means the model always affects wiki quality; that is unavoidable and not worth pretending otherwise. What the architecture controls is *which parts* depend on it. Model-independent mechanisms hold the **floor** (a user on a small local model still gets real structure, and upgrading a model cannot retroactively improve a graph that is meant to accumulate); model-dependent mechanisms exist to explore the **ceiling** and are **deferred, never rejected** — closing that door is its own defect. `docs/MODEL-GUIDE.md` already commits to the same asymmetry from the model side: "instruction-following quality matters more than raw IQ for the extraction task". **@DocTpoint argues the ceiling should come from the notes too, i.e. M2 rejected rather than deferred; the maintainer agrees and the issue still says "deferred".** | ROADMAP §"v1.29.0 MINOR — Design track"; MEMORY §"Design record — cross-source relations" |
 
 ---
 
-## Design record — cross-source relations (#729, v1.28.0)
-
-> ### ⚠️ STATUS: PROPOSED, and the design thread is OPEN
->
-> **This section is not a settled design and must not be read as one.** It was written
-> 2026-09-16 and for four days said it was "converged with the maintainer"; that was
-> **false when written** — #729's request for dissent went out at 10:42, this was
-> recorded at 11:19 and merged at 11:23, and the first reply to the request arrived two
-> days later.
->
-> **@DocTpoint's objection of 2026-09-18 is the substantive reply, and it is still
-> open.** It corrects four of the measurements below, shows that acceptance criterion 1
-> cannot fail, and measures that M0 selects by tie-break rather than by signal. The
-> maintainer's answer of 2026-09-23 accepts the corrections and the M0 defect, and
-> leaves the sequencing question (reader before graph) as a decision. **Nothing in the
-> implementation plan below should be built on before that thread concludes.**
->
-> The four measurement-provenance corrections are applied in §"Measurement provenance"
-> below. They were propagated wrongly here and into #781's PR body; the originals were
-> documented honestly in the source files and the error was mine in transcription.
-
-Recorded 2026-09-16 as a proposal. The planning window lives in
-ROADMAP §"v1.28.0 MINOR — Design track"; this section is the *why* and the *how*.
-
-> **Start here if you have no context.** Read `### The measurement` and
-> `### Root cause` first — they are the whole reason this work exists. Then
-> `### Three mechanisms` for the design, and **`### Implementation plan
-> (ordered phases)` to build it**. Everything after that is rationale and
-> guardrails. The issue is #729.
-
-### Measurement provenance (corrected 2026-09-23)
-
-Four figures in this record were attributed wrongly, and the error was mine in
-transcription — the source files documented them honestly. @DocTpoint's vocabulary:
-**"stock"** is unmodified upstream; **"local stack"** is his patched build
-(deterministic Related sections capped at five, an ingest-order picker, a local
-micro-embedding for dedup).
-
-| Figure | Actually from | Holds on `main`? | Can it carry weight? |
-|---|---|---|---|
-| ~95 % of edges intra-source; 9 in 10 pages with no cross-source incoming link | seen on **stock** code in July 2026, again in the rebuild | **yes** | **load-bearing** — it is the premise of #729, and it survives the regime change |
-| Arm C lost 3 of 5 questions | query path, **stock** code | **yes** | **load-bearing** — and it lost at the **lexical seed stage**, wrong seeds and not missing paths |
-| B ≥ A (wiki pages retrieve at least as well as raw notes) | local stack for the corpus | direction only | motivates the work; **too small to justify a default-on change** |
-| M0 re-measured (tie-break behaviour) | local-stack vault, M0 as specified, no model | mechanism yes, numbers approximately | **load-bearing** for how M0 behaves; on `main` there are more links per page, so somewhat fewer ties |
-| 374 dead related entries (5 %) | **local stack only** | **no** | **not** a criterion-4 baseline for a stock build |
-| Related cap of five, zero violations | **local stack only** | **no** | says nothing about `main`'s shaping — `main` has no cap at all |
-
-### The three findings that reopen the plan
-
-**① Acceptance criterion 1 cannot fail.** M0 creates cross-source edges by definition, so
-the intra-source share must fall whether the pairs are useful or not — measured 96 % →
-56 % on his vault. It is a restatement of what the mechanism does, not a test of it.
-Success has to be measured at the reader.
-
-**② M0 decides by tie-break, not by signal — and Phase 1 shipped a biased tie-break.**
-Re-run on the full rebuild with raw count and path-ordered ties: **80 % of the top-3 cuts
-fall inside a group of equally scored candidates**, median 12 in the group; **79 % of the
-chosen entries rest on a single shared target**, and one broad hub alone generates 16.5 %
-of all candidate pairs. Titles beginning with "A" are 9.1 % of pages but **17.1 % of the
-chosen entries**. The source of the bias is `co-citation.ts`'s tie-break, which the PR
-describes as a virtue — a **repeatable arbitary cut is worse than a random one**, because
-it is repeatable *and* systematically biased. Adamic-Adar damping reduces the ties
-(95 % → 84 %) without removing them. A later rebuild (~100 notes) reproduces the shape.
-
-**③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is
-unchanged, so the extractor keeps answering the intra-source question it was asked. And
-the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141`
-pushes them to `unanswered` and then writes them, so they land as dead links. A
-prior-driven path is therefore already running, in the open, **unmeasured**. In the
-control run, 79 % of unresolved Related targets had never been a candidate.
-
-Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**;
-**criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a
-world-knowledge one); and **`keepFrom` keeps existing entries in front
-(`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an
-existing vault without a migration — Phase 2's pass conditions are not testable on a
-rebuild until that is decided.
-
-### Where the analysis lives — and the two corrections made since
-
-**The measurement, the root cause, the three mechanisms, the budget table, the
-allocation algorithm, the definition, the rejection of embeddings and the acceptance
-criteria are all in [issue #729](https://github.com/GD4AI/obsidian-llm-wiki/issues/729).**
-It was written as the design document and is the canonical statement of them. They
-were mirrored here for several rounds and had already begun to diverge — this copy
-carried none of the corrections below and the issue carries none of the phase status
-that follows. One fact, one place: **read the issue for the design, this section for
-what changed afterwards and what is left.**
-
-Two corrections were made here after the issue was written, and would otherwise be
-lost:
-
-- **Two concerns, not three of a kind.** `GRANULARITY_FIX_LIMITS` and the `?? 5`
-  defaults are **extraction** limits — how many entities/concepts to ask for, read by
-  `getGranularityInstruction` and `getGranularityFixLimits`. `SIBLING_CAP` caps
-  **Related list entries**. Both are granularity-keyed and nothing else about them is
-  the same, so they are two tables in `constants.ts`, not one.
-- **The `?? 5` count was 4, not 2** — two in `getGranularityInstruction` (`:209`,
-  `:210`) and two in `getGranularityFixLimits` (`:226`, `:227`). Replacing only the
-  documented pair would have left two orphaned defaults, the exact scattering the
-  constant exists to remove.
-
-And one claim in the issue that did not survive contact, recorded here so Phase 2 does
-not re-derive it: **`RELATED_BUDGET.siblings` must NOT be read yet.** It is 3/3/2/1/3
-where today every granularity gets a flat 3, so consuming it is not
-behaviour-preserving. Phase 0 shipped it unread on purpose; Phase 2 owns it.
-
-**The budget table and the five-step allocation algorithm are in the issue** under
-§"1. An adaptive Related budget" and §"2. Reserved allocation, with backfill". Kept
-there rather than mirrored: they are the specification Phase 2 implements, and a copy
-here would be a second place to update when it changes. The one property worth
-carrying at this level is that **the cross-source column is a ceiling, never a
-quota** — a page with no cross-source candidates is not made emptier by the feature.
-
-### Implementation plan (ordered phases)
-
-Each phase is independently mergeable and testable. **Do not start phase N+1
-before phase N's pass condition holds.** Phases 1–2 are the feature; 3–4 make it
-useful and shippable; 0 is a prerequisite; 6 is what decides whether anything
-model-dependent is ever opened.
-
-**Phase 0 — centralise the ceilings (no behaviour change). ✅ DONE 2026-09-17**
-
-- Moved `SIBLING_CAP` (`core/related-shaping.ts:67`) → `RELATED_SIBLING_CAP`, and
-  `GRANULARITY_FIX_LIMITS` + **four** (not two) `?? 5` literals →
-  `EXTRACTION_LIMITS` + `CUSTOM_EXTRACTION_LIMIT_DEFAULT`, all in
-  `src/constants.ts`. No re-export from the old homes; both files now import.
-- Added `RELATED_BUDGET` — granularity-keyed, **shipped unread on purpose**.
-- Updated the single importer (`__tests__/core/related-shaping.test.ts:3`).
-- **Pass condition met:** Gate 1 green, 4170/4170, **zero snapshot or fixture
-  churn** — the phase is behaviour-identical by definition, so churn here would
-  be a bug rather than an update.
-- **`siblings` must NOT be read yet.** It is 2 for `coarse` and 1 for `minimal`,
-  where today every granularity gets 3, so consuming it would not be
-  behaviour-preserving. It is wired in Phase 2, where the change is intended,
-  measured and tested — Phase 0's zero-diff condition forbids it here.
-
-**Phase 1 — M0, the co-citation projection.**
-
-- Build the projection from the graph `core/build-graph.ts` already produces:
-  for page `P`, candidates are pages sharing ≥1 outgoing target with `P`, ranked
-  by shared-target count, **ties broken by path** (project determinism).
-- Exclude self, anything already in the note-grounded list, and anything the
-  vault resolver rejects.
-- Wire it in as a new **optional** dep on `shapeRelatedLists`, so every existing
-  unit test keeps compiling untouched:
-  ```ts
-  candidates?: (self: string, exclude: ReadonlySet<string>) => string[]
-  ```
-- Run at **write time** (the open question on write-vs-query is resolved in
-  favour of write time for this phase) so the edges persist and PPR gets the
-  cross-source reach for free rather than re-deriving it per query.
-- **Pass condition:** new unit tests for the projection (sharing, ranking order,
-  tie determinism, exclusion) plus the existing suite green **with the dep
-  absent**. **Then re-measure the 95 % figure on a rebuild.** If this phase alone
-  does not move it, stop — the diagnosis is wrong, not the mechanism.
-
-**Phase 2 — allocation (reserved + backfill).**
-
-- Implement the five-step algorithm above inside `shapeRelatedLists`.
-- Log both the truncation count and the cross-source count; the acceptance
-  criteria are unmeasurable without them.
-- **Pass condition:** tests for (a) the reservation holds when candidates exist,
-  (b) freed slots return to note-grounded when they do not, (c) totals never
-  exceed the tier, (d) an orphan still gets its siblings before anything else.
-
-**Phase 3 — M1, local window ranking.**
-
-- Call `selectCandidateWindow({ name, context: item.summary }, vaultPool, K)`,
-  where `vaultPool` is `getExistingWikiPages`' output and `K` is the tier's
-  **cross-source budget** (30 is the window's own ceiling, not the budget).
-- `wiki-engine.ts:1224` is the call site that must supply the provider.
-- **Pass condition:** tests against a stub pool; determinism (same input → same
-  output, stable ordering); and **no additional LLM call enters the path**
-  (assert the client is untouched).
-
-**Phase 4 — settings toggle + docs.**
-
-- Toggle defaults **on**. Decide its panel **before** writing code:
-  content-generation behaviour ⇒ the bottom Advanced panel, per the
-  Settings-panel scope rule.
-- 11 locale strings, 11 READMEs, CHANGELOG entry under the MINOR.
-- **Pass condition:** Gate 1 green; `pnpm lint:tools-bot` clean; i18n parity.
-
-**Phase 5 — companion: multi-hop query decomposition.**
-
-- Extend `generateQueryKeywords`'s contract from `Promise<string[]>` to
-  `Promise<{ keywords: string[]; subqueries?: string[] }>` and update its callers
-  and tests — that signature change is the whole cost of this phase.
-- Decompose **only** when the model marks the query multi-hop.
-- **Pass condition:** a simple question is provably not decomposed (fixture
-  assertion); a compound one is; the union-of-seeds path is covered.
-
-**Phase 6 — measurement, and the only thing that opens M2.**
-
-- Rebuild a comparable vault, re-measure the intra-source share, re-run the five
-  multi-note questions, and check the dead-related-entry count against the **rebuild's**
-  own control, not against the 676 / 870 control-run figure.
-- Publish the numbers against the staged acceptance criteria below. **M2 (or an
-  embedding) is opened by these numbers, never by preference.**
-
-### Definition and companion
-
-- **"Cross-source" = not named by this note's own extraction.** Chosen because
-  `getExistingWikiPages` does not expose per-page `sources`; a provenance-based
-  definition is more precise and more expensive, and should not be paid for
-  before measurement says it matters.
-- **Companion: multi-hop query decomposition.** Arm C's three losses are
-  multi-note (compound) questions. Decompose into sub-queries, retrieve per
-  sub-query and union the seeds — **only for queries classified as multi-hop**;
-  over-splitting a simple question is the classic IR regression. The classifier
-  folds into the existing Stage 1.5a call (`generateQueryKeywords`, which already
-  makes an LLM round-trip on this path) so the decision costs no extra latency.
-  Kept in #729 rather than split out: same acceptance harness.
-
-### Why not embeddings
-
-`Zero-embedding graph retrieval` is a load-bearing identity claim — README badge
-line, SEO intents ("Obsidian RAG without embeddings"), the competitor comparison
-table, README `:229` ("Most 'AI search' plugins … embed them in a vector DB. We
-don't."), and `docs/MODEL-GUIDE.md` ("Embedding endpoints are irrelevant — we
-don't use embeddings"). It is also a **model-dependent dependency paid by every
-install**, including users who chose this plugin because it runs fully local —
-the exact asymmetry the floor/ceiling principle warns about. Reopen only if the
-lexical residual proves material *after* the floor is raised, and let the staged
-acceptance criteria make that visible.
-
-### Acceptance criteria (staged attribution)
-
-1. **M0 only** — intra-source edge share < 95 % on a comparable rebuild (the
-   model-independent floor).
-2. **M0 + M1** — the further drop, plus the five multi-note questions improving
-   in arm C.
-3. **M2 justified only if** 1–2 leave the multi-note questions unfixed, or the
-   residual gap is demonstrably semantic (*"how knowledge evolves over time"*
-   against a page titled *Consolidation kernel*).
-4. Dead related entries do not increase. **The baseline is *not* 676 / 870** — that is
-   an earlier 136-note alphabetical control run on stock code, 25 % of all Related links.
-   The rebuild's own number is **374 on 2,135 pages (5 %)**, and part of that residual is
-   intended (frontier names are deliberately kept). Both figures come from
-   @DocTpoint's vault and neither is a `main` baseline for a stock build.
-5. No regression on single-note questions; the `related-shaping` /
-   `related-sections` suites stay green.
-6. Gate 1 green; no settings-schema break; a disable switch exists and defaults
-   **on** (a deliberate default change ⇒ MINOR).
-
-### Files to touch
-
-`src/constants.ts` (budget table) · `src/core/related-shaping.ts` (import +
-allocation + candidate hook) · `src/wiki/system-prompts.ts` (table out, `?? 5`
-replaced) · `src/wiki/wiki-engine.ts:1224` (pass the candidate provider) ·
-`src/__tests__/core/related-shaping.test.ts` (import + reservation / backfill /
-determinism) · `src/texts/*.ts` ×11 (toggle copy) · README ×11 + CHANGELOG.
-
-### Coupling constraints
-
-Two constraints make the build order non-negotiable, and both were found late —
-during the 2026-09-16 planning pass, not during design. They are recorded here
-because the *reason* is what a future reader needs; the schedule table itself is
-in ROADMAP §"Phase schedule".
-
-- **#729 ships with #664.** #729 adds entries to the Related lists; #664
-  observes that those lists already grow about two per source and are never
-  pruned. Built separately, #729 raises the ceiling while #664 leaves the floor
-  open — and the measurement that would catch it (Related length over a rebuild)
-  is precisely the one each change would blame the other for.
-- **#729 sequences after #668, not parallel to it.** #729 introduces a settings
-  toggle defaulting on; #668 restructures the settings tab. Landing the toggle
-  first means re-homing it twice.
-- **#603 is a hard prerequisite for every sub-phase past 0.** The
-  floor-before-ceiling argument applies twice: a faster reader over a store whose
-  write-gate contract does not hold moves the error rather than removing it, and
-  the phase-1 acceptance criterion (intra-source share) is meaningless if the
-  edges it measures can be written by six paths the design does not account for.
-
-### Open questions
-
-- Reserved vs additive (we argue reserved-with-backfill).
-- The tier numbers (first proposal).
-- M0 at write time or query time.
-- Whether the ceiling deserves more than M2 — for instance a periodic
-  consolidation pass over accumulated pages (the #358 kernel). This design
-deliberately does not close that door.
-
----
-
-## Design record — write path and page index (#603 / #662, v1.28.0)
-
-**Design pass, 2026-09-16. No implementation.** Both issues describe a surface
-problem accurately and enumerate it inaccurately; the enumeration is what decides
-the design, so it was re-measured from source rather than trusted.
-
-### The gate bundles four concerns, not one
-
-`createOrUpdateFile` (`wiki/wiki-engine.ts:1873-2045`) is documented as "single
-write gate with pollution defense". It actually does four separable things, and
-callers want different subsets of them:
-
-| # | Concern | Where |
-|---|---|---|
-| 1 | Pollution correction (display-name, path-prefix, `sources` field) | `:1884-1932` |
-| 2 | Heading + provenance normalization (`normalizeHeadingSpacing`, `normalizeProvenanceMarkers`) | `:1940-1945` |
-| 3 | IO with retry + path resolution (3 attempts, directory scan, full scan) | `:1947-2045` |
-| 4 | Notification + cache invalidation (`onFileWrite`, `invalidatePageCaches`) | 5 exit points |
-
-The gate offers "all four" or "none", and nothing in between is reachable.
-
-### The decisive evidence is already in the codebase
-
-`wiki-engine.ts:845-851` documents a **deliberate** bypass: the PDF sidecar is
-written via the vault directly because going through the gate "would fire
-`onFileWrite` + `invalidatePageCaches`, which could trigger auto-ingest cascades if
-the source folder is watched."
-
-That comment is the design conclusion, written early by whoever needed it first:
-**one gate for every write is the wrong shape**, because concern 4 is sometimes
-actively harmful. The sidecar wants concern 3 and nothing else.
-
-### Corrections to the two enumerations
-
-`#603` claims six bypassing writers:
-
-- ❌ **`log-writer.ts` is not one.** Its header states the vault calls "live in
-  WikiEngine's tryReadFile / createOrUpdateFile. LogWriter receives these as
-  injected" — it goes *through* the gate. The issue's list has a false positive.
-- ⚠️ **Missed: `lint/fix-runners.ts:133` and `:604` use `vault.adapter.write`** —
-  below Obsidian's own `vault.modify` eventing. The worst mechanism found, and
-  the one with the least in common with the documented contract.
-- ⚠️ **Missed: `wiki-engine.ts:349` (`markPageComplete`)** — the engine writes a
-  wiki page's frontmatter **outside its own gate**.
-- ⚠️ **Missed: `lint/phases/preparation.ts:68`** writes wiki pages (the
-  double-nested-link fix) — same class as the above, listed by the issue only
-  for its log.md sibling at `:82`.
-
-`#662` claims eight direct importers of `getExistingWikiPages`:
-
-- ❌ **`contradictions.ts:37` does not exist** — the file is
-  `contradiction-gates.ts` and calls neither. Measured count: **7**, not 8.
-- ✅ The 5 s TTL is right (`PAGES_CACHE_TTL_MS = 5000`, `constants.ts:55`) and it
-  is invalidated at `:447` plus five gate exit points.
-- ⚠️ **Missed: `wiki-engine.ts:1104` calls the module function directly**, bypassing
-  the engine's own cached wrapper at `:2120`. This is the *same self-bypass
-  pattern* as #603's `markPageComplete`, in a second subsystem — which is the
-  real finding: the engine does not consistently use its own front doors.
-
-### Recommendation — split, do not funnel
-
-Funnelling every write through today's gate is not the fix, for the reason the
-sidecar comment gives. Narrowing the contract alone is also insufficient, because
-five sites genuinely need the guard. The shape that satisfies both:
-
-| Layer | Contents | Who needs it |
-|---|---|---|
-| **`rawWrite`** | concern 3 — retry, path resolution, create-or-update | everything that writes |
-| **`pageGuard`** | concerns 1 + 2 | wiki pages only |
-| **`notify`** | concern 4 | anything the watcher must see; the sidecar **opts out explicitly** |
-
-Each call site then declares its set, and `types.ts:989`'s contract is narrowed to
-what the layers actually guarantee. Tiering the sites:
-
-- **A — real violations** (wiki pages, missing both guard and notify):
-  `link-retarget.ts:185`, `markPageComplete:349`, `fix-runners.ts:133`,
-  `fix-runners.ts:604`, `preparation.ts:68`. **Five sites, four files.**
-- **B — declare `guard: false` explicitly** (source notes, sidecars):
-  `sources-normalizer.ts:247`, `preparation.ts:105`, sidecar `:870/:872`.
-  Their current silence is indistinguishable from an oversight; the declaration
-  is the whole change.
-- **C — out of contract, document and leave** (schema, logs, caches):
-  `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`,
-  `disk-cache.ts:155`, `ensure-welcome-note.ts:161`.
-
-**For #662 the issue's proposal is right and its mechanism is the point:** the TTL
-cache is invalidated *by the writes the ingest itself performs*, so it cannot hold
-during an ingest no matter how many callers use the wrapper. Routing the 7 direct
-callers through the engine accessor is hygiene; the fix is a **run-scoped index
-updated by the writer**, as proposed — the writer knows what it wrote, so it
-should tell the index rather than invalidate it.
-
-### Re-measurement (2026-09-17) — three corrections, and the first slice changes
-
-The design pass above reasoned from the two issues' line numbers. Re-measuring them
-against the source on 2026-09-17, before writing any code, found **three errors** —
-and one of them removes the reason the pass gave for doing tier B first.
-
-| Design record said | Actually | Evidence |
-|---|---|---|
-| `link-retarget.ts:185` is a tier-A violation | ❌ **Not a violation.** `:33` records it as deliberate: the write goes through `vault.process` because the gate normalizes `sources:` and corrects link pollution, which is "appropriate for a generated wiki page, not for someone's own note" | declared, and for a good reason |
-| `sources-normalizer.ts:247` is a tier-B **source-note** write | ❌ **It writes wiki pages** — the file set is `isInFolderScope(f.path, wikiFolder, …)` | `folder-scope.ts:33` |
-| `preparation.ts:105` is a tier-B **source-note** write | ❌ **It writes wiki pages** — it iterates `pageMap`, built from `wikiFiles` | `preparation.ts:34-52` |
-
-**Consequence:** tier B is not "three silent sites" — it is **the sidecar alone, and
-the sidecar is the most-documented write in the codebase**. The pass's stated reason
-for doing B first ("behaviour-preserving, and the declaration is the whole change")
-no longer supports a slice of that shape at all.
-
-### `log.md` proves the gate already spans two file classes
-
-The pass looked at the gate's *callers* only through the issues' lens. Reading them
-directly turns up the strongest argument for splitting:
-
-| Caller | What it writes |
-|---|---|
-| `:283` `indexGenerator.writeFile` | the index — a wiki page, wants **all three** layers |
-| `:292` `logWriter.writeFile` | **`log.md` — not a wiki page** |
-
-So the "single write gate" already serves two file classes, and `pageGuard`
-(pollution correction + heading/provenance normalization) is **harmful for a
-log** — not merely meaningless, which is what this pass first assumed. Slice 2
-measured it: `LogWriter.pageLinks` builds links from real page paths, so a page
-named `concepts布局优化` is written as `[[concepts/concepts布局优化]]` (correct), and
-Pattern B rewrites it to `[[concepts/布局优化]]` — a dead link. That answers the
-pass's first open question by itself: `pageGuard` must be a **separately declared
-layer**, not a superset of `createOrUpdateFile`.
-
-### Corrected tiers
-
-- **A — real violations** (wiki pages, missing both guard and notify):
-  `markPageComplete:349` (the engine writes a page's frontmatter outside its own
-  gate; no deliberate note) · `fix-runners.ts:133` and `:604` (`vault.adapter.write`,
-  below Obsidian's event layer) · `preparation.ts:68` (the double-nested-link fix) ·
-  **`sources-normalizer.ts:247` and `preparation.ts:105`** (the sources-field repair,
-  writing wiki pages). **Six sites, five files.**
-- **B — already declared deliberate, in prose:** the PDF sidecar `:870/:872` (its
-  comment at `:848-852` is the evidence the pass itself cites) and
-  `link-retarget.ts:185` (comment at `:33`). Both want `guard: false`; the sidecar
-  also wants `notify: false`. Making the declaration *typed* rather than prose is
-  the whole change — no behaviour moves.
-- **C — out of contract, document and leave** (schema, caches, welcome note):
-  `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`,
-  `ensure-welcome-note.ts:161`. (`disk-cache.ts:155` is not a vault write.)
-
-### Revised slice plan
-
-Because tier B collapsed, the first slice changes shape: **introduce the three layers
-and the `WriteIntent` type with zero call-site changes**, `createOrUpdateFile`
-becoming the "all three" compatibility entry point. Zero behaviour change is
-provable — the default path must equal today's four concerns one for one — and it is
-what actually establishes the interfaces the later slices consume. Slice 2 converts
-the two prose-declared bypasses into typed intent (the sidecar to `rawWrite` alone;
-`log.md` to `rawWrite + notify`, which **is** a behaviour change and needs its own
-check). Slice 3 takes the six violations one at a time, `fix-runners.ts` last: routing
-`adapter.write` through the gate fires `onFileWrite` + `invalidatePageCaches`, which
-can cascade into auto-ingest.
-
-### Open questions
-
-- ~~Whether `pageGuard` stays inside `createOrUpdateFile` as a superset or becomes a
-  separate declared layer.~~ **Answered 2026-09-17:** separate. `log.md` already goes
-  through the gate and is not a wiki page — a superset would normalize a log.
-- ~~Whether tier B's declaration is a type-level requirement or a call-site option.~~
-  **Answered 2026-09-17:** type-level, as the pass suspected. The new layer entries
-  take `intent` as a **required** parameter; `createOrUpdateFile(path, content)` stays
-  as the "all three" shorthand so the six existing callers change nothing.
-- ~~Whether `fix-runners.ts`'s `adapter.write` sites are deliberate or an old idiom.~~
-  **Answered 2026-09-17:** no comment says either way, so it is an idiom rather than
-  a decision — but the fix carries cascade risk (see the revised slice plan) and is
-  therefore last, not first.
-- **Still open:** whether the sources-field repair sites
-  (`sources-normalizer.ts:247`, `preparation.ts:105`) should *use* the gate or declare
-  `guard: false` because they **are** the guard's repair path. Routing them through it
-  is not circular in effect — after they fix a file the gate finds nothing to do — but
-  it does mean the repair runs the thing it repairs. Decide before slice 3.
-
-### Slice 1 shipped (2026-09-18) — and the race it surfaced
-
-`4f00823f` (PR #748) split the gate into `writeFileWithIntent` / `rawWrite` +
-`wiki/page-write-guard.ts`, with `WriteIntent { guard, notify }` and **no default**
-(a default is how the ambiguity the type exists to remove would return).
-`createOrUpdateFile(path, content)` stays as the all-three shorthand, so the six
-existing callers changed nothing.
-
-**Acceptance was zero behaviour change, and exactly one assertion flipped — which is
-the finding, not a nuisance.** `wiki-engine-ingest.test.ts` asserted a created file's
-content equalled the raw input, which also excluded the `generation_complete` stamp.
-That test was passing on a **race**: `markPageComplete` is deliberately
-fire-and-forget (`void (async () => …)()`), so whether it landed before the caller
-resumed depended on how many async frames the write path took, and the split added
-one. It is now deterministic (5/5 runs). The assertion was replaced with a
-**stronger pair** — content present *and* stamp present — not relaxed.
-
-**That fire-and-forget stamp is a #603-shaped hole in its own right:** "this page is
-complete" is not something a reader may rely on immediately after the write returns.
-Slice 3 owns it.
-
-**Two mutations were run, because pure unit tests cannot see wiring.** Disabling the
-guard call failed exactly 4 wiring tests (`write-gate-layers.test.ts`) while all 10
-pure-unit tests (`page-write-guard.test.ts`) stayed green — the precise split that
-made the #736 gap invisible. Removing `onFileWrite` failed exactly 2. This is the
-#736 lesson applied on purpose rather than rediscovered.
-
-**The `recovered` asymmetry is preserved and encoded**, not silently unified: the two
-recovery paths (NFC/NFD "already exists", exhausted-retries scan) never stamped the
-page while the two ordinary paths did. `rawWrite` returns `'updated' | 'created' |
-'recovered'` so `writeFileWithIntent` can reproduce that exactly. Whether the recovery
-paths *should* stamp is a slice-3 decision.
-
-**A trap worth remembering when extracting regexes:** both pollution patterns carry
-the `g` flag, and `RegExp.prototype.test` advances `lastIndex` on a global regex. The
-inline form was safe only because it rebuilt the literals per call. Hoisting them to
-module scope — the obvious move when extracting to a module — would make every
-**second** write skip its correction. The guard keeps them inside the function, and a
-test calls it four times on the same input requiring all four to correct.
-
-### Slice 2 shipped (2026-09-18) — and the log turned out to be corrupted
-
-**The pass's description of `log.md` was wrong in a way that mattered.** It said the
-guard was *meaningless* for a log. Measuring before changing found it is
-**harmful**: `LogWriter.pageLinks` builds links from **real page paths** (stripping
-`wiki/` because `[[wiki/concepts/X.md]]` renders dead), so a page genuinely named
-`concepts布局优化` is written as `[[concepts/concepts布局优化]]` — correct as written.
-Pattern B cannot tell that from LLM-emitted duplication and rewrote it to
-`[[concepts/布局优化]]`, a dead link. **The fix is a bug fix, not a tidy-up** — which
-is why the test asserts both directions rather than a single `toContain`.
-
-Shipped: `LOG_WRITE_INTENT { guard: false, notify: true, create: true, cancel: 'ingest' }`
-at the LogWriter injection (`log.md` keeps `notify` — only the guard is dropped) and
-`RAW_WRITE_INTENT { guard: false, notify: false, create: true, cancel: 'ingest' }`
-at the PDF sidecar, whose prose bypass at `wiki-engine.ts:845-851` is now a
-declaration. Routing the sidecar through `rawWrite` also gave it the retry and the
-NFC/NFD recovery the two direct vault calls lacked.
-
-**`guard: false` drops three corrections, not one** (corrected 2026-09-20 in review).
-The paragraph above justifies only the path-prefix repair; the layer also carries
-display-name correction and sources normalization, and both are dropped here too.
-Neither was ever wanted on the log — it has no display name, and its `sources` line
-is a projected link list rather than the note's — so the narrower edit is the correct
-outcome rather than a side effect. Recorded because "the guard is harmful for one
-reason" and "the guard does three things, all unwanted here" are different claims,
-and only the second is checkable.
-
-**A property that had never been tested:** the sidecar's **not-notify** behaviour is
-the entire reason the bypass exists (the comment warns of auto-ingest cascades), yet
-the existing tests asserted only file contents. Giving the sidecar `notify: true`
-would have broken nothing. It now fails one test.
-
-**`link-retarget.ts:185` is deliberately out of scope and must stay that way**: it
-receives an injected `process` and never touches the engine's layers, so its
-"declaration" is a type-level statement, not a call-site change.
-
-### Slice 3 reviewed (2026-09-20) — three findings, two of them mine to own
-
-@DocTpoint reviewed the slice and returned CHANGES_REQUESTED with **two shipped-
-behaviour findings and one test finding**. The slice's own three mutations passed
-before he looked, which is the useful part of the record: **mutations cover the
-wiring, and neither of these was a wiring question.**
-
-**1. `markPageComplete` gained `vault.create` and could resurrect a deleted page.**
-My reasoning had been that the old form's `process` callback discarded its `data`, so
-there was no atomicity to lose. That part is true and irrelevant: `rawWrite` adds
-**three** things, and the third is `create`. The old form resolved a `TFile` first and
-did nothing when it was gone; the new one writes it back.
-`markPageComplete` is deliberately un-awaited, so it races the cancel cleanup that
-deletes the page it is stamping — and a stamp that can create writes the page back
-with `generation_complete: true`, which is precisely the state #582/#583 exist to
-prevent. Which side wins is undetermined, so it reproduces intermittently.
-**Fixed by making it a declared layer**: `WriteIntent` gained `create`, every existing
-intent is `create: true`, and `STAMP_WRITE_INTENT` is `create: false`. `rawWrite`
-returns a new `'absent'` outcome rather than an error — nothing happened, on purpose.
-His probe is now a test, as given, with the interleaving pinned rather than timed.
-
-**2. The lint fixers' writes were governed by the ingest's cancel button.**
-`writeFileWithIntent` opened with `checkCancelled()`, which read `abortController` —
-the **ingest** controller. The engine holds two (`lintAbortController` beside it), and
-they overlap because `lint-wiki` is registered with no `isIngesting()` guard. So
-cancelling an ingest aborted an overlapping lint's writes, and cancelling the lint did
-not touch its own. `runRetagViolations` re-throws AbortError deliberately, so the run
-tore down with earlier batches already written and the user was never told.
-**Fixed the same way**: the cancel owner is now a declared field —
-`cancel: 'ingest' | 'lint' | 'none'` — and `LINT_WRITE_INTENT` names `lint`. The check
-had been implicit since it was written, which is exactly the ambiguity the type exists
-to remove.
-
-**3. The contract test's waiver list could not match on Windows.** The waiver is
-`'core/disk-cache.ts'` but `relative()` yields `core\disk-cache.ts` on win32, so the
-lookup missed, `core/disk-cache.ts` stopped being excluded, and both assertions failed
-there — on the one platform CI never runs. **A guard whose value is that it runs
-everywhere must normalise the paths it compares.** Now `relPosix()`.
-
-**Two non-blocking notes, both acted on.** The comment stripper cut each line at its
-first `//` without tracking string literals, so a bypass written after an inline URL
-was invisible — a scanner whose failure mode is "silently reports a clean tree". It is
-a one-pass quote-aware walk now. And `write-gate-layers.test.ts` claimed to protect
-"pollution correction outside the content folders" while writing through
-`createOrUpdateFile` — which production **no longer uses for the log**, the `LogWriter`
-being its sole writer with `guard: false`. So the behaviour it claimed to protect was
-gone and the test still passed. Re-pinned on a path that still takes the full gate,
-with the log named as the counter-example.
-
-**The generalisable part:** a test can be written to protect a *property*, pass for a
-long time, and then be protecting a *spelling* — the same failure as #751's build test,
-found in the same week, in a test written by two different people. The check that
-catches it is asking what the assertion would still pass on.
-
-**Lesson worth keeping: "this does nothing useful" and "this is harmful" are
-different claims, and only the second justifies urgency.** The design pass made the
-first; one measurement upgraded it to the second.
-
----
-
-## Design record — the streaming fallback classifies by URL, not by outcome (#741, v1.28.0)
-
-**Analysis 2026-09-18, from source + history. No implementation.** @aisahpA measured
-the preflight behaviour on the shipped `c709a162` and raised three points; two of
-them are corrections to what #736 shipped, and one of those contradicts a comment
-#736 itself wrote.
-
-### The mechanism as built
-
-```
-streamWithFallback(url, init)
-  ├─ isLocalBaseURL(url)?  → requestUrl   (no CORS, no streaming: whole body at once)
-  └─ else try window.fetch → real streaming
-            catch TypeError → requestUrl  (silent, buffered)
-```
-
-### First principle: the classifier is a proxy for the wrong variable
-
-The capability actually required is **"this method + URL + *header set* is permitted
-cross-origin by this server"** — a server-side property computed per request. The
-code decides on `isLocalBaseURL(url)` — a client-side property of the host.
-
-That proxy was approximately true when it was written (`6be9258d`, the AI-SDK v6
-migration): the observed population was **bimodal** — cloud hosts returned `ACAO`
-(`*` or `app://obsidian.md`), local servers returned nothing — and a bimodal
-population hides proxy errors. Introduce a third kind (a cloud host that is *not*
-permissive about `app://obsidian.md`) and the proxy is simply wrong.
-
-**Extending the host list cannot fix it, and not because of maintenance burden — it
-is a type error.** A preflight is triggered by non-safelisted headers and succeeds
-only if the server echoes *every* name from `Access-Control-Request-Headers`. So the
-outcome is a function of `(host, method, header set)`. #736 turned the header set
-into **user data** via the free-form custom-headers field. A table keyed on host
-cannot represent a function of two variables — it structurally cannot cover the case
-#736 introduced, on any host.
-
-The only faithful representation is **the observed outcome**: try once, remember per
-host for the session, skip the gamble afterwards. That also self-heals if a host
-starts answering `OPTIONS`, with no list to maintain.
-
-### The finding that explains why this took so long: in production the fallback is unobservable
-
-Three independent layers each hide it:
-
-| Layer | What it hides | Evidence |
-|---|---|---|
-| `streamWithFallback` catches `TypeError` deliberately | the error itself | `:265` — "Successful fallback path is silent (no console.warn) — it would spam logs on every request" |
-| every diagnostic is `console.debug` | the trace | `:275/:281/:283/:289` |
-| the production build **neutralises** `console.debug` | even that | `esbuild.config.mjs:15` — `const prodBanner = prod ? 'console.debug = function() {};\n' : ''`, injected as main.js's first statement |
-| `requestUrl` is a main-process IPC call | the request | aisahpA: bridge requests do not appear in DevTools Network at all — **an empty Network panel is not evidence nothing was sent** |
-
-So in the shipped plugin a CORS-blocked provider degrades from streaming to buffered
-leaving **no log, no error, and no Network entry** — the only observable is the ~20 s
-empty pane. The silent-fallback decision was correct for the population it was written
-for (local servers, where the fallback is *expected and total*, so a warning would be
-noise on every single call) and was inherited unchanged by a population where the
-fallback is a **capability downgrade**. One code path, two meanings.
-
-This is the same class as MEMORY's "an `optionalDependency` a required feature needs
-is a silent capability hole": the degradation is designed, the *silence* is the bug.
-
-### The two branches differ in header semantics, not only in streaming
-
-| | `window.fetch` | `requestUrl` |
-|---|---|---|
-| stack | renderer, browser-arbitrated | main process over IPC |
-| CORS | enforced | **not applicable — not a browser fetch** |
-| forbidden headers | dropped | unaffected |
-| `User-Agent` | **overridden by Chromium** | sent as supplied |
-| visible in DevTools Network | yes | **no** |
-
-**The `User-Agent` premise in #736 is inverted, and so is its stated reason.** #736's
-comment says the header "is a fetch-forbidden header". It is not — the Fetch standard
-removed `User-Agent` from the forbidden list (`whatwg/fetch` `dab09b0`, "Allow
-User-Agent to be set, but not omitted"); **Chromium implemented that and then reverted
-it** (`chromium/chromium` `079b3a3` reverts `c7d5f1c6`, bug 40450316), with
-the chromestatus entry to allow it still at intent-to-prototype. So the correct
-statement is: *spec-permitted, Chromium-policy-suppressed* — which means the plugin's
-`karpathywiki/<version>` identity **reaches the wire only on the `requestUrl` branch**,
-i.e. exactly on the hosts that are *not* the default. #736's purpose included plugin
-identity; on the preferred branch it never arrives. aisahpA measured both to
-Obsidian's UA; the revert explains why.
-
-### The structural limit, stated plainly
-
-`requestUrl` returns a **complete body**; only `window.fetch` exposes
-`response.body: ReadableStream`. CORS is enforced by the renderer. Therefore **on a
-host that blocks CORS, real streaming is architecturally unavailable** — it is not a
-bug to be routed around. The honest goal is narrower: route around CORS to recover
-*identity* and *legible errors*, and **tell the user** streaming is off. Adopting
-`requestUrl` for `opencode` is not a streaming fix; it is a legibility fix.
-
-### Historical precedent — the project has made this call twice already
-
-- `13e57772` (2026-05-15) `fix: CORS for OpenAI-compatible endpoints + Query UX overhaul`
-- `c3bb5c11` (2026-06-05) `fix(llm): rewrite AnthropicClient on requestUrl to fix CORS (Closes #95)`
-
-Both concluded the same way: **`requestUrl` is the escape hatch**. The per-call gamble
-(`streamWithFallback`) arrived later, with the AI-SDK v6 migration, to recover
-streaming where it is available. The current design is therefore the *union* of two
-strategies chosen by a proxy — and **the chooser is the weak link, not either branch**.
-
-### Recommended shape
-
-1. **Decide from the outcome, not the URL** — remember the first CORS `TypeError` per
-   host for the session; later calls skip the gamble. Covers user-added headers, no
-   host list, self-healing.
-2. **Stop degrading silently** — one `console.warn` plus (given the 20 s empty pane) a
-   first-time Notice per host per session. A no-op `console.debug` is not a signal.
-3. **Correct the `User-Agent` claim in code and docs** — either add a non-forbidden
-   identity header (`x-karpathywiki-version`) or state the caveat. The comments #736
-   wrote assert a false reason and must be fixed regardless of the transport decision.
-4. **Keep a preset flag only as a *hint*** for hosts known to answer no `OPTIONS`
-   (`opencode`), never as the mechanism.
-5. **Acceptance criteria** (aisahpA's, adopted): first streamed character within ~1 s;
-   no `[STREAM-FETCH] TypeError` from the second streamed call onward; adding a custom
-   header on `kimi`/`gemini` no longer downgrades to a buffered answer.
-
-### What this changes about #736's regression status
-
-`opencode` failing is **not** a #736 regression — that host never worked. The
-**regression is the free-form header field**: each host's CORS policy is configured
-against a fixed header set, and #736 made that set user-extensible, so **any user can
-now silently downgrade their own streaming on any provider**. Combined with the
-unobservability above, the user gets no way to connect cause to effect.
-
-### Resolution (2026-09-18) — shipped in two steps
-
-**Step 1** (`5f6754f7`) records a cross-origin failure per origin and warns once per
-origin per session, on `console.warn` — the only channel a shipped build can emit.
-`AbortError` and plain `Error` are deliberately not recorded; only a `TypeError` is a
-verdict about the host.
-
-**Step 2** (`e150d139`) gives desktop a streaming transport for these origins:
-`node:https` behind the `Platform.isDesktop` early-exit guard, wrapped as a web
-`ReadableStream` and handed to AI-SDK as a `Response`.
-
-**A fifth transport was rejected on the way, and the reason must not be forgotten:**
-**Electron's `net` module** is the ideal answer on paper — Chromium's network stack,
-therefore proxy-aware *and* streaming — but its documented process list is **"Main,
-Utility"** and a plugin runs in the renderer. That is why `node:https` (which cannot
-see Obsidian's proxy configuration; Electron's docs contrast `net` with the Node
-modules as offering "better support for web proxies") is the only option left.
-
-Because of that gap a failed Node attempt is treated as a verdict about the
-**transport**, not the request: recorded per origin, then `requestUrl` takes over. A
-proxy user therefore lands on exactly the behaviour they had before step 2, paying for
-the discovery once per origin instead of once per call. **This is the pattern to
-reuse** — when a fallback transport has a known environmental failure mode, remember
-the failure rather than predicting it.
-
-**Bot compliance was verified by control, not by reading.** `node:https` is a Node
-built-in so `obsidianmd/no-nodejs-modules` applies. A probe file with three shapes
-produced exactly two reports — the unguarded import and
-`if (!Platform.isDesktop) { import(…) }` — and **none** for the early-exit form
-`if (!Platform.isDesktop) throw` at function start. The rule is sourced from Node's
-own `module.isBuiltin()`, so **`electron` is not covered by it at all**.
-
-**Known limitation, and the reason the issue is closed rather than left open:** mobile
-is unchanged. It has no Node runtime and `net` is main-process only, so streaming on a
-CORS-blocked host is not reachable there — not pending work.
-
----
-
-## Design record — #701's premise does not hold (2026-09-18)
-
-**Decision, not implementation.** #701 writes a `wiki-ingested:` marker into the
-user's own source notes. It is deferred pending a product decision, and this records
-why the deferral is about the premise rather than the code.
-
-### Where the fact can live
-
-"This note has been ingested" is a **derived** fact — an assertion about a
-transformation the plugin performed, not a property of the note. So it can live in
-three places, and the middle one is not a proposal:
-
-| Home | Owned by | Survives a plugin reset | Survives deleting the wiki |
-|---|---|---|---|
-| Plugin state (`data.json`) | plugin | ❌ | ❌ |
-| **The wiki's own artifact** — `wiki/sources/*.md` carrying `contentHash` + `source_file` | plugin | ✅ | n/a |
-| The user's source note (frontmatter marker) | **the user** | ✅ | ✅ |
-
-`buildIngestedHashes()` (`wiki-engine.ts:477`) is documented as *"Content hashes
-already present in the wiki, read from source-page frontmatter"*, and
-`wiki-engine.ts:1775` writes `contentHash` onto every sources page. `scanners.ts:485`
-already uses the same field for source-drift detection.
-
-### Both cited failure modes are already handled
-
-- **"a folder re-run after the batch cache restarts"** — the batch cache is
-  `ingestedHashesCache`, a TTL memoisation. When it expires, `buildIngestedHashes()`
-  **recomputes the set from the wiki pages**. The cache is not the record; the wiki is.
-  Nothing is lost, so nothing re-ingests.
-- **"a user re-adding the same note body under a different name"** — already deduped.
-  `hashBody` (`source-requirements.ts:77`) is FNV-1a over the trimmed,
-  whitespace-normalised **body only** — no path, no filename, no frontmatter. The same
-  body under any name hashes identically and is caught by `ingested.has(hash)`.
-
-No case was found that the marker fixes and the hash does not.
-
-### The two problems the marker introduces
-
-**It writes a derived fact into the user's input.** The wiki is the plugin's output
-space; the note is the user's. `README.md:114` promises *"The plugin modifies nothing
-in your original notes"* in all eleven locales.
-
-**Its failure mode is the user's main recovery action.** Deleting a `wiki/sources/`
-page — or the whole `wiki/` folder — is how someone forces a rebuild. The hash
-mechanism cooperates: remove the artifact, the fact is gone, the note re-ingests. The
-marker opposes it: the note still says "done" while the page is gone, so a rebuild
-silently skips exactly the notes the user was trying to rebuild. A second source of
-truth does not stay in agreement, and here disagreeing is not neutral.
-
-**What would reopen this:** a specific, demonstrated case the hash mechanism misses —
-an observation, not a reasoning chain. Any redesign should keep the fact on the wiki
-side.
-
----
+## Design records — see Appendix A
+
+Four records used to sit here in full. They are now at the end of this file, in
+[Appendix A](#appendix-a--design-records-verbatim-moved-back-from-docs), verbatim.
+
+- **Cross-source relations (#729)**
+- **Write path and page index (#603 / #662)**
+- **The streaming fallback classifies by URL (#741)**
+- **#701's premise does not hold**
+
+They record shipped work. The *argument* was the part nothing else reproduced. So the
+argument moved to a page that calls itself an archive. It did not stay in a file whose
+own header says it is not a session log. The standing decisions stay above, in
+§"Key design decisions (canonical references)".
 
 ## Architectural invariants (write-once)
 
@@ -1330,641 +347,220 @@ memory directory for this project.
 
 ### GitHub hygiene
 
-- **Issue state can drift from merge history.** A PR that fixes Issue N
-  but uses `Refs #N` / `See #N` / no link in its commit message → GitHub
-  does NOT auto-close on merge. Verify with `gh issue view N --json state`
-  before declaring an issue "solved". 5 such state-drift issues found on
-  2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment
-  "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
-- **`gh release delete` is irreversible.** v1.25.8 incident: deleted the
-  published release body. Recovery required re-publishing from a local
-  `/tmp/release-body-*.md` backup. Rule: edit in place with
-  `gh release edit <tag> --notes-file --draft=false`, never delete. Always
-  verify `tagName + isDraft + body` before editing. (`feedback_gh_release_edit_delete_safety`)
+- **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
+- **`gh release delete` is irreversible.** v1.25.8 incident: deleted the published release body; recovery required re-publishing from a local `/tmp/release-body-*.md` backup. Rule: edit in place with `gh release edit <tag> --notes-file --draft=false`, never delete. Always verify `tagName + isDraft + body` before editing. (`feedback_gh_release_edit_delete_safety`)
 
 ### External communication
 
-- **Never append `🤖 Generated with <AI agent>` (Claude Code, Codex,
-  Cursor, Pi, or any AI marker) to GitHub replies, release notes, or
-  Discussions.** Violates `obsidian-plugin-release` skill; an AI marker
-  breaks voice consistency and reads as spam. If posted, fix via REST
-  PATCH on the comment body. (`feedback_no_ai_marker_in_reply`)
-- **Public content (Issues, PRs, Release Notes) must NOT include
-  `[[feedback_*]]` / `[[project_*]]` memory pointers.** Those are session-private
-  wiki-link notation that does NOT render in GitHub markdown and is
-  unreadable by other developers. Reference public docs (AGENTS.md /
-  CHANGELOG.md / SPEC.md) instead. (`feedback_public_content_no_internal_pointers`)
-- **GitHub comments: no hard single-`\n` linebreaks between sentences**
-  — they render as `<br>` which is jarring. Use `\n\n` for proper
-  paragraph spacing. (`feedback_github_comment_no_hard_linebreaks`)
+- **Never append `🤖 Generated with <AI agent>` (Claude Code, Codex, Cursor, Pi, or any AI marker) to GitHub replies, release notes, or Discussions.** Violates `obsidian-plugin-release` skill; an AI marker breaks voice consistency and reads as spam. If posted, fix via REST PATCH on the comment body. (`feedback_no_ai_marker_in_reply`)
+- **Public content (Issues, PRs, Release Notes) must NOT include `[[feedback_*]]` / `[[project_*]]` memory pointers** — session-private wiki-link notation that does NOT render in GitHub markdown and is unreadable by other developers. Reference public docs (AGENTS.md / CHANGELOG.md / SPEC.md) instead. (`feedback_public_content_no_internal_pointers`)
+- **GitHub comments: no hard single-`\n` linebreaks between sentences** — they render as `<br>` which is jarring. Use `\n\n` for proper paragraph spacing. (`feedback_github_comment_no_hard_linebreaks`)
 
 ### Provider / config reality check
 
-- **Don't doubt existing LLM providers based on name unfamiliarity.**
-  v1.18.2 incident: called MiniMax a typo; user proved it ships in production
-  with a real `baseUrl` (`api.minimaxi.com`). Always verify by baseUrl +
-  live response, never by name recognition. (`feedback_dont_doubt_existing_providers`)
+- **Don't doubt existing LLM providers based on name unfamiliarity.** v1.18.2 incident: called MiniMax a typo; user proved it ships in production with a real `baseUrl` (`api.minimaxi.com`). Always verify by baseUrl + live response, never by name recognition. (`feedback_dont_doubt_existing_providers`)
 
 ### Build / release mechanics
 
-- **Lockfile regeneration: never `npm install --package-lock-only` in an
-  isolated directory.** v1.23.2 incident: AI-SDK patch versions silently
-  drifted the npm lockfile while pnpm stayed clean. Correct sequence:
-  (1) `rm -f pnpm-lock.yaml && pnpm install`,
-  (2) `npm install --legacy-peer-deps --package-lock-only` in the
-  project dir (where `node_modules` already exists), (3) commit both
-  lockfiles in the same release commit. (`feedback_lockfile_regeneration_procedure`)
-- **Post-compaction re-hydration.** After every context compaction,
-  re-read AGENTS.md → CHANGELOG.md → ROADMAP.md → `git log --oneline -20` →
-  open Issues/PRs before continuing any non-trivial change. Compaction
-  erases decisions that look obvious only with full context. (`feedback_post_compact_rehydration`)
+- **Lockfile regeneration: never `npm install --package-lock-only` in an isolated directory.** v1.23.2 incident: AI-SDK patch versions silently drifted the npm lockfile while pnpm stayed clean. Correct sequence: (1) `rm -f pnpm-lock.yaml && pnpm install`, (2) `npm install --legacy-peer-deps --package-lock-only` in the project dir (where `node_modules` already exists), (3) commit both lockfiles in the same release commit. (`feedback_lockfile_regeneration_procedure`)
+- **Post-compaction re-hydration.** After every context compaction, re-read AGENTS.md → CHANGELOG.md → ROADMAP.md → `git log --oneline -20` → open Issues/PRs before continuing any non-trivial change. Compaction erases decisions that look obvious only with full context. (`feedback_post_compact_rehydration`)
 
 ### GitHub heuristics & review-event surfaces
 
-- **`Refs #N` semantic can auto-close issues on doc-only PRs.** 2026-07-14:
-  PR #278 (doc-only AGENTS.md/ROADMAP.md) body said "to close #255" and
-  GitHub's heuristic closed #255 even though the PR had zero runtime change.
-  Use "tracked by" / "see" / "blocked by" in doc PR body text. Verify
-  issue state right after merge; `gh issue reopen N` if unexpectedly closed.
-  (`feedback_github_refs_heuristic_close`)
-- **Local lint is blind to whole-repo issues.** `pnpm lint` = `eslint src/`
-  only; Obsidian review Bot scans the entire repo `.ts` tree including
-  `tools/`. v1.26.1 shipped a blocking `unsafe-call` Error in
-  `tools/llm-wiki-cli/src/obsidian.ts` that local lint never saw. Run
-  `pnpm lint:tools-bot` before every release. (`feedback_obsidian_bot_tools_cli_warnings`)
+- **`Refs #N` semantic can auto-close issues on doc-only PRs.** 2026-07-14: PR #278 (doc-only AGENTS.md/ROADMAP.md) body said "to close #255" and GitHub's heuristic closed #255 even though the PR had zero runtime change. Use "tracked by" / "see" / "blocked by" in doc PR body text. Verify issue state right after merge; `gh issue reopen N` if unexpectedly closed. (`feedback_github_refs_heuristic_close`)
+- **Local lint is blind to whole-repo issues.** `pnpm lint` = `eslint src/` only; Obsidian review Bot scans the entire repo `.ts` tree including `tools/`. v1.26.1 shipped a blocking `unsafe-call` Error in `tools/llm-wiki-cli/src/obsidian.ts` (that CLI has since been removed from the repo; the lesson is the scanner's reach, not the file). Run `pnpm lint:tools-bot` before every release. (`feedback_obsidian_bot_tools_cli_warnings`)
 
 ### CLI surface (post-PR #511 demote)
 
-- **`pnpm llm-wiki` script no longer exists.** PR #511 (v1.27.0) demoted
-  `tools/llm-wiki-cli/` → `tools/dev-instrument/` (dev-only measurement
-  instrument, NOT a user CLI). The `package.json` `bin` field was removed.
-  **User-facing CLI now lives in the sibling repo
-  [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli)**
-  (`npm i -g karpathywiki-cli`). This repo's `tools/dev-instrument/` is for
-  engine contributors only — do not point users at it. (`project_v1_27_0_cli_demote_done`)
+- **`pnpm llm-wiki` script no longer exists.** PR #511 (v1.27.0) demoted `tools/llm-wiki-cli/` → `tools/dev-instrument/` (dev-only measurement instrument, NOT a user CLI). The `package.json` `bin` field was removed. **User-facing CLI now lives in the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli)** (`npm i -g karpathywiki-cli`). This repo's `tools/dev-instrument/` is for engine contributors only — do not point users at it. (`project_v1_27_0_cli_demote_done`)
 
 ### Engine invariants (engine contributors)
 
-- **Dedup halving was dead code.** v1.26.0 Batch 2: counter reset inside
-  the for-loop so concurrency halving never actually halved; `null` and
-  `{"duplicates":[]}` both routed to `[]` conflated truncation with success.
-  Fix PR #411 (Batches 6+7). Future LLM business paths need retry + backoff
-  + halving + log + Notice — extract `callLlmWithRetry<T>()` from
-  `runDedupPhase` before adding a 6th caller. (`feedback_dedup_phase_halving_dead_code`,
-  `feedback_dedup_phase_truncation_vs_empty_conflation`, `feedback_llm_retry_extraction`)
-- **`schema/config.md` MUST stay pure user-domain knowledge.** v1.26.0 Batch
-  1 (Issue #328) fixed the dual-source tag-vocab problem: schema file owns
-  user domain knowledge (page templates, content rules, naming conventions,
-  merge policies); runtime parameters (tag vocabulary, folder layout, output
-  language, page-type registration) MUST be injected at call time via
-  `getSchemaContext()`, never baked into the schema file. Violating
-  reintroduces the dual-source drift Phase 1 was designed to eliminate.
-  (`feedback-schema-phase1-option-a-decision`, `feedback_schema_template_programmatic_injection`)
+- **Dedup halving was dead code.** v1.26.0 Batch 2: counter reset inside the for-loop so concurrency halving never actually halved; `null` and `{"duplicates":[]}` both routed to `[]` conflated truncation with success. Fix PR #411 (Batches 6+7). Future LLM business paths need retry + backoff + halving + log + Notice — extract `callLlmWithRetry<T>()` from `runDedupPhase` before adding a 6th caller. (`feedback_dedup_phase_halving_dead_code`, `feedback_dedup_phase_truncation_vs_empty_conflation`, `feedback_llm_retry_extraction`)
+- **`schema/config.md` MUST stay pure user-domain knowledge.** v1.26.0 Batch 1 (Issue #328) fixed the dual-source tag-vocab problem: schema file owns user domain knowledge (page templates, content rules, naming conventions, merge policies); runtime parameters (tag vocabulary, folder layout, output language, page-type registration) MUST be injected at call time via `getSchemaContext()`, never baked into the schema file. Violating reintroduces the dual-source drift Phase 1 was designed to eliminate. (`feedback-schema-phase1-option-a-decision`, `feedback_schema_template_programmatic_injection`)
 
 ### PR self-approve & maintainer passby
 
-- **GitHub blocks self-approve on own PR.** Platform hard restriction:
-  `gh pr review <N> --approve` on your own PR fails with
-  `GraphQL: Review Can not approve your own pull request`. For own-PR
-  merges, use `gh pr merge <N> --admin --squash --delete-branch` (the
-  `--admin` flag bypasses the requirement rule, not the review event
-  rule). After merge, post `gh pr comment <N> --body-file <audit-note>`
-  to patch the audit trail. Document the procedural miss in the audit
-  note; do NOT rebase or amend. (`feedback_pr_merge_workflow`,
-  `feedback_pr_review_vs_comment`)
-- **Architect-level contributor PRs do NOT need `--admin`.** `@DocTpoint`
-  PRs (and any future architect-level Write-role contributor) can be
-  merged via standard `gh pr merge <N> --squash --delete-branch` once
-  `--approve` lands — `--admin` is only required for own-PR self-approve
-  bypass. Habitually adding `--admin` to every merge creates branch
-  protection audit noise. (`feedback_architect_pr_merge_no_bypass`)
+- **GitHub blocks self-approve on own PR.** Platform hard restriction: `gh pr review <N> --approve` on your own PR fails with `GraphQL: Review Can not approve your own pull request`. For own-PR merges, use `gh pr merge <N> --admin --squash --delete-branch` (the `--admin` flag bypasses the requirement rule, not the review event rule). After merge, post `gh pr comment <N> --body-file <audit-note>` to patch the audit trail. Document the procedural miss in the audit note; do NOT rebase or amend. (`feedback_pr_merge_workflow`, `feedback_pr_review_vs_comment`)
+- **Architect-level contributor PRs do NOT need `--admin`.** `@DocTpoint` PRs (and any future architect-level Write-role contributor) can be merged via standard `gh pr merge <N> --squash --delete-branch` once `--approve` lands — `--admin` is only required for own-PR self-approve bypass. Habitually adding `--admin` to every merge creates branch protection audit noise. (`feedback_architect_pr_merge_no_bypass`)
 
 ### GraphQL stale-read & reply language
 
-- **`gh issue view --json` returns stale state after `gh issue edit --add-label`
-  or `--milestone`.** GraphQL EOF is intermittent; audit MUST use REST
-  (`gh api /repos/.../issues/N/labels` + `gh api /repos/.../issues/N` for
-  milestone). Repeat retries on a "stale-looking" edit usually just spam
-  GitHub's rate limit — first confirm with REST, then retry if needed.
-  (`feedback_gh_cli_graphql_eof_stale_reads`)
-- **Reply drafts MUST match the submitter's language.** English Issue →
-  English reply; Chinese Issue → Chinese reply. The report body can be
-  Chinese (maintainer-facing), but the `#### ✉️ 5. 回复草稿` boxes must
-  match the contributor's language. Drafting all 12 replies in Chinese
-  for an English-submitter pool is condescending to architect-level
-  contributors and breaks codebase convention. (`feedback_reply_language_match_submitter`)
+- **`gh issue view --json` returns stale state after `gh issue edit --add-label` or `--milestone`.** GraphQL EOF is intermittent; audit MUST use REST (`gh api /repos/.../issues/N/labels` + `gh api /repos/.../issues/N` for milestone). Repeat retries on a "stale-looking" edit usually just spam GitHub's rate limit — first confirm with REST, then retry if needed. (`feedback_gh_cli_graphql_eof_stale_reads`)
+- **Reply drafts MUST match the submitter's language.** English Issue → English reply; Chinese Issue → Chinese reply. The report body can be Chinese (maintainer-facing), but the `#### ✉️ 5. 回复草稿` boxes must match the contributor's language. Drafting all 12 replies in Chinese for an English-submitter pool is condescending to architect-level contributors and breaks codebase convention. (`feedback_reply_language_match_submitter`)
 
 ### Cross-release hidden coupling (v1.27.0 ship-day bugs)
 
-- **Path-changing PRs must sync-audit the `readme-links` guard.** v1.27.0
-  PR #511 demoted `tools/llm-wiki-cli/` → `tools/dev-instrument/`,
-  introducing new paths. v1.27.0 PR #560 added `](tools/dev-instrument/README.md)`
-  relative links to 11 READMEs, which v1.25.11 PATCH #375
-  (`src/__tests__/root/readme-links.test.ts`) forbids. CI was 11× red from
-  `bd0da25` until a maintainer-passby merge shipped #566 the same day.
-  **Rule:** when a PR moves/renames any repo path that appears in any
-  README, the PR must sync-update every README link to the new path AND
-  verify locally with `pnpm test src/__tests__/root/readme-links.test.ts`.
-  (`feedback_gh_cli_graphql_eof_stale_reads` -- related audit pattern)
-- **`pnpm.overrides` is deprecated; pnpm >= 11 silently drops it.** Issue
-  #556 / PR #557: the `pnpm.overrides` and `pnpm.onlyBuiltDependencies`
-  fields in `package.json` print a deprecation warning on pnpm 10.14 and
-  are not read by pnpm 11. Move both keys to `pnpm-workspace.yaml`, keep
-  the top-level `overrides` for npm-side pinning, drop the deprecated
-  `pnpm` block. Future `packageManager` upgrades will silently lose the
-  pin otherwise — same failure class as #501 but on the pnpm half.
-  (`feedback_lockfile_regeneration_procedure` -- related lockfile rule)
+- **Path-changing PRs must sync-audit the `readme-links` guard.** v1.27.0 PR #511 demoted `tools/llm-wiki-cli/` → `tools/dev-instrument/`, introducing new paths; PR #560 then added `](tools/dev-instrument/README.md)` relative links to 11 READMEs, which v1.25.11 PATCH #375 (`src/__tests__/root/readme-links.test.ts`) forbids. CI was 11× red from `bd0da25` until a maintainer-passby merge shipped #566 the same day. **Rule:** when a PR moves/renames any repo path that appears in any README, the PR must sync-update every README link to the new path AND verify locally with `pnpm test src/__tests__/root/readme-links.test.ts`. (`feedback_gh_cli_graphql_eof_stale_reads` -- related audit pattern)
+- **`pnpm.overrides` is deprecated; pnpm >= 11 silently drops it.** Issue #556 / PR #557: the `pnpm.overrides` and `pnpm.onlyBuiltDependencies` fields in `package.json` print a deprecation warning on pnpm 10.14 and are not read by pnpm 11. Move both keys to `pnpm-workspace.yaml`, keep the top-level `overrides` for npm-side pinning, drop the deprecated `pnpm` block. Future `packageManager` upgrades will silently lose the pin otherwise — same failure class as #501 but on the pnpm half. (`feedback_lockfile_regeneration_procedure` -- related lockfile rule)
 
 ---
 
-## Release cadence (since v1.20.2)
+### Durable rules from the dated sessions (merged 2026-10-06)
 
-- v1.20.2–v1.24.x: PATCH cadence every 1-2 weeks, occasional MINOR (v1.24.0)
-- v1.25.x: 11 PATCH releases in 6 weeks (eucher-era hot-fix cadence)
-- v1.26.x: 5 releases (v1.26.0 MINOR + v1.26.1–v1.26.4 PATCH)
-- **v1.27.0 MINOR** ships 2026-08-27; **in** v1.27.x PATCH (wave A 09-02: 12 PRs; wave B 09-04: 9 PRs; next release after #569/#607 or community PRs land)
+The rule blocks below came from the eight dated session sections; their dates and scale are in [Appendix B](#appendix-b--session-log-dated-blocks-verbatim), with the incidents each rule depends on.
 
-MINOR cadence is roughly every 3-4 PATCH releases or when an architect-level
-contributor lands a ≥5-PR cluster. Decision documented in AGENTS.md "PR merge
-workflow".
+**A slash command can move the working tree under you.** `/review pr 809` checks the pull request out locally, so this session's branch silently became `fix/808-stub-template-tag-shape` while `docs/compact-prep-2026-10-05` held the work being edited. The next edit failed to match its anchor in `ROADMAP.md`, and the first reading of that failure was "my anchor text is wrong" rather than "this is the wrong file". `pi-review` registers only slash commands, so it cannot be called as a tool and returns nothing to read. **After `/review`, check `git branch --show-current` before editing anything**, and treat a suddenly-unmatchable anchor as a branch signal.
 
----
+**The uncommitted-work rule, violated by the person who recorded it.** The first draft of the decision-queue rewrite sat uncommitted while `git checkout main` and `git reset --hard origin/main` ran in the same shell command.
+`reset --hard` overwrote the working tree, the edit existed nowhere else, and nothing was staged, so there was no stash to recover from.
+The content was rewritten and committed before any branch operation ran.
+The rule was already in this file, so this was not a knowledge gap; the command was written without a `git status` first.
+**Commit before any command that can reset the worktree, and never combine a branch switch with `reset --hard` while holding edits.**
 
-## Lessons learned (2026-10-04 session — the release went out, then seven merges)
+**A push that succeeded at the wrong ref.** #760's fix went to `fix/lmstudio-hub-model-ids`; the PR head was `fix/758-lmstudio-model-ids`. The push exited 0, the PR head did not move, and a stray branch on the base repo had to be deleted. **Read the PR's `head.ref` and `head.repo.full_name` before pushing, and re-read the head SHA after** — `git push` succeeding is not evidence that the PR moved.
 
-**A slash command can move the working tree under you.** `/review pr 809` checks the pull request
-out locally, so this session's branch silently became `fix/808-stub-template-tag-shape` while
-`docs/compact-prep-2026-10-05` held the work being edited. The next edit failed to match its
-anchor in `ROADMAP.md`, and the first reading of that failure was "my anchor text is wrong"
-rather than "this is the wrong file". `pi-review` registers only slash commands, so it cannot be
-called as a tool and returns nothing to read. **After `/review`, check `git branch --show-current`
-before editing anything**, and treat a suddenly-unmatchable anchor as a branch signal.
+**A test that passed for the wrong reason, caught by reading its output.** A #792 test asserted that no prompt contained `[[Conversation:`. It passed, and the real output showed why: that placeholder is rendered inside the page factory, which the harness replaces with a stub, so the prompt never existed to be asserted on. The test was deleted rather than kept. Same rule as `feedback_tdd_standard`: a green test that cannot fail is worse than no test.
 
-**The uncommitted-work rule, violated by the person who recorded it.** The first draft of
-the decision-queue rewrite sat uncommitted while `git checkout main` and
-`git reset --hard origin/main` ran in the same shell command. `reset --hard` overwrote the
-working tree, the edit existed nowhere else, and nothing was staged, so there was no stash
-to recover from. The content was rewritten and committed before any branch operation ran.
-The rule was already in this file — uncommitted work is the only real handoff risk — so
-this was not a knowledge gap; the command was written without a `git status` first.
-**Commit before any command that can reset the worktree, and never combine a branch switch
-with `reset --hard` while holding edits.**
+**An `edit` that silently removed a line.** One `oldText` ended inside a comment, so the line above the anchor was dropped and the remaining comment began mid-sentence. **Read the file after an edit, not only before it.** `git diff` is the check.
 
-**A push that succeeded at the wrong ref.** #760's fix went to
-`fix/lmstudio-hub-model-ids`; the PR head was `fix/758-lmstudio-model-ids`. The push exited
-0, the PR head did not move, and a stray branch on the base repo had to be deleted. **Read
-the PR's `head.ref` and `head.repo.full_name` before pushing, and re-read the head SHA
-after** — `git push` succeeding is not evidence that the PR moved.
+**A queue that named three options and wrote one.** ROADMAP's #729 row said "Three options in MEMORY §'Seed stage'". That section existed in no file, so the decision could not be taken, and more than one planning pass read the row and moved on. **A decision row must contain the options it asks someone to choose between, or name a destination that exists.**
 
-**A test that passed for the wrong reason, caught by reading its output.** A #792 test
-asserted that no prompt contained `[[Conversation:`. It passed, and the real output showed
-why: that placeholder is rendered inside the page factory, which the harness replaces with
-a stub, so the prompt never existed to be asserted on. The test was deleted rather than
-kept. Same rule as `feedback_tdd_standard`: a green test that cannot fail is worse than no
-test.
+**A correct number read as a stale one (2026-10-06).** A doc sweep found `4372 tests / 313 files` in five files and I called all five stale, because main now reports 4402 / 317.
+Reading the context reversed it: **every one is scoped to v1.28.0** — two carry the date inline, three sit under "latest shipped".
+Had I "fixed" them, five correct numbers would have become five wrong ones.
+**A number is not stale until its scope is read.**
+A count that changes every PR is only safe when it is nailed to a release, and the danger is that it looks identical either way.
+The same sweep found the real defects by contrast. The stale *path* is `src/__tests__/llm-sdk/openai-codex-loopback-flow.test.ts`, which moved into an `openai-codex/` subdirectory.
+The *count of files that exists* is "10 READMEs (EN + 9 i18n)" — there are 11.
+And three links pointed at a deleted target.
+Paths and counts-of-things-that-exist are checkable; numbers tied to a dated release are not.
 
-**An `edit` that silently removed a line.** One `oldText` ended inside a comment, so the
-line above the anchor was dropped and the remaining comment began mid-sentence. **Read the
-file after an edit, not only before it.** `git diff` is the check.
+**1. Explaining a technical dispute twice is part of the work, not a failure of the audience.** A first explanation of @DocTpoint's objection was dense enough that the reader asked for it again, and the second attempt was shorter, plainer and better. The signal to watch is not “did they understand the code” but “can they make the decision”. If a summary of a dispute does not end in a choice the reader can make, it is not a summary — it is more of the dispute.
 
-**A queue that named three options and wrote one.** ROADMAP's #729 row said "Three options
-in MEMORY §'Seed stage'". That section existed in no file, so the decision could not be
-taken, and more than one planning pass read the row and moved on. **A decision row must
-contain the options it asks someone to choose between, or name a destination that
-exists.**
+**2. `converged with the maintainer` written 37 minutes after asking for dissent is a false record, not an optimistic one.** The request went out at 10:42.
+The record was written at 11:19 and merged at 11:23, and the first reply arrived two days later.
+The specific damage is that **the record then outranked the dissent**: Phase 1 was built against a document that said the design was settled, while the objection that disputed it sat unanswered in the thread the document pointed at.
+**When a document records a decision, the only evidence that it was a decision is a reply.**
+Absent one, the word is `proposed`.
+If a direction changes after review has begun, the change and its reason belong in the record the same day, because a stale record is read as current.
 
-## Lessons learned (2026-10-03 session — the dissent I never answered, and the report that was not a review)
+**3. A retry loop whose *read* is unreliable duplicates the write.** This session produced **five** identical APPROVED events on #784, two days after the same mistake on #656.
+The guard I had installed was the wrong shape: it re-read the reviews list after each attempt, and that read was itself returning empty.
+**When the read is flaky, loop on the read alone** — write once, then poll the read until it answers, and never put the write back inside the loop.
+The audit trail survived both times only because an approval before a merge is still an approval; the next variant of this may not be so forgiving.
 
-### Durable lessons
+**4. A duplicated fix is a decision, not a queue entry.** #783 and #760 fix the same bug (#758) in two shapes — 1 file of 14 lines versus 4 files with a pure-function seam and its own test file. Neither is wrong, and the right answer is a choice rather than a merge of both. **The cheap-looking one keeps the rule where tests cannot reach it; the structured one carries a guard with four known holes.** Naming which property is worth more than either diff.
 
-**1. Explaining a technical dispute twice is part of the work, not a failure of the
-audience.** A first explanation of @DocTpoint's objection was dense enough that the
-reader asked for it again, and the second attempt was shorter, plainer and better. The
-signal to watch is not “did they understand the code” but “can they make the decision”.
-If a summary of a dispute does not end in a choice the reader can make, it is not a
-summary — it is more of the dispute.
+**5. Two providers with the same wire format are still two providers.** #786 upgrades four packages together (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/openai-compatible`) and `Closes #764`. It is the correct shape — the three Dependabot attempts proved the individual bumps cannot typecheck — but it is **four MAJORs plus wire behaviour across 29 files**, which is why it was not merged with the three small fixes in the same pass. **A contributor having done the work is not the same as the work being safe.**
 
-**2. `converged with the maintainer` written 37 minutes after asking for dissent is a
-false record, not an optimistic one.** The request went out at 10:42, the record was
-written at 11:19 and merged at 11:23, and the first reply arrived two days later. The
-specific damage is that **the record then outranked the dissent**: Phase 1 was built
-against a document that said the design was settled, while the objection that disputed
-it sat unanswered in the thread the document pointed at. **When a document records a
-decision, the only evidence that it was a decision is a reply.** Absent one, the word
-is `proposed` — and if a direction changes after review has begun, the change and its
-reason belong in the record the same day, because a stale record is read as current.
-
-**3. A retry loop whose *read* is unreliable duplicates the write.** This session
-produced **five** identical APPROVED events on #784, two days after the same mistake on
-#656, and the guard I had installed was the wrong shape: it re-read the reviews list
-after each attempt, and that read was itself returning empty. **When the read is
-flaky, loop on the read alone** — write once, then poll the read until it answers, and
-never put the write back inside the loop. The audit trail survived both times only
-because an approval before a merge is still an approval; the next variant of this may
-not be so forgiving.
-
-**4. A duplicated fix is a decision, not a queue entry.** #783 and #760 fix the same
-bug (#758) in two shapes — 1 file of 14 lines versus 4 files with a pure-function
-seam and its own test file. Neither is wrong, and the right answer is a choice rather
-than a merge of both. **The cheap-looking one keeps the rule where tests cannot reach
-it; the structured one carries a guard with four known holes.** Naming which property
-is worth more than either diff.
-
-**5. Two providers with the same wire format are still two providers.** #786 upgrades
-four packages together (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`,
-`@ai-sdk/openai-compatible`) and `Closes #764`. It is the correct shape — the three
-Dependabot attempts proved the individual bumps cannot typecheck — but it is **four
-MAJORs plus wire behaviour across 29 files**, which is why it was not merged with the
-three small fixes in the same pass. **A contributor having done the work is not the
-same as the work being safe.**
-
-**6. A report's scale can change between two API calls.** A check for #789 returned
-`404`, the next day the same number was a live PR from the maintainer's most active
-reviewer. **A 404 on a low number near the current maximum is “not yet”, not
-“does not exist”** — say which one you checked and when, rather than telling the person
-who asked that the thing they named is not real.
-
-### State pointers (2026-10-03)
-
-- `main` = **`73e6ca49`** · Gate 1 **313 files / 4363 tests** · ruleset clean.
-- Queued and unstarted: **#791** (reasoning-only answers), **#792** (colon in a saved
-conversation's filename — inspect the slug path without waiting for the reporter).
-- Newly filed this session: **#793** (ten translated READMEs quote English command
-names, and the command name is stored twice per locale — `ru.ts` disagrees with
-itself, one line Russian and one English).
-
----
-
-## Lessons learned (2026-09-21 session — #687/#656/#774/#778 merges, #760 review round, the CI that never ran)
-
-### Durable lessons
+**6. A report's scale can change between two API calls.** A check for #789 returned `404`, the next day the same number was a live PR from the maintainer's most active reviewer. **A 404 on a low number near the current maximum is “not yet”, not “does not exist”** — say which one you checked and when, rather than telling the person who asked that the thing they named is not real.
 
 **1. A report's summary of the rule is not the rule. Read the code.**
 
-#758's excerpt of the offending filter quotes two lines and omits the `openrouter`
-branch that precedes them, so its prose — "drops every id containing `/` for all
-providers except ollama" — inherits the omission. Both halves are wrong: `/` was
-rejected for ollama too (ollama's exemption is `:`), and openrouter was the provider
-left unfiltered. **I copied the report's sentence into three files** (module header,
-test header, PR body) and @DocTpoint caught it, along with the file contradicting
-itself two paragraphs later.
-
-The report's *diagnosis of the symptom* was exact and its repro was solid — verified
-HTTP 200 for a namespaced id. Only its summary of what it was measuring against was
-wrong. **Write the rule from the code, and if you are quoting a report, say so.**
-
-The same review found a second, subtler inversion in the same block: "Widening the
-filter is the smaller change" said the opposite of the paragraph it sat in, which
-argues for *listing* providers instead. A comment can be locally grammatical and
-still carry the negation of its own argument.
-
 **2. A documented-but-unreachable state is worse than an undescribed one.**
-
-`ModelSelectionPatch.useCustomModel` has documented `true` as "the field is the
-user's own" since the PR opened, and **no branch returned it**. So a model that was
-picked from the catalogue and later vanishes from the endpoint kept the id in
-settings and showed the dropdown's "Custom input…" sentinel — the value visible
-nowhere, and re-choosing the already-selected sentinel fires no `change`, so the text
-field cannot be opened either. The value survives and is unreachable, which is a
-different failure from the one the PR was fixing and not a better one. **When a
-type's doc comment describes a state, grep for who produces it.**
 
 **3. A graceful-degradation path must name exactly which error it swallows.**
 
-#687's image analysis is the model to copy:
-
-```ts
-if (error instanceof DOMException && error.name === 'AbortError') throw error;  // cancel still cancels
-if (!isVisionInputRejected(error)) throw error;                                 // everything else propagates
-report.failedPackages++;                                                        // only then degrade
-```
-
-Three outcomes, three explicit classes, and the swallow is the narrow one. The
-alternative — `catch { /* no evidence */ }` — converts auth failures, rate limits and
-network errors into "the model found nothing", which is indistinguishable from a
-working feature on an unhelpful image. **`isVisionInputRejected` is a bidirectional
-80-char regex** (`image|vision|multimodal|content_type` against
-`unsupported|not supported|invalid|reject`, either order), and a false **negative**
-propagates rather than degrading silently — the right failure direction.
-
 **4. Interleaving text with each media part is how you bind context to it.**
-
-#687 sends, per image, a text part (`Image N`, its path, its nearest before/after
-paragraphs, and the sentence "The image content block immediately following this text
-is Image N") **immediately followed by** that image. One text block followed by N
-images leaves the association for the model to guess, and it guesses wrong on
-transcripts of screenshots. The same design makes each package's response
-**verifiable**: the code checks every returned index against the indices it sent,
-ignores and warns on invalid or duplicate ones, and counts the missing ones.
 
 **5. Removing a "redundant" mapping is a change with a reason.**
 
-`messages: messages.map((m) => ({ role: m.role, content: m.content }))` appeared in
-four provider clients and looked like a no-op. It was what **blocked multimodal
-parts** — and what made removing it safe is the type union that replaced the inline
-type: `user` accepts `MessageContentPart[]`, `assistant` is
-`Exclude<MessageContentPart, ImageContentPart>[]`, so both arms still have exactly
-`role`/`content` and nothing can leak. The type change and the mapping removal are
-one change, not two.
-
 **6. A push to a fork PR goes to the fork, and its ref name is not your branch name.**
-
-#687's head repo is `Chase07/obsidian-llm-wiki` and its ref is
-`feat/608-embedded-markdown-images`. `git push origin pr-687:refs/heads/feat/analyze-embedded-images`
-printed `[new branch]` — success, zero effect — and created a stray branch in **our**
-repo. Read `head.repo.full_name` and `head.ref` from the PR first. **`git ls-remote --heads
-origin <ref>` returning nothing is the tell**: the ref does not live there.
 
 **7. A PR with no CI status may be waiting for maintainer approval.**
 
-Five runs sat in `action_required` — @x0Lazarus's first contribution, @Chase07's
-rebase, and all three Dependabot PRs — so **none of them had ever run**, and the
-absence read as "CI is broken" or "the change is fine". `gh api
-'repos/.../actions/runs?status=action_required'` lists them; `POST .../runs/<id>/approve`
-releases one. Check this before reading a missing status as a code fact.
-
 **8. Retrying a command whose output you cannot read duplicates its side effects.**
-
-A `gh pr review --approve` retry loop that grepped stdout produced **three identical
-APPROVED events**. The audit trail stayed correct (a review preceded the merge), but
-the confirmation to write is a **read** of `pulls/<N>/reviews`, never the exit status
-of the command that wrote it. Same class as the ruleset restore: the write and the
-verification must go through different surfaces.
 
 **9. Verify the commit is what the message says — including after `--amend`.**
 
-Carried forward from #736, and it held: `git status --porcelain` must be empty right
-after every commit, and an amend that changes *content* needs `git add` first.
-
 **10. Two mechanical traps, both hit again this session.**
 
-`sed` on a line containing `/` needs a different delimiter, and a `s#...#...#` that
-contains `#` fails with an opaque `bad flag in substitute command` — **the file is
-left unmodified and no error propagates to the commit**. And the pre-commit hook runs
-the tools-bot lint over `main.js` and `tools/`, producing **669 pre-existing findings**
-that block an unrelated docs commit; `--no-verify` is legitimate there because the
-project's own `lint:tools-bot` is documented as informational and exits 0.
+- **`optionalDependencies` fail silently, and that is how a whole capability disappears.** pi 0.85.1 declares `@earendil-works/pi-server` / `pi-client` as optional.
+  The global install skipped them and nothing complained, so background subagents were unavailable — and the error text blamed a "standalone pi binary" that did not exist.
+  Diagnose by reading the consumer's resolution code (`runner-aliases.ts::findPeerPackageDir` walks `<pkg>/node_modules` then every ancestor), not the message.
+  Fixed by extracting the 0.85.1 tarballs into pi's own `node_modules` — **zero-intrusion (both manifest SHA-256s unchanged), fully reversible with `rm -rf`**.
+  Generalise: an optional dependency that a required feature needs is a silent capability hole, not graceful degradation.
+- **Read the consumer before trusting an external search.** A research subagent searched Obsidian's docs, correctly found no lockfile requirement, and recommended deleting `package-lock.json`; the real constraint was in this repo's own `.npmrc` post-mortem (Obsidian's pipeline runs `npm install` and compares build hashes, so the file is load-bearing for release reproducibility). **Absence of evidence in vendor documentation is not absence of a constraint** — internal post-mortems outrank external docs for constraints we discovered the hard way.
+- **The constraint may be in the prompt, not the architecture.** The Related graph's intra-source shape looked like an inevitable property of "one note → one star". It is literally an instruction at `prompts/ingestion.ts:27`.
+- **A log grep can identify the wrong CI step.** "Which step failed" was misread from log text twice — `pnpm install --frozen-lockfile` looked like the failure when it was the *preceding* step's `##[group]Run` echo. `gh run view <id> --json jobs --jq '.jobs[].steps[]'` gives per-step conclusions and is the only trustworthy source.
+- **A machine-generated artifact read back as input is a view-as-data bug.** `build-graph.ts` parses `[[links]]` from page bodies without knowing that the Related sections were written by `related-page.ts`, so the graph is largely a render of the ingest's own co-occurrence decisions — which is why PPR cannot discover anything the ingest had not already decided.
+- **Test the mechanism before merging it.** #718's workflow was validated on the real Dependabot branch in a throwaway worktree — failure reproduced, regeneration verified, single-file diff confirmed, and **idempotency proven by SHA-256** so the workflow provably cannot loop — *then* merged, *then* confirmed in production on #707 and #708.
 
-### State pointers (2026-09-21)
+**The queue is the work.** Five items are finished and waiting on a call — choosing between #783 and #760, closing #770/#771/#772 once #786 lands, and answering #729. None of them needs an implementation pass, and building on any of them before the call is the mistake this session was spent learning.
 
-- `main` = **`2a4a99b3`**, Gate 1 **311 files / 4349 tests**.
-- Local branches equal to open PR heads: `refactor/467-unified-model-setter` @
-  `033e1842` (#775), `fix/758-lmstudio-model-ids` @ `a127feb6` (#760).
-- The `pr-687` rebase branch was deleted once #687 merged; it needed protecting for
-  exactly one turn.
-- **14 local branches** remain from earlier sessions with unpushed commits — harmless,
-  but they are what a `git branch | wc -l` reconciliation should not mistake for work.
+**The ruleset is clean and verified** (`bypass_actors=0`, `enforcement=active`). Docs-only merges by the maintainer need the temporary bypass actor; other people's PRs do not, because a cross-account `--approve` satisfies the ruleset (#784, #789, #780 all merged that way). **Never silence the restore** — its failure is silent by construction, so it is the one write that must be read back.
 
----
+**Pushing to a fork PR, the `action_required` CI class, the ruleset restore, and the retry-that-duplicates-its-own-side-effect** are incidents in [Appendix B](#appendix-b--session-log-dated-blocks-verbatim). They are mechanics, not state.
 
-## Lessons learned (2026-09-20 session — skill audit, build-config layer, three dependency holds)
+**This environment's reads are intermittently empty, not wrong.** The GraphQL surface returns EOFs, `/pulls/<N>/files` sometimes returns `[]`, and `gh api ... --jq .body` returned empty for a PR whose body was complete — **four times in one session**, once nearly producing a request that the body be written. A blank read is a retry, not a fact. `gh api repos/.../pulls/<N>` is more reliable than `gh pr view`.
 
-**Trigger:** compact-prep after a long working session. Merged #757, #759, #761, #762,
-#765, #767, #769, #773, **#750**; closed #603, #662, #665, #672, #699, #751, and #753 as
-superseded; filed #763 and #764. `main` `3499da2a` → **`4f56b475`**; 4240 → **4285
-tests**. The through-line was **reviewing other people's work and being reviewed**, and
-most of what follows came from @DocTpoint's reviews rather than from my own passes.
+**One open decision blocks a later phase, not this one:** #729's toggle placement (bottom Advanced panel vs a home created by #668) — needed before Phase 4.
 
-### Durable lessons
+**Three rules the first compression pass dropped. Restored verbatim on 2026-10-06.** Their
+exact wording was lost when the dated sessions were merged. A rule nobody can find by its own
+words cannot be reused, so the headlines are back.
 
-1. **A dependency experiment leaves `node_modules` ahead of the lockfile, and `git
-   checkout` does not clean it — because it is not tracked.** Hit twice, and the second
-   time I reported it as a fact about `main`: 31 `TS2550: Property 'at' does not exist`
-   errors presented as a property of the `@types/node` bump, when the installed tree
-   still held the bumped package from reading that branch. `main` was clean. **Any local
-   Gate 1 result after a dependency experiment is untrustworthy until `pnpm install
-   --frozen-lockfile`.** The symptom is indistinguishable from a real regression, and it
-   was written into #765's audit note and #768's closing comment so the next person
-   recognises it faster.
+**A test can be written to protect a property and end up protecting a spelling.** Three cases
+in one week, from two authors and three files: a bundle test asserting
+`toContain('import("node:module")')` while its own comment named laziness; `toContain('updated:')`
+in the schema-audit test, which passes for the old value and so cannot tell an apply from a
+no-op; and #750's fourth assertion, caught by review. **The check that finds it is one question:
+what would this assertion still pass on?**
 
-2. **The triage skill's dedup step read `--state merged` only, so an OPEN PR already
-   fixing an issue was invisible.** I picked #597 as the highest-ROI unstarted item, read
-   the code, confirmed the defect against two independent doc comments, implemented it,
-   tested it, mutation-tested it twice — and then found **#656 had been fixing the same
-   issue for four review rounds and was one small change from approval**. Its branch was
-   six days stale, so every "recent activity" search missed it too. The wasted work is
-   the cheap part; the real cost is that a re-implementation is how a contributor's four
-   rounds get devalued. **Fixed in the skill**: Phase 1.5 now asks two separate questions
-   (fixed on `main`? vs **in flight in an open PR?**) and Phase 1d pulls every thread
-   roster-wide rather than per item, because a body does not say who already acted on it.
+**A rejection message can name the wrong cause, and the fix is the stronger flag.** A `git push`
+to a contributor's branch returned `non-fast-forward` — which is what a rebase looks like —
+before `--force-with-lease` returned the real `permission denied` (`maintainer_can_modify: false`).
+Two attempts went to the wrong diagnosis. Same shape: **verify the merge returned `merged=true`
+before restoring a bypass actor**, not that the command exited — restoring first left #773 open
+while the script printed success. And never suppress the restore's output: a `>/dev/null 2>&1` on
+the ruleset `PUT` hid two network failures and reported "restored" while `bypass_actors` stayed
+at 1.
 
-3. **A test can be written to protect a property and end up protecting a spelling.**
-   Three instances in one week, from two different authors and three different files: the
-   bundle test asserting `toContain('import("node:module")')` while its own comment said
-   the requirement was laziness; `toContain('updated:')` in the schema-audit test, which
-   passes for the old value and so cannot tell an apply from a no-op; and #750's fourth
-   assertion, caught by review. **The check that catches it is one question: what would
-   this assertion still pass on?**
+**The bundle is the authority on what is bundled — read the artifact, do not re-derive the set.**
+#699 measured ten third-party packages in the shipped `main.js`; the artifact holds **twelve**.
+The two it missed (`@vercel/oidc`, `eventsource-parser`) are transitive two levels below anything
+`package.json` names. The generator now reads esbuild's own markers
+(`// node_modules/.pnpm/<pkg>@<ver>/`), and a test fails when the committed document and the
+artifact disagree.
 
-4. **When you remove a wrong check, ask what it was incidentally holding shut.** The
-   best finding of the session, and it was not mine: `LINT_WRITE_INTENT` stopped reading
-   the ingest controller, which was right — and the old wiring had *also* been preventing
-   a lint write from resurrecting the page the cancelled-ingest cleanup had just deleted.
-   Removing a wrong reason left a right effect unprotected, and nothing replaced it. The
-   fix is now `create: false` plus a test that fails without it.
+**The dated sessions' remaining durable rules, dropped when those sections were merged. Headlines restored verbatim on 2026-10-06.**
 
-5. **Mutations cover the wiring; a correctness finding can live elsewhere — and a guard
-   assertion must itself be mutation-tested.** #750's slice passed all three of its own
-   mutations and still shipped two behaviour regressions. Then, on #467, **my guard
-   passed two of three mutations on the first version**: the assignment assertion was
-   satisfied by `syncModelsFromPlugin` assigning the same field, and the cascade
-   assertion by `toContain` matching the method's own *definition* — a lazy
-   `[\s\S]{0,400}?` span reaching past the closing brace to find it. Both now sit inside
-   one block, bound by `[^}]*`.
+**A dependency experiment leaves `node_modules` ahead of the lockfile, and `git checkout` does not clean it — because it is not tracked.** Hit twice; once 31 `TS2550: Property 'at' does not exist` errors were read as a property of the `@types/node` bump, while the installed tree still held it and `main` was clean. **Any local Gate 1 result after a dependency experiment is untrustworthy until `pnpm install --frozen-lockfile`.**
 
-6. **Two version numbers that read opposite to their cost.** `@types/node` 16 → 26 does
-   not add anything this project uses (`node:module` and `node:https` date from Node 15)
-   and **removes** the `compatibility/indexable.d.ts` shim that makes
-   `Array.prototype.at` typecheck under `lib: ES2021` — the upgrade takes away a
-   convenience. And `obsidian` 1.13.1 deprecates `display()` while its own doc comment
-   calls it *"a fallback for plugins that need to support Obsidian versions older than
-   1.13.0"* — so neither bump forces `minAppVersion`, and both were held with the
-   measurement written into `.github/dependabot.yml` rather than left as open PRs #766
-   and #768. **A version number is a claim about change, not about benefit.**
+**The triage skill's dedup step read `--state merged` only, so an OPEN PR already fixing an issue was invisible.** #597 was picked as the highest-ROI unstarted item, implemented and mutation-tested twice, then found to duplicate **#656**, already four review rounds in and one small change from approval. **Fixed in the skill**: Phase 1.5 asks fixed-on-`main` vs in-flight-in-an-open-PR, and Phase 1d pulls every thread roster-wide.
 
-7. **A rejection message can name the wrong cause, and the fix is the stronger flag.**
-   `git push` to a contributor's branch came back `non-fast-forward` — which is just what
-   a rebase looks like — before `--force-with-lease` returned the real `permission denied`
-   (`maintainer_can_modify: false`). Two attempts were spent on the wrong diagnosis.
-   Similarly: **verify the merge returned `merged=true` before restoring a bypass actor**,
-   not that the command exited — restoring first left #773 open while the script printed
-   success, and only the next status read showed it. **And never suppress the restore's
-   output.** A `>/dev/null 2>&1` on the ruleset `PUT` hid two network failures this
-   session, so the run reported "restored" while `bypass_actors` stayed at 1 — a
-   security-relevant residue that survived several commands before a direct read found
-   it. The restore is the one write in this flow whose failure is silent by construction,
-   so it is the one that must be read back.
+**When you remove a wrong check, ask what it was incidentally holding shut.** `LINT_WRITE_INTENT` stopped reading the ingest controller, which was right — and the old wiring had *also* been preventing a lint write from resurrecting the page the cancelled-ingest cleanup had just deleted. Removing a wrong reason left a right effect unprotected, and nothing replaced it. The fix is now `create: false` plus a test that fails without it.
 
-8. **The bundle is the authority on what is bundled — read the artifact, do not
-   re-derive the set.** #699 measured ten third-party packages in the shipped `main.js`;
-   the artifact contains **twelve**. The two it missed (`@vercel/oidc`,
-   `eventsource-parser`) are transitive two levels below anything `package.json` names,
-   and they are exactly the ones a hand-maintained list keeps missing. The generator now
-   reads esbuild's own `// node_modules/.pnpm/<pkg>@<ver>/` markers, so the set cannot go
-   stale, and a test fails when the committed document and the artifact disagree.
+**Mutations cover the wiring; a correctness finding can live elsewhere — and a guard assertion must itself be mutation-tested.** #750's slice passed all three of its own mutations and still shipped two behaviour regressions. On #467 the guard passed two of three mutations on the first version: the cascade assertion matched the method's own *definition* through a lazy `[\s\S]{0,400}?` span. Both assertions now sit inside one block, bound by `[^}]*`.
 
----
+**Two version numbers that read opposite to their cost.** `@types/node` 16 → 26 adds nothing this project uses (`node:module` and `node:https` date from Node 15) and **removes** the `compatibility/indexable.d.ts` shim that makes `Array.prototype.at` typecheck under `lib: ES2021`. `obsidian` 1.13.1 deprecates `display()` while its own doc comment calls it a fallback for older versions, so neither bump forces `minAppVersion`. Both were held with the measurement written into `.github/dependabot.yml` rather than left as open PRs #766 and #768. **A version number is a claim about change, not about benefit.**
 
-## Lessons learned (2026-09-16 session — cross-source direction + Dependabot lockfile root fix)
+**Two PRs touching the same file must be reviewed for interaction, not only individually.** #705 added the token-limit guard to `related-page.ts` as `return true`; #714 changed that function's return type to `string | null`. Each passed Gate 1 on its own branch; merged, they left `main` failing `error TS2322` for **five consecutive commits** (`c05d89a0` → `4c3e6ecc`). **Before merging into a file another queued PR also touches, diff the two against each other, not just against `main`.**
 
-### Durable lessons
+**The runtime half of a type error is often worse than the type error.** `updatedPath` became the boolean `true`, so `updated_pages` gained an entry that `repointLinksAfterRun`'s `p.endsWith('.md')` filter drops **silently** — the #713 shape, reintroduced by the fix for #713's sibling. A red type check is the *lucky* outcome; the same mistake in an untyped position ships unnoticed.
 
-- **`optionalDependencies` fail silently, and that is how a whole capability
-  disappears.** pi 0.85.1 declares `@earendil-works/pi-server` / `pi-client` as
-  optional; the global install skipped them and nothing complained, so background
-  subagents were unavailable — and the error text blamed a "standalone pi
-  binary" that did not exist. Diagnose by reading the consumer's resolution code
-  (`runner-aliases.ts::findPeerPackageDir` walks `<pkg>/node_modules` then every
-  ancestor), not the message. Fixed by extracting the 0.85.1 tarballs into pi's
-  own `node_modules` — **zero-intrusion (both manifest SHA-256s unchanged),
-  fully reversible with `rm -rf`**. Generalise: an optional dependency that a
-  required feature needs is a silent capability hole, not graceful degradation.
-- **Read the consumer before trusting an external search.** A research subagent
-  searched Obsidian's docs, correctly found no lockfile requirement, and
-  recommended deleting `package-lock.json`. The real constraint was in this
-  repo's own `.npmrc` post-mortem: Obsidian's pipeline runs `npm install` and
-  compares build hashes, so the file is load-bearing for release
-  reproducibility. **Absence of evidence in vendor documentation is not absence
-  of a constraint** — internal post-mortems outrank external docs for constraints
-  we discovered the hard way.
-- **The constraint may be in the prompt, not the architecture.** The Related
-  graph's intra-source shape looked like an inevitable property of "one note →
-  one star". It is literally an instruction at `prompts/ingestion.ts:27`.
-- **A log grep can identify the wrong CI step.** "Which step failed" was misread
-  from log text twice — `pnpm install --frozen-lockfile` looked like the failure
-  when it was the *preceding* step's `##[group]Run` echo. `gh run view <id>
-  --json jobs --jq '.jobs[].steps[]'` gives per-step conclusions and is the only
-  trustworthy source.
-- **A machine-generated artifact read back as input is a view-as-data bug.**
-  `build-graph.ts` parses `[[links]]` from page bodies without knowing that the
-  Related sections were written by `related-page.ts`. The graph is therefore
-  largely a render of the ingest's own co-occurrence decisions, which is why PPR
-  cannot discover anything the ingest had not already decided.
-- **Test the mechanism before merging it.** #718's workflow was validated on the
-  real Dependabot branch in a throwaway worktree — failure reproduced,
-  regeneration verified, single-file diff confirmed, and **idempotency proven by
-  SHA-256** so the workflow provably cannot loop — *then* merged, *then*
-  confirmed in production on #707 and #708.
+**A push-triggered CI failure on `main` has no surface.** #698 added `push: branches: [main]` and it worked as designed — five runs reported `failure`. No PR page carries a red mark, so nobody saw them. **Coverage ≠ visibility.** Until a notification path exists, verify by query: `gh run list --branch main --limit 5 --json headSha,conclusion`.
 
-### State pointers (2026-09-16)
+**`return page.path` was correct semantically, not merely type-correct.** The guard runs after `createOrUpdateFile`, so the frontmatter had landed and the page genuinely was updated — recording it in `updated_pages` is what the link-repoint pass needs. Choosing whichever value satisfies the type checker would have been a coin flip; asking what the call chain does with it decides the question.
 
-- Issue **#729** — cross-source relations, the first item of the v1.28.0 design
-  track.
-- **#718** CLOSED by PR **#727** (`e9be7f75`); **#707** `3f0fc9a2` and **#708**
-  `7cc50bf9` merged; `main` = `7cc50bf9`.
-- **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1`
-  placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
+**Gate 1 finding a blocker at Step 1 is the gate working.** The alternative was cutting tag `1.27.2` from a five-commit-red `main`. The release flow's order (Gate 1 before any version bump) is what made the failure cheap — no tag to retract, no release to unpublish, no published artifact to amend.
 
-### Resume point (post-compact handoff, 2026-10-03)
+**`pnpm-lock.yaml` had been stale since #692.** #692 regenerated `package-lock.json` for the vitest 5 bump and did not regenerate `pnpm-lock.yaml`; the drift surfaced only at release time (491 → 495 entries). `pnpm install --frozen-lockfile` is the decisive check that the pair agrees with `package.json`. Regenerating **both** is the rule; one is a half-measure that hides until the next release.
 
-**Read in this order if context was lost:** this file's `## Current state` (factual
-anchors) → **ROADMAP §"Open decisions — the queue awaiting the maintainer"** (the
-decisions, with a recommendation each) → then this file's `## Work list` for the
-*reasoning* behind those recommendations → then the design record for whichever item
-is next.
+**`AGENTS.md`'s "Latest shipped" pointer was two releases behind** (still v1.27.0 / 3677 tests) while v1.27.1 had shipped. It is the first line of the file every agent reads, so it needs the same update pass as CHANGELOG/ROADMAP — not a "docs" afterthought.
 
-**The next actions are #791 and #792's self-check, in that order.** #791 is a blank
-answer (a reasoning-only reply), #792's slug path can be inspected without waiting for
-its reporter, and neither depends on the #729 decision.
+**CONTRIBUTING.md carried a whole stale section, not just stale numbers.** Its `tools/llm-wiki-cli/` tree — described as "the current user-facing install path" — had been deleted in v1.27.0 by #511, and its Mermaid diagram still pointed at the removed directory. **Numerical drift is visible; structural drift is not.** Sweep the tree and the diagram, not only the counts.
 
-**State at handoff:** `main` = **`73e6ca49`**, Gate 1 green at **313 files / 4363
-tests**. Open: **34 issues, 11 PRs**. Working tree clean, stash empty. Local branches
-that matter: `feat/729-phase1-co-citation` @ `7b01a61b` (**PR #781, held**),
-`fix/758-lmstudio-model-ids` @ `a127feb6` (**PR #760, superseded by #783 unless kept
-for its structure**), `docs/729-status-and-provenance` (merged as #782).
+**Merge-then-label works but verify per item, not per batch.** `gh pr edit --add-label --milestone` on merged PRs succeeds, but GraphQL EOF/TLS flakes timed out the batch verify after 3 of 5 — the remaining two needed an individual retry. Verify each PR's labels and milestone in the same command that sets them, with retries.
 
-**The queue is the work.** Five items are finished and waiting on a call — choosing
-between #783 and #760, closing #770/#771/#772 once #786 lands, and answering #729.
-None of them needs an implementation pass, and building on any of them before the call
-is the mistake this session was spent learning.
+**Zero-file-overlap across a same-author wave is checkable in one pass and worth checking.** The five DocTpoint PRs touched disjoint production files (ppr-cascade / related-link-corrector+wiki-engine / llm-client-wrapper / section-extractor / paragraph-provenance+merge/related-page); confirming `交集=∅` up front justified the small-to-large merge order and ruled out cross-PR conflicts without rebases.
 
-**One open decision blocks a later phase, not this one:** #729's toggle placement
-(bottom Advanced panel vs a home created by #668) — needed before Phase 4.
+**Doc-sync arithmetic must be recomputed from git log, not carried forward.** The CHANGELOG header said "21 PRs … 3677 → 3830" (wave A+B only); the true post-wave-C count is **26 PRs / 3975 tests** — wave C (5) + audit trio (3) + #569/#607 (2, merged 09-04 after the 21-PR doc commit `0ad53c6`) were all missing. `git log --oneline <last-doc-commit>..HEAD` is the source of truth.
 
-**The ruleset is clean and verified** (`bypass_actors=0`, `enforcement=active`).
-Docs-only merges by the maintainer need the temporary bypass actor; other people's PRs
-do not, because a cross-account `--approve` satisfies the ruleset (#784, #789, #780 all
-merged that way). **Never silence the restore** — see the 2026-09-21 lessons.
+**#629 closed the b302aab reasoning-streaming question.** The streamed answer "thought 43/55s" because `taskPolicies` never reached `createMessageStream`; verified reasoning never enters `onChunk`, so the policy gap was the only remaining suspect and #629's diff confirms it. Record the negative result where the question was asked: b302aab (wrap-string format + idempotence guard) cannot cause reasoning streaming.
 
+**#631's accepted inconsistency is now project state.** Rewrite paths are 2-guarded (`merge-page`, `related-page` via `guardBodyRewrite`) / 1-unguarded (`mergeDuplicatePages`, `resolveContradiction`). The follow-up note is in the review comment and the ROADMAP wave-C table — the next person touching either unguarded path must read it first.
 
-**Pushing to a fork PR, the `action_required` CI class, the ruleset restore, and the
-retry-that-duplicates-its-own-side-effect are all in this file's `## Lessons learned
-(2026-09-21 session ...)` — read them there rather than here.** They are mechanics,
-not state, and the Resume point carries only what changes between sessions.
+**Merge-stack conflicts on shared files are the norm for same-author waves, not the exception.** Wave B's stacked PRs (#606→#610; #569→#607) each carried their base's commits, so when the base merged to main first the child's diff went CONFLICTING. Resolution: fetch head, `git merge origin/main`, resolve per-hunk (keep BOTH sides for complementary changes — `localDateStamp` from #612 + `wikiRelativePagePath` from #606 — keep the child's superset in tests), local Gate 1, force-push to the fork. **Cost:** two force-push cycles (#600, #606, #610).
 
-**This environment's reads are intermittently empty, not wrong.** The GraphQL surface
-returns EOFs, `/pulls/<N>/files` sometimes returns `[]`, and `gh api ... --jq .body`
-returned empty for a PR whose body was complete — **four times in one session**, once
-nearly producing a request that the body be written. A blank read is a retry, not a
-fact. `gh api repos/.../pulls/<N>` is more reliable than `gh pr view`.
+**`v1.27.0 MINOR` GitHub milestone is a shipped release — it must never receive new open items.** Moving #569/#568/#567 there from PATCH was corrected: a released milestone is closed to new work by definition. Future-work items belong under `v1.27.x PATCH` or a not-yet-created v1.28.0 milestone. **Scale of a PR (35 files) is a code-size observation, not a release-window argument.**
 
-**One open decision blocks a later phase, not this one:** #729's toggle placement
-(bottom Advanced panel vs a home created by #668) — needed before Phase 4.
+**`shazam_verify` after every edit is a hard requirement the harness enforces — including markdown.** Doc edits to ROADMAP/CHANGELOG trigger the same turn-end verification as code edits.
 
----
+**DocTpoint's write-audit methodology is the project's best bug-discovery instrument.** Park-previous-version-before-every-write + compare surfaced #613 (573 misdirected source rewrites), #614 (180 mentions losses), #617 (9 sections, 34K chars lost) — three data-corruption classes no fuzz test would find. When a future contributor wants to hunt bugs, copy this pattern.
 
-## Lessons learned (2026-09-15 session — v1.27.2 release prep, main-is-red regression forensics)
-
-**Trigger:** user "梳理本patch阶段所有工作，按skill执行发布流程". Gate 1 failed 12 seconds into Step 1 on a clean `main` — before any release change had been made.
-
-### Durable lessons
-
-1. **Two PRs touching the same file must be reviewed for interaction, not only individually.** #705 added the token-limit guard to `related-page.ts` as `return true` (the function returned `boolean`); #714 changed that function's return type to `string | null`. Each passed Gate 1 on its own branch. Merged, they left `main` failing `error TS2322` for **five consecutive commits** (`c05d89a0` → `4c3e6ecc`). Per-PR CI cannot see this class at all, and I had read both diffs in review — each verified against its own base, never against the other. **Before merging into a file another queued PR also touches, diff the two against each other, not just against `main`.**
-2. **The runtime half of a type error is often worse than the type error.** `updatedPath` became the boolean `true`, so `updated_pages` gained an entry that `repointLinksAfterRun`'s `p.endsWith('.md')` filter drops **silently** — precisely the #713 shape, reintroduced by the fix for #713's sibling. A red type check is the *lucky* outcome; the same mistake in an untyped position ships unnoticed.
-3. **A push-triggered CI failure on `main` has no surface.** #698 added `push: branches: [main]` and it worked exactly as designed — five runs reported `failure`. There is no PR page to carry a red mark, so nobody saw them. **Coverage ≠ visibility.** Until a notification path exists, "main is green" must be verified by query, not assumed: `gh run list --branch main --limit 5 --json headSha,conclusion`.
-4. **`return page.path` was correct semantically, not merely type-correct.** The guard runs *after* `createOrUpdateFile`, so the frontmatter had landed and the page genuinely was updated — recording it in `updated_pages` is what the link-repoint pass needs. Choosing whichever value satisfies the type checker would have been a coin flip; asking what the call chain does with it decides the question.
-5. **Gate 1 finding a blocker at Step 1 is the gate working.** The alternative was cutting tag `1.27.2` from a five-commit-red `main`. The release flow's order (Gate 1 before any version bump) is what made the failure cheap — no tag to retract, no release to unpublish, no published artifact to amend.
-6. **`pnpm-lock.yaml` had been stale since #692.** #692 regenerated `package-lock.json` for the vitest 5 bump and did not regenerate `pnpm-lock.yaml`; the drift surfaced only at release time (491 → 495 entries). `pnpm install --frozen-lockfile` is the decisive check that the pair now agrees with `package.json`. Regenerating **both** is the rule; regenerating one is a half-measure that hides until the next release.
-7. **`AGENTS.md`'s "Latest shipped" pointer was two releases behind** (still v1.27.0 / 3677 tests) while v1.27.1 had shipped. It is the first line of the file every agent reads, so it needs the same update pass as CHANGELOG/ROADMAP — not a "docs" afterthought.
-8. **CONTRIBUTING.md carried a whole stale section, not just stale numbers.** Its `tools/llm-wiki-cli/` tree — described as "the current user-facing install path" — had been deleted in v1.27.0 by #511, and its Mermaid diagram still pointed at the removed directory. **Numerical drift is visible; structural drift is not.** Sweep the tree and the diagram, not only the counts.
-
-### State pointers (2026-09-15)
-
-- **Open PRs:** #653/#656 (Jan-Heldal, CHANGES_REQUESTED), #673 (DocTpoint, CHANGES_REQUESTED), #687 (Chase07, draft), #701 (deferred to `v1.28.0 MINOR`), #706/#707/#708 (dependabot, CI red — #706 is a MAJOR).
-- **Open design calls:** #603 (write-gate contract), #567 (limit contract). #604 closed by #684.
-- **Milestones:** `v1.27.x PATCH` (15 open), `v1.28.0 MINOR` (new), `v1.27.0 MINOR` closed.
-- **Repository links point to `GD4AI/obsidian-llm-wiki`** — the org move made every `green-dalii/obsidian-llm-wiki` URL stale, and the Obsidian review bot caught it ("README links to another repository with the same name"). 376 repo links across 25 files were updated; the substitution used a negative lookahead so `green-dalii/obsidian-llm-wiki-cli` was protected (the sibling CLI repo did **not** move). The #375 locale-switcher guard now asserts the prefix positively — its previous lookahead-plus-`[a-z]+/` form could not match any `github.com` URL, so a stale owner passed it, which is why this drift survived two releases.
-- **Ruleset `16884813`:** `bypass_actors: []` restored after the #722 merge — a temporary `bypass_mode: "pull_request"` actor was added and reverted **in the same command chain**, and `updated_at` 2026-09-15T08:28:50+08:00 proves the revert was the last write.
-- **Docs synced:** CHANGELOG §1.27.2 · ROADMAP wave F + header · MEMORY current-state + this block · CONTRIBUTING (counts + tree + Mermaid) · AGENTS.md latest-shipped pointer · 11 READMEs (`latest:` + `last-updated:`).
-
-## Lessons learned (2026-09-05 session — wave-C 5-PR merge + audit-trio + doc sync)
-
-**Trigger:** user "按你建议执行 review+Approve+Merge，然后更新 CHANGELOG、ROADMAP、MEMORY、CONTRIBUTING". Merged #630 → #629 → #625 → #626 → #631 (small-to-large; audits #632/#633/#634 already on main as base); main `bf3cd3d` → `ddf392d`; 3932 → 3975 tests (279 files). Labels `bug` + milestone `v1.27.x PATCH` applied to all five post-merge (verify showed 630/629/625 first, 626/631 needed a retry pass). Linked issues #623/#624/#627/#628 auto-closed via `Closes`.
-
-### Durable lessons
-
-1. **Merge-then-label works but verify per item, not per batch.** `gh pr edit --add-label --milestone` on merged PRs succeeds, but GraphQL EOF/TLS flakes meant the batch verify loop timed out after 3 of 5 — the remaining two needed an individual retry. Lesson: verify each PR's labels+milestone in the same command that sets them, with retries, before moving on.
-2. **Zero-file-overlap across a same-author wave is checkable in one pass and worth checking.** The five DocTpoint PRs touched disjoint production files (ppr-cascade / related-link-corrector+wiki-engine / llm-client-wrapper / section-extractor / paragraph-provenance+merge/related-page) — confirming `交集=∅` up front justified the small-to-large merge order and ruled out cross-PR conflicts without rebases.
-3. **Doc-sync arithmetic must be recomputed from git log, not carried forward.** The CHANGELOG header I inherited said "21 PRs … 3677 → 3830" (wave A+B only); the true post-wave-C count is 26 PRs / 3975 tests — wave C (5) + audit trio (3) + #569/#607 (2, merged 09-04 after the 21-PR doc commit `0ad53c6`) were all missing. `git log --oneline <last-doc-commit>..HEAD` is the source of truth for "N PRs merged" lines.
-4. **#629 closed the b302aab reasoning-streaming question.** The streamed answer "thought 43/55s" because `taskPolicies` never reached `createMessageStream` — verified reasoning never enters `onChunk` (earlier session), so the policy gap was the only remaining suspect and #629's diff confirms it. Record the negative result where the question was asked: b302aab (wrap-string format + idempotence guard) cannot cause reasoning streaming.
-5. **#631's accepted inconsistency is now project state.** Rewrite paths are 2-guarded (`merge-page`, `related-page` via `guardBodyRewrite`) / 1-unguarded (`mergeDuplicatePages`, `resolveContradiction`). The follow-up note exists in the review comment and ROADMAP wave-C table — the next person touching either unguarded path must read it first.
-
-### State pointers (2026-09-05)
-
-- **Open PRs:** #570 (wontfix, no action). #569/#607 already MERGED 09-04 (verify before re-reviewing — ROADMAP backlog row 1 is stale).
-- **Open design calls:** #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract) — unchanged.
-- **Community:** Jan-Heldal #592/#593/#594/#597 still awaiting PRs; #608 image-embeds deferred to MINOR.
-- **Milestones:** v1.27.x PATCH open=10; v1.27.0 MINOR closed (0); v1.27.0+ research open=15.
-- **Docs synced:** CHANGELOG [Unreleased] (5 Fixed + 1 Refactor entries), ROADMAP wave-C table + header date, MEMORY current-state + this lesson block, CONTRIBUTING test count + 2 tree rows.
-
-## Lessons learned (2026-09-04 session — wave-B rewrite-safety audit + 21-PR PATCH wave)
-
-**Trigger:** post-09-02 PATCH continuation. Merged 21 PRs total (wave A 12 on 09-02, wave B 9 on 09-04); main `7c4d144` → `8feb5fd`; 3677 → 3830 tests. Wave B was DocTpoint's rewrite-safety audit — every PR measured on a 413-note German vault with per-write audit parking (previous version saved before each write), exposing a whole class of "non-lossy promise broken" bugs.
-
-### Durable lessons
-
-1. **Merge-stack conflicts on shared files are the norm for same-author waves, not the exception.** Wave B's stacked PRs (#606→#610; #569→#607) each carried their base's commits; when the base merged to main first, the child's diff was computed against a stale base and went CONFLICTING. Resolution pattern that worked: fetch head, `git merge origin/main`, resolve per-hunk (keep BOTH sides when two complementary changes touch the same lines — e.g. `localDateStamp` from #612 + `wikiRelativePagePath` from #606 — keep the child's superset in tests), local Gate 1, force-push to the fork. **Cost:** two force-push cycles (#600, #606, #610). Lesson: for stacked same-author PRs, either merge the whole stack in one sitting before anything else lands, or expect per-child conflict resolution.
-2. **`v1.27.0 MINOR` GitHub milestone is a shipped release — it must never receive new open items.** I moved #569/#568/#567 there from PATCH (judging them "MINOR-scale work") and was corrected: a released milestone is closed to new work by definition. Future-work items belong under `v1.27.x PATCH` (the only active cycle) or a not-yet-created v1.28.0 milestone. **Scale of a PR (35 files) is a code-size observation, not a release-window argument.**
-3. **`shazam_verify` after every edit is a hard requirement the harness enforces — including markdown.** Doc edits to ROADMAP/CHANGELOG trigger the same turn-end verification as code edits.
-4. **DocTpoint's write-audit methodology is the project's best bug-discovery instrument.** Park-previous-version-before-every-write + compare → surfaced #613 (573 misdirected source rewrites), #614 (180 mentions losses), #617 (9 sections, 34K chars lost) — three data-corruption classes no fuzz test would find. When a future contributor wants to hunt bugs, this is the pattern to copy.
-5. **Co-maintainer credit landed (PR #619, owner-approved).** DocTpoint is now in manifest author + README maintainer + NOTICE. Permission elevation (to `maintain` role) remains a separate decision, still gated on ruleset required-review per the 09-02 research — credit and permission are different surfaces.
-
-### State pointers (2026-09-04)
-
-- **Open PRs:** #569 (domain-axis, B1-B6 fixed 09-02, needs full re-review of 11 commits), #607 (gate three-outcome table, stacked on #569), #570 (wontfix).
-- **Open design calls:** #603 (write-gate contract), #604 (dead contradiction loop), #567 (limit contract).
-- **Community:** Jan-Heldal bugs #592/#593/#594/#597 invited to PR; Chase07 #608 image-embeds deferred to MINOR.
-- **Milestones:** v1.27.x PATCH open=11; v1.27.0 MINOR closed (0 open); v1.27.0+ research open=15.
+**Co-maintainer credit landed (PR #619, owner-approved).** DocTpoint is in manifest author + README maintainer + NOTICE. Permission elevation to `maintain` remains a separate decision, still gated on ruleset required-review — credit and permission are different surfaces.
 
 ---
 
@@ -2015,6 +611,19 @@ them worth acting on rather than worth debating.
 
 ---
 
+## Release cadence (since v1.20.2)
+
+- v1.20.2–v1.24.x: PATCH cadence every 1-2 weeks, occasional MINOR (v1.24.0)
+- v1.25.x: 11 PATCH releases in 6 weeks (eucher-era hot-fix cadence)
+- v1.26.x: 5 releases (v1.26.0 MINOR + v1.26.1–v1.26.4 PATCH)
+- **v1.27.0 MINOR** ships 2026-08-27; **in** v1.27.x PATCH (wave A 09-02: 12 PRs; wave B 09-04: 9 PRs; next release after #569/#607 or community PRs land)
+
+MINOR cadence is roughly every 3-4 PATCH releases or when an architect-level
+contributor lands a ≥5-PR cluster. Decision documented in AGENTS.md "PR merge
+workflow".
+
+---
+
 ## Where to look
 
 - **Project standards & process:** [AGENTS.md](./AGENTS.md) (canonical; the historical [CLAUDE.md](./CLAUDE.md) is now a pointer stub only)
@@ -2022,10 +631,459 @@ them worth acting on rather than worth debating.
 - **Per-version history:** [CHANGELOG.md](./CHANGELOG.md)
 - **Contributor guide:** [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Architect-level attribution:** [NOTICE](./NOTICE)
-- **Release workflow skill:** `~/.pi/skills/obsidian-plugin-release/SKILL.md` (Pi canonical; legacy alias `~/.claude/skills/...` still works under Claude Code sessions)
-- **Detailed session learnings (project-internal):** the durable record for this project is this file ([MEMORY.md](./MEMORY.md)). No per-agent private memory directory is maintained in the repository.
+- **Release workflow skill:** `~/.agents/skills/obsidian-plugin-release/SKILL.md` (canonical; legacy aliases `~/.claude/skills/...` and `~/.pi/skills/...` still resolve)
+- **Durable rules and current state:** this file ([MEMORY.md](./MEMORY.md)). No per-agent private memory directory is maintained in the repository.
+- **History moved out of the live sections:** [Appendix A](#appendix-a--design-records-verbatim-moved-back-from-docs) holds the four design records; [Appendix B](#appendix-b--session-log-dated-blocks-verbatim) holds the dated session blocks and the past ROI tier tables. Neither is current state.
 
 ---
 
 **Maintainer:** [@green-dalii](https://github.com/green-dalii) ·
 **Repository:** [GD4AI/obsidian-llm-wiki](https://github.com/GD4AI/obsidian-llm-wiki)
+
+---
+
+## Appendix A — Design records (verbatim, moved back from docs/)
+
+The four design records, unchanged. They record shipped work, so the per-version
+composition stays in [CHANGELOG.md](./CHANGELOG.md) and the planning view stays in
+[ROADMAP.md](./ROADMAP.md). What nothing else reproduces is the *argument*: which option
+was rejected, what the measurement showed, which objection was right. Read this before
+reopening one of these decisions.
+
+## Design record — cross-source relations (#729, v1.28.0)
+
+> ### ⚠️ STATUS: PROPOSED, and the design thread is OPEN
+>
+> **This section is not a settled design and must not be read as one.** It was written 2026-09-16 and for four days said it was "converged with the maintainer"; that was **false when written** — #729's request for dissent went out at 10:42, this was recorded at 11:19 and merged at 11:23, and the first reply arrived two days later.
+>
+> **@DocTpoint's objection of 2026-09-18 is the substantive reply, and it is still open.** It corrects four of the measurements below, shows that acceptance criterion 1 cannot fail, and measures that M0 selects by tie-break rather than by signal. The maintainer's answer of 2026-09-23 accepts the corrections and the M0 defect, and leaves the sequencing question (reader before graph) as a decision. **Nothing in the implementation plan below should be built on before that thread concludes.**
+>
+> The four measurement-provenance corrections are applied in §"Measurement provenance". They were propagated wrongly here and into #781's PR body; the originals were documented honestly in the source files and the error was mine in transcription.
+
+Recorded 2026-09-16 as a proposal. The planning window lives in ROADMAP §"v1.29.0 MINOR — Design track"; this section is the *why* and the *how*. **Start here if you have no context:** `### The measurement` and `### Root cause` are the whole reason this work exists, `### Three mechanisms` is the design, and **`### Implementation plan (ordered phases)` is the build**. The issue is #729.
+
+### Measurement provenance (corrected 2026-09-23)
+
+Four figures in this record were attributed wrongly, and the error was mine in transcription — the source files documented them honestly. @DocTpoint's vocabulary: **"stock"** is unmodified upstream; **"local stack"** is his patched build (deterministic Related sections capped at five, an ingest-order picker, a local micro-embedding for dedup).
+
+| Figure | Actually from | Holds on `main`? | Can it carry weight? |
+|---|---|---|---|
+| ~95 % of edges intra-source; 9 in 10 pages with no cross-source incoming link | **stock** code, July 2026, again in the rebuild | **yes** | **load-bearing** — it is the premise of #729, and it survives the regime change |
+| Arm C lost 3 of 5 questions | query path, **stock** code | **yes** | **load-bearing** — and it lost at the **lexical seed stage**, wrong seeds and not missing paths |
+| B ≥ A (wiki pages retrieve at least as well as raw notes) | local stack for the corpus | direction only | motivates the work; **too small to justify a default-on change** |
+| M0 re-measured (tie-break behaviour) | local-stack vault, M0 as specified, no model | mechanism yes, numbers approximately | **load-bearing** for how M0 behaves; on `main` there are more links per page, so somewhat fewer ties |
+| 374 dead related entries (5 %) | **local stack only** | **no** | **not** a criterion-4 baseline for a stock build |
+| Related cap of five, zero violations | **local stack only** | **no** | says nothing about `main`'s shaping — `main` has no cap at all |
+
+### The three findings that reopen the plan
+
+**① Acceptance criterion 1 cannot fail.** M0 creates cross-source edges by definition, so the intra-source share must fall whether the pairs are useful or not — measured 96 % → 56 % on his vault. It is a restatement of what the mechanism does, not a test of it. Success has to be measured at the reader.
+
+**② M0 decides by tie-break, not by signal — and Phase 1 shipped a biased tie-break.** Re-run on the full rebuild with raw count and path-ordered ties: **80 % of the top-3 cuts fall inside a group of equally scored candidates**, median 12 in the group.
+**79 % of the chosen entries rest on a single shared target.**
+One broad hub alone generates 16.5 % of all candidate pairs.
+Titles beginning with "A" are 9.1 % of pages but **17.1 % of the chosen entries**.
+The source of the bias is `co-citation.ts`'s tie-break, which the PR describes as a virtue.
+A **repeatable arbitary cut is worse than a random one**, because it is repeatable *and* systematically biased.
+Adamic-Adar damping reduces the ties (95 % → 84 %) without removing them.
+A later rebuild (~100 notes) reproduces the shape.
+
+**③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is unchanged, so the extractor keeps answering the intra-source question it was asked. And the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141` pushes them to `unanswered` and then writes them, so they land as dead links. A prior-driven path is therefore already running, in the open, **unmeasured**. In the control run, 79 % of unresolved Related targets had never been a candidate.
+
+Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**; **criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a world-knowledge one); and **`keepFrom` keeps existing entries in front (`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an existing vault without a migration — Phase 2's pass conditions are not testable on a rebuild until that is decided.
+
+### Where the analysis lives — and the two corrections made since
+
+**The measurement, the root cause, the three mechanisms, the budget table, the allocation algorithm, the definition, the rejection of embeddings and the acceptance criteria are all in [issue #729](https://github.com/GD4AI/obsidian-llm-wiki/issues/729)**, which was written as the design document and is their canonical statement. They were mirrored here for several rounds and had already begun to diverge — this copy carried none of the corrections below and the issue carries none of the phase status. One fact, one place: **read the issue for the design, this section for what changed afterwards and what is left.**
+
+Two corrections were made here after the issue was written, and would otherwise be lost:
+
+- **Two concerns, not three of a kind.** `GRANULARITY_FIX_LIMITS` and the `?? 5` defaults are **extraction** limits — how many entities/concepts to ask for, read by `getGranularityInstruction` and `getGranularityFixLimits`. `SIBLING_CAP` caps **Related list entries**. Both are granularity-keyed and nothing else about them is the same, so they are two tables in `constants.ts`, not one.
+- **The `?? 5` count was 4, not 2** — two in `getGranularityInstruction` (`:209`, `:210`) and two in `getGranularityFixLimits` (`:226`, `:227`). Replacing only the documented pair would have left two orphaned defaults, the exact scattering the constant exists to remove.
+
+One claim in the issue did not survive contact, recorded here so Phase 2 does not re-derive it: **`RELATED_BUDGET.siblings` must NOT be read yet** — it is 3/3/2/1/3 where today every granularity gets a flat 3, so consuming it is not behaviour-preserving. Phase 0 shipped it unread on purpose; Phase 2 owns it. **The budget table and the five-step allocation algorithm are in the issue** under §"1. An adaptive Related budget" and §"2. Reserved allocation, with backfill"; they are the specification Phase 2 implements, and a copy here would be a second place to update when it changes. The one property worth carrying at this level: **the cross-source column is a ceiling, never a quota** — a page with no cross-source candidates is not made emptier by the feature.
+
+### Implementation plan (ordered phases)
+
+Each phase is independently mergeable and testable. **Do not start phase N+1 before phase N's pass condition holds.** Phases 1–2 are the feature; 3–4 make it useful and shippable; 0 is a prerequisite; 6 is what decides whether anything model-dependent is ever opened.
+
+- **Phase 0 — centralise the ceilings (no behaviour change). ✅ DONE 2026-09-17.** `SIBLING_CAP` → `RELATED_SIBLING_CAP`, and `GRANULARITY_FIX_LIMITS` + the four (not two) `?? 5` literals → `EXTRACTION_LIMITS` + `CUSTOM_EXTRACTION_LIMIT_DEFAULT`, all in `src/constants.ts`. `RELATED_BUDGET` added, **unread on purpose**. Pass condition met: Gate 1 green, 4170/4170, zero snapshot churn. **`siblings` must NOT be read yet** — it is 2/1 where today every granularity gets 3, so reading it is not behaviour-preserving.
+- **Phase 1 — M0, the co-citation projection.** Candidates for page `P` are pages sharing ≥1 outgoing target with `P`, ranked by shared-target count, ties broken by path.
+  Exclude self, anything already note-grounded, and anything the vault resolver rejects.
+  Wire in as an **optional** dep on `shapeRelatedLists` (`candidates?: (self: string, exclude: ReadonlySet<string>) => string[]`), so existing unit tests keep compiling.
+  Run at **write time**, so the edges persist and PPR gets the cross-source reach for free.
+  **Pass condition:** projection tests (sharing, ranking, tie determinism, exclusion) plus the suite green **with the dep absent**, **then re-measure the 95 % figure on a rebuild**.
+  If this phase alone does not move it, stop — the diagnosis is wrong, not the mechanism.
+- **Phase 2 — allocation (reserved + backfill).** The five-step algorithm goes inside `shapeRelatedLists`. Log the truncation count and the cross-source count; the acceptance criteria are unmeasurable without them. **Pass condition:** the reservation holds when candidates exist · freed slots return to note-grounded when they do not · totals never exceed the tier · an orphan still gets its siblings first.
+- **Phase 3 — M1, local window ranking.** Call `selectCandidateWindow({ name, context: item.summary }, vaultPool, K)` where `vaultPool` is `getExistingWikiPages`' output and `K` is the tier's **cross-source budget** (30 is the window's own ceiling, not the budget). `wiki-engine.ts:1224` supplies the provider. **Pass condition:** stub-pool tests, determinism, and **no additional LLM call enters the path**.
+- **Phase 4 — settings toggle + docs.** Toggle defaults **on**; decide its panel before writing code (content-generation behaviour ⇒ the bottom Advanced panel). 11 locale strings, 11 READMEs, a CHANGELOG entry under the MINOR. **Pass condition:** Gate 1 green, `pnpm lint:tools-bot` clean, i18n parity.
+- **Phase 5 — companion: multi-hop query decomposition.** Extend `generateQueryKeywords`'s contract from `Promise<string[]>` to `Promise<{ keywords: string[]; subqueries?: string[] }>` and update its callers and tests — that signature change is the whole cost. Decompose **only** when the model marks the query multi-hop. **Pass condition:** a simple question is provably not decomposed (fixture assertion), a compound one is, and the union-of-seeds path is covered.
+- **Phase 6 — measurement, and the only thing that opens M2.** Rebuild a comparable vault, re-measure the intra-source share, re-run the five multi-note questions, and check the dead-related count against the **rebuild's own** control, not the 676 / 870 figure. **M2 (or an embedding) is opened by these numbers, never by preference.**
+
+### Definition, companion, and why not embeddings
+
+- **"Cross-source" = not named by this note's own extraction.** Chosen because `getExistingWikiPages` does not expose per-page `sources`; a provenance-based definition is more precise and more expensive, and should not be paid for before measurement says it matters.
+- **Companion: multi-hop query decomposition.** Arm C's three losses are multi-note (compound) questions. Decompose into sub-queries, retrieve per sub-query and union the seeds — **only for queries classified as multi-hop**; over-splitting a simple question is the classic IR regression. The classifier folds into the existing Stage 1.5a call (`generateQueryKeywords`, which already makes an LLM round-trip on this path) so the decision costs no extra latency. Kept in #729 rather than split out: same acceptance harness.
+- **Why not embeddings.** `Zero-embedding graph retrieval` is a load-bearing identity claim: README badge line, SEO intents ("Obsidian RAG without embeddings"), the competitor comparison table, README `:229`, and `docs/MODEL-GUIDE.md`.
+  README `:229` reads "Most 'AI search' plugins … embed them in a vector DB. We don't." and `docs/MODEL-GUIDE.md` reads "Embedding endpoints are irrelevant — we don't use embeddings".
+  It is also a **model-dependent dependency paid by every install**, including users who chose this plugin because it runs fully local — the exact asymmetry the floor/ceiling principle warns about.
+  Reopen only if the lexical residual proves material *after* the floor is raised, and let the staged acceptance criteria make that visible.
+
+### Acceptance criteria (staged attribution)
+
+1. **M0 only** — intra-source edge share < 95 % on a comparable rebuild (the model-independent floor).
+2. **M0 + M1** — the further drop, plus the five multi-note questions improving in arm C.
+3. **M2 justified only if** 1–2 leave the multi-note questions unfixed, or the residual gap is demonstrably semantic (*"how knowledge evolves over time"* against a page titled *Consolidation kernel*).
+4. Dead related entries do not increase. **The baseline is *not* 676 / 870** — that is an earlier 136-note alphabetical control run on stock code, 25 % of all Related links. The rebuild's own number is **374 on 2,135 pages (5 %)**, and part of that residual is intended (frontier names are deliberately kept). Both figures come from @DocTpoint's vault and neither is a `main` baseline for a stock build.
+5. No regression on single-note questions; the `related-shaping` / `related-sections` suites stay green.
+6. Gate 1 green; no settings-schema break; a disable switch exists and defaults **on** (a deliberate default change ⇒ MINOR).
+
+**Files to touch:** `src/constants.ts` (budget table) · `src/core/related-shaping.ts` (import + allocation + candidate hook) · `src/wiki/system-prompts.ts` (table out, `?? 5` replaced) · `src/wiki/wiki-engine.ts:1224` (pass the candidate provider) · `src/__tests__/core/related-shaping.test.ts` (import + reservation / backfill / determinism) · `src/texts/*.ts` ×11 (toggle copy) · README ×11 + CHANGELOG.
+
+### Coupling constraints
+
+Two constraints make the build order non-negotiable, and both were found late — during the 2026-09-16 planning pass, not during design. They are recorded here because the *reason* is what a future reader needs; the schedule table itself is in ROADMAP §"Phase schedule".
+
+- **#729 ships with #664.** #729 adds entries to the Related lists; #664 observes that those lists already grow about two per source and are never pruned. Built separately, #729 raises the ceiling while #664 leaves the floor open — and the measurement that would catch it (Related length over a rebuild) is precisely the one each change would blame the other for.
+- **#729 sequences after #668, not parallel to it.** #729 introduces a settings toggle defaulting on; #668 restructures the settings tab. Landing the toggle first means re-homing it twice.
+- **#603 is a hard prerequisite for every sub-phase past 0.** The floor-before-ceiling argument applies twice: a faster reader over a store whose write-gate contract does not hold moves the error rather than removing it, and the phase-1 acceptance criterion (intra-source share) is meaningless if the edges it measures can be written by six paths the design does not account for.
+
+### Open questions
+
+- Reserved vs additive (we argue reserved-with-backfill) · the tier numbers (first proposal) · M0 at write time or query time.
+- Whether the ceiling deserves more than M2 — for instance a periodic consolidation pass over accumulated pages (the #358 kernel). This design deliberately does not close that door.
+
+---
+
+## Design record — write path and page index (#603 / #662, v1.28.0)
+
+**Design pass, 2026-09-16. No implementation.** Both issues describe a surface problem accurately and enumerate it inaccurately; the enumeration is what decides the design, so it was re-measured from source rather than trusted.
+
+### The gate bundles four concerns, not one
+
+`createOrUpdateFile` (`wiki/wiki-engine.ts:1873-2045`) is documented as the "single write gate with pollution defense". It does four separable things, and callers want different subsets of them:
+
+| # | Concern | Where |
+|---|---|---|
+| 1 | Pollution correction (display-name, path-prefix, `sources` field) | `:1884-1932` |
+| 2 | Heading + provenance normalization (`normalizeHeadingSpacing`, `normalizeProvenanceMarkers`) | `:1940-1945` |
+| 3 | IO with retry + path resolution (3 attempts, directory scan, full scan) | `:1947-2045` |
+| 4 | Notification + cache invalidation (`onFileWrite`, `invalidatePageCaches`) | 5 exit points |
+
+The gate offers "all four" or "none", and nothing in between is reachable.
+
+### The decisive evidence is already in the codebase
+
+`wiki-engine.ts:845-851` documents a **deliberate** bypass: the PDF sidecar is written via the vault directly because going through the gate "would fire `onFileWrite` + `invalidatePageCaches`, which could trigger auto-ingest cascades if the source folder is watched". That comment is the design conclusion, written early by whoever needed it first: **one gate for every write is the wrong shape**, because concern 4 is sometimes actively harmful. The sidecar wants concern 3 and nothing else.
+
+### Corrections to the two enumerations
+
+**#603** claims six bypassing writers: ❌ **`log-writer.ts` is not one**.
+It goes *through* the gate: its header states the vault calls are injected from `WikiEngine`'s `tryReadFile` / `createOrUpdateFile`.
+So the issue's list has a false positive.
+⚠️ **Missed: `lint/fix-runners.ts:133` and `:604` use `vault.adapter.write`**, below Obsidian's own `vault.modify` eventing.
+That is the worst mechanism found, and the one with the least in common with the documented contract.
+⚠️ **Missed: `wiki-engine.ts:349` (`markPageComplete`)**, where the engine writes a wiki page's frontmatter **outside its own gate**.
+⚠️ **Missed: `lint/phases/preparation.ts:68`** writes wiki pages (the double-nested-link fix); the issue lists only its log.md sibling at `:82`.
+
+**#662** claims eight direct importers of `getExistingWikiPages`: ❌ **`contradictions.ts:37` does not exist** — the file is `contradiction-gates.ts` and calls neither, so the measured count is **7**, not 8. ✅ The 5 s TTL is right (`PAGES_CACHE_TTL_MS = 5000`, `constants.ts:55`) and it is invalidated at `:447` plus five gate exit points. ⚠️ **Missed: `wiki-engine.ts:1104` calls the module function directly**, bypassing the engine's own cached wrapper at `:2120` — the *same self-bypass pattern* as #603's `markPageComplete`, in a second subsystem, which is the real finding: the engine does not consistently use its own front doors.
+
+### Recommendation — split, do not funnel
+
+Funnelling every write through today's gate is not the fix, for the reason the sidecar comment gives; narrowing the contract alone is also insufficient, because five sites genuinely need the guard. The shape that satisfies both:
+
+| Layer | Contents | Who needs it |
+|---|---|---|
+| **`rawWrite`** | concern 3 — retry, path resolution, create-or-update | everything that writes |
+| **`pageGuard`** | concerns 1 + 2 | wiki pages only |
+| **`notify`** | concern 4 | anything the watcher must see; the sidecar **opts out explicitly** |
+
+Each call site declares its set, and `types.ts:989`'s contract is narrowed to what the layers actually guarantee. First tiering: **A — real violations** (wiki pages, missing both guard and notify) `link-retarget.ts:185`, `markPageComplete:349`, `fix-runners.ts:133`, `fix-runners.ts:604`, `preparation.ts:68` (five sites, four files) · **B — declare `guard: false` explicitly** `sources-normalizer.ts:247`, `preparation.ts:105`, sidecar `:870/:872` · **C — out of contract, document and leave** `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`, `disk-cache.ts:155`, `ensure-welcome-note.ts:161`.
+
+**For #662 the issue's proposal is right and its mechanism is the point:** the TTL cache is invalidated *by the writes the ingest itself performs*, so it cannot hold during an ingest no matter how many callers use the wrapper. Routing the 7 direct callers through the engine accessor is hygiene; the fix is a **run-scoped index updated by the writer** — the writer knows what it wrote, so it should tell the index rather than invalidate it.
+
+### Re-measurement (2026-09-17) — three corrections, and the first slice changes
+
+Re-measuring the issues' line numbers against the source before writing any code found **three errors**, and one removes the reason the pass gave for doing tier B first.
+
+| Design record said | Actually | Evidence |
+|---|---|---|
+| `link-retarget.ts:185` is a tier-A violation | ❌ **Not a violation** — `:33` records it as deliberate, the write goes through `vault.process` because the gate normalizes `sources:` and corrects link pollution, "appropriate for a generated wiki page, not for someone's own note" | declared, and for a good reason |
+| `sources-normalizer.ts:247` is a tier-B **source-note** write | ❌ **It writes wiki pages** — the file set is `isInFolderScope(f.path, wikiFolder, …)` | `folder-scope.ts:33` |
+| `preparation.ts:105` is a tier-B **source-note** write | ❌ **It writes wiki pages** — it iterates `pageMap`, built from `wikiFiles` | `preparation.ts:34-52` |
+
+**Consequence:** tier B is not "three silent sites" — it is **the sidecar alone, and the sidecar is the most-documented write in the codebase**, so the pass's stated reason for doing B first no longer supports a slice of that shape at all.
+
+### `log.md` proves the gate already spans two file classes
+
+| Caller | What it writes |
+|---|---|
+| `:283` `indexGenerator.writeFile` | the index — a wiki page, wants **all three** layers |
+| `:292` `logWriter.writeFile` | **`log.md` — not a wiki page** |
+
+`pageGuard` (pollution correction + heading/provenance normalization) is **harmful for a log**, not merely meaningless, which is what this pass first assumed. Slice 2 measured it: `LogWriter.pageLinks` builds links from real page paths, so a page named `concepts布局优化` is written as `[[concepts/concepts布局优化]]` (correct), and Pattern B rewrote it to `[[concepts/布局优化]]` — a dead link. That answers the pass's first open question by itself: `pageGuard` must be a **separately declared layer**, not a superset of `createOrUpdateFile`.
+
+### Corrected tiers
+
+- **A — real violations** (wiki pages, missing both guard and notify): `markPageComplete:349` (a page's frontmatter written outside the engine's own gate, with no deliberate note) · `fix-runners.ts:133` and `:604` (`vault.adapter.write`, below Obsidian's event layer) · `preparation.ts:68` (the double-nested-link fix) · **`sources-normalizer.ts:247` and `preparation.ts:105`** (the sources-field repair, writing wiki pages). **Six sites, five files.**
+- **B — already declared deliberate, in prose:** the PDF sidecar `:870/:872` (comment at `:848-852`, the evidence the pass itself cites) and `link-retarget.ts:185` (comment at `:33`). Both want `guard: false`; the sidecar also wants `notify: false`. Making the declaration *typed* rather than prose is the whole change — no behaviour moves.
+- **C — out of contract, document and leave:** `schema-manager.ts` ×5, `apply-suggestion.ts` ×2, `auto-maintain.ts:713`, `ensure-welcome-note.ts:161`. (`disk-cache.ts:155` is not a vault write.)
+
+### Revised slice plan
+
+Tier B collapsed, so the first slice changes shape: **introduce the three layers and the `WriteIntent` type with zero call-site changes**, `createOrUpdateFile` becoming the "all three" compatibility entry point. Zero behaviour change is provable — the default path must equal today's four concerns one for one — and it establishes the interfaces the later slices consume. Slice 2 converts the two prose-declared bypasses into typed intent (the sidecar to `rawWrite` alone; `log.md` to `rawWrite + notify`, which **is** a behaviour change and needs its own check). Slice 3 takes the six violations one at a time, `fix-runners.ts` last: routing `adapter.write` through the gate fires `onFileWrite` + `invalidatePageCaches`, which can cascade into auto-ingest.
+
+### Open questions
+
+- **Answered 2026-09-17, all three:** `pageGuard` becomes a separate declared layer, not a superset — `log.md` already goes through the gate and is not a wiki page, so a superset would normalize a log · tier B's declaration is **type-level**, with `intent` a **required** parameter, while `createOrUpdateFile(path, content)` stays as the "all three" shorthand so the six existing callers change nothing · `fix-runners.ts`'s `adapter.write` sites are an idiom rather than a decision (no comment says either way), but the fix carries cascade risk and is therefore last, not first.
+- **Still open:** whether the sources-field repair sites (`sources-normalizer.ts:247`, `preparation.ts:105`) should *use* the gate or declare `guard: false` because they **are** the guard's repair path. Routing them through it is not circular in effect — after they fix a file the gate finds nothing to do — but it means the repair runs the thing it repairs. Decide before slice 3.
+
+### Slice 1 shipped (2026-09-18) — and the race it surfaced
+
+`4f00823f` (PR #748) split the gate into `writeFileWithIntent` / `rawWrite` + `wiki/page-write-guard.ts`, with `WriteIntent { guard, notify }` and **no default** (a default is how the ambiguity the type exists to remove would return). **Acceptance was zero behaviour change, and exactly one assertion flipped — which is the finding, not a nuisance.** `wiki-engine-ingest.test.ts` asserted a created file's content equalled the raw input, which also excluded the `generation_complete` stamp; that test was passing on a **race**, because `markPageComplete` is deliberately fire-and-forget (`void (async () => …)()`), so whether it landed before the caller resumed depended on how many async frames the write path took, and the split added one. It is now deterministic (5/5 runs), and the assertion was replaced with a **stronger pair** — content present *and* stamp present — not relaxed. **That fire-and-forget stamp is a #603-shaped hole in its own right:** "this page is complete" is not something a reader may rely on immediately after the write returns. Slice 3 owns it.
+
+**Two mutations were run, because pure unit tests cannot see wiring.** Disabling the guard call failed exactly 4 wiring tests (`write-gate-layers.test.ts`) while all 10 pure-unit tests (`page-write-guard.test.ts`) stayed green.
+That is the precise split that made the #736 gap invisible.
+Removing `onFileWrite` failed exactly 2.
+**The `recovered` asymmetry is preserved and encoded**, not silently unified: the two recovery paths never stamped the page while the two ordinary paths did.
+Those paths are the NFC/NFD "already exists" write and the exhausted-retries scan.
+`rawWrite` returns `'updated' | 'created' | 'recovered'`, so `writeFileWithIntent` can reproduce that exactly.
+**A trap worth remembering when extracting regexes:** both pollution patterns carry the `g` flag, and `RegExp.prototype.test` advances `lastIndex` on a global regex.
+The inline form was safe only because it rebuilt the literals per call.
+Hoisting them to module scope would make every **second** write skip its correction.
+The guard keeps them inside the function, and a test calls it four times on the same input requiring all four to correct.
+
+### Slice 2 shipped (2026-09-18) — and the log turned out to be corrupted
+
+The pass said the guard was *meaningless* for a log; measuring found it is **harmful** (the dead link above), so **the fix is a bug fix, not a tidy-up** — which is why the test asserts both directions rather than a single `toContain`. Shipped: `LOG_WRITE_INTENT { guard: false, notify: true, create: true, cancel: 'ingest' }` at the LogWriter injection (`log.md` keeps `notify` — only the guard is dropped) and `RAW_WRITE_INTENT { guard: false, notify: false, create: true, cancel: 'ingest' }` at the PDF sidecar, whose prose bypass at `wiki-engine.ts:845-851` is now a declaration; routing the sidecar through `rawWrite` also gave it the retry and the NFC/NFD recovery the two direct vault calls lacked.
+
+**`guard: false` drops three corrections, not one** (corrected 2026-09-20 in review). The justification above covers only the path-prefix repair; the layer also carries display-name correction and sources normalization, and both are dropped here too. Neither was ever wanted on the log — it has no display name, and its `sources` line is a projected link list rather than the note's — so the narrower edit is the correct outcome rather than a side effect.
+
+**A property that had never been tested:** the sidecar's **not-notify** behaviour is the entire reason the bypass exists (the comment warns of auto-ingest cascades), yet the existing tests asserted only file contents; giving the sidecar `notify: true` would have broken nothing. It now fails one test. **`link-retarget.ts:185` is deliberately out of scope and must stay that way** — it receives an injected `process` and never touches the engine's layers.
+
+### Slice 3 reviewed (2026-09-20) — three findings, two of them mine to own
+
+@DocTpoint returned CHANGES_REQUESTED with **two shipped-behaviour findings and one test finding**. The slice's own three mutations passed before he looked, which is the useful part of the record: **mutations cover the wiring, and neither of these was a wiring question.**
+
+1. **`markPageComplete` gained `vault.create` and could resurrect a deleted page.** `rawWrite` adds **three** things and the third is `create`, so where the old form resolved a `TFile` first and did nothing when it was gone, the new one writes it back. `markPageComplete` is deliberately un-awaited, so it races the cancel cleanup that deletes the page it is stamping — and a stamp that can create writes the page back with `generation_complete: true`, the state #582/#583 exist to prevent. Which side wins is undetermined, so it reproduces intermittently. **Fixed by making it a declared layer:** `WriteIntent` gained `create`, every existing intent is `create: true`, and `STAMP_WRITE_INTENT` is `create: false`; `rawWrite` returns a new `'absent'` outcome rather than an error — nothing happened, on purpose. His probe is now a test, with the interleaving pinned rather than timed.
+2. **The lint fixers' writes were governed by the ingest's cancel button.** `writeFileWithIntent` opened with `checkCancelled()`, which read `abortController` — the **ingest** controller. The engine holds two (`lintAbortController` beside it) and they overlap, because `lint-wiki` is registered with no `isIngesting()` guard; so cancelling an ingest aborted an overlapping lint's writes, and cancelling the lint did not touch its own. `runRetagViolations` re-throws AbortError deliberately, so the run tore down with earlier batches already written and the user was never told. **Fixed the same way:** the cancel owner is a declared field — `cancel: 'ingest' | 'lint' | 'none'` — and `LINT_WRITE_INTENT` names `lint`.
+3. **The contract test's waiver list could not match on Windows.** The waiver is `'core/disk-cache.ts'` but `relative()` yields `core\disk-cache.ts` on win32, so the lookup missed, `core/disk-cache.ts` stopped being excluded, and both assertions failed there — on the one platform CI never runs. **A guard whose value is that it runs everywhere must normalise the paths it compares.** Now `relPosix()`.
+
+**Two non-blocking notes, both acted on.** The comment stripper cut each line at its first `//` without tracking string literals, so a bypass written after an inline URL was invisible.
+That is a scanner whose failure mode is "silently reports a clean tree"; it is a one-pass quote-aware walk now.
+And `write-gate-layers.test.ts` claimed to protect "pollution correction outside the content folders" while writing through `createOrUpdateFile` — which production **no longer uses for the log**, the `LogWriter` being its sole writer with `guard: false`.
+So the behaviour it claimed to protect was gone and the test still passed.
+It is re-pinned on a path that still takes the full gate, with the log named as the counter-example.
+
+**The generalisable part:** a test can be written to protect a *property*, pass for a long time, and then be protecting a *spelling* — the same failure as #751's build test, found in the same week, in a test written by two different people. The check that catches it is asking what the assertion would still pass on. **And "this does nothing useful" and "this is harmful" are different claims, and only the second justifies urgency** — the design pass made the first, and one measurement upgraded it to the second.
+
+---
+
+## Design record — the streaming fallback classifies by URL, not by outcome (#741, v1.28.0)
+
+**Analysis 2026-09-18, from source + history. No implementation.** @aisahpA measured the preflight behaviour on the shipped `c709a162` and raised three points; two are corrections to what #736 shipped, and one contradicts a comment #736 itself wrote.
+
+```
+streamWithFallback(url, init)
+  ├─ isLocalBaseURL(url)?  → requestUrl   (no CORS, no streaming: whole body at once)
+  └─ else try window.fetch → real streaming
+            catch TypeError → requestUrl  (silent, buffered)
+```
+
+### First principle: the classifier is a proxy for the wrong variable
+
+The capability actually required is **"this method + URL + *header set* is permitted cross-origin by this server"** — a server-side property computed per request; the code decides on `isLocalBaseURL(url)`, a client-side property of the host. That proxy was approximately true when it was written (`6be9258d`, the AI-SDK v6 migration), because the observed population was **bimodal** — cloud hosts returned `ACAO` (`*` or `app://obsidian.md`), local servers returned nothing — and a bimodal population hides proxy errors. Introduce a third kind (a cloud host that is *not* permissive about `app://obsidian.md`) and the proxy is simply wrong.
+
+**Extending the host list cannot fix it, and not because of maintenance burden — it is a type error.** A preflight is triggered by non-safelisted headers, and it succeeds only if the server echoes *every* name from `Access-Control-Request-Headers`.
+So the outcome is a function of `(host, method, header set)`.
+#736 turned the header set into **user data** via the free-form custom-headers field.
+A table keyed on host cannot represent a function of two variables — it structurally cannot cover the case #736 introduced, on any host.
+The only faithful representation is **the observed outcome**: try once, remember per host for the session, skip the gamble afterwards.
+That also self-heals if a host starts answering `OPTIONS`, with no list to maintain.
+
+### The finding that explains why this took so long: in production the fallback is unobservable
+
+| Layer | What it hides | Evidence |
+|---|---|---|
+| `streamWithFallback` catches `TypeError` deliberately | the error itself | `:265` — "Successful fallback path is silent (no console.warn) — it would spam logs on every request" |
+| every diagnostic is `console.debug` | the trace | `:275/:281/:283/:289` |
+| the production build **neutralises** `console.debug` | even that | `esbuild.config.mjs:15` — `const prodBanner = prod ? 'console.debug = function() {};\n' : ''`, injected as main.js's first statement |
+| `requestUrl` is a main-process IPC call | the request | aisahpA: bridge requests do not appear in DevTools Network at all — **an empty Network panel is not evidence nothing was sent** |
+
+So in the shipped plugin a CORS-blocked provider degrades from streaming to buffered leaving **no log, no error, and no Network entry** — the only observable is the ~20 s empty pane. The silent-fallback decision was correct for the population it was written for (local servers, where the fallback is *expected and total*, so a warning would be noise on every single call) and was inherited unchanged by a population where the fallback is a **capability downgrade**. One code path, two meanings. This is the same class as MEMORY's "an `optionalDependency` a required feature needs is a silent capability hole": the degradation is designed, the *silence* is the bug.
+
+### The two branches differ in header semantics, not only in streaming
+
+| | `window.fetch` | `requestUrl` |
+|---|---|---|
+| stack | renderer, browser-arbitrated | main process over IPC |
+| CORS | enforced | **not applicable — not a browser fetch** |
+| forbidden headers | dropped | unaffected |
+| `User-Agent` | **overridden by Chromium** | sent as supplied |
+| visible in DevTools Network | yes | **no** |
+
+**The `User-Agent` premise in #736 is inverted, and so is its stated reason.** #736's comment says the header "is a fetch-forbidden header".
+It is not — the Fetch standard removed `User-Agent` from the forbidden list (`whatwg/fetch` `dab09b0`, "Allow User-Agent to be set, but not omitted").
+**Chromium implemented that and then reverted it** (`chromium/chromium` `079b3a3` reverts `c7d5f1c6`, bug 40450316), with the chromestatus entry still at intent-to-prototype.
+So the correct statement is: *spec-permitted, Chromium-policy-suppressed*.
+That means the plugin's `karpathywiki/<version>` identity **reaches the wire only on the `requestUrl` branch** — exactly on the hosts that are *not* the default.
+#736's purpose included plugin identity; on the preferred branch it never arrives.
+aisahpA measured both to Obsidian's UA; the revert explains why.
+
+### The structural limit, precedent, and the recommended shape
+
+`requestUrl` returns a **complete body**; only `window.fetch` exposes `response.body: ReadableStream`, and CORS is enforced by the renderer. Therefore **on a host that blocks CORS, real streaming is architecturally unavailable** — it is not a bug to be routed around; the honest goal is narrower, to route around CORS to recover *identity* and *legible errors* and **tell the user** streaming is off. Adopting `requestUrl` for `opencode` is not a streaming fix; it is a legibility fix.
+
+The project has made this call twice already: `13e57772` (2026-05-15) `fix: CORS for OpenAI-compatible endpoints + Query UX overhaul`, and `c3bb5c11` (2026-06-05) `fix(llm): rewrite AnthropicClient on requestUrl to fix CORS (Closes #95)`. Both concluded the same way — **`requestUrl` is the escape hatch**; the per-call gamble (`streamWithFallback`) arrived later, with the AI-SDK v6 migration, to recover streaming where it is available. The current design is therefore the *union* of two strategies chosen by a proxy — and **the chooser is the weak link, not either branch**.
+
+Recommended shape:
+
+1. **Decide from the outcome, not the URL** — remember the first CORS `TypeError` per host for the session; later calls skip the gamble. Covers user-added headers, no host list, self-healing.
+2. **Stop degrading silently** — one `console.warn` plus (given the 20 s empty pane) a first-time Notice per host per session. A no-op `console.debug` is not a signal.
+3. **Correct the `User-Agent` claim in code and docs** — either add a non-forbidden identity header (`x-karpathywiki-version`) or state the caveat. The comments #736 wrote assert a false reason and must be fixed regardless of the transport decision.
+4. **Keep a preset flag only as a *hint*** for hosts known to answer no `OPTIONS` (`opencode`), never as the mechanism.
+5. **Acceptance criteria** (aisahpA's, adopted): first streamed character within ~1 s; no `[STREAM-FETCH] TypeError` from the second streamed call onward; adding a custom header on `kimi`/`gemini` no longer downgrades to a buffered answer.
+
+### What this changes about #736's regression status
+
+`opencode` failing is **not** a #736 regression — that host never worked. The **regression is the free-form header field**: each host's CORS policy is configured against a fixed header set, and #736 made that set user-extensible, so **any user can now silently downgrade their own streaming on any provider**. Combined with the unobservability above, the user gets no way to connect cause to effect.
+
+### Resolution (2026-09-18) — shipped in two steps
+
+**Step 1** (`5f6754f7`) records a cross-origin failure per origin and warns once per origin per session, on `console.warn` — the only channel a shipped build can emit; `AbortError` and plain `Error` are deliberately not recorded, only a `TypeError` is a verdict about the host. **Step 2** (`e150d139`) gives desktop a streaming transport for these origins: `node:https` behind the `Platform.isDesktop` early-exit guard, wrapped as a web `ReadableStream` and handed to AI-SDK as a `Response`.
+
+**A fifth transport was rejected on the way, and the reason must not be forgotten: Electron's `net` module.**
+On paper it is the ideal answer — Chromium's network stack, therefore proxy-aware *and* streaming.
+But its documented process list is **"Main, Utility"**, and a plugin runs in the renderer.
+That is why `node:https` is the only option left, even though it cannot see Obsidian's proxy configuration.
+Electron's docs contrast `net` with the Node modules as offering "better support for web proxies".
+Because of that gap a failed Node attempt is treated as a verdict about the **transport**, not the request: recorded per origin, then `requestUrl` takes over.
+A proxy user therefore lands on exactly the behaviour they had before step 2, paying for the discovery once per origin instead of once per call.
+**This is the pattern to reuse** — when a fallback transport has a known environmental failure mode, remember the failure rather than predicting it.
+
+**Bot compliance was verified by control, not by reading.** `node:https` is a Node built-in so `obsidianmd/no-nodejs-modules` applies; a probe file with three shapes produced exactly two reports — the unguarded import and `if (!Platform.isDesktop) { import(…) }` — and **none** for the early-exit form `if (!Platform.isDesktop) throw` at function start. The rule is sourced from Node's own `module.isBuiltin()`, so **`electron` is not covered by it at all**.
+
+**Known limitation, and the reason the issue is closed rather than left open:** mobile is unchanged. It has no Node runtime and `net` is main-process only, so streaming on a CORS-blocked host is not reachable there — not pending work.
+
+---
+
+## Design record — #701's premise does not hold (2026-09-18)
+
+**Decision, not implementation.** #701 writes a `wiki-ingested:` marker into the user's own source notes. It is deferred pending a product decision, and this records why the deferral is about the premise rather than the code.
+
+"This note has been ingested" is a **derived** fact — an assertion about a transformation the plugin performed, not a property of the note. So it can live in three places, and the middle one is not a proposal:
+
+| Home | Owned by | Survives a plugin reset | Survives deleting the wiki |
+|---|---|---|---|
+| Plugin state (`data.json`) | plugin | ❌ | ❌ |
+| **The wiki's own artifact** — `wiki/sources/*.md` carrying `contentHash` + `source_file` | plugin | ✅ | n/a |
+| The user's source note (frontmatter marker) | **the user** | ✅ | ✅ |
+
+`buildIngestedHashes()` (`wiki-engine.ts:477`) is documented as *"Content hashes already present in the wiki, read from source-page frontmatter"*, `wiki-engine.ts:1775` writes `contentHash` onto every sources page, and `scanners.ts:485` already uses the same field for source-drift detection.
+
+**Both cited failure modes are already handled.** (1) "a folder re-run after the batch cache restarts" — the batch cache is `ingestedHashesCache`, a TTL memoisation, and when it expires `buildIngestedHashes()` **recomputes the set from the wiki pages**.
+The cache is not the record; the wiki is.
+(2) "a user re-adding the same note body under a different name" — already deduped, because `hashBody` (`source-requirements.ts:77`) is FNV-1a over the trimmed, whitespace-normalised **body only**: no path, no filename, no frontmatter.
+The same body under any name hashes identically and is caught by `ingested.has(hash)`.
+**No case was found that the marker fixes and the hash does not.**
+
+**Two problems the marker introduces.** It writes a derived fact into the user's input: the wiki is the plugin's output space and the note is the user's.
+`README.md:114` promises *"The plugin modifies nothing in your original notes"* in all eleven locales.
+Its failure mode is also the user's main recovery action: deleting a `wiki/sources/` page — or the whole `wiki/` folder — is how someone forces a rebuild.
+The hash mechanism cooperates: remove the artifact, the fact is gone, the note re-ingests.
+The marker opposes it, because the note still says "done" while the page is gone.
+A rebuild then silently skips exactly the notes the user was trying to rebuild.
+A second source of truth does not stay in agreement, and here disagreeing is not neutral.
+
+**What would reopen this:** a specific, demonstrated case the hash mechanism misses — an observation, not a reasoning chain. Any redesign should keep the fact on the wiki side.
+
+---
+
+## Appendix B — Session log (dated blocks, verbatim)
+
+Condensed 2026-10-06. The rules those sessions produced are in [§"Lessons learned (from session memory)"](#lessons-learned-from-session-memory); only the incidents a rule depends on are kept here. **This is history, not current state** — GitHub and git history are the authority for state. Per-session state pointers (`main` SHA, test counts, open-PR lists, local-branch lists) were dropped as superseded.
+
+### Sessions, one line each
+
+| Date | Theme | Scale |
+|---|---|---|
+| 2026-10-03 | the dissent I never answered, and the report that was not a review; queued #791, #792; filed #793 | Gate 1 313 files / 4363 tests |
+| 2026-09-21 | #687/#656/#774/#778 merges, #760 review round, the CI that never ran | Gate 1 311 files / 4349 tests |
+| 2026-09-20 | skill audit, build-config layer, three dependency holds; merged #757, #759, #761, #762, #765, #767, #769, #773, #750; closed #603, #662, #665, #672, #699, #751, #753 (superseded); filed #763, #764 | 4240 → 4285 tests |
+| 2026-09-16 | cross-source direction + Dependabot lockfile root fix; #718 closed by #727 (`e9be7f75`), #707 `3f0fc9a2` and #708 `7cc50bf9` merged | `main` `7cc50bf9` |
+| post-compact 2026-10-03 | the resume point: next actions #791 and #792's self-check, in that order. #791 is a blank answer (a reasoning-only reply); #792's slug path can be inspected without waiting for its reporter; neither depends on the #729 decision | — |
+| 2026-09-15 | v1.27.2 release prep, main-is-red regression forensics | — |
+| 2026-09-05 | wave-C 5-PR merge + audit-trio + doc sync; merged #630 → #629 → #625 → #626 → #631 (audits #632/#633/#634 already on main as base) | `bf3cd3d` → `ddf392d`; 3932 → 3975 tests (279 files) |
+| 2026-09-04 | wave-B rewrite-safety audit + 21-PR PATCH wave (wave A 12 on 09-02, wave B 9 on 09-04), DocTpoint's rewrite-safety audit on a 413-note German vault | `7c4d144` → `8feb5fd`; 3677 → 3830 tests |
+
+### Incidents the rules depend on
+
+- **2026-09-21.** The #758 excerpt quotes two lines and omits the `openrouter` branch that precedes them.
+  Its prose — "drops every id containing `/` for all providers except ollama" — inherits the omission, so both halves are wrong.
+  `/` was rejected for ollama too (ollama's exemption is `:`).
+  Openrouter was the provider left unfiltered.
+  **I copied the report's sentence into three files** (module header, test header, PR body), and @DocTpoint caught it, along with the file contradicting itself two paragraphs later.
+  The report's *diagnosis of the symptom* was exact and its repro was solid: verified HTTP 200 for a namespaced id.
+  Only its summary of what it was measuring against was wrong.
+  **Write the rule from the code, and if you are quoting a report, say so.**
+  The same review found a second inversion in the same block: "Widening the filter is the smaller change" said the opposite of the paragraph it sat in, which argues for *listing* providers instead.
+- **2026-09-21.** `ModelSelectionPatch.useCustomModel` has documented `true` as "the field is the user's own" since the PR opened, and **no branch returned it**, so a model picked from the catalogue and later vanished from the endpoint kept the id in settings and showed the dropdown's "Custom input…" sentinel — the value visible nowhere, and re-choosing the already-selected sentinel fires no `change`, so the text field cannot be opened either. **When a type's doc comment describes a state, grep for who produces it.**
+- **2026-09-21.** #687's image analysis is the model to copy — three outcomes, three explicit classes, and the swallow is the narrow one:
+
+  ```ts
+  if (error instanceof DOMException && error.name === 'AbortError') throw error;  // cancel still cancels
+  if (!isVisionInputRejected(error)) throw error;                                 // everything else propagates
+  report.failedPackages++;                                                        // only then degrade
+  ```
+
+  The alternative — `catch { /* no evidence */ }` — converts auth failures, rate limits and network errors into "the model found nothing", indistinguishable from a working feature on an unhelpful image. `isVisionInputRejected` is a bidirectional 80-char regex (`image|vision|multimodal|content_type` against `unsupported|not supported|invalid|reject`, either order), and a false **negative** propagates rather than degrading silently — the right failure direction.
+- **2026-09-21.** #687 sends, per image, a text part (`Image N`, its path, its nearest before/after paragraphs, and the sentence "The image content block immediately following this text is Image N") **immediately followed by** that image; one text block followed by N images leaves the association for the model to guess, and it guesses wrong on transcripts of screenshots. Each package's response is **verifiable**: the code checks every returned index against the indices it sent, ignores and warns on invalid or duplicate ones, and counts the missing ones. `messages: messages.map((m) => ({ role: m.role, content: m.content }))` appeared in four provider clients and looked like a no-op; it was what **blocked multimodal parts**, and removing it was safe because of the type union that replaced the inline type — `user` accepts `MessageContentPart[]`, `assistant` is `Exclude<MessageContentPart, ImageContentPart>[]`.
+- **2026-09-21.** #687's head repo is `Chase07/obsidian-llm-wiki`, its ref `feat/608-embedded-markdown-images`; `git push origin pr-687:refs/heads/feat/analyze-embedded-images` printed `[new branch]` — success, zero effect — and created a stray branch in **our** repo. **`git ls-remote --heads origin <ref>` returning nothing is the tell.** Five runs also sat in `action_required` (@x0Lazarus's first contribution, @Chase07's rebase, all three Dependabot PRs), so **none of them had ever run** and the absence read as "CI is broken" or "the change is fine": `gh api 'repos/.../actions/runs?status=action_required'` lists them, `POST .../runs/<id>/approve` releases one.
+- **2026-09-21.** A `gh pr review --approve` retry loop that grepped stdout produced **three identical APPROVED events**; the confirmation to write is a **read** of `pulls/<N>/reviews`, never the exit status of the command that wrote it. Separately: `sed` on a line containing `/` needs a different delimiter, and a `s#...#...#` that contains `#` fails with an opaque `bad flag in substitute command` — **the file is left unmodified and no error propagates to the commit**. The pre-commit hook runs the tools-bot lint over `main.js` and `tools/`, producing **669 pre-existing findings** that block an unrelated docs commit; `--no-verify` is legitimate there because `lint:tools-bot` is documented as informational and exits 0. Carried forward from #736, and it held: `git status --porcelain` must be empty right after every commit, and an amend that changes *content* needs `git add` first.
+- **2026-09-20.** A dependency experiment leaves `node_modules` ahead of the lockfile, and `git checkout` does not clean it — it is not tracked. Hit twice; the second time 31 `TS2550: Property 'at' does not exist` errors were presented as a property of the `@types/node` bump, when the installed tree still held the bumped package. **Any local Gate 1 result after a dependency experiment is untrustworthy until `pnpm install --frozen-lockfile`.** The triage skill's dedup step read `--state merged` only, so an OPEN PR already fixing an issue was invisible: #597 was picked as the highest-ROI unstarted item, implemented and mutation-tested twice, then found to duplicate **#656**, already four review rounds in. **Fixed in the skill**: Phase 1.5 asks two separate questions (fixed on `main`? vs **in flight in an open PR?**) and Phase 1d pulls every thread roster-wide.
+- **2026-09-20.** A test can protect a property and end up protecting a spelling — three instances in one week, two authors, three files: the bundle test asserting `toContain('import("node:module")')` while its own comment said the requirement was laziness; `toContain('updated:')` in the schema-audit test, which passes for the old value; and #750's fourth assertion, caught by review. **The check is one question: what would this assertion still pass on?** And when you remove a wrong check, ask what it was incidentally holding shut: `LINT_WRITE_INTENT` stopped reading the ingest controller, which was right, and the old wiring had *also* been preventing a lint write from resurrecting the page the cancelled-ingest cleanup had just deleted — now `create: false` plus a test that fails without it. Mutations cover the wiring, not correctness: #750's slice passed all three of its own mutations and still shipped two behaviour regressions, and on #467 the guard passed two of three mutations on its first version (the cascade assertion matched the method's own *definition* through a lazy `[\s\S]{0,400}?` span).
+- **2026-09-20.** Two version numbers that read opposite to their cost: `@types/node` 16 → 26 adds nothing this project uses (`node:module` and `node:https` date from Node 15) and **removes** the `compatibility/indexable.d.ts` shim that makes `Array.prototype.at` typecheck under `lib: ES2021`; and `obsidian` 1.13.1 deprecates `display()` while its own doc comment calls it *"a fallback for plugins that need to support Obsidian versions older than 1.13.0"* — so neither bump forces `minAppVersion`, and both were held with the measurement written into `.github/dependabot.yml` rather than left as open PRs #766 and #768. **A version number is a claim about change, not about benefit.**
+- **2026-09-20.** `git push` to a contributor's branch came back `non-fast-forward` — which is just what a rebase looks like — before `--force-with-lease` returned the real `permission denied` (`maintainer_can_modify: false`). **Verify the merge returned `merged=true`** before restoring a bypass actor, not that the command exited: restoring first left #773 open while the script printed success. **Never suppress the restore's output** — a `>/dev/null 2>&1` on the ruleset `PUT` hid two network failures, so the run reported "restored" while `bypass_actors` stayed at 1. The bundle is also the authority on what is bundled: #699 measured ten third-party packages in the shipped `main.js` and the artifact contains **twelve** (`@vercel/oidc`, `eventsource-parser`, both transitive two levels below anything `package.json` names), so the generator now reads esbuild's own `// node_modules/.pnpm/<pkg>@<ver>/` markers and a test fails when the committed document and the artifact disagree.
+- **2026-09-16.** Issue **#729** — cross-source relations, the first item of the v1.28.0 design track. **Local pi install repaired:** `@earendil-works/pi-{server,client}@0.85.1` placed in `pi-coding-agent/node_modules` — re-apply after any pi reinstall.
+- **2026-09-15.** Two PRs touching the same file must be reviewed for interaction, not only individually: #705 added the token-limit guard to `related-page.ts` as `return true`, and #714 changed that function's return type to `string | null`; each passed Gate 1 on its own branch, and merged they left `main` failing `error TS2322` for **five consecutive commits** (`c05d89a0` → `4c3e6ecc`). The runtime half is often worse: `updatedPath` became the boolean `true`, so `updated_pages` gained an entry that `repointLinksAfterRun`'s `p.endsWith('.md')` filter drops **silently** — the #713 shape, reintroduced by the fix for #713's sibling. A push-triggered CI failure on `main` has no surface (#698 added `push: branches: [main]`; five runs reported `failure` with no PR page), so verify by query: `gh run list --branch main --limit 5 --json headSha,conclusion`. `return page.path` was correct semantically, not merely type-correct, because the guard runs *after* `createOrUpdateFile` so the page genuinely was updated. Gate 1 finding a blocker at Step 1 is the gate working — the alternative was cutting tag `1.27.2` from a five-commit-red `main`.
+- **2026-09-15.** `pnpm-lock.yaml` had been stale since #692 (491 → 495 entries), and `pnpm install --frozen-lockfile` is the decisive check that the pair agrees with `package.json`. `AGENTS.md`'s "Latest shipped" pointer was two releases behind (still v1.27.0 / 3677 tests) while v1.27.1 had shipped. CONTRIBUTING.md carried a whole stale section: its `tools/llm-wiki-cli/` tree, described as "the current user-facing install path", had been deleted in v1.27.0 by #511, and its Mermaid diagram still pointed at the removed directory. **Numerical drift is visible; structural drift is not.** The org move also made every `green-dalii/obsidian-llm-wiki` URL stale; 376 repo links across 25 files were updated with a negative lookahead so `green-dalii/obsidian-llm-wiki-cli` was protected (the sibling CLI repo did **not** move). The #375 locale-switcher guard now asserts the prefix positively — its previous lookahead-plus-`[a-z]+/` form could not match any `github.com` URL, which is why the drift survived two releases. Ruleset `16884813`: `bypass_actors: []` restored after the #722 merge; `updated_at` 2026-09-15T08:28:50+08:00 proves the revert was the last write.
+- **2026-09-05.** Merge-then-label works but verify per item, not per batch — GraphQL EOF/TLS flakes timed out a 3-of-5 batch verify and the remaining two needed an individual retry. Zero-file-overlap across a same-author wave is checkable in one pass: the five DocTpoint PRs touched disjoint production files (ppr-cascade / related-link-corrector+wiki-engine / llm-client-wrapper / section-extractor / paragraph-provenance+merge/related-page), which justified the small-to-large merge order. Doc-sync arithmetic must be recomputed from git log, not carried forward: the inherited CHANGELOG header said "21 PRs … 3677 → 3830" (waves A+B only) while the true post-wave-C count is **26 PRs / 3975 tests**. #629 closed the `b302aab` reasoning-streaming question — verified reasoning never enters `onChunk`, so `taskPolicies` never reaching `createMessageStream` was the only remaining suspect and #629's diff confirms it: **b302aab (wrap-string format + idempotence guard) cannot cause reasoning streaming.** #631's accepted inconsistency is project state: rewrite paths are 2-guarded (`merge-page`, `related-page` via `guardBodyRewrite`) / 1-unguarded (`mergeDuplicatePages`, `resolveContradiction`).
+- **2026-09-04.** Merge-stack conflicts on shared files are the norm for same-author waves: wave B's stacked PRs (#606→#610; #569→#607) each carried their base's commits, so when the base merged first the child's diff went CONFLICTING. Resolution: fetch head, `git merge origin/main`, resolve per-hunk (keep BOTH sides when two complementary changes touch the same lines — e.g. `localDateStamp` from #612 + `wikiRelativePagePath` from #606), local Gate 1, force-push to the fork. **Cost:** two force-push cycles (#600, #606, #610). A released GitHub milestone must never receive new open items: moving #569/#568/#567 to `v1.27.0 MINOR` was corrected — **scale of a PR (35 files) is a code-size observation, not a release-window argument.** `shazam_verify` after every edit is a hard requirement the harness enforces, markdown included. DocTpoint's write-audit methodology (park the previous version before every write, then compare) surfaced #613 (573 misdirected source rewrites), #614 (180 mentions losses), #617 (9 sections, 34K chars lost) — three data-corruption classes no fuzz test would find. Co-maintainer credit landed (PR #619, owner-approved): DocTpoint is in manifest author + README maintainer + NOTICE; permission elevation to `maintain` remains a separate decision.
+
+#### Work list (2026-10-03) — ordered by ROI
+
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost ranks below a medium-impact one that is measured, because the second ships. The queue itself is ROADMAP §"Open decisions"; this is the *reasoning* behind its recommendations.
+
+- **Tier 0 — decide, do not build.** Five open items are finished work waiting on a call, not on effort: #783 vs #760 (the same bug twice), #786 (a completed four-MAJOR upgrade), #775 (four holes in its own guard), #781 (implements an unsettled design), and #729 itself.
+- **Tier 1 — the two bugs with a user watching.** **#791** — a Query answer arrives **reasoning-only**: every character sits inside `<think>…</think>` and nothing follows the closing tag.
+  The user sees a collapsible block and no answer, on a custom OpenAI-compatible endpoint with a reasoning-capable model.
+  **The symptom is a blank answer, not a wrong one.**
+  `reasoning-strip-probe.ts` exists, so the first question is whether this is a strip that produced nothing or a strip that never ran.
+  **#792** — saving a query conversation fails because the generated filename contains `:`.
+  The body is empty, but the title names the cause, so the slug path can be inspected without waiting for the reporter.
+  If the slug generator has no colon filter, the fix needs no reply at all.
+- **Tier 2 — accept into the window, scoped but not started.** **#787** — the source-lemma guarantee assumes a note's filename names a knowledge subject (true for `Klotho.md`, false for a meeting note or a log): a real modelling defect with a clean boundary, in the same region as #729's domain axis. **#468** — Anthropic `createMessageStream` lacks cache breakpoints; narrow, and #687 touched that exact client, so the file is warm.
+- **Tier 3 — diagnosis first.** **#703** — a single-file ingest hangs and `cancelIngestion()` cannot abort it; highest impact, lowest certainty, it needs the reporter's file, and it is labelled `help wanted`. **Diagnosis only** — reproduce, locate, write the root cause down, then decide.
+- **Tier 4 — the rest.** **#567** · **#676** · **#752** · **#756** · **#668** · **#664** · **#677** · **#701** (needs a product decision; premise refuted) · **#785** (defer — it touches incremental accumulation) · **#793** (`good first issue`). Design anchors rather than tasks: **#330** · **#358**. Measurement research: **#479** · **#480**.
+
+> **Superseded 2026-10-03:** the 2026-09-21 block below is the previous snapshot. Kept for archaeology — do not update it.
+
+#### Work list (2026-09-21) — ordered by ROI
+
+- **Tier 0 — closed since the last planning pass.** **#608** closed 2026-09-21 with **#687**, against the issue's own six acceptance criteria mapped one by one in the closing comment, with the three "possible options" not taken (no note-wide image cap, first-frame GIF only, no analysis cache) named as decisions rather than left to read as gaps. Earlier in the window: **#603** with #750, **#662** with #757, **#751** with #759 (carrying **#665**), **#672** with #762 + #673, **#699** with #773, **#725** with #726.
+- **Tier 0′ — the v1.28.0 chain's head is now unblocked.** **#729 Phase 1** (M0 co-citation projection) was hard-blocked on #603 by design, because a reader's acceptance metric is meaningless while the write path's contract does not hold; all three gates are now open — #603 ✅, #662 ✅, #608 ✅ — so Phase 1 was the highest-ROI substantive work left in the window. **`RELATED_BUDGET.siblings` must not be read until Phase 2** — it is 3/3/2/1/3 while today every granularity gets a flat 3.
+- **Tier 1 — unblock the queue (no new work for me).** **#775** (#467) — @DocTpoint, requested 2026-09-21; Gate 1 green, nothing left on our side.
+  **#760** (#758) — @DocTpoint's re-review; all three points addressed on `a127feb6`, rebased onto `2a4a99b3`, Gate 1 at 312 files / 4361 tests.
+  **#755** (@weqoocu) — the author's "one PR or two" answer; the version bump can be stripped by us (three files: `manifest.json`, `package.json`, `CHANGELOG.md`).
+  **#701** (@weqoocu) — a product decision; the premise is refuted.
+  **#770 / #771 / #772** — nothing; they are red on purpose, and what is owed is a `.github/dependabot.yml` entry per hold, with the reason.
+- **Tier 2 — the v1.28.0 feature track, dependency-ordered.** ✅ **#603** (slices 2+3 in **#750**) → ✅ **#662** (**#757**) → ✅ **#608** (**#687**) → **#729 Phase 1** → **#729 Phase 2 + #664 together** (*"they ship together"*: #729 adds Related entries while #664 says those lists already grow ~2 per source and are never pruned) → **#729 Phases 3–6, then #668 + #752 together** (#668 restructures the settings tab and #752 is the sibling bug, so fixing the scroll before the restructure means doing it twice; #729's toggle placement is also gated on #668).
+- **Tier 3 — user-facing bugs worth a PATCH.** **#703** (highest impact, lowest certainty; the v1.27.2 release notes carry it as a Known Issue; diagnosis only) · **#468** · **#763** (`writeFileWithIntent` returns `void`, so a skipped lint write is logged as a fix that happened; review scoped it out of #750; scope is 8 production declarations plus ~20 test doubles) · **#676** · **#567** · **#752** · **#756**.
+- **Tier 4 — backlog and design.** **#764** is now backed by evidence rather than a hunch: three Dependabot PRs, three different failure modes — #772 spec-v4, #771 the same mismatch in the Anthropic SDK, and #770 TS 6's definite-assignment and variance tightening.
+  That is a coordinated upgrade, not a bump.
+  **#701** awaits a product decision, not code.
+  **#330 / #358** are design anchors rather than tasks.
+  **#479 / #480** are measurement research.
+  Re-triage at the next planning pass rather than carry indefinitely: **#91, #112, #142, #168, #184, #220, #285, #295, #317, #326, #467, #468, #503, #568**.
+  **One correction is owed now: #568's milestone is `v1.27.x PATCH` and it belongs on `v1.28.0 MINOR`**, since the write-side domain axis is a MINOR-track design item and the prerequisite research for #729.
+- **Newly filed, unstarted:** **#763** — `writeFileWithIntent` returns `void`, so a skipped lint write is logged as a fix that happened; it needs a return value. **#764** — the coordinated AI SDK v7 upgrade, now with three red PRs behind it.
