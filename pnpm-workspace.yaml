@@ -1,4 +1,10 @@
 onlyBuiltDependencies:
   - esbuild
 overrides:
-  brace-expansion: 5.0.9
+  # Two advisories published 2026-10-03 made CI's `pnpm audit --audit-level high` step
+  # fail on every PR, docs-only ones included. Both arrive through dev tooling and both
+  # bumps are within the same minor line, so neither is a breaking change. #501 closed
+  # the previous HIGH the same way. Keep this list in step with `package.json`'s
+  # `overrides` — CI checks the npm-side lockfile against package.json.
+  brace-expansion: 5.0.12    # was 5.0.9; >=5.0.11 patches the recursion DoS advisories
+  undici: 8.10.2             # via jsdom; >=8.10.2 patches the DoS / TLS-bypass / cache advisories

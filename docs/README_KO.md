@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — 토큰 한도에서 잘린 재작성이 페이지를 덮어쓰지 않음, `updated_pages` 단일 형태로 링크 재지정이 모든 페이지를 인식, provenance 각주 괄호 복구, 기업 게이트웨이 구조화 출력 폴백, 건너뛴 파일의 수집 수명주기 해제, 취소가 모델 호출에 도달; 39 commits, 4144 tests)
+- latest: v1.28.0 (MINOR — 수집 시 로컬 Markdown 이미지 임베드 분석, 프로바이더별 요청 헤더와 OpenCode 프리셋 및 `(Responses)` 변형, 교차 출처가 차단될 때의 데스크톱 `node:https` 스트리밍 폴백, 설정/노트 태그/페이지 태그를 하나의 어휘로 통합. 그리고 이미 출시된 두 기능을 릴리스 빌드에서 실제로 동작하게 만든 빌드 수정. 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
@@ -122,7 +122,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⚡ Smart Fix All** | Lint 모달 내부 — 원클릭 인과순서 수리, 단계별 보고서 제공 |
 | **📋 인덱스 재생성** | `Cmd+P/Ctrl+P` → "Regenerate index" — 현재 페이지와 alias로 `wiki/index.md` 재구축 |
 | **⏹ 작업 취소** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 중지 |
-| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "View Ingestion History" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
+| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "View operation history" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | 전 | 후 |
@@ -194,6 +194,9 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🌍 10개 UI 언어** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano. UI와 Wiki 출력 언어는 독립적입니다 — Wiki는 중국어로, 인터페이스는 영어로 유지 가능합니다.
 - **📚 10개 Wiki 출력 언어** — 동일한 세트; 설정 → Wiki Configuration에서 선택. *Custom input* 옵션으로 임시 프롬프트 사용 가능.
 - **모든 UI 문자열이 locale 별로 번역됨** — 모든 라벨, 모달, Notice. 12번째 언어 추가는 기여자 주도입니다 (PR #159 패턴).
+- **🖼 Markdown 수집 시 임베드 이미지 분석** — 선택 사항(*Analyze embedded images during Markdown ingestion*, 기본 꺼짐). 노트의 자격을 갖춘 로컬 `![[…]]` / `![…](…)` 임베드를 Obsidian을 통해 해석하고 인접 문단과 함께 20 MiB 단위로 분석합니다. 이미지당 10 MiB 상한, GIF는 정지된 첫 프레임만 전송하며 원격 URL은 절대 내려받지 않습니다.
+- **🔧 프로바이더별 Custom Headers** — API Base URL 바로 아래의 자유 입력 필드. 한 줄에 하나씩 `Name: value`를 쓰며 모든 요청에 함께 전송됩니다. OpenCode 프리셋과 `/v1/responses`를 사용하는 엔드포인트용 `(Responses)` 변형을 포함합니다.
+- **📡 출처가 차단돼도 스트리밍은 계속** — 교차 출처 요청이 거부되면 버퍼링된 응답으로 떨어지는 대신 데스크톱 `node:https` 전송으로 재시도하고, 폴백 실패도 기록됩니다.
 
 ---
 

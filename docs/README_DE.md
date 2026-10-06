@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — eine am Token-Limit abgeschnittene Neuschreibung überschreibt die Seite nicht mehr, eine einheitliche Form für `updated_pages`, damit die Link-Neuausrichtung jede Seite sieht, Provenance-Fußnoten-Klammern repariert, Fallback bei strukturierter Ausgabe von Unternehmens-Gateways, Ingestion-Lebenszyklus bei Überspringen freigegeben, Abbruch erreicht den Modellaufruf; 39 commits, 4144 tests)
+- latest: v1.28.0 (MINOR — Analyse lokaler Markdown-Bild-Einbettungen beim Ingest, Request-Header pro Anbieter mit OpenCode-Preset und `(Responses)`-Variante, ein Desktop-`node:https`-Streaming-Fallback für blockierte Origins und ein einziges Tag-Vokabular für Einstellungen, Notiz-Tags und Seiten-Tags; dazu der Build-Fix, der zwei bereits ausgelieferte Funktionen im Release-Build tatsächlich zum Laufen bringt; 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
@@ -126,7 +126,7 @@ Das war's. Das Plugin ändert nichts an deinen ursprünglichen Notizen — es er
 | **⚡ Smart Fix All** | innerhalb des Lint-Modals — One-Click-Reparatur in kausaler Reihenfolge mit Phasenbericht |
 | **📋 Index neu generieren** | `Cmd+P/Ctrl+P` → „Regenerate index" — baue `wiki/index.md` mit aktuellen Seiten und Aliasen neu auf |
 | **⏹ Abbrechen** | `Cmd+P/Ctrl+P` → „Cancel current ingestion" oder auf die Statusleiste klicken — stoppt sauber an der nächsten Batch-Grenze |
-| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „View Ingestion History" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
+| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „View operation history" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Vorher | Nachher |
@@ -198,6 +198,9 @@ Fünf On-Ramps, pro Ingest umschaltbar:
 - **🌍 11 UI-Sprachen** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI und Wiki-Ausgabesprache sind unabhängig — dein Wiki kann auf Chinesisch sein, während die Oberfläche auf Englisch ist.
 - **📚 10 Wiki-Ausgabesprachen** — dieselbe Auswahl; wähle in Einstellungen → Wiki Configuration. *Custom Input*-Option für Ad-hoc-Prompts.
 - **Alle UI-Strings pro Locale übersetzt** — jedes Label, Modal und jeder Hinweis. Eine 12. Sprache hinzuzufügen ist beitragsgesteuert (PR #159-Muster).
+- **🖼 Analyse eingebetteter Bilder beim Markdown-Ingest** — optional (*Analyze embedded images during Markdown ingestion*, standardmäßig aus). Jedes geeignete lokale `![[…]]`- / `![…](…)`-Embed einer Notiz wird über Obsidian aufgelöst und zusammen mit seinen Nachbarabsätzen in 20-MiB-Paketen analysiert; pro Bild gilt ein Limit von 10 MiB, GIFs senden ein statisches erstes Frame, und Remote-URLs werden nie heruntergeladen.
+- **🔧 Eigene Header pro Anbieter** — ein Freitextfeld direkt unter der API Base URL. Eine `Name: value`-Zeile pro Zeile, mit jeder Anfrage gesendet. Enthält ein OpenCode-Preset und eine `(Responses)`-Variante für Endpunkte, die `/v1/responses` sprechen.
+- **📡 Streaming übersteht blockierte Origins** — wird eine Cross-Origin-Anfrage abgelehnt, wird der Stream über einen Desktop-`node:https`-Transport erneut versucht, statt auf eine gepufferte Antwort zurückzufallen; ein fehlgeschlagener Fallback wird protokolliert statt verschluckt.
 
 ---
 

@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2（PATCH — トークン上限で切り捨てられた書き換えがページを上書きしない、`updated_pages` の形状統一でリンク再設定が全ページを認識、provenance 脚注括弧の修復、企業ゲートウェイの構造化出力フォールバック、スキップ時の取り込みライフサイクル解放、キャンセルがモデル呼び出しに到達；39 commits, 4144 tests）
+- latest: v1.28.0（MINOR — 取り込み時のローカル Markdown 画像埋め込みの解析、プロバイダー別リクエストヘッダーと OpenCode プリセット・`(Responses)` 変体、クロスオリジンが遮断された場合のデスクトップ `node:https` ストリーミング・フォールバック、設定/ノートタグ/ページタグを一つの語彙に統一。さらに、出荷済みの 2 機能をリリースビルドで実際に動かすビルド修正。4372 tests）
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
 - search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 11 言語プラグイン", "Obsidian 16+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
@@ -123,7 +123,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 | **⚡ Smart Fix All** | Lintモーダル内 — ワンクリック因果順修復（フェーズごとにレポート表示） |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → 「Regenerate index」 — `wiki/index.md`を現在のページとエイリアスで再構築 |
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → 「Cancel current ingestion」またはステータスバーをクリック — 次のバッチ境界でクリーンに停止 |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「View Ingestion History」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「View operation history」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Before | After |
@@ -195,6 +195,9 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - **🌍 10のUI言語** — English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano。UI言語とWiki出力言語は独立して設定可能（UIは英語のまま、Wikiは日本語で出力できます）。
 - **📚 10のWiki出力言語** — 同じセット。設定→Wiki Configurationで選択。*Custom input*オプションでアドホックプロンプトも可能。
 - **UI 文字列はロケールごとに全訳済み** — すべてのラベル、モーダル、通知。12言語目の追加はコントリビューター主導（PR #159パターン）。
+- **🖼 Markdown 取り込み時の埋め込み画像解析** — 任意（*Analyze embedded images during Markdown ingestion*、既定はオフ）。ノート内の対象となるローカル `![[…]]` / `![…](…)` 埋め込みは Obsidian 経由で解決され、隣接段落とともに 20 MiB 単位で解析されます。1 枚あたり 10 MiB 上限、GIF は静止した先頭フレームのみ送信、リモート URL は決してダウンロードしません。
+- **🔧 プロバイダー別のカスタムヘッダー** — API Base URL の直下にある自由入力欄。1 行に 1 つ `Name: value` を書き、すべてのリクエストに付与されます。OpenCode プリセットと、`/v1/responses` を話すエンドポイント向けの `(Responses)` 変体を同梱。
+- **📡 オリジンがブロックされてもストリーミングは継続** — クロスオリジンのリクエストが拒否された場合、バッファ済みの回答に落とす代わりにデスクトップの `node:https` トランスポートで再試行し、フォールバックの失敗も記録されます。
 
 ---
 

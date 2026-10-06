@@ -543,7 +543,7 @@ describe('serializeFrontmatter', () => {
         reviewed: true,
         aliases: ['Alt'],
       },
-      { passthroughLines: ['supersedes: "[[sources/old]]"'], tagStyle: 'block' }
+      { passthroughLines: ['supersedes: "[[sources/old]]"'] }
     );
     const order = ['type:', 'created:', 'updated:', 'supersedes:', 'sources:', 'tags:', 'reviewed:', 'aliases:']
       .map(k => block.indexOf(k));
@@ -551,10 +551,10 @@ describe('serializeFrontmatter', () => {
     expect(order.every(i => i !== -1)).toBe(true);
   });
 
-  it('block vs inline tag style', () => {
+  it('one tag style — the block list, whichever writer serializes', () => {
     const fm = { created: '2026-01-01', updated: '2026-07-04', tags: ['method', 'theory'] };
-    expect(serializeFrontmatter(fm, { tagStyle: 'block' })).toContain('tags:\n  - "method"\n  - "theory"');
-    expect(serializeFrontmatter(fm, { tagStyle: 'inline' })).toContain('tags: [method, theory]');
+    expect(serializeFrontmatter(fm)).toContain('tags:\n  - "method"\n  - "theory"');
+    expect(serializeFrontmatter(fm)).not.toContain('tags: [');
   });
 
   it('emits a bare tags: line only when emitEmptyTags is set', () => {
@@ -969,9 +969,8 @@ tags: [person, person, person, organization]
 
 Body`;
     const result = enforceFrontmatterConstraints(content, 'entity', baseSettings);
-    const tagLine = result.split('\n').find(l => l.startsWith('tags:'))!;
     // Should be exactly one occurrence per unique tag
-    expect(tagLine).toBe('tags: [person, organization]');
+    expect(parseFrontmatter(result)?.tags).toEqual(['person', 'organization']);
   });
 
   it('strips the pageType literal if LLM emitted it as a tag (e.g. tags: [entity, person])', () => {
@@ -982,8 +981,22 @@ tags: [entity, person]
 
 Body`;
     const result = enforceFrontmatterConstraints(content, 'entity', baseSettings);
-    const tagLine = result.split('\n').find(l => l.startsWith('tags:'))!;
-    expect(tagLine).toBe('tags: [person]');
+    expect(parseFrontmatter(result)?.tags).toEqual(['person']);
+  });
+
+  // The assertions above read the parsed list, so they hold for either YAML
+  // shape. This one pins the shape itself: the gate writes the block list every
+  // other writer writes, and never the inline form.
+  it('writes tags as a block list, the one shape every writer uses', () => {
+    const content = `---
+type: entity
+tags: [person, organization]
+---
+
+Body`;
+    const result = enforceFrontmatterConstraints(content, 'entity', baseSettings);
+    expect(result).toContain('tags:\n  - "person"\n  - "organization"');
+    expect(result).not.toMatch(/^tags: \[/m);
   });
 
   it('preserves nested-tag syntax (Arzneimittel/Neurologie) without splitting', () => {
@@ -1292,7 +1305,7 @@ describe('enforceFrontmatterConstraints: source pages carry the form list next t
     const out = enforceFrontmatterConstraints(page('other, theory, Thema/Schlaf, Thema/Erfunden'), 'source', undefined, {
       domainVocabulary: ['Thema/Schlaf'],
     });
-    expect(out).toMatch(/^tags: \[other, Thema\/Schlaf\]$/m);
+    expect(parseFrontmatter(out)?.tags).toEqual(['other', 'Thema/Schlaf']);
     expect(out).not.toContain('theory');
     expect(out).not.toContain('Thema/Erfunden');
   });
@@ -1306,6 +1319,6 @@ describe('enforceFrontmatterConstraints: source pages carry the form list next t
   it('a form value is not legal on an entity page', () => {
     const entity = '---\ntype: entity\ntags: [paper, Sorte/Erkrankung]\n---\n\n# X';
     const out = enforceFrontmatterConstraints(entity, 'entity', undefined, { domainVocabulary: ['Sorte/Erkrankung'] });
-    expect(out).toMatch(/^tags: \[Sorte\/Erkrankung\]$/m);
+    expect(parseFrontmatter(out)?.tags).toEqual(['Sorte/Erkrankung']);
   });
 });

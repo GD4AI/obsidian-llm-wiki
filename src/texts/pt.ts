@@ -718,7 +718,7 @@ export const PT_TEXTS = {
 
     // Ingest Report Modal
     ingestReportTitle: 'Relatório de ingestão',
-    ingestReportSourceFile: 'Arquivo fonte',
+    ingestReportSourceFile: 'Origem',
     ingestReportCreated: 'Criadas',
     ingestReportUpdated: 'Atualizadas',
     ingestReportContradictions: 'Contradições encontradas',

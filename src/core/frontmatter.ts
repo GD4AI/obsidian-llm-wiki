@@ -499,8 +499,6 @@ export interface SerializeFrontmatterOptions {
    * preserve them (enforceFrontmatterConstraints) pass their collected lines.
    */
   passthroughLines?: string[];
-  /** `'block'` → `tags:\n  - x`; `'inline'` → `tags: [x, y]`. Default `'block'`. */
-  tagStyle?: 'inline' | 'block';
   /** When there are no tags, emit a bare `tags:` line instead of omitting the field. */
   emitEmptyTags?: boolean;
 }
@@ -513,16 +511,19 @@ export interface SerializeFrontmatterOptions {
  * than three divergent hand-rolled writers. Returns the frontmatter block only
  * (`---\n…\n---`), without the body; the caller joins body as needed.
  *
- * The tag STYLE is parameterized rather than unified: `fix-runners.ts` rewrites
- * tags with an inline-only regex, so enforce must keep emitting inline tags while
- * merge keeps block tags. Only the duplicated ordering/serialization logic is
- * consolidated; observable output is unchanged.
+ * One list shape: this function writes `tags:` as a block list, for every
+ * caller. The inline form used to be kept for `enforceFrontmatterConstraints`
+ * because `fix-runners.ts` rewrote tags with an inline-only regex (2026-07-04);
+ * that regex learned both forms three days later (70002cb), and the exception
+ * outlived its reason — a page's frontmatter shape depended on which writer
+ * touched it last, and the source-stamp anchor in `create-page.ts` looked for
+ * a block header the gate never wrote.
  */
 export function serializeFrontmatter(
   fm: FrontmatterData,
   opts: SerializeFrontmatterOptions = {}
 ): string {
-  const { passthroughLines = [], tagStyle = 'block', emitEmptyTags = false } = opts;
+  const { passthroughLines = [], emitEmptyTags = false } = opts;
   const lines: string[] = ['---'];
 
   if (fm.type) lines.push(`type: ${fm.type}`);
@@ -536,15 +537,10 @@ export function serializeFrontmatter(
   }
 
   if (Array.isArray(fm.tags) && fm.tags.length > 0) {
-    lines.push(tagStyle === 'inline'
-      ? `tags: [${fm.tags.join(', ')}]`
-      : `tags:${yamlStringify(fm.tags)}`);
+    lines.push(`tags:${yamlStringify(fm.tags)}`);
   } else if (emitEmptyTags) {
     lines.push('tags:');
   }
-
-  // domain axis stage 2 (#568): block style only — the domain values are
-  // nested (`Gruppe/Wert`) and the inline-tag regex in fix-runners never reads them.
 
   if (fm.reviewed) lines.push('reviewed: true');
 
@@ -628,7 +624,7 @@ export function mergeFrontmatter(
       reviewed: fm.reviewed,
       aliases: Array.isArray(fm.aliases) ? fm.aliases : undefined,
     },
-    { tagStyle: 'block', emitEmptyTags: true, passthroughLines }
+    { emitEmptyTags: true, passthroughLines }
   );
 
   return { frontmatter, body, wasMerged: true };
@@ -873,7 +869,7 @@ export function enforceFrontmatterConstraints(
       tags: dedupedTags,
       aliases: (foundAliases || aliases.length > 0) ? aliases : undefined,
     },
-    { passthroughLines, tagStyle: 'inline', emitEmptyTags: hasTags }
+    { passthroughLines, emitEmptyTags: hasTags }
   );
 
   return frontmatter + '\n\n' + body;

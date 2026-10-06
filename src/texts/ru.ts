@@ -705,7 +705,7 @@ export const RU_TEXTS = {
 
     // Модальное окно отчёта об импорте
     ingestReportTitle: 'Отчёт об импорте',
-    ingestReportSourceFile: 'Исходный файл',
+    ingestReportSourceFile: 'Источник',
     ingestReportCreated: 'Создано',
     ingestReportUpdated: 'Обновлено',
     ingestReportContradictions: 'Найдены противоречия',

@@ -65,9 +65,10 @@ src/
 │   ├── create-llm-client.ts        # Factory: async + sync shim + preload
 │   ├── openai-sdk-client.ts        # OpenAI via @ai-sdk/openai (Responses API for reasoning models)
 │   ├── anthropic-sdk-client.ts     # Anthropic via @ai-sdk/anthropic (baseURL support for Coding Plan / z.ai / GLM)
-│   ├── openai-compat-sdk-client.ts # OpenAI-compatible via @ai-sdk/openai-compatible (8 providers)
+│   ├── openai-compat-sdk-client.ts # OpenAI-compatible via @ai-sdk/openai-compatible — every preset except `openai` / `openai-codex` / `anthropic` / `anthropic-compatible` / `bedrock-anthropic`, and anything declaring `apiShape: 'responses'`
 │   ├── openai-codex-sdk-client.ts  # ChatGPT Plan (Codex OAuth) — separate Codex Responses client (v1.25.2, OAuth device-code + loopback)
 │   ├── openai-codex/               # Codex OAuth private modules (adapter + token store)
+│   ├── compat-headers.ts           # Per-provider request headers + preset header factory (v1.28.0, #723/#735)
 │   ├── reasoning-strip-probe.ts    # Per-baseURL 400-strip cache + two-marker (verb+field) classifier (v1.26.0 Batch 6)
 │   ├── token-key-probe.ts          # max_tokens ↔ max_completion_tokens runtime fallback (KISS, no regex)
 │   ├── sampling-args.ts            # Shared sampling-args builder for cross-SDK createMessage (v1.26.0)
@@ -85,6 +86,10 @@ src/
 │   ├── report.ts               # Report truncation + heading nesting
 │   ├── arrays.ts               # Array coercion + source tag extraction
 │   ├── markdown.ts             # Markdown cleanup + thinking block extraction/encoding
+│   ├── embedded-image-resolver.ts  # Local `![[...]]` / `![](...)` image resolution through Obsidian (v1.28.0, #608)
+│   ├── embedded-image-evidence.ts  # Per-image context / evidence / skip reasons for the source-page audit section (v1.28.0, #608)
+│   ├── node-https-fetch.ts     # Desktop `node:https` transport for origins that block the renderer (v1.28.0, #741)
+│   ├── vocabulary.ts           # One tag vocabulary read by the prompt, the gate, the lint and the retag paths (v1.28.0, #672)
 │   ├── diff.ts                 # LCS line-level diff (schema diff Modal, v1.22.0)
 │   ├── detail-renderer.ts      # Wiki page detail rendering
 │   ├── token-cap.ts            # max_tokens cap helper
@@ -136,6 +141,7 @@ src/
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
 │   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
 ├── wiki/                # Wiki engine modules
+│   ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer (v1.28.0, #603/#750)
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
 │   ├── graph-cache.ts   # (v1.25.1) `_cachedGraph` + invalidate logic
 │   ├── index-generation.ts # (v1.25.1) generateFlatIndex + helpers
@@ -221,7 +227,7 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 4144 tests / 294 files; v1.27.2 PATCH 2026-09-15)
+└── __tests__/           # Unit tests (vitest, 4372 tests / 313 files; v1.28.0 MINOR 2026-10-04)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
 └── dev-instrument/     # UPSTREAM DEV-ONLY INSTRUMENT (v1.27.0, PR #511) — engine contributors only

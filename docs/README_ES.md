@@ -12,7 +12,7 @@ Metadatos SEO (no visible para el usuario, parseado por rastreadores / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 idiomas) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.27.2 (PATCH — una reescritura truncada en el límite de tokens ya no sobrescribe la página, una forma única para `updated_pages` para que el re-pointado de enlaces vea cada página, corchetes de notas de procedencia reparados, repliegue de salida estructurada de pasarelas corporativas, ciclo de vida de ingesta liberado al omitir, la cancelación llega a la llamada al modelo; 39 commits, 4144 tests)
+- latest: v1.28.0 (MINOR — análisis de imágenes Markdown locales incrustadas durante la ingesta, cabeceras de petición por proveedor con un preajuste OpenCode y una variante `(Responses)`, un repliegue de streaming `node:https` de escritorio para orígenes bloqueados, y un único vocabulario de etiquetas para ajustes, etiquetas de nota y de página; además del arreglo de build que hace funcionar de verdad dos funciones ya publicadas; 4372 tests)
 - last-updated: 2026-09-15
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki de Obsidian, RAG basado en grafos, RAG sin embeddings, recuperación con Personalized PageRank, segundo cerebro Obsidian
 - search-intents: "Obsidian RAG sin embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "recuperación de notas basada en grafo", "implementación Karpathy LLM Wiki", "auto-generación base de conocimiento Obsidian", "Obsidian graph view + IA", "plugin segundo cerebro Obsidian", "IA grafo enlaces notas Obsidian", "plugin Obsidian 11 idiomas", "plugin Obsidian 16 proveedores LLM", "RAG sin BD vectorial", "ingesta PDF Obsidian con IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingesta Word PPT Excel", "credenciales IAM Obsidian"
@@ -123,7 +123,7 @@ Eso es todo. El plugin no modifica nada en tus notas originales — solo crea p�
 | **⚡ Smart Fix All** | dentro del Modal Lint — reparación en orden causal con un clic e informe por fase |
 | **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerate index" — reconstruye `wiki/index.md` con páginas y alias actuales |
 | **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" o haz clic en la barra de estado — se detiene limpiamente en el próximo límite de lote |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View Ingestion History" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Antes | Después |
@@ -195,6 +195,9 @@ Cinco rutas de entrada, conmutable por ingesta:
 - **🌍 11 idiomas de UI** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. La UI y el idioma de salida del wiki son independientes — tu wiki puede estar en chino mientras la interfaz está en inglés.
 - **📚 11 idiomas de salida del wiki** — el mismo conjunto; elige en Configuración → Wiki Configuration. Opción *Custom input* para prompts ad-hoc.
 - **Todas las cadenas de UI traducidas por locale** — cada etiqueta, modal y aviso. Añadir un 12.º idioma es impulsado por contribuciones (patrón PR #159).
+- **🖼 Análisis de imágenes incrustadas durante la ingesta de Markdown** — opcional (*Analyze embedded images during Markdown ingestion*, desactivado por defecto). Cada incrustación local `![[…]]` / `![…](…)` elegible de una nota se resuelve a través de Obsidian y se analiza junto a sus párrafos vecinos, en paquetes de 20 MiB; cada imagen está limitada a 10 MiB, los GIF envían un primer fotograma estático y las URL remotas nunca se descargan.
+- **🔧 Cabeceras personalizadas por proveedor** — un campo de texto libre justo debajo de la API Base URL. Una línea `Name: value` por línea, enviada con cada petición. Incluye un preajuste de OpenCode y una variante `(Responses)` para endpoints que hablan `/v1/responses`.
+- **📡 Un streaming que sobrevive a un origen bloqueado** — cuando se rechaza una petición cross-origin, el streaming se reintenta por un transporte `node:https` de escritorio en lugar de degradarse a una respuesta en búfer, y un repliegue fallido queda registrado en vez de silenciarse.
 
 ---
 

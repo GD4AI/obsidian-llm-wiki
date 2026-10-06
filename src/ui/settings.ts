@@ -322,6 +322,43 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     applyCodexModelPolicy(this.tempSettings);
   }
 
+  /**
+   * Adopt the committed model selection wholesale, deliberately without
+   * cascading (Issue #467).
+   *
+   * The distinction the write guard exists to make explicit: a **user edit** to
+   * the unified model must clear the per-task overrides, because `setFieldValue`
+   * expands one field the user changed into a coherent selection and the
+   * overrides would otherwise stay pinned to a model the picker no longer shows.
+   * A **sync** from `plugin.settings` is not an edit — all four fields arrive
+   * together from the source of truth.
+   *
+   * The reason a sync must not go through `setFieldValue` is `llmReady`, and it
+   * is worth naming because the two reasons that look right do not hold on this
+   * method's only caller (`test-connection-section.ts`): clearing the three
+   * per-task values has no effect there, since they are reassigned from the same
+   * source on the next line, and the `*UseCustom` flags are already `false`
+   * because `syncCodexModelsFromPlugin` → `applyCodexModelPolicy` ran first.
+   * What does hold is that `setFieldValue` always ends with
+   * `markLLMConfigStale()`, so a **successful** Codex connection test would commit
+   * `llmReady = false`, and `requireLLMReady` would then reject every ingest and
+   * query.
+   *
+   * This method is one of two sanctioned write entries, and it is **not** the
+   * only place `tempSettings.model` is assigned:
+   * `openai-codex-model-policy.ts` assigns it twice through a parameter
+   * (`applyCodexModelPolicy`, `preserveCodexRuntimeModelState`), which a
+   * literal-text search cannot see. `unified-model-write-guard.test.ts`
+   * therefore also checks parameter-mediated writers against a declared
+   * allow-list, so a third one fails the test instead of landing unseen.
+   */
+  public syncModelsFromPlugin(): void {
+    this.tempSettings.model = this.plugin.settings.model;
+    this.tempSettings.ingestModel = this.plugin.settings.ingestModel;
+    this.tempSettings.lintModel = this.plugin.settings.lintModel;
+    this.tempSettings.queryModel = this.plugin.settings.queryModel;
+  }
+
   public async refreshOpenAICodexModels(force: boolean, showSuccess: boolean): Promise<void> { await runCodexModelRefresh({ refresh: () => this.plugin.refreshOpenAICodexModels(force), sync: () => { this.syncCodexModelsFromPlugin(); }, showSuccess: (count) => { if (showSuccess) new Notice(this.getText('codexModelsRefreshSuccess').replace('{}', String(count)), NOTICE_NORMAL); }, showError: (error) => { new Notice(this.getText('codexModelsRefreshFailed').replace('{}', error instanceof Error ? error.message : String(error)), NOTICE_ERROR); }, setBusy: (value) => { this.codexAuthBusy = value; }, render: () => { this.display(); } }); }
 
   public queueStaleCodexModelRefresh(): void {
@@ -600,6 +637,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     //     block, NOT at the end of the tab - matching pre-PR2 layout
     //     users have muscle memory for.
     const { containerEl } = this;
+    const scrollTop = containerEl.scrollTop;
     containerEl.empty();
     if (this.tempSettings.provider === 'openai-codex') applyCodexModelPolicy(this.tempSettings);
 
@@ -618,5 +656,6 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     // v1.26.0 (#382 item 2): bottom-most section — generic advanced-user
     // settings (lint thresholds, Welcome note) with a section-level toggle.
     renderAdvancedSettingsSection(this, containerEl);
+    containerEl.scrollTop = scrollTop;
   }
 }

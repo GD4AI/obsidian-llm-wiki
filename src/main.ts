@@ -41,7 +41,7 @@ import { normalizeVocabularyCsv } from './core/tag-vocab';
 import { detectStaleWikiFolders } from './core/query-history-migration-check';
 import { BatchProgress } from './core/status-bar';
 import { IngestQueue } from './core/ingest-queue';
-import { decideProgressDisplay, ProgressScope } from './core/progress-notification';
+import { decideProgressDisplay, noticeWithStage, ProgressScope } from './core/progress-notification';
 import { WikiEngine } from './wiki/wiki-engine';
 import { QueryView, VIEW_TYPE_QUERY } from './wiki/query-engine';
 import { IngestReportModal, ConfirmModal } from './ui/modals';
@@ -78,6 +78,7 @@ export class LLMWikiPlugin extends Plugin {
   bedrockAuthManager: BedrockAuthManager | null = null;
   ingestQueue: IngestQueue = new IngestQueue();
   progressNotice: Notice | null = null;
+  private progressOpenedWith = '';
   ingestStatusBar: HTMLElement | null = null;
   batchProgress: BatchProgress | null = null;
   async onload() {
@@ -121,6 +122,9 @@ export class LLMWikiPlugin extends Plugin {
           this.ingestStatusBar.setText(msg);
           this.ingestStatusBar.removeClass('llm-wiki-status-bar-hidden');
         }
+        // A Notice only exists when a user-triggered operation opened one;
+        // a watcher ingest stays in the status bar.
+        this.progressNotice?.setMessage(noticeWithStage(this.progressOpenedWith, msg));
         this.showProgressFor(ProgressScope.IngestAutoWatch, msg);
       },
       (report: IngestReport) => this.onIngestDoneDispatch(report),
@@ -395,6 +399,7 @@ export class LLMWikiPlugin extends Plugin {
   private showProgressFor(scope: ProgressScope, msg: string): void {
     const decision = decideProgressDisplay(scope, false, true);
     if (decision.display === 'notice+status-bar') {
+      this.progressOpenedWith = msg;
       if (this.progressNotice) {
         this.progressNotice.setMessage(msg);
       } else {
@@ -408,6 +413,7 @@ export class LLMWikiPlugin extends Plugin {
     if (this.progressNotice) {
       this.progressNotice.hide();
       this.progressNotice = null;
+      this.progressOpenedWith = '';
     }
   }
 

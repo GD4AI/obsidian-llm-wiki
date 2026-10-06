@@ -673,7 +673,7 @@ export const ZH_TEXTS = {
 
     // 摄入报告弹窗
     ingestReportTitle: '摄入报告',
-    ingestReportSourceFile: '源文件',
+    ingestReportSourceFile: '来源',
     ingestReportCreated: '已创建',
     ingestReportUpdated: '已更新',
     ingestReportContradictions: '发现矛盾',

@@ -18,6 +18,7 @@ import {
   buildStubContent,
   shouldFabricateStubForUnresolvableLink,
 } from '../../../wiki/lint/fix-dead-link';
+import { parseFrontmatter } from '../../../core/frontmatter';
 
 describe('fixDeadLink stub construction (#197 — honest placeholders)', () => {
   describe('buildStubContent', () => {
@@ -83,6 +84,20 @@ describe('fixDeadLink stub construction (#197 — honest placeholders)', () => {
       });
       expect(out).toContain('type: concept');
       expect(out).toContain('# UnknownConcept');
+    });
+
+    // #808: the shape, not only the value.
+    it('writes tags as the block list every other writer emits', () => {
+      for (const [stubType, tag] of [['entity', 'other'], ['concept', 'term']] as const) {
+        const out = buildStubContent({
+          title: 'X',
+          stubType,
+          wikiFolder: 'wiki',
+          referringPageRel: 'entities/SomeSource',
+        });
+        expect(out).toContain(`\ntags:\n  - "${tag}"\nstub: true\n`);
+        expect(parseFrontmatter(out)?.tags).toEqual([tag]);
+      }
     });
   });
 

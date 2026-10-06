@@ -8,6 +8,7 @@
 // result.text`. These helpers carry it to callers that opt in.
 
 import type { LLMFinishReason, LLMFinishMeta, LLMUsage } from '../types';
+import { stripThinkingBlocks } from '../core/markdown';
 
 const KNOWN_FINISH_REASONS: readonly LLMFinishReason[] = [
   'stop',
@@ -127,16 +128,20 @@ export async function extractResultReasoning(result: {
  * this the caller sees a generic parse failure and goes looking for a bad
  * prompt — the exact wrong place.
  *
- * Two deliberate narrowings against the v1.19.0 predicate:
+ * Two deliberate narrowings against the v1.19.0 predicate. Issue #791 replaced
+ * the first: this no longer runs on the post-prepend string, and the caller
+ * states the fact with the `rescued` argument instead (see below).
  *
- *   - `text` is the text the caller is about to receive, AFTER the
- *     reasoning-channel prepend (`prependReasoningForParse`). LMStudio +
- *     Qwen3.5 routes valid structured output into `reasoning_content` with
- *     empty visible content; that call succeeded and must not throw here.
- *   - An absent `reasoningTokens` never fires. The predicate needs the
- *     provider to have said what the tokens went to; without it, "empty at
- *     length" is just truncation, which is #305's signal, not this one.
+ *   - A rescued answer never throws. LMStudio + Qwen3.5 routes valid structured
+ *     output into `reasoning_content` with empty visible content; that call
+ *     succeeded and must not throw here.
+ *   - An absent `reasoningTokens` never fires on the empty-content branch. That
+ *     branch needs the provider to have said what the tokens went to; without
+ *     it, "empty at length" is just truncation, which is #305's signal, not
+ *     this one. The inline branch (#791) needs no such accounting.
  */
+type ReasoningOnlyCase = 'none' | 'inline' | 'empty';
+
 /**
  * S143: the predicate of assertNotReasoningOnly, reusable BEFORE the
  * reasoning-channel prepend. When it holds, the reasoning is a runaway think
@@ -147,26 +152,77 @@ export async function extractResultReasoning(result: {
  * no reasoning breakdown, this stays false and the legacy prepend applies
  * (#544: a truncated JSON in the reasoning channel still reaches the
  * parse-and-retry path downstream).
+ *
+ * Issue #791: reasoning reaches us in two shapes, and they need different
+ * evidence.
+ *
+ *   - **Inline.** The gateway puts its reasoning in the `content` field wrapped
+ *     in a thinking block and sends nothing after it. The text IS the evidence:
+ *     strip the block and nothing remains. No metadata is needed and none is
+ *     available — the gateways that do this report no reasoning breakdown and
+ *     may stop with `finish_reason: stop`. Issue #791 is this shape, and it was
+ *     invisible before because the predicate below only ever read an EMPTY
+ *     `content` field.
+ *   - **Empty content.** The reasoning went to a separate channel and `content`
+ *     arrived empty. There is nothing to read, so only the provider's own
+ *     accounting can say where the budget went: a `length` stop with at least
+ *     half the output spent on reasoning. This is the v1.19.0 predicate (#99,
+ *     restored for #470) and it is unchanged.
+ *
+ * An UNCLOSED block is deliberately not stripped (see extractThinkingBlocks) and
+ * so does not fire here: it cannot be told from an answer that merely opens with
+ * the tag.
  */
-export function isReasoningRunaway(
+function reasoningOnlyCase(
+  text: string,
+  raw: unknown,
+  usage: LLMUsage | undefined,
+): ReasoningOnlyCase {
+  const withoutThinking = stripThinkingBlocks(text).trim();
+  if (withoutThinking.length > 0) return 'none';
+  if (text.trim().length > 0) return 'inline';
+  if (normalizeFinishReason(raw) !== 'length') return 'none';
+  const outputTokens = usage?.outputTokens ?? 0;
+  const reasoningTokens = usage?.reasoningTokens;
+  if (reasoningTokens === undefined || outputTokens <= 0) return 'none';
+  return reasoningTokens / outputTokens >= 0.5 ? 'empty' : 'none';
+}
+
+export function isReasoningOnly(
   text: string,
   raw: unknown,
   usage: LLMUsage | undefined,
 ): boolean {
-  if (text.trim().length > 0) return false;
-  if (normalizeFinishReason(raw) !== 'length') return false;
-  const outputTokens = usage?.outputTokens ?? 0;
-  const reasoningTokens = usage?.reasoningTokens;
-  if (reasoningTokens === undefined || outputTokens <= 0) return false;
-  return reasoningTokens / outputTokens >= 0.5;
+  return reasoningOnlyCase(text, raw, usage) !== 'none';
 }
 
+/**
+ * Throws when the caller is about to receive no answer at all.
+ *
+ * `rescued` is the third case, and it must never fire. It states that the client
+ * decided the reasoning channel held the ANSWER (LMStudio + Qwen3.5 route
+ * structured output there) and prepended it to the visible text. That text then
+ * looks exactly like the inline shape above, so the shape cannot be the
+ * discriminator. S143 expressed this fact by ordering — prepend first, then
+ * assert, so the prepend counted as content — and that ordering was invisible to
+ * anyone reading either line. The flag states it instead.
+ */
 export function assertNotReasoningOnly(
   text: string,
   raw: unknown,
   usage: LLMUsage | undefined,
+  rescued = false,
 ): void {
-  if (!isReasoningRunaway(text, raw, usage)) return;
+  if (rescued) return;
+  const kind = reasoningOnlyCase(text, raw, usage);
+  if (kind === 'none') return;
+  if (kind === 'inline') {
+    throw new Error(
+      'The model returned only its reasoning and no answer. Turn thinking off for '
+      + 'this model (Settings → LLM Advanced Parameters → Disable thinking), or '
+      + 'raise the token limit (max_tokens) so the answer fits after the reasoning.',
+    );
+  }
   const outputTokens = usage?.outputTokens ?? 0;
   const reasoningTokens = usage?.reasoningTokens;
   throw new Error(

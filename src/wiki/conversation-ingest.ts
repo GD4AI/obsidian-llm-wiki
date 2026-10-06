@@ -90,7 +90,7 @@ export class ConversationIngestor {
           console.warn('[conversation-ingest] save skipped: dedup=fully_redundant');
           this.ctx.onProgress?.(getText(this.ctx.settings.language, 'convAlreadyExists'));
           return {
-            sourceFile: `Conversation: ${history.messages[0]?.content?.substring(0, 50) || 'unknown'}`,
+            sourceFile: `Conversation — ${history.messages[0]?.content?.substring(0, 50) || 'unknown'}`,
             createdPages: [],
             updatedPages: [],
             entitiesCreated: 0,
@@ -235,7 +235,6 @@ CRITICAL RULES:
       content: conversationText.substring(0, 500),
       analysis: JSON.stringify(parsed),
       created_pages_list: createdPagesList,
-      source_file: `Conversation: ${parsed.source_title}`,
       date: actualDate,
       tags,
       constraints: UNIVERSAL_LINK_CONSTRAINTS,
@@ -305,7 +304,7 @@ CRITICAL RULES:
     const conceptsCreated = parsed.created_pages.filter(p => p.includes('/concepts/')).length;
 
     const report: IngestReport = {
-      sourceFile: `Conversation: ${parsed.source_title}`,
+      sourceFile: `Conversation — ${parsed.source_title}`,
       createdPages: parsed.created_pages,
       updatedPages: parsed.updated_pages || [],
       entitiesCreated,
