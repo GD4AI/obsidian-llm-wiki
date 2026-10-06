@@ -4,7 +4,7 @@
 
 The Karpathy LLM Wiki plugin ingests documents through four paths that share the same Markdown output cache — what differs is **what runs the model**. The plugin can (a) send a PDF straight to a cloud provider's `/v1/chat/completions` or `/v1/messages` (Anthropic) endpoint as a file part, (b) route PDF / images / Office documents through the **built-in MinerU backend** (v1.27.0+, no extra setup), (c) run a fully local pipeline on Apple Silicon via [oMLX](https://github.com/jundot/omlx) + Markitdown, or (d) accept Markdown converted elsewhere (MinerU's online extractor for users who prefer a UI over an API token) as a regular text source. This page covers all four paths in the order: simplest → most flexible.
 
-> 📖 Quick setup walkthroughs are in the [README → PDF ingest](../README.md#-pdf-ingest-v1250-mineru-backend-v1270) section. This page is the long form.
+> 📖 Quick setup steps are in the README's [Quick Start table](../README.md#-quick-start). This page is the long form.
 
 ---
 

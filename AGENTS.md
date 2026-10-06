@@ -1,18 +1,15 @@
 # LLM Wiki Plugin Project Development Standards
 
-**Last Updated:** 2026-10-03
+**Last Updated:** 2026-10-06
 
-**Current state pointer:** see [ROADMAP.md](./ROADMAP.md) for the active plan and the decision queue + [CHANGELOG.md](./CHANGELOG.md) for shipped history. This file (AGENTS.md) carries process standards only — and is the single canonical source. The historical mirror at `CLAUDE.md` is now a pointer stub to this file; all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
-
----
+**Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
-Use **ASD-STE100 Simplified Technical English at about 80% strength** in every reply
-to the maintainer. Keep the meaning exact. Drop the ceremony.
+Use **ASD-STE100 Simplified Technical English at about 80% strength** in every reply to the maintainer. Keep the meaning exact. Drop the ceremony.
 
-The maintainer reads a reply to make a decision. A dense reply hides that decision.
-A clear reply lets them answer in one reading.
+The maintainer reads a reply to make a decision. A dense reply hides that decision. A clear reply lets them answer in one reading.
 
 | Rule | Write this | Not this |
 |---|---|---|
@@ -26,15 +23,11 @@ A clear reply lets them answer in one reading.
 | Symbols are labels | State the fact in words, then mark it `✓` or `✗`. | Let `✗` carry the meaning alone. |
 | Show the trade-off | Name each option and its cost. | Present one option as obviously correct. |
 
-**The 20% you may drop:** the full STE-100 dictionary and its approved-word list. The
-project keeps its domain terms (`slug`, `frontmatter`, `Gate 1`). Explain each one in
-plain words the first time it appears in a reply.
+**The 20% you may drop:** the full STE-100 dictionary and its approved-word list.
+The project keeps its domain terms (`slug`, `frontmatter`, `Gate 1`), and explains each one in plain words the first time it appears in a reply.
 
-**This applies to every reply to the maintainer, in any language.** For Chinese: keep
-sentences short. Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer
-the common word.
-
----
+**This applies to every reply to the maintainer, in any language.** For Chinese: keep sentences short.
+Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer the common word.
 
 ## 🛡️ Six-Gate Quality Closure
 
@@ -43,7 +36,7 @@ the common word.
 | **1. Code correct** | `pnpm lint` 0/0 + `npx tsc --noEmit` 0/0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 | Five-Gate script (build BEFORE test — see §"Gate 1: Five-Gate automated") |
 | **2. No side effects** | Call-site audit + data flow + state mutation + error propagation | Structured review |
 | **3. No breaking changes** | API/Schema/File format/Default behavior/Command IDs/Obsidian API | Breaking-change matrix |
-| **4. No performance regression** | CPU/memory/IO/network/token — 5-dim written assessment | simplify + code-review + Gate 4 table |
+| **4. No performance regression** | CPU/memory/IO/network/token — 5-dim written assessment | `/review` (pi-review) + Gate 4 table |
 | **5. Docs complete** | 10 READMEs + ROADMAP + AGENTS + CHANGELOG + memory | pre-release-gate |
 | **6. Release clean** | Supersets 1-5 + TOC + i18n + Release Notes + Contributors + git hygiene | pre-release-gate |
 
@@ -53,9 +46,10 @@ the common word.
 pnpm lint && npx tsc --noEmit && pnpm build && pnpm test && pnpm css-lint
 ```
 
-All five must pass. ESLint checks style, TypeScript checks types, css-lint checks Obsidian review compliance — three complementary checks, single tool passing is insufficient. No `@ts-ignore` / `eslint-disable` to silence failures.
+All five must pass, and the three checks are complementary, so one tool passing is not enough: ESLint checks style, TypeScript checks types, css-lint checks Obsidian review compliance. Never use `@ts-ignore` or `eslint-disable` to silence a failure.
 
-**Order is non-negotiable**: `pnpm build` MUST run before `pnpm test`. The test suite contains build-artifact verifications (e.g. `src/__tests__/llm-sdk/openai-codex-loopback-flow.test.ts:39` reads `main.js` to assert the esbuild bundle shape), so a test-first run fails with ENOENT on a fresh clone. Local Gate 1 typically has `main.js` on disk from a prior `pnpm build:dev`, which is why this ordering bug was missed before PR #487's first CI run on 2026-08-18.
+**Order is non-negotiable**: `pnpm build` MUST run before `pnpm test`.
+The suite reads build artifacts — `src/__tests__/llm-sdk/openai-codex/openai-codex-loopback-flow.test.ts:39` reads `main.js` to assert the esbuild bundle shape — so a test-first run fails with ENOENT on a fresh clone. Local Gate 1 usually has `main.js` from a prior `pnpm build:dev`, so the bug was missed before PR #487's first CI run on 2026-08-18.
 
 **Bot alignment (pre-release):** local `pnpm lint` ≠ Obsidian review bot. Bot runs newer `eslint-plugin-obsidianmd`. Before each release:
 ```bash
@@ -83,7 +77,7 @@ Deliverable: "None detected" or specific migration plan.
 
 ### Gate 4: No Performance Regression
 
-Procedure: (1) Run `simplify` (3 parallel agents); (2) Run `code-review` (max effort); (3) Walk through 5 dimensions below; (4) If regression → mitigate or escalate; (5) If N/A → state so.
+Procedure: run `/review` on the change, then walk the dimensions below. On a regression, mitigate or escalate. If N/A, say so.
 
 | # | Dimension | Project-specific signal |
 |---|-----------|-------------------------|
@@ -93,7 +87,7 @@ Procedure: (1) Run `simplify` (3 parallel agents); (2) Run `code-review` (max ef
 | 4 | Network | `OpenAICompatibleClient.createMessage` should cache 400-fallback (Issue #245); lint dedup budget 500 |
 | 5 | Token | Ingest 1-3K; lint dedup 100 × ~30 = 3K/batch; retries = full prompt |
 
-**Deliverable** (mandatory in commit body):
+**Deliverable** (mandatory in commit body — bare "no regression" is **not acceptable**):
 ```
 ## Gate 4: Performance
 
@@ -105,7 +99,6 @@ Procedure: (1) Run `simplify` (3 parallel agents); (2) Run `code-review` (max ef
 | Network | ✅/⚠️/N/A | ... |
 | Token | ✅/⚠️/N/A | ... |
 ```
-Bare "no regression" is **not acceptable**.
 
 ### Gate 5 + Gate 6
 
@@ -118,8 +111,6 @@ Gate 6 supersets Gates 1-5 plus release hygiene. `pre-release-gate` skill (relea
 - "I'll add tests later" → Tests must accompany change
 - "The PR review will catch it" → Reviewer has less context than you
 - "ESLint passes, TypeScript errors are fine" → ESLint does NOT check type safety
-
----
 
 ## 🧪 Development Quality Closure (TDD + Planning)
 
@@ -137,7 +128,9 @@ Mandatory loop for every code change. This is a closure, not a checklist — eac
 9. Six-Gate review  → side effects + breaking + performance + doc + release
 ```
 
-**Tests required** for: new exported function/class/module, new behavior branch (any new if/else), **bug fixes** (test reproduces bug; fix makes test pass), refactor with observable behavior change. Tests optional for: pure config, type-only, docs. Pre-existing code with zero tests: add at least one test for the changed path first.
+**Tests required** for: any new exported function/class/module, and any new behavior branch (new if/else).
+**Bug fixes** also need a test — the test reproduces the bug, and the fix makes it pass. A refactor with observable behavior change needs a test.
+Tests optional for: pure config, type-only, docs. Pre-existing code with zero tests: add one test for the changed path first.
 
 **Shell-test anti-pattern (2026-06-02, Issue #81):** tests that pass without verifying real behavior are **worse than no test**. Rules:
 1. Cover ALL production code paths (inline vs multi-line, JSON vs YAML, etc.)
@@ -146,8 +139,6 @@ Mandatory loop for every code change. This is a closure, not a checklist — eac
 4. Inspect actual output during debugging — don't trust GREEN without seeing it
 
 Reference: [[feedback_tdd_standard]].
-
----
 
 ## 🔀 Git Branch Workflow (enforced since v1.20.2)
 
@@ -170,7 +161,8 @@ main (protected) ────► tag → release
 6. **Wait for explicit "可以 push" / "push it" / "ship it"** before `git push` + `gh pr create`
 7. **Wait for explicit "merge it" / "合并"** before `gh pr merge`
 
-**Prohibited:** committing directly on main · pushing PR without user confirmation · mixing unrelated changes · fragmented commits (amend instead) · **`git push` + `gh pr create` immediately after Gate 1 passes** (must do E2E handoff + explicit approval first) · **`gh pr merge` after PR created** (must wait for explicit signal).
+**Prohibited:** committing directly on main; pushing a PR without user confirmation; mixing unrelated changes; fragmented commits (amend instead).
+**`git push` + `gh pr create` immediately after Gate 1 passes** must wait for the E2E handoff and explicit approval. **`gh pr merge` after PR created** must wait for the explicit signal.
 
 **When to amend vs new commit:** fixing a problem in previous commit → `--amend`; new feature/fix → new commit; pre-release doc updates → can amend into version bump commit.
 
@@ -178,12 +170,16 @@ main (protected) ────► tag → release
 
 - **NEVER commit or push without explicit user permission.** Non-negotiable.
 - **NEVER auto-merge PRs.** Not even when Gate 1 passed in CI, or the fix looks "obviously correct", or user said "handle it".
-- **Mandatory pre-merge workflow:** (1) user explicit "merge it" / "合并" required before `gh pr merge` / cherry-pick / PR-creation; (2) `simplify` skill runs on PR diff (4 angles); (3) `code-review` skill runs (8 angles, max effort); (4) report findings as `file:line + concrete issue + suggested fix` — do NOT modify the PR; (5) wait for approval before any destructive action.
-- **Anti-patterns:** "the PR is small, let me cherry-pick to local main first while we discuss" (violates workflow, creates commits ahead of approval); "Gate 1 passes, so I can `git push` + `gh pr create` immediately" (skips E2E handoff — see #456 incident above).
+- **Mandatory pre-merge workflow:** (1) The user must say "merge it" / “合并” before `gh pr merge`, cherry-pick or PR-creation.
+  (2) `/review` runs on the PR diff. It is the `pi-review` extension; `review` is the command it registers, and it carries the modes the old pair needed separately.
+  (3) Report findings as `file:line + concrete issue + suggested fix`, and do NOT modify the PR. (5) Wait for approval before any destructive action.
+- **Anti-patterns:** "the PR is small, let me cherry-pick to local main first while we discuss" violates the workflow and creates commits ahead of approval.
+  "Gate 1 passes, so I can `git push` + `gh pr create` immediately" skips the E2E handoff — see the #456 incident above.
 
 ### Maintainer tooling: two failure modes that read as something else (2026-09-13)
 
-**`gh auth refresh` needs `--hostname` when not running interactively.** Without it the command prints **usage text** — the real error (`--hostname required when not running interactively`) sits above the flags list and is easy to read as "the flags were wrong". Correct form, safe to background so the device code can be surfaced before the browser step:
+**`gh auth refresh` needs `--hostname` when not running interactively.** Without it the command prints **usage text**.
+The real error (`--hostname required when not running interactively`) sits above the flags list, so it is easy to read as "the flags were wrong". Run the correct form in the background, so the device code is visible before the browser step:
 
 ```bash
 nohup gh auth refresh --hostname github.com -s workflow > /tmp/ghauth.log 2>&1 &
@@ -192,7 +188,10 @@ sleep 10 && cat /tmp/ghauth.log   # → one-time code + https://github.com/login
 
 The device flow needs the human; the code expires in ~15 min. Once authorised, `gh auth status` shows the added scope and the merge can proceed.
 
-**A workflow-file merge reports branch policy, not the scope problem.** Merging a PR that touches `.github/workflows/*` fails with `the base branch policy prohibits the merge`, which reads as "a requirement is still missing" — it isn't. Adding `--admin` (or using the REST `PUT /pulls/<N>/merge` endpoint) surfaces the actual cause: `refusing to allow an OAuth App to create or update workflow ... without 'workflow' scope`, HTTP 403. The ruleset has no bypass actors (`rulesets/16884813`, "Protect main branch", active — one call re-checks the claim), so `--admin` does **not** bypass it — it only stops masking it. The variable is **whether the token carried `workflow` at that moment**, not the shape of the change: #693 added a step and merged, #639 changed a step and sat on the wall, #698 added a trigger and sat on the wall. Same shape, opposite outcomes — and the two that failed were merged nine seconds apart, six hours after the one that did not, which is the signature of one unblocking event. So the error is the only reliable signal. Do not report a PR as merge-ready until one of the two paths has returned a merge commit.
+**A workflow-file merge reports branch policy, not the scope problem.** Merging a PR that touches `.github/workflows/*` fails with the message `the base branch policy prohibits the merge`. That message is not a missing requirement. Add `--admin`, or use the REST `PUT /pulls/<N>/merge` endpoint, to see the real cause: `refusing to allow an OAuth App to create or update workflow ... without 'workflow' scope`, HTTP 403.
+The ruleset has no bypass actors (`rulesets/16884813`, "Protect main branch", active), so `--admin` does **not** bypass it. It only stops masking it.
+
+The variable is **whether the token carried `workflow` at that moment**. The shape of the change does not matter. #693 added a step and merged. #639 changed a step and sat on the wall. #698 added a trigger and sat on the wall. The two that failed were merged nine seconds apart, six hours after the one that did not. That is the signature of one unblocking event. So the error is the only reliable signal. Do not report a PR as merge-ready until one of the two paths has returned a merge commit.
 
 ### Per-PR discipline
 
@@ -206,23 +205,21 @@ gh pr review <N> --body "<file>"   # ← MANDATORY. Formal review event lands on
 gh pr merge <N> --admin --squash --delete-branch   # ← ONLY after user said "merge it"
 ```
 
-- **A PR body is not the commit-message file.** `git log` wants ~80-column wrapping; GitHub renders a single newline in a PR or issue body as a **hard break**, so a wrapped paragraph arrives on the web as a column of ~80-character fragments. Same content, two renderings: write the body with one long line per paragraph and let the page reflow it, and keep the commit message wrapped. The symptom reappears whenever `--body-file` is handed the same file that was passed to `git commit -F`. Caught 2026-09-16 on #733. Check before posting — `awk 'length>0 && length<88' <body-file>` should return only markdown-structure lines (headings, list items, table rows), never prose.
-
-- **Scan the body before merging.** A closing keyword needs no intent and does
-  not have to aim at an issue. Writing the fix reference as prose — "its fix
-  #684" — parsed as `fix #684` and closed **PR #684** one second after the PR
-  carrying that sentence merged. The author never touched it, and the ROI
-  board merged in that same PR listed #684 as an unblock-first item. Recover
-  with `gh pr reopen <N>`; see MEMORY.md §"Issue close keyword".
-
-- **`gh pr review --approve` (or `--request-changes`) MUST be posted BEFORE `gh pr merge`.** This lands the formal review verdict on the PR timeline; downstream tooling (release notes, contributor credit, audit trail) reads from that event, not from comments.
+- **A PR body is not the commit-message file.** `git log` wants ~80-column wrapping. GitHub renders one newline in a PR or issue body as a **hard break**, so a wrapped paragraph arrives as a column of ~80-character fragments. Write the body with one long line per paragraph, and keep the commit message wrapped. The symptom returns when `--body-file` gets the same file that was passed to `git commit -F`; caught 2026-09-16 on #733.
+  Check before posting — `awk 'length>0 && length<88' <body-file>` must return only markdown-structure lines (headings, list items, table rows), never prose.
+- **Scan the body before merging.** A closing keyword needs no intent, and it does not have to aim at an issue. "Its fix #684" parsed as `fix #684` and closed **PR #684** one second after the PR carrying that sentence merged. The author never touched it, and the ROI board merged in that same PR listed #684 as an unblock-first item. Recover with `gh pr reopen <N>`; see MEMORY.md §"Issue close keyword".
+- **`gh pr review --approve` (or `--request-changes`) MUST be posted BEFORE `gh pr merge`.** This lands the formal review verdict on the PR timeline. Downstream tooling (release notes, contributor credit, audit trail) reads that event, not the comments.
 - For architect-level contributor PRs (e.g. @DocTpoint), per [[feedback_reply_brevity_for_architect_contributors]]: review body should be **decision + ≤5 sentences** + concrete `file:line` findings, not a long-form audit.
-- **Post-merge audit trail:** if a `gh pr merge` was executed without the matching `--approve` event (procedural miss, not content miss), immediately post `gh pr comment <N> --body <audit-note>` recording what was skipped. Don't rebase, don't re-merge, don't amend — the merge commit hash stands; only the audit trail is patched. Incident reference: PR #478 (2026-08-18, merge `2806d24`).
+- **Post-merge audit trail:** if a `gh pr merge` ran without the matching `--approve` event (procedural miss, not content miss), immediately post `gh pr comment <N> --body <audit-note>` recording what was skipped. Do not rebase, re-merge or amend — the merge commit hash stands; only the audit trail is patched. Incident reference: PR #478 (2026-08-18, merge `2806d24`).
 - Anti-pattern: "`gh pr merge --admin` doesn't enforce reviews, so I can skip --approve." Wrong — `--admin` bypasses the **requirement** rule, not the **review event** rule. Two separate audit surfaces.
 
-**Reviewing PRs (added 2026-09-12, after #570):** a PR decided against is **closed** once the contributor has had a fair window to answer (roughly two weeks of silence), with the decision comment naming in one line what would reopen it. An open PR states that merging is still possible — a closed one cannot collect a stray review at all.
+**Reviewing PRs (added 2026-09-12, after #570):** a PR decided against is **closed** once the contributor has had a fair window to answer — roughly two weeks of silence.
+The decision comment names in one line what would reopen it. An open PR states that merging is still possible; a closed one cannot collect a stray review at all.
 
-**Filing issues (added 2026-09-17, after #735 / #736):** an issue whose premise is a *missing capability* must name that capability as its acceptance criteria — or not be filed yet. Filing "X has no Y path" and then building Y in the next PR without linking them produces an issue that reads as unstarted work while the work is under review; a PR body written in between can even call the delivered capability "the open question", which is how it happened here. Link at the moment implementation starts (`Closes #N` in the body). And when an issue's own analysis turns out to be wrong, **record the correction on the issue rather than editing it away** — the route that was not needed is information about why the right one was cheap (#735 proposed a bespoke adapter; the bundled `@ai-sdk/openai.responses()` meant the work was a routing decision).
+**Filing issues (added 2026-09-17, after #735 / #736):** an issue whose premise is a *missing capability* must name that capability as its acceptance criteria. If it cannot, do not file it yet. Filing "X has no Y path" and then building Y in the next PR without linking them produces an issue that reads as unstarted work. The work is under review at the time. A PR body written in between even called the delivered capability "the open question" here.
+Link at the moment implementation starts (`Closes #N` in the body).
+
+When an issue's own analysis turns out to be wrong, **record the correction on the issue rather than editing it away**. The route that was not needed is information: it shows why the right one was cheap. #735 proposed a bespoke adapter; the bundled `@ai-sdk/openai.responses()` meant the work was a routing decision.
 
 Every review submission MUST begin with the signal check:
 
@@ -231,11 +228,12 @@ gh pr view <N> --json labels,comments --jq '{labels: [.labels[].name], last_comm
 gh pr review <N> --body "<file>"   # ← ONLY when the check above returned no signal
 ```
 
-Two ways to get that check wrong, both caught in review of its first version: `.[0:1]` returns the **oldest** comment rather than the latest — decisions arrive late, so it hides exactly what it is looking for — and filtering on one account's login makes a decision written by any other maintainer invisible. Take the last few comments from **any** author.
+Two ways to get that check wrong, both caught in review of its first version — take the last few comments from **any** author:
+
+- `.[0:1]` returns the **oldest** comment, not the latest. Decisions arrive late, so it hides exactly what it looks for.
+- Filtering on one account's login makes a decision written by any other maintainer invisible.
 
 If a signal is present, post a short comment asking instead of a review. To undo a misfired review: dismiss it (`PUT .../pulls/<N>/reviews/<id>/dismissals`) and, if the PR is `wontfix`, convert it to draft via `convertPullRequestToDraft` (REST's `draft` field is GitHub-App-only; `gh` has no `pr draft`). MEMORY.md §"Declined PRs are closed, not left open".
-
----
 
 ## 📦 Development Workflow
 
@@ -248,13 +246,14 @@ pnpm lint && pnpm test && pnpm typecheck && pnpm build && pnpm css-lint   # WRON
 
 ### Gate 1 CI (added 2026-08-18)
 
-`.github/workflows/pr-ci.yml` runs the full Five-Gate on every PR to `main` and on every push to `main` (the second trigger added 2026-09-12: a PR is green against the base it branched from, so a break that exists only in the merged pair is invisible until a later PR reports it). Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: false`).
+`.github/workflows/pr-ci.yml` runs the full Five-Gate on every PR to `main` and on every push to `main`; the second trigger was added 2026-09-12. A PR is green against the base it branched from, so a break that exists only in the merged pair is invisible until a later PR reports it.
+Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: false`).
 
-CI is a **defense-in-depth** layer on top of the per-fix E2E handoff manual Gate 1 (which is still required before `git push`). CI does NOT enable auto-merge — explicit "merge it" / "合并" still required per §"⚠️ Git Safety Protocol".
+CI is a **defense-in-depth** layer on top of the per-fix E2E handoff manual Gate 1, which is still required before `git push`. CI does NOT enable auto-merge — explicit "merge it" / "合并" is still required per §"⚠️ Git Safety Protocol".
 
 Obsidian Bot review remains a separate pipeline (not a GitHub status check); CI green ≠ Bot-approved. See `feedback_obsidian_bot_double_lint` for the double-lint invariant.
 
-Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI; the Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Five-Gate automated". `npm ci` is intentionally NOT used (project pins `pnpm@10.14.0`; pnpm `overrides` are flat and npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`).
+Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI. The Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Five-Gate automated". `npm ci` is intentionally NOT used — the project pins `pnpm@10.14.0`, and pnpm `overrides` are flat, so npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`.
 
 ### Build modes
 
@@ -267,15 +266,11 @@ When user says "build local debug file for testing":
 2. Verify `main.js` ends with `//# sourceMappingURL=data:application/json;base64,...`
 3. Confirm `console.debug` is NOT replaced
 
-For full release workflow (commit + push + tag + release notes), use the `obsidian-plugin-release` skill. Canonical path under Pi: `~/.pi/skills/obsidian-plugin-release/SKILL.md`. Legacy alias `~/.claude/skills/obsidian-plugin-release/SKILL.md` still works under Claude Code sessions. **Main branch is protected** — direct pushes rejected with `GH013`.
-
----
+For full release workflow (commit + push + tag + release notes), use the `obsidian-plugin-release` skill. Canonical path: `~/.agents/skills/obsidian-plugin-release/SKILL.md`. Legacy aliases `~/.claude/skills/obsidian-plugin-release/SKILL.md` and `~/.pi/skills/obsidian-plugin-release/SKILL.md` still resolve. **Main branch is protected** — direct pushes rejected with `GH013`.
 
 ## ✅ Pre-Release Checklist
 
 Use `obsidian-plugin-release` skill for the full workflow (Steps 1-8). Gate 1 must all pass before any commit. Pre-release hardening (lockfile regen, CI consistency, AI-SDK drift): [[feedback_build_verification_root_cause]]. Doc review sweep: `doc-review` skill (PASS/WARN/FAIL).
-
----
 
 ## ⚠️ Development Protocol: Plan First, Then Execute
 
@@ -289,8 +284,6 @@ Use `obsidian-plugin-release` skill for the full workflow (Steps 1-8). Gate 1 mu
 
 Full protocol: [[feedback_development_protocol]].
 
----
-
 ## ⚠️ Editor Discipline — No Bulk Scripts for Code or Documents
 
 Every change via `Read` + `Edit` — no sed/awk/python for code or document editing. (2026-06-11: a brace-matching Python script broke 3 sites that 4-Gate passed — wrong lexical block in `query-engine.ts`, unsafe `this: any` in lint modules.)
@@ -300,8 +293,6 @@ Every change via `Read` + `Edit` — no sed/awk/python for code or document edit
 - **Verify with `git diff`** after every multi-file edit pass (check unintended deletions).
 - **grep alone is NOT sufficient** — grep tells you *where* a pattern exists, not what surrounds it. Always Read full context before Edit.
 - **Verify idempotency** — surrounding content intact, no swallowed bullets, no broken headings.
-
----
 
 ## 📋 Karpathy Philosophy Compliance
 
@@ -330,19 +321,24 @@ English, conventional commits: `feat:` `fix:` `docs:` `refactor:` `test:` `chore
 
 **Auto-close:** append `Closes #N` (or `Fixes #N` / `Resolves #N`) to commit body. NEVER use `gh issue close` or UI close — let the commit message do it.
 
-**Author identity:** canonical `green-dalii <654534332@qq.com>`. NEW commits (incl. `--amend` and squash) MUST use lowercase canonical form. **Maintainer commits DO NOT include any AI-generated trailer** — no `Co-Authored-By:`, no `Generated with`, no equivalent marker from **any** AI agent (Claude Code, Codex, Cursor, Pi, …). AI tooling may legitimately assist authoring, but the commit's audit trail must read as a single human author (per [[feedback_co_authored_by_format]]). External contributors write their own trailers — preserve verbatim on merge.
+**Author identity:** canonical `green-dalii <654534332@qq.com>`. NEW commits (incl. `--amend` and squash) MUST use lowercase canonical form.
+**Maintainer commits DO NOT include any AI-generated trailer** — no `Co-Authored-By:`, no `Generated with`, no equivalent marker from **any** AI agent (Claude Code, Codex, Cursor, Pi, …).
+AI tooling may assist authoring, but the commit's audit trail must read as a single human author (per [[feedback_co_authored_by_format]]). External contributors write their own trailers — preserve them verbatim on merge.
 
-**A squash merge is how a contributor's trailer reaches a maintainer commit (2026-09-20).** GitHub's squash message concatenates the branch's commit messages, so any trailer on any branch commit lands in the squash commit — whose `author` is the **PR author**, not the merger, which is why the rule is not "do not write a trailer" but "**read the message you are about to commit**". Found by auditing `main`: three commits authored by the maintainer carry `Co-Authored-By: Claude Code`, all three squash merges of his own PRs from 2026-08-30/31, all three unrewritable (protected `main`, released history). One of them is `e054012d` — *"docs: remove Claude residue from process docs; AGENTS.md becomes canonical"* — the commit whose subject is clearing Claude residue. So: before `gh pr merge --squash`, run the trailer scan against the **draft message**, not against the branch. When the branch carries one and the contributor owns it, prefer `--subject`/`--body` (or edit in the UI) so the trailer stays on the contributor's own work and off the merger's.
+**A squash merge is how a contributor's trailer reaches a maintainer commit** (2026-09-20). GitHub's squash message concatenates the branch's commit messages, so any trailer on any branch commit lands in the squash commit. Its `author` is the **PR author**, not the merger. So the rule is "**read the message you are about to commit**", not "do not write a trailer".
+Auditing `main` found three maintainer-authored commits carrying `Co-Authored-By: Claude Code`. All three are squash merges of his own PRs from 2026-08-30/31, and all three are unrewritable (protected `main`, released history). One is `e054012d` — *"docs: remove Claude residue from process docs; AGENTS.md becomes canonical"* — the commit whose subject is clearing Claude residue.
+So before `gh pr merge --squash`, run the trailer scan against the **draft message**, not the branch. When the branch carries one and the contributor owns it, prefer `--subject`/`--body` (or edit in the UI), so the trailer stays off the merger's commit.
 
 ```bash
 git log origin/main..HEAD --format=%B | grep -inE '^(co-authored-by|generated with|signed-off-by|assisted-by):'   # → must be empty for YOUR commits
 ```
 
-**A maintainer-invoked `gh pr update-branch --rebase` rewrites the contributor's commit identity.** It rebases with the invoker's credentials, so every rebased commit keeps its `author` but takes `committer = maintainer` — verified on #656 (2026-09-20): five commits went from `committer=Jan Heldal` to `committer=Greener-Dalii`. Credit is not lost (`author` drives the contributors graph and `git log --author`), and a squash merge discards it entirely, so this is not a correctness problem — but it *is* a visible artifact on someone else's commits, and the alternative (merging `main` into the branch) leaves their identity untouched. Choose deliberately rather than by habit.
+**A maintainer-invoked `gh pr update-branch --rebase` rewrites the contributor's commit identity.** It rebases with the invoker's credentials, so every rebased commit keeps its `author` but takes `committer = maintainer`. Verified on #656 (2026-09-20): five commits went from `committer=Jan Heldal` to `committer=Greener-Dalii`.
+Credit is not lost — `author` drives the contributors graph and `git log --author` — and a squash merge discards it entirely, so this is not a correctness problem. It is still a visible artifact on someone else's commits, and merging `main` into the branch leaves their identity untouched. Choose deliberately rather than by habit.
 
-**Verify the commit, not the command.** A commit that reports success can still carry the wrong content. `git commit --amend -F <msg>` without a prior `git add` commits the *message* plus whatever was already staged — so a fix made immediately before it is left behind while the message announces it. That is worse than a missing commit: the description disagrees with the contents, so a reader who diffs the change concludes they misread, and the audit trail itself is what got corrupted. Two habits close it — `git status --porcelain` must be **empty** immediately after every commit, and amending to change content means `git add` first (use `--no-edit` when the message is already right). Confirm with `git show HEAD:<path>`, or re-read the branch from GitHub, rather than trusting the exit code. Caught 2026-09-17 on #736, whose body announced a preset-ordering fix its diff did not contain.
-
----
+**Verify the commit, not the command.** A commit that reports success can still carry the wrong content. `git commit --amend -F <msg>` without a prior `git add` commits the *message* plus whatever was already staged, so a fix made just before it is left behind while the message announces it. That is worse than a missing commit: the description disagrees with the contents, so a reader who diffs the change concludes they misread, and the audit trail itself got corrupted.
+Two habits close it — `git status --porcelain` must be **empty** immediately after every commit, and amending to change content means `git add` first (use `--no-edit` when the message is already right).
+Confirm with `git show HEAD:<path>`, or re-read the branch from GitHub, rather than trusting the exit code. Caught 2026-09-17 on #736, whose body announced a preset-ordering fix its diff did not contain.
 
 ## 🔑 Key Design Decisions (rules + pointers)
 
@@ -387,7 +383,8 @@ Production code uses `activeDocument` directly — no fallback, no eslint-disabl
 - `openai` = OpenAI Platform API-key provider (separate billing).
 - `openai-codex` = **ChatGPT Plan (Codex OAuth)** — experimental third-party compatibility, NOT an OpenAI partnership.
 - Desktop supports OpenAI-hosted browser flow via loopback callback on `127.0.0.1:1455`; desktop + mobile support device-code login. Node `http` loading MUST stay behind `Platform.isDesktop` guard.
-- **OAuth credentials remain in Obsidian SecretStorage only.** Never in settings, `data.json`, logs, Notices, docs, test fixtures, copied examples. Sign-out overwrites the plugin-owned secret with empty value + clears in-memory state.
+- **OAuth credentials remain in Obsidian SecretStorage only.** Never in settings, `data.json`, logs, Notices, docs, test fixtures or copied examples.
+  Sign-out overwrites the plugin-owned secret with an empty value and clears in-memory state.
 - Provider uses dedicated Codex Responses client + synchronizes picker-visible models from authenticated Codex `/models` catalog with sanitized metadata caching + minimal fallback.
 - Lifecycle commands: `main-commands/codex-auth-commands.ts`. Shared model selection policy: `core/openai-codex-model-policy.ts`. Codex request adapter intentionally omits client-side `max_output_tokens` (backend doesn't support it).
 - SecretStorage requires Obsidian 1.11.4 — `manifest.json`/badges/prerequisites must NOT advertise older minimum. Plugin stays `isDesktopOnly: false` (device-code login is mobile path).
@@ -410,7 +407,7 @@ Memory: [[feedback_obsidian_bot_double_lint]] + [[feedback_obsidian_bot_tools_cl
 
 ### ⚠️ Per-step LLM accounting
 
-`createMessage` takes an optional `task`, read in one place (`wrapWithAdvancedSettings`) and accumulated in `core/llm-task-usage.ts`. A call site that omits it is filed under `'untagged'` rather than dropped — an unlabelled call still costs time, and a table that hid it would under-report the run it exists to explain. So `'untagged'` is a hole in that table, not a default to settle for: **a new `createMessage` call site picks a label**, named for the step rather than the module.
+`createMessage` takes an optional `task`, read in one place (`wrapWithAdvancedSettings`) and accumulated in `core/llm-task-usage.ts`. A call site that omits it is filed under `'untagged'` rather than dropped. An unlabelled call still costs time, and a table that hid it would under-report the run it exists to explain. So `'untagged'` is a hole in that table, not a default to settle for: **a new `createMessage` call site picks a label**, named for the step rather than the module.
 
 ### ⚠️ SecretStorage / plaintext wipe ordering (Issue #339, v1.25.4 invariant)
 
@@ -426,7 +423,8 @@ Knowledge-conservation principle (anti-drift). Each layer owns its half, **never
 | **Runtime parameters** | Plugin (Settings) | Tag vocabulary, folder layout, output language, page-type registration — **never written into schema file**, always injected at call time via `getSchemaContext()` |
 | **Engine facts** | Code | Model name, API key, thinking mode, `WIKI_SUBFOLDERS` — shipped with the plugin |
 
-**Hard rule:** schema file MUST NOT bake runtime parameters. MUST remain pure user domain knowledge. Adding/expanding the runtime injection layer (`buildActiveTagVocabularySection` and future `buildActiveFolderLayoutSection`) is the only legitimate home for things the Settings panel controls. Violating reintroduces the dual-source problem (Phase 1 was approved specifically to eliminate this drift class).
+**Hard rule:** schema file MUST NOT bake runtime parameters. It MUST remain pure user domain knowledge. The runtime injection layer (`buildActiveTagVocabularySection`, and a future `buildActiveFolderLayoutSection`) is the only legitimate home for settings-driven values.
+Adding to that layer is correct; baking a value into the schema file reintroduces the dual-source problem that Phase 1 was approved to eliminate.
 
 Rationale: [[feedback-schema-phase1-option-a-decision]] + Issue #328 + [[feedback-schema-template-programmatic-injection]].
 
@@ -434,19 +432,22 @@ Rationale: [[feedback-schema-phase1-option-a-decision]] + Issue #328 + [[feedbac
 
 Plugin exposes a **complementary query surface**, not fidelity-to-source maximization. Source notes = episodic memory (verbatim, lossy-never-intended); wiki pages = semantic memory (consolidated, graph-traversable).
 
-**Hard rule:** plugin MUST NOT attempt to make wiki pages win every query. When a user complains "the raw note beats the wiki for query X", the answer is *"that is the division of labour — the wiki serves a different query"*, not "fix the wiki to win X". **Practical implications:** "self-improving over time" = periodic consolidation pass with LLM judgement on past decisions, NOT a smarter ingest path. Smallest kernel of Karpathy cycle = Preview-Confirm gate + identity ambiguity record + stable mutation interface, NOT an agent framework refactor.
+**Hard rule:** the plugin MUST NOT attempt to make wiki pages win every query. When a user complains "the raw note beats the wiki for query X", the answer is *"that is the division of labour — the wiki serves a different query"*.
+It is not "fix the wiki to win X".
+
+**Practical implications:** "self-improving over time" means a periodic consolidation pass with LLM judgement on past decisions, not a smarter ingest path.
+The smallest kernel of the Karpathy cycle is the Preview-Confirm gate, the identity ambiguity record, and a stable mutation interface. It is not an agent framework refactor.
 
 Planning: [ROADMAP §Design track](./ROADMAP.md#design-track--the-complementary-memory-model-items-358--330). Rationale: #330 reply comment + #358 tracking issue.
 
 ### ⚠️ Architect-level contributors (v1.26.0+)
 
-See [MEMORY.md §"Architect-level contributors"](./MEMORY.md#architect-level-contributors) and §"Key Design Decisions" below for definition, role, scope, DocTpoint case study. The project keeps no per-agent private memory directory; the only durable record is [MEMORY.md](./MEMORY.md). Currently granted to @DocTpoint (Write role on personal repo; "no push to main" enforced by branch protection, not role assignment).
+See the **Architect-level contributors** row in [MEMORY.md §"Key design decisions (canonical references)"](./MEMORY.md#key-design-decisions-canonical-references) for definition, role, scope, DocTpoint case study. The project keeps no per-agent private memory directory; the only durable record is [MEMORY.md](./MEMORY.md). Currently granted to @DocTpoint (Write role on personal repo; "no push to main" enforced by branch protection, not role assignment).
 
 ### ⚠️ Withdrawn / non-issues (archaeology)
 
-- **Windows: `Connection test failed: TypeError: Failed to construct 'Headers'`** — withdrawn 2026-07-10 (user input error: non-ASCII chars in API key field; not plugin/AI-SDK bug). AI-SDK 5.0.53 has a Windows guard but our `provider-utils@4.0.35` (bundled by `ai@^6.0.214`) doesn't include the fix; not worth patching given root cause is user-side.
-
----
+- **Windows: `Connection test failed: TypeError: Failed to construct 'Headers'`** — withdrawn 2026-07-10 (user input error: non-ASCII chars in the API key field; not a plugin or AI-SDK bug).
+  AI-SDK 5.0.53 has a Windows guard, but our `provider-utils@4.0.35` (bundled by `ai@^6.0.214`) does not include the fix. Not worth patching, because the root cause is user-side.
 
 ## 📚 Documentation Architecture
 
@@ -459,13 +460,57 @@ See [MEMORY.md §"Architect-level contributors"](./MEMORY.md#architect-level-con
 | **ROADMAP.md** | Planning | Next Milestone / Version Timeline (condensed) / Deferred & Backlog | Per-version detail (use CHANGELOG) |
 | **CHANGELOG.md** | History (Keep a Changelog) | Per-version Added/Changed/Fixed/Removed — ancient versions are pre-aggregated, **do not re-merge** | Forward-looking plans, dev standards |
 | **CONTRIBUTING.md** | Contributor guide | Project structure tree, architecture, Mermaid, dev setup | User docs, design philosophy |
-| **10 READMEs (EN + 9 i18n)** | User docs | Features / Quick Start / FAQ | Implementation details, internal version numbers, What's New |
+| **11 READMEs (EN + 10 i18n)** | User docs | Features / Quick Start / FAQ | Implementation details, internal version numbers, What's New |
+| **docs/MODEL-GUIDE.md** | Provider + model setup | Per-provider keys, endpoints, model picks | Process standards, internal version numbers |
+| **docs/PDF-OCR-GUIDE.md** + `_CN` | Long-form ingest guide | The four PDF/Office ingestion paths | Process standards, release history |
 | **memory/** | Session-persistent lessons | [[feedback-*]] (rules) + [[project-*]] (current state) | Code references that drift (use code comments) |
 
 **Cross-reference format:** `[section](./OTHER.md#anchor)` — keep one canonical source, link to it.
 
-**CHANGELOG rule:** Already aggregated per Keep a Changelog spec. Ancient versions (v1.6.x / 0.2.x) are pre-aggregated — do NOT re-merge. "Optimization" that deletes historical version info is a regression, not improvement. Verify with `grep -c "^## \[" CHANGELOG.md` before assuming it needs work.
+**MEMORY.md takes no new dated section (rule added 2026-10-06).** Every session used to append `## Lessons learned (date — …)`. By 2026-10-06 that pattern had produced eight of them, 490 lines, plus two dated `## Work list` sections. The rules were fine; the filing was not. A reader had to know a date to find a rule. The dated state pointers ("State at handoff", open-PR lists, milestone counts) read as current long after they stopped being true.
+A new lesson **merges into an existing section** of MEMORY.md. If the incident needs more than a paragraph, it goes to [MEMORY.md Appendix B](./MEMORY.md#appendix-b--session-log-dated-blocks-verbatim), and MEMORY keeps the rule.
 
----
+**MEMORY.md carries a `## Contents` index at its top** (rule added 2026-10-06). The index helps a reader — human or agent — find the right section without reading 2000 lines. **A section that cannot be described in one index row is two sections.** Adding a section means adding its row.
+This is also why the file is not split: one artifact to index, one place to search, no cross-file drift.
+
+**CHANGELOG rule:** Already aggregated per Keep a Changelog spec. Ancient versions (v1.6.x / 0.2.x) are pre-aggregated — do NOT re-merge. "Optimization" that deletes historical version information is a regression, not an improvement.
+Verify with `grep -c "^## \[" CHANGELOG.md` before assuming it needs work.
+
+## 📉 Document lifecycle — a doc change is a revision, never an append
+
+Added 2026-10-06, after `MEMORY.md` was found at 2057 lines with 78 % of its bulk in session-dated sections that no pass had ever looked back at. MEMORY was not too big. **Each session appended, and nothing gave the next session a reason to look back.**
+This section supplies that reason.
+
+**The rule:** no document in this repo may only grow. Before you add, update or edit any `.md` file, run this pass on the file you are touching:
+
+| Check | What it looks for | What to do |
+|---|---|---|
+| **Redundant** | the same rule or fact stated twice in one file, or restated in a second file | keep the canonical one, replace the other with a link |
+| **Stale** | a state pointer, PR/issue status, count, date or path that a later commit invalidated | delete it, or move it to an archive and link that |
+| **Wrong** | a claim the code contradicts; a path, heading or anchor that does not exist | fix it, or strike it with the correction recorded next to it |
+| **Duplicate by kind** | a second section of the same sort — another dated log, another work list, another status block | merge into the existing section |
+
+**Deliverable:** every docs commit and PR body states the numbers — `docs: MEMORY.md net −1259 lines (added 78, removed 1337)`.
+A docs change that only adds lines says why the addition cannot be an edit to text already there.
+
+**Ceilings, so "under control" is measurable.** Baselines measured 2026-10-06:
+
+| File | Ceiling | Now (2026-10-06) | Over the ceiling |
+|---|---|---|---|
+| `MEMORY.md` | **1500 lines** | 1054 | the pruning pass is part of the next change, not a follow-up |
+| `AGENTS.md` | **600 lines** | 516 | same |
+| `ROADMAP.md` | **500 lines** | 382 | same — and shipped sections move to CHANGELOG, not stay |
+| `CONTRIBUTING.md` | **450 lines** | 364 | same |
+| `CHANGELOG.md` | **no ceiling** | 1159 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
+| 11 READMEs | 13 H2 each, in step across locales | 13/13 ✓ | structural drift between locales is a defect, not a translation choice |
+
+**Where it is enforced:** `doc-review` (release Step 4b) checks the ceilings and the numbers, and `pre-release-gate` re-runs at release time.
+A release that leaves a file over its ceiling records the overage and the plan **in the release PR body**, not in silence.
+
+**Two rules that make the pass cheap:**
+
+1. **Compress, do not relocate.** Moving a block to another file is not a revision. The new file is a second place to maintain, and the words are unchanged.
+   Rewrite the block in place: keep every fact, decision and number, and drop the words around them. Prove it by the block's own numbers — the lines removed, the decisions that survived.
+2. **Keep the rule, keep the incident.** A rule whose incident cannot be read is a rule nobody can judge. Keep the incident reachable — usually one line, not a page.
 
 **Maintainer:** Greener-Dalii | **Repository:** GD4AI/obsidian-llm-wiki

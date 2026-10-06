@@ -4,47 +4,48 @@ Copyright 2025-2026 Greener-Dalii
 This product includes software developed by the following contributors,
 listed in alphabetical order by GitHub handle:
 
-- CCRRAY-DESIGN (Ray) — ChatGPT Plan (Codex OAuth) provider (PR #273)
-- Dima Marchevsky (dmarchevsky) — code contributions and review feedback
-- DocTpoint — co-maintainer since September 2026; ingest reliability
+- CCRRAY-DESIGN (Ray) — ChatGPT Plan (Codex OAuth) provider (PR #273).
+- Dima Marchevsky (dmarchevsky) — code contributions and review feedback.
+- DocTpoint — co-maintainer since September 2026. Ingest reliability
   across v1.25.x → v1.27.0: folder-boundary
   analysis, source-slug merging, vault-wide link retarget, `created:`
   provenance, headless-CLI slow-model path, H1 re-assertion, parse-failure
-  result type, ambiguous-designator resolution, runtime tag-vocabulary
-  deferral, run-scoped extraction catalog, staged extraction payload,
-  per-step output-mode + thinking policy, reasoning-only guard restoration,
-  section-shaped contradiction clamp, frontmatter parity chain,
-  ranked candidate window, opt-in candidate gate, text-mode extract
-  baseline + repetition-loop guard + taskPolicies UI, type repair at
-  intake, dev-instrument exit codes, `stripUnknownSections`, NFC +
-  Turkish-fold alias comparison, `folderBySlug`, `minAliasLength`,
-  drop self-named aliases, OpenRouter 404 fix, OpenRouter `:` variants,
+  result type, and ambiguous-designator resolution. Also runtime
+  tag-vocabulary deferral, run-scoped extraction catalog, staged extraction
+  payload, per-step output-mode + thinking policy, reasoning-only guard
+  restoration, and section-shaped contradiction clamp. Also frontmatter
+  parity chain, ranked candidate window, opt-in candidate gate, text-mode
+  extract baseline + repetition-loop guard + taskPolicies UI, and type
+  repair at intake. Also dev-instrument exit codes, `stripUnknownSections`,
+  NFC + Turkish-fold alias comparison, `folderBySlug`, `minAliasLength`,
+  and drop self-named aliases. OpenRouter 404 fix, OpenRouter `:` variants,
   and the #425 Bedrock Stage 2 design record. Per-PR / per-issue index
   in [CHANGELOG.md](./CHANGELOG.md) §1.25.0 → §1.27.0.
 - eucher — headless ingest CLI under Node (PR #372), CLI sampling/thinking
-  controls, plugin source resolution, per-step LLM call timing ledger
-  (PR #409), and `repetitionPenalty` per-backend dialect dispatch (#414,
-  PR #453)
-- Franco Tampieri (FrancoTampieri) — code contributions
-- Greener-Dalii (green-dalii) — project maintainer and primary author
-- Hashim1999164 — wiki-folder-scope prefix fix (PR #384)
-- joffroy59 — `MAX_BATCH_DELAY_MS` ceiling raise (10000 ms; cherry-pick PR #323)
+  controls, plugin source resolution, and per-step LLM call timing ledger
+  (PR #409). Also `repetitionPenalty` per-backend dialect dispatch (#414,
+  PR #453).
+- Franco Tampieri (FrancoTampieri) — code contributions.
+- Greener-Dalii (green-dalii) — project maintainer and primary author.
+- Hashim1999164 — wiki-folder-scope prefix fix (PR #384).
+- joffroy59 — `MAX_BATCH_DELAY_MS` ceiling raise (10000 ms; cherry-pick PR #323).
 - Matthew Harper (Indexed-Apogrypha) — source-slug fingerprint,
-  pre-ingest requirements gate, Anthropic fallback fixes
-- Roman Kuzmin (rkuzmin) — LM Studio no-key ingest (PR #272, #339)
-- Younian (YounianC, xiaochuanlu) — ingest status bar and Query Wiki side panel
+  pre-ingest requirements gate, Anthropic fallback fixes.
+- Roman Kuzmin (rkuzmin) — LM Studio no-key ingest (PR #272, #339).
+- Younian (YounianC, xiaochuanlu) — ingest status bar and Query Wiki side panel.
 
 ## Third-party components
 
 The plugin bundles third-party software into the shipped `main.js`. Their licences,
 and the attribution each one requires, are listed in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — which is generated from the
-built bundle rather than maintained by hand, so a new dependency cannot be
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). That file is generated from the
+built bundle rather than maintained by hand. So a new dependency cannot be
 bundled without appearing there.
 
-This section is a pointer rather than a copy because that file is large (the
-Apache-2.0 licence text alone runs to several thousand words) and is regenerated
-on every dependency change, which a hand-edited section here could not track.
+This section is a pointer, not a copy, because that file is large. The
+Apache-2.0 licence text alone runs to several thousand words. The file is also
+regenerated on every dependency change, which a hand-edited section here could
+not track.
 
 This NOTICE file is provided for attribution purposes only and does not
 modify the terms of the Apache License, Version 2.0.
