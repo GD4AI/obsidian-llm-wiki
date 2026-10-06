@@ -38,7 +38,7 @@ The milestone moved to `v1.29.0 MINOR` on 2026-10-04, with its 12 open items and
 **The direction was decided on 2026-10-05: A** — one measurement pass first, then M0 in a corrected shape.
 The measurement's definition and the tie-break defect the dissent found are in ROADMAP §"#729 — the three directions".
 
-**Ten merges landed after the release, and none is released yet:** `fb44868d` #760 · `46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 · `dcf161ca` #811 · `fd2a1aa3` #809 · `0c96df1b` #812 · `9a3332c0` #813. **`main` = `9a3332c0`.**
+**Eleven merges landed after the release, and none is released yet:** `fb44868d` #760 · `46ab2570` #794 · `b3e5a412` #775 · `4b616c0c` #806 · `0cdbbf4a` #807 · `3af8ead3` #810 · `dcf161ca` #811 · `fd2a1aa3` #809 · `0c96df1b` #812 · `9a3332c0` #813 · `b19cf69f` #814. **`main` is at or after `b19cf69f`** — that is the docs pass merge; this handoff line rides one commit behind the tip.
 
 **#813 unblocked every PR's Gate 1.** Main's audit step was green at 2026-10-05T14:53 and failed at 2026-10-06T06:41 on #786, which carried no dependency change of its own; unpatched main failed the same audit locally. A new `source-map-js` advisory appeared between the two runs. The fix pins `source-map-js` 1.2.1 → 1.2.2 in both override lists and regenerates both lockfiles. **CI runs `Audit` before `Five-Gate`**, so a fresh advisory hides the five checks behind it and a docs-only PR reads as a code failure.
 
@@ -46,8 +46,8 @@ The measurement's definition and the tie-break defect the dissent found are in R
 
 ### Documentation consolidation (2026-10-06)
 
-Five live documents went through the four checks in AGENTS.md §"Document lifecycle". Every
-ceiling is now met.
+Landed as **#814**, merge commit **`b19cf69f`**. Five live documents went through the four checks
+in AGENTS.md §"Document lifecycle". Every ceiling is now met.
 
 | File | Before | After | Ceiling |
 |---|---|---|---|
