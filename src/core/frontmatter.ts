@@ -518,10 +518,6 @@ export interface SerializeFrontmatterOptions {
  * outlived its reason — a page's frontmatter shape depended on which writer
  * touched it last, and the source-stamp anchor in `create-page.ts` looked for
  * a block header the gate never wrote.
- *
- * Not covered: the two stub templates (`stub-page.ts`, `fix-dead-link.ts`)
- * write their frontmatter by hand and still use `tags: [x]`. A stub takes the
- * block shape when a later write passes it through this function.
  */
 export function serializeFrontmatter(
   fm: FrontmatterData,
