@@ -18,7 +18,7 @@
 // (query-engine caches the graph and rebuilds it on ingest). This
 // keeps the cascade testable without an Obsidian dependency.
 
-import { personalizedPageRank, type Graph, type PPROptions } from './monte-carlo-ppr';
+import { personalizedPageRank, seededRngFrom, type Graph, type PPROptions } from './monte-carlo-ppr';
 import {
   needleHits,
   scoreProfile,
@@ -100,7 +100,17 @@ export function scorePagesByNeedles(
       scored.push({ page, score, tokensFound });
     }
   }
-  scored.sort((a, b) => b.score - a.score);
+  // Ties do not follow the array. Two pages with the same score separate on
+  // the breadth of the match — more distinct needles matched is a better page —
+  // and only then on a stable identity. Sorting by the caller's order made the
+  // cut a lottery; sorting by path alone would make it an alphabetical rule,
+  // which is the same defect in a different hat.
+  scored.sort(
+    (a, b) =>
+      b.score - a.score
+      || b.tokensFound - a.tokensFound
+      || (a.page.path < b.page.path ? -1 : a.page.path > b.page.path ? 1 : 0),
+  );
   return scored;
 }
 
@@ -356,11 +366,17 @@ function pprFromSeeds(
   seeds: string[],
   pprOptions: PPROptions | undefined,
   rng: (() => number) | undefined,
+  query: string,
 ): Map<string, number> {
+  // The walk is a function of its inputs. Without a seed the old
+  // `Math.random` default made two runs over one query differ, which is a
+  // lottery rather than a ranking: #729 cannot separate two arms under that
+  // variance, and a user who asks twice gets two answers.
+  const walkRng = rng ?? seededRngFrom(query, seeds, graph.nodes.length);
   const merged = new Map<string, number>();
   for (const seed of seeds) {
     if (!graph.nodes.includes(seed)) continue;
-    const result = personalizedPageRank(graph, seed, { ...(pprOptions ?? {}), ...(rng ? { rng } : {}) });
+    const result = personalizedPageRank(graph, seed, { ...(pprOptions ?? {}), rng: walkRng });
     for (const [node, score] of result) {
       const existing = merged.get(node) ?? 0;
       if (score > existing) merged.set(node, score);
@@ -417,7 +433,7 @@ export function pprCascade(
       const seedMinDegree = options.seedMinDegree ?? DEFAULT_SEED_MIN_DEGREE;
       const validSeeds = explicitSeeds.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng);
+        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
         return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
       }
     }
@@ -426,7 +442,7 @@ export function pprCascade(
       const seedPaths = lex.slice(0, 3).map(p => p.path);
       const validSeeds = seedPaths.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng);
+        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
         return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
       }
     }
@@ -473,7 +489,7 @@ export function pprCascade(
   } else {
     return [];
   }
-  const pprScores = pprFromSeeds(graph, seedList, options.pprOptions, options.rng);
+  const pprScores = pprFromSeeds(graph, seedList, options.pprOptions, options.rng, query);
   return mergeWithPPR(lex, pprScores, pages, topN, 'graph-first-ppr');
 }
 
