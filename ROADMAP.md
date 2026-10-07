@@ -125,9 +125,14 @@ mechanism does not explain, so that observation still needs its own check. That 
 an estimate rather than a function: a rerun moves the numbers. Five runs per arm cannot separate two arms under that variance. Seeding the rng from the query hash is a
 prerequisite, not a refinement.
 
-**What the pass runs.** Two prerequisite fixes go into #781 first, each with a test that fails without it: a seeded rng, and a tie-break that is not the caller's pool order —
-neutral and reproducible (path-lexicographic) for the measurement, because a recency-biased product policy is a separate decision and must not be smuggled in as a measurement
-choice. Then five arms, all with the same model, the same character budget, thinking off, truth from the notes, and a blind rater:
+**Where the work runs.** Not on #781. The measurement decides whether that PR is needed, and putting the decision on the branch under judgement would assume its own
+conclusion. The work goes on `feat/729-reader-recall-2026-10-07`, one commit per phase, one PR at the end. #781 stays held and untouched: it returns with the shared
+tie-break if the measurement says the graph is short of reachability, and it becomes the negative result this section names if it is not.
+
+Two prerequisite fixes lead, each with a test that fails without it: a seeded rng, and a tie-break that is not the caller's pool order. The tie-break orders by text relevance
+before path, because a path-only rule replaces an ordering nobody chose with an alphabetical one — the same defect in a different hat.
+
+The five arms stay as designed, all with the same model, the same character budget, thinking off, truth from the notes, and a blind rater:
 
 | Arm | Retrieval over | What it isolates |
 |---|---|---|
@@ -138,14 +143,26 @@ choice. Then five arms, all with the same model, the same character budget, thin
 | **E** | C′ plus a reserved cross-source budget, applied by hand | the proposal itself |
 
 The metric is recall@K plus **the cross-source share of the loaded pages**, which the tie-break finding predicts sits near zero. `n >= 20` multi-source questions, with a CJK
-subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged.
+subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged. The measurement has two
+halves: a synthetic corpus with known truth that runs without anybody, and the real vault at `n >= 20` that needs the maintainer and @DocTpoint.
 
-**The work splits in two.** The automatable half is a synthetic corpus with known ground truth — N sources against M entities, cross-source links placed by hand — run through
-the pipeline deterministically, reporting recall@K and the cross-source share per arm. It is reproducible and needs nobody. The half that decides is the real vault against a
-real provider at `n >= 20`, blind-rated, and it needs the maintainer and @DocTpoint.
+**The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
 
-**A third finding, outside this pass.** For a Chinese query the lexical stage is nearly all-or-nothing, because one clause is one token. It affects every query path, not only
-M0, so it belongs in its own issue rather than in the shape of this one.
+| Phase | What it does | Files | Order |
+|---|---|---|---|
+| **P0** | Graph audit — degree distribution, intra-source edge share, edges among the top-50 nodes by in-degree, 2/3-hop cross-source reachability in both directions. Extends `tools/dev-instrument/` | `tools/dev-instrument/src/graph-audit.ts` | first; its numbers set the order below |
+| **P1** | Retrieval profile per page, built from the page body including the Mentions quotes and the extraction's 4-6 sentence summary. Seed scoring reads the profile | `core/retrieval-profile.ts` (new), `query-engine/pipeline/read-index.ts`, `core/ppr-cascade.ts` | the measured loss is here |
+| **P2** | Graded CJK matching — IDF-weighted character n-grams, a contiguity bonus, a two-hit floor — plus the seeded rng and the tie-break | `core/ppr-cascade.ts`, `core/candidate-window.ts`, `core/monte-carlo-ppr.ts` | with P1; the CJK defect affects every query path, not only #729 |
+| **P3** | Alias budget to 3, requiring the note's own phrasing; stop writing dead related entries; wire the hub redundancy detector into a fix | `prompts/ingestion.ts`, `core/related-shaping.ts`, `core/hub-link-distinctiveness.ts` | after P0 |
+| **P4** | Cross-source names in the extraction prompt behind a grounding gate — the named item must appear in this note's text | `prompts/ingestion.ts` | only if P0 says so |
+
+Three findings set this shape. The verbatim source vocabulary already reaches the page — `prompts/ingestion.ts:30` requires 2-4 verbatim sentences and
+`create-page.ts:246-256` writes them as the Mentions section — and the reader never reads them. The index summary is not a summary field: `core/frontmatter.ts:290-291` has
+no `summary` key, and `index-generator.ts:137-156` takes the first body line cut at 100 characters, while the extraction's 4-6 sentence summary is used once as a prompt
+input and dropped. And `core/hub-link-distinctiveness.ts:7-9` already computes which hub links are mutually redundant and only reports them.
+
+The Related section headings stay as they are. They live in the schema and `section-header-canonicalizer` depends on their labels; renaming them for vocabulary is a breaking
+change for a small gain. M2 is rejected rather than deferred for vaults whose ground truth is the notes.
 
 The decision queue used to say "Three options in MEMORY §'Seed stage'". **That section does not exist**, and no other file held the three options. The row named three and
 wrote down one. They are set out here, on the axis of what each one commits to.
