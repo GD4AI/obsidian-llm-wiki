@@ -148,6 +148,8 @@ halves: a synthetic corpus with known truth that runs without anybody, and the r
 
 **The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
 
+**Progress:** **P0 ✅ done 2026-10-07** — 20 tests, run with `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. P1 not started.
+
 | Phase | What it does | Files | Order |
 |---|---|---|---|
 | **P0** | Graph audit — degree distribution, intra-source edge share, edges among the top-50 nodes by in-degree, 2/3-hop cross-source reachability in both directions. Extends `tools/dev-instrument/` | `tools/dev-instrument/src/graph-audit.ts` | first; its numbers set the order below |
