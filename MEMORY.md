@@ -14,7 +14,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-06) |
+| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-07) |
 | The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
@@ -27,7 +27,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state (2026-10-06)
+## Current state (2026-10-07)
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
@@ -42,7 +42,9 @@ The measurement's definition and the tie-break defect the dissent found are in R
 
 **#813 unblocked every PR's Gate 1.** Main's audit step was green at 2026-10-05T14:53 and failed at 2026-10-06T06:41 on #786, which carried no dependency change of its own; unpatched main failed the same audit locally. A new `source-map-js` advisory appeared between the two runs. The fix pins `source-map-js` 1.2.1 → 1.2.2 in both override lists and regenerates both lockfiles. **CI runs `Audit` before `Five-Gate`**, so a fresh advisory hides the five checks behind it and a docs-only PR reads as a code failure.
 
-**Open counts:** **30 issues** and **6 PRs**, each with a milestone — `v1.28.x PATCH` (7), `v1.29.0 MINOR` (15), `v1.27.0+ research` (16). See ROADMAP §"Open decisions".
+**Open counts (2026-10-07).** **31 issues** and **5 PRs**. Issues by milestone: `v1.27.0+ research` 16, `v1.29.0 MINOR` 8, `v1.28.x PATCH` 6, one with no milestone. All five PRs sit on `v1.29.0 MINOR`. See ROADMAP §"Open decisions".
+
+**Triage round (2026-10-07).** 36 open items, 4 to process, 32 already fully processed. **#770** (TypeScript 6.0.3) is **closed**: its Gate 1 fails with 31 errors across 14 files, which is a codebase-wide migration and not a version pin, so it became **#816** with the acceptance criteria named, and dependabot now ignores 6.x. **#771** and **#772** are superseded by #786, which carries newer versions of both (`@ai-sdk/anthropic` 4.0.65 against 4.0.56; `ai` 7.0.116 against 7.0.105); they close when it merges. **#729** is in flight in #781, and the correction posted to it records where the body's mechanism claim fails: `create-page.ts:347` writes `[[sources/<slug>]]` into frontmatter and `prompts/generation.ts:134-139` asks for full-path back-references, so S and E are linked in both directions, and `prompts/constraints.ts:7` keeps the E-to-S edge in frontmatter only.
 
 ### Documentation consolidation (2026-10-06)
 

@@ -493,14 +493,14 @@ This section supplies that reason.
 **Deliverable:** every docs commit and PR body states the numbers — `docs: MEMORY.md net −1259 lines (added 78, removed 1337)`.
 A docs change that only adds lines says why the addition cannot be an edit to text already there.
 
-**Ceilings, so "under control" is measurable.** Baselines measured 2026-10-06:
+**Ceilings, so "under control" is measurable.** Re-measured 2026-10-07:
 
-| File | Ceiling | Now (2026-10-06) | Over the ceiling |
+| File | Ceiling | Now (2026-10-07) | Over the ceiling |
 |---|---|---|---|
-| `MEMORY.md` | **1500 lines** | 1054 | the pruning pass is part of the next change, not a follow-up |
+| `MEMORY.md` | **1500 lines** | 1091 | the pruning pass is part of the next change, not a follow-up |
 | `AGENTS.md` | **600 lines** | 516 | same |
-| `ROADMAP.md` | **500 lines** | 382 | same — and shipped sections move to CHANGELOG, not stay |
-| `CONTRIBUTING.md` | **450 lines** | 364 | same |
+| `ROADMAP.md` | **500 lines** | 409 | same — and shipped sections move to CHANGELOG, not stay |
+| `CONTRIBUTING.md` | **450 lines** | 363 | same |
 | `CHANGELOG.md` | **no ceiling** | 1159 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
 | 11 READMEs | 13 H2 each, in step across locales | 13/13 ✓ | structural drift between locales is a defect, not a translation choice |
 

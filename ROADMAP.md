@@ -115,9 +115,37 @@ the reason A was chosen. A later pass that reverses this writes the reason on th
 this pass exists to explain. The run has to separate two classes. One is out-of-scope-and-absent, the extractor's prior. The other is out-of-scope-but-present, where
 candidate generation missed a name that is in the text. Only the second points at the reader's lexical seed stage. The Arm-C loss of 3 of 5 questions was measured
 there. @DocTpoint's four conditions decide whether the result may be trusted. If any is unmet, the run repeats rather than gets interpreted.
-**M0 is built after that run** — and not in the shape #781 carries today. The dissent's second finding is a defect in the mechanism as written. 80 % of the top-3 cuts fall
-inside a group of equally scored candidates. Titles beginning with "A" are 9.1 % of pages, but 17.1 % of the chosen entries. So the tie-break is systematic rather than
-arbitrary. A repeatable biased cut is worse than a random one. That is a change to make on #781. It is also why A reads "measure, then M0" rather than "merge M0 now".
+**M0 is built after that run** — and not in the shape #781 carries today. The dissent's second finding is a defect in the mechanism as written, and the defect is worse than
+stated: `ppr-cascade.ts:146`, `:348` and `:581` each sort by score alone, so **there is no tie-break, and the cut falls back to the caller's array order**. A whole Chinese
+clause becomes one token (`ppr-cascade.ts:235`, the whitespace-split branch), every non-matching page scores zero, and the top-k cut then lands inside a tied group ordered by
+that pool. 80 % of the top-3 cuts fall inside such a group. The dissent's other number — titles beginning with "A" are 9.1 % of pages but 17.1 % of chosen entries — this
+mechanism does not explain, so that observation still needs its own check. That is a change to make on #781. It is also why A reads "measure, then M0" rather than "merge M0 now".
+
+**A second defect makes the run unreadable until it is fixed.** `monte-carlo-ppr.ts:53` defaults `rng` to `Math.random`, over `DEFAULT_NUM_WALKS = 3000`, so the graph arm is
+an estimate rather than a function: a rerun moves the numbers. Five runs per arm cannot separate two arms under that variance. Seeding the rng from the query hash is a
+prerequisite, not a refinement.
+
+**What the pass runs.** Two prerequisite fixes go into #781 first, each with a test that fails without it: a seeded rng, and a tie-break that is not the caller's pool order —
+neutral and reproducible (path-lexicographic) for the measurement, because a recency-biased product policy is a separate decision and must not be smuggled in as a measurement
+choice. Then five arms, all with the same model, the same character budget, thinking off, truth from the notes, and a blind rater:
+
+| Arm | Retrieval over | What it isolates |
+|---|---|---|
+| **A** | raw notes, embedding index | the baseline |
+| **B** | wiki pages, same index | notes against wiki |
+| **C** | the plugin's query path, today | the measured 3-of-5 loss |
+| **C′** | C plus the two fixes | the fixes, apart from the budget |
+| **E** | C′ plus a reserved cross-source budget, applied by hand | the proposal itself |
+
+The metric is recall@K plus **the cross-source share of the loaded pages**, which the tie-break finding predicts sits near zero. `n >= 20` multi-source questions, with a CJK
+subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged.
+
+**The work splits in two.** The automatable half is a synthetic corpus with known ground truth — N sources against M entities, cross-source links placed by hand — run through
+the pipeline deterministically, reporting recall@K and the cross-source share per arm. It is reproducible and needs nobody. The half that decides is the real vault against a
+real provider at `n >= 20`, blind-rated, and it needs the maintainer and @DocTpoint.
+
+**A third finding, outside this pass.** For a Chinese query the lexical stage is nearly all-or-nothing, because one clause is one token. It affects every query path, not only
+M0, so it belongs in its own issue rather than in the shape of this one.
 
 The decision queue used to say "Three options in MEMORY §'Seed stage'". **That section does not exist**, and no other file held the three options. The row named three and
 wrote down one. They are set out here, on the axis of what each one commits to.
