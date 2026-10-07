@@ -148,7 +148,7 @@ halves: a synthetic corpus with known truth that runs without anybody, and the r
 
 **The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
 
-**Progress:** **P0 ✅ done 2026-10-07** — 20 tests, run with `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. P1 not started.
+**Progress:** **P0 ✅ 2026-10-07** — 20 tests, `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. **P1 ✅ 2026-10-07** — `core/retrieval-profile.ts`: one weight table (title 3 / alias 2 / summary 1 / prose 1), the summary tier wired into Stage 1 and Stage 1.5b, `needleHits` moved there so the stages cannot drift. 10 tests. The prose tier is built and tested but the query path does not yet hand it the page bodies: that needs a page-text cache beside `GraphCache`, and it is the next piece. P2 not started.
 
 | Phase | What it does | Files | Order |
 |---|---|---|---|

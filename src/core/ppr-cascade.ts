@@ -19,6 +19,16 @@
 // keeps the cascade testable without an Obsidian dependency.
 
 import { personalizedPageRank, type Graph, type PPROptions } from './monte-carlo-ppr';
+import {
+  needleHits,
+  scoreProfile,
+  WORD_CHAR_CLASS,
+  BOUNDED_WORD_CHAR,
+} from './retrieval-profile';
+
+// `needleHits` moves to `retrieval-profile.ts`, which owns "how a query matches
+// a page", and is re-exported here so existing callers keep their import path.
+export { needleHits };
 
 export type { Graph, PPROptions };
 
@@ -64,27 +74,9 @@ export function formatPageRefSummary(p: PageRef): string {
  * count of needles matched (`tokensFound`) so callers can apply a
  * multi-needle bonus. Pure function — no IO.
  */
-/**
- * What a "word" is made of: letters, digits and combining marks (so a
- * decomposed umlaut — NFD, as macOS and iCloud hand files over — stays
- * inside its word). Shared by the tokenizer and the needle matcher so
- * both agree. Built with the RegExp constructor because a `\p{…}`
- * literal is what the ES6 tsconfig target rejects, not the runtime —
- * the same form candidate-gate.ts uses.
- */
-const WORD_CHAR_CLASS = '\\p{L}\\p{N}\\p{M}';
-/**
- * Scripts written without word spaces. A needle in one of them cannot
- * be asked to start a word — there is no boundary to find — so it keeps
- * substring semantics; a run of them is not a "word run" either, the
- * CJK block below cuts those. Matches the tokenizer's CJK/kana/Hangul
- * handling, plus Thai for the same reason.
- */
-const NO_BOUNDARY_SCRIPT = '\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\p{sc=Hangul}\\p{sc=Thai}';
-const BOUNDED_WORD_CHAR = `(?:(?![${NO_BOUNDARY_SCRIPT}])[${WORD_CHAR_CLASS}])`;
-const WORD_CHAR = new RegExp(`[${WORD_CHAR_CLASS}]`, 'u');
+// The character classes and the needle matcher live in `retrieval-profile.ts`.
+// The tokenizer keeps its two own regexes here because nothing else uses them.
 const WORD_RUN = new RegExp(`${BOUNDED_WORD_CHAR}{2,}`, 'gu');
-const BOUNDED_WORD_ONLY = new RegExp(`^${BOUNDED_WORD_CHAR}+$`, 'u');
 /**
  * Leading/trailing characters that are not part of any word — punctuation
  * for our purposes. Two alternatives so a token that is nothing but
@@ -92,53 +84,18 @@ const BOUNDED_WORD_ONLY = new RegExp(`^${BOUNDED_WORD_CHAR}+$`, 'u');
  */
 const EDGE_PUNCTUATION = new RegExp(`^[^${WORD_CHAR_CLASS}]+|[^${WORD_CHAR_CLASS}]+$`, 'gu');
 
-/**
- * Does `kw` occur in `textLower`? A needle from a space-delimited script
- * must start a word; a needle from a script without word spaces (CJK,
- * Thai …) matches as a substring.
- *
- * Substring matching was dominated by accidents of spelling: in a
- * 3,000-page German vault "man" hit Kahneman and Karpman, "bei" hit
- * Salbei, "kann" hit Pekannüsse, and "creatin" hit Phosphocreatin — a
- * different substance that shares seven letters. A word start keeps
- * prefix compounds ("nierenfunktion" → Nierenfunktionsstörung) and
- * hyphenated ones ("kinase" → Creatin-Kinase); a tail compound
- * ("insuffizienz" in Niereninsuffizienz) is left to aliases, the LLM
- * keyword stage and the graph walk. Pure function.
- */
-export function needleHits(textLower: string, kw: string): boolean {
-  if (!BOUNDED_WORD_ONLY.test(kw)) {
-    return textLower.includes(kw);
-  }
-  let i = textLower.indexOf(kw);
-  while (i !== -1) {
-    if (i === 0 || !WORD_CHAR.test(textLower[i - 1])) return true;
-    i = textLower.indexOf(kw, i + 1);
-  }
-  return false;
-}
-
 export function scorePagesByNeedles(
   pages: PageRef[],
   needles: string[],
 ): Array<{ page: PageRef; score: number; tokensFound: number }> {
   const scored: Array<{ page: PageRef; score: number; tokensFound: number }> = [];
   for (const page of pages) {
-    const titleLower = page.title.toLowerCase();
-    const aliasLowers = page.aliases.map(a => a.toLowerCase());
-
-    let score = 0;
-    let tokensFound = 0;
-    for (const kw of needles) {
-      if (kw.length === 0) continue;
-      if (needleHits(titleLower, kw)) {
-        score += 3;
-        tokensFound++;
-      } else if (aliasLowers.some(a => needleHits(a, kw))) {
-        score += 2;
-        tokensFound++;
-      }
-    }
+    // Four tiers — title, alias, summary, prose — from one table. The summary
+    // tier is the fix for #729's measured loss; see `retrieval-profile.ts`.
+    const { score, tokensFound } = scoreProfile(
+      { title: page.title, aliases: page.aliases, summary: page.summary },
+      needles,
+    );
     if (score > 0) {
       scored.push({ page, score, tokensFound });
     }

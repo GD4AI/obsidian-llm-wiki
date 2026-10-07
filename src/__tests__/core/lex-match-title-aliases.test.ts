@@ -89,17 +89,35 @@ describe('lexMatchByTitleAndAliases (Phase 5.5.0)', () => {
     expect(matched[1].page.path).toBe('a/DeepSeek-Model');
   });
 
-  it('does NOT match against summary (the bug fix)', () => {
-    // Summary contains the keyword but title/aliases don't — must NOT
-    // match. This is the whole reason we have this dedicated function:
-    // user vault pages frequently lack summary frontmatter, and using
-    // summary in the seed-selection pipeline would silently drop
-    // pages with rich aliases but no summary.
+  it('scores a summary-only match at the low tier (revised 2026-10-07)', () => {
+    // This test used to assert the opposite, under the title "does NOT match
+    // against summary (the bug fix)". Its stated reason was that pages without
+    // a summary would be "silently dropped". That reason is arithmetically
+    // false: a positive low-weight tier adds candidates and cannot remove one,
+    // because a page with no overlap still scores zero and is still left out.
+    // The incident is kept because the rule it guarded is now measured:
+    // #729's arm C lost 3 of 5 questions at this stage, and the page that
+    // scored zero was "Consolidation kernel" against "how has knowledge evolved".
+    // The summary is the one field written in the register a question uses.
     const pages = [
       makePage('a/Janus', 'Janus', [], 'This page is about DeepSeek multimodal model.'),
     ];
     const matched = lexMatchByTitleAndAliases('DeepSeek', pages);
-    expect(matched).toEqual([]);
+    expect(matched).toHaveLength(1);
+    expect(matched[0].score).toBe(1); // summary tier, below an alias hit (2)
+  });
+
+  it('a name hit still outranks a summary-only hit', () => {
+    // The tier is low on purpose. Without this the summary would let a
+    // passing mention beat the page named for the thing.
+    const pages = [
+      makePage('a/named', 'DeepSeek', []),
+      makePage('a/mention', 'Janus', [], 'mentions DeepSeek in passing'),
+    ];
+    const matched = lexMatchByTitleAndAliases('DeepSeek', pages);
+    expect(matched[0].page.path).toBe('a/named');
+    expect(matched[0].score).toBe(3);
+    expect(matched[1].score).toBe(1);
   });
 
   it('CJK query: matches CJK characters in title (tokenizeQuery supports CJK)', () => {
