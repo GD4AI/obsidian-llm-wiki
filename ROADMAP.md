@@ -158,6 +158,37 @@ halves: a synthetic corpus with known truth that runs without anybody, and the r
 | **P3** | Alias budget to 3, requiring the note's own phrasing; stop writing dead related entries; wire the hub redundancy detector into a fix | `prompts/ingestion.ts`, `core/related-shaping.ts`, `core/hub-link-distinctiveness.ts` | after P0 |
 | **P4** | Cross-source names in the extraction prompt behind a grounding gate — the named item must appear in this note's text | `prompts/ingestion.ts` | only if P0 says so |
 
+**Measured 2026-10-08 — three vaults and one controlled pair.** The instrument is
+`node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. It reads and never writes.
+
+| Vault | nodes | edges | planet top-10 | intra-source | top-10 edges | 3-hop directed | 3-hop undirected |
+|---|---|---|---|---|---|---|---|
+| `wiki/` — mixed generations, 2143 pages | 2143 | 12840 | 14.5% | 34.4% | 6.7% | **12.2%** | **63.7%** |
+| `test8/` — one generation | 175 | 850 | 26.6% | 96.7% | 20.0% | 21.4% | 43.8% |
+| **expB** — controlled, 5 papers, this branch | 172 | 1000 | 34.9% | **99.7%** | 27.8% | 75.9% | 84.4% |
+| **expA** — the same 5 papers, `main` | 164 | 935 | 35.4% | **99.7%** | 18.9% | — | — |
+
+To reproduce the controlled pair: five files from `AI学习资料/` —
+*Chain-of-Thought Prompting Elicits Reasoning…*, *DeepSeek_LLM_2024-01*,
+*DeepSeek-V2_2024-06*, *DeepSeek_V3_2024-12*, *DeepSeek_V4* — sha256 prefixes
+`56be158ff40e`, `67d28ebd25f3`, `bba091c419c0`, `9242c8912923`, `80ed79d9d057`,
+ingested one at a time through `tools/dev-instrument/run-instrument.mjs` with
+MiniMax-M3 on `anthropic-compatible`, thinking off. Each paper takes 6-13
+minutes and produces 28-47 pages. Two of the ten runs failed on a network drop
+and succeeded on retry — a run that reports `success false` with
+`obsidianFetchBridge network error` is worth one retry before it is read as a
+defect.
+
+**What the numbers settle.** The intra-source share is **99.7 % on a freshly
+generated vault, on both branches** — so the star shape is the extraction
+prompt's doing at `ingestion.ts:33`, not a generator generation. The highest
+in-degree nodes are the source pages themselves, one per note, which is the
+planet shape directly. And the directed-to-undirected gap is wide on an old
+vault (12.2 against 63.7) and narrow on a fresh one (75.9 against 84.4), so a
+reverse-edge walk is worth roughly **50 points on the maintainer's `wiki/`** and
+about **8 on a new vault**. The estimate changes with the age of the graph, not
+with the code.
+
 Three findings set this shape. The verbatim source vocabulary already reaches the page — `prompts/ingestion.ts:30` requires 2-4 verbatim sentences and
 `create-page.ts:246-256` writes them as the Mentions section — and the reader never reads them. The index summary is not a summary field: `core/frontmatter.ts:290-291` has
 no `summary` key, and `index-generator.ts:137-156` takes the first body line cut at 100 characters, while the extraction's 4-6 sentence summary is used once as a prompt
