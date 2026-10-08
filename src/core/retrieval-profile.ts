@@ -71,6 +71,11 @@ export const NO_BOUNDARY_SCRIPT = '\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\
 export const BOUNDED_WORD_CHAR = `(?:(?![${NO_BOUNDARY_SCRIPT}])[${WORD_CHAR_CLASS}])`;
 export const WORD_CHAR = new RegExp(`[${WORD_CHAR_CLASS}]`, 'u');
 export const BOUNDED_WORD_ONLY = new RegExp(`^${BOUNDED_WORD_CHAR}+$`, 'u');
+/** One continuous run of CJK characters, and nothing else. */
+const CJK_CLAUSE_ONLY = new RegExp(
+  '^[\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\p{sc=Hangul}]+$',
+  'u',
+);
 
 /**
  * Does `kw` occur in `textLower`? A needle from a space-delimited script
@@ -99,6 +104,50 @@ export function needleHits(textLower: string, kw: string): boolean {
 }
 
 /**
+ * A needle that is one continuous run of CJK characters, long enough to carry
+ * more than one bigram. Short needles and Latin needles keep exact matching:
+ * a two-character needle has one bigram, so no floor could ever open, and
+ * letting it match partially would hit half the vault.
+ */
+export function isCjkClause(kw: string): boolean {
+  return kw.length >= 4 && CJK_CLAUSE_ONLY.test(kw);
+}
+
+/**
+ * How many of the needle's character bigrams appear in the text.
+ *
+ * `tokenizeQuery` takes the longest continuous CJK run as one token, so a
+ * Chinese question arrives as whole clauses. Exact matching then degenerates
+ * into all-or-nothing: "知识如何演化" scores zero against "知识演化" and the page
+ * is invisible rather than merely low-ranked. Counting shared two-character
+ * fragments turns that cliff into a step. Chinese is where this bites hardest.
+ *
+ * The count is returned rather than folded into a boolean so a later ranking
+ * can weigh a near match below a full one. It is NOT a semantic measure: it is
+ * orthography. The meaning is carried by the summary tier and the LLM keyword
+ * stage, which is where it belongs.
+ */
+export function cjkBigramOverlap(textLower: string, kw: string): number {
+  if (!isCjkClause(kw)) return 0;
+  let shared = 0;
+  for (let i = 0; i + 1 < kw.length; i++) {
+    if (textLower.includes(kw.slice(i, i + 2))) shared++;
+  }
+  return shared;
+}
+
+/**
+ * The floor. Two shared bigrams: one is spelling, two is a fragment that means
+ * something. Without it "深" and friends would light up half a Chinese vault,
+ * which is the noise single-character matching was already rejected for.
+ */
+export const CJK_BIGRAM_FLOOR = 2;
+
+function fieldHit(textLower: string, kw: string): boolean {
+  return needleHits(textLower, kw) || cjkBigramOverlap(textLower, kw) >= CJK_BIGRAM_FLOOR;
+}
+
+/**
  * Score one page against the needles. Each needle pays the weight of the first
  * field that carries it — title, then alias, then summary, then prose — so a
  * name hit is not paid twice and a long body cannot drown a name hit.
@@ -117,24 +166,24 @@ export function scoreProfile(profile: PageProfile, needles: readonly string[]): 
   for (const raw of needles) {
     const kw = raw.toLowerCase();
     if (kw.length === 0) continue;
-    if (needleHits(titleLower, kw)) {
+    if (fieldHit(titleLower, kw)) {
       score += PROFILE_WEIGHTS.title;
       tokensFound++;
       nameTokensFound++;
       continue;
     }
-    if (aliasLowers.some(a => needleHits(a, kw))) {
+    if (aliasLowers.some(a => fieldHit(a, kw))) {
       score += PROFILE_WEIGHTS.alias;
       tokensFound++;
       nameTokensFound++;
       continue;
     }
-    if (summaryLower.length > 0 && needleHits(summaryLower, kw)) {
+    if (summaryLower.length > 0 && fieldHit(summaryLower, kw)) {
       score += PROFILE_WEIGHTS.summary;
       tokensFound++;
       continue;
     }
-    if (textLower.length > 0 && needleHits(textLower, kw)) {
+    if (textLower.length > 0 && fieldHit(textLower, kw)) {
       score += PROFILE_WEIGHTS.text;
       tokensFound++;
     }

@@ -13,6 +13,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   scoreProfile,
+  needleHits,
+  cjkBigramOverlap,
   PROFILE_WEIGHTS,
   type PageProfile,
 } from '../../../src/core/retrieval-profile';
@@ -87,5 +89,47 @@ describe('scoreProfile — the page prose, when the caller has it', () => {
       ['consolidation'],
     );
     expect(r.score).toBe(3);
+  });
+});
+
+describe('the CJK floor — a clause is not one word', () => {
+  // `tokenizeQuery` takes the LONGEST continuous CJK run as one token, so a
+  // Chinese question arrives as whole clauses. Matching then degenerates into
+  // an all-or-nothing substring test: "知识如何演化" scores zero against a page
+  // titled "知识演化", and the page is invisible rather than merely low-ranked.
+  // Chinese is where this bites hardest.
+
+  it('keeps exact matching as the rule and reports the overlap beside it', () => {
+    expect(needleHits('知识演化', '知识如何演化')).toBe(false);
+    expect(cjkBigramOverlap('知识演化', '知识如何演化')).toBe(2); // 知识 + 演化
+  });
+
+  it('scores a clause against a shorter name through the shared bigrams', () => {
+    const r = scoreProfile(p({ title: '知识演化' }), ['知识如何演化']);
+    expect(r.score).toBe(PROFILE_WEIGHTS.title);
+    expect(r.tokensFound).toBe(1);
+  });
+
+  it('holds the floor at two shared bigrams, so one fragment of noise stays out', () => {
+    // One shared bigram is spelling, not meaning.
+    expect(cjkBigramOverlap('知识', '知识如何演化')).toBe(1);
+    expect(scoreProfile(p({ title: '知识' }), ['知识如何演化']).score).toBe(0);
+  });
+
+  it('does not fire when nothing is shared', () => {
+    expect(cjkBigramOverlap('深思熟虑的分析', '知识如何演化')).toBe(0);
+    expect(scoreProfile(p({ title: '深思熟虑的分析' }), ['知识如何演化']).score).toBe(0);
+  });
+
+  it('leaves short CJK needles on exact matching', () => {
+    // A two-character needle has one bigram, so the floor can never open. It
+    // keeps the strict rule rather than matching half the vault.
+    expect(scoreProfile(p({ title: '深度学习' }), ['深度']).score).toBe(3);
+    expect(scoreProfile(p({ title: '学习笔记' }), ['深度']).score).toBe(0);
+  });
+
+  it('does not change Latin matching at all', () => {
+    expect(scoreProfile(p({ title: 'Consolidation kernel' }), ['consolidation']).score).toBe(3);
+    expect(scoreProfile(p({ title: 'Phosphocreatin' }), ['creatin']).score).toBe(0);
   });
 });
