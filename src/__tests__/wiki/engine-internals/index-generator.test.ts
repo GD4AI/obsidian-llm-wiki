@@ -11,6 +11,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { IndexGenerator } from '../../../wiki/engine-internals/index-generator';
+import { buildDissentStubContent } from '../../../wiki/page-factory/stub-page';
+import type { EntityInfo } from '../../../types';
 
 // Cast helper kept OUTSIDE IndexGenerator test scope so obsidianmd/no-tfile-tfolder-cast
 // sees the cast at a call site, not inside a helper. Matches the pattern used by
@@ -139,5 +141,72 @@ describe('IndexGenerator', () => {
     });
     // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test stub: object structurally matches TFile, see makeFileStub above
     expect(await gen.getPageAliases(makeFileStub('p') as unknown as TFile)).toEqual([]);
+  });
+});
+// Phase 1 of the #729 reader-recall work. A dissent stub's body is
+// `# name`, then a provenance blockquote, then the extraction summary, then a
+// quoted mention. firstBodyLine returned the blockquote, so every stub page's
+// index entry read "Stub created by the ingest candidate gate…" — the same
+// sentence, on every stub, in place of the summary the extraction already paid
+// for. The gate is the `stub: true` frontmatter flag, not the text: a page may
+// legitimately open with a blockquote and must keep it.
+describe('IndexGenerator — stub pages (Phase 1)', () => {
+  it('returns the extraction summary, not the stub provenance line', async () => {
+    const content = buildDissentStubContent({
+      item: {
+        name: 'Annealed Importance Sampling',
+        summary: 'A method for estimating the normalizing constant of an unnormalized distribution.',
+        mentions_in_source: ['AIS estimates the normalizing constant Z.'],
+      } as EntityInfo,
+      stubType: 'entity',
+      sourceSlug: 'paper-1',
+      cell: 'E-A',
+    });
+    const gen = new IndexGenerator({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      readFile: vi.fn().mockResolvedValue(content), writeFile: vi.fn(),
+    });
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test stub, see makeFileStub
+    expect(await gen.getPageSummary(makeFileStub('p') as unknown as TFile))
+      .toBe('A method for estimating the normalizing constant of an unnormalized distribution.');
+  });
+
+  it('skips the quoted mention too — a quote is provenance, not a summary', async () => {
+    const content = buildDissentStubContent({
+      item: {
+        name: 'X',
+        summary: '',
+        mentions_in_source: ['The quoted mention text goes here and is provenance.'],
+      } as EntityInfo,
+      stubType: 'entity',
+      sourceSlug: 's', cell: 'E-A',
+    });
+    const gen = new IndexGenerator({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      readFile: vi.fn().mockResolvedValue(content), writeFile: vi.fn(),
+    });
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test stub, see makeFileStub
+    expect(await gen.getPageSummary(makeFileStub('p') as unknown as TFile)).toBe('No summary');
+  });
+
+  it('keeps a leading blockquote on a page that is NOT a stub', async () => {
+    const content = '---\ntype: concept\n---\n# Term\n\n> A definition opening the note.\n\nMore.';
+    const gen = new IndexGenerator({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      readFile: vi.fn().mockResolvedValue(content), writeFile: vi.fn(),
+    });
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test stub, see makeFileStub
+    expect(await gen.getPageSummary(makeFileStub('p') as unknown as TFile))
+      .toBe('> A definition opening the note.');
+  });
+
+  it('a stub with no summary and no quote reports "No summary", never the boilerplate', async () => {
+    const content = '---\nstub: true\n---\n# N\n\n> Stub created by the ingest candidate gate (E-A) — [[sources/s]] names this without treating it. Will be filled by the next ingest of a source that does.\n';
+    const gen = new IndexGenerator({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      readFile: vi.fn().mockResolvedValue(content), writeFile: vi.fn(),
+    });
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test stub, see makeFileStub
+    expect(await gen.getPageSummary(makeFileStub('p') as unknown as TFile)).toBe('No summary');
   });
 });

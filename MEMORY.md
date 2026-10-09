@@ -39,13 +39,13 @@ head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
 `e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
 floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
 Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
-docs only. **Next step is Phase 1.**
+docs only. **Next step is Phase 2** — segmentation + term index + BM25F, one phase.
 
 **The seven phases, with their targets.**
 
 | Phase | Target |
 |---|---|
-| **1** stub summary | `src/wiki/engine-internals/index-generator.ts:137-156` `firstBodyLine` — skip the boilerplate by the `stub: true` frontmatter flag (NOT by text prefix) and take the extraction summary that `src/wiki/page-factory/stub-page.ts` writes after it |
+| **1** ✅ 2026-10-08 | `src/wiki/engine-internals/index-generator.ts` `firstBodyLine` — the provenance blockquote went into the index entry, so every stub page listed the same sentence instead of the extraction summary. Fixed by the `stub: true` frontmatter flag through the **existing** `isStubPage` helper (`page-factory/stub-page.ts:91`, which accepts both `'true'` and `true`) rather than re-deriving the check or matching text. **Do not use a text prefix** — a page may legitimately open with a blockquote and must keep it. 4 tests, plus a read-only sweep of the 350-page generated corpus showing 0 non-stub summaries changed |
 | **2** segmentation + index + BM25F | `src/core/ppr-cascade.ts:202` `tokenizeQuery`, `src/core/candidate-window.ts` `contextKeywords`, and `src/core/retrieval-profile.ts` `scoreProfile` which BM25F replaces. **One phase — segmentation and the ranker cannot be split**, because without segmentation a Chinese query is one token and the IDF table is built over whole clauses |
 | **3** `lexStrong` coverage | `src/wiki/query-engine/pipeline/select-seeds.ts:111-112`, constants `LEX_MATCH_MIN_COUNT = 3` at `src/constants.ts:829` and `LEX_MATCH_MIN_TOP_SCORE = 5` at `:846`. Also `src/core/ppr-cascade.ts` `lexScoreOf` is a rank placeholder and `mergeWithPPR` fuses `ppr + hint×0.1×maxPpr` by hand — change both, RRF `k = 60` |
 | **4** determinism + adjacency | `src/core/monte-carlo-ppr.ts` seed per (query, seed path) — drop `graphSize`; pre-build reverse adjacency in `src/wiki/engine-internals/graph-cache.ts`; hoist the PPR loop in `src/core/hub-link-distinctiveness.ts` (380 calls to 20) |

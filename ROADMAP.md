@@ -148,7 +148,7 @@ halves: a synthetic corpus with known truth that runs without anybody, and the r
 
 **The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
 
-**Progress:** **P0 ✅ 2026-10-07** — 20 tests, `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. **P1 ✅ 2026-10-07** — `core/retrieval-profile.ts`: one weight table (title 3 / alias 2 / summary 1 / prose 1), the summary tier wired into Stage 1 and Stage 1.5b, `needleHits` moved there so the stages cannot drift. 10 tests. The prose tier is built and tested but the query path does not yet hand it the page bodies: that needs a page-text cache beside `GraphCache`, and it is the next piece. **P2a ✅ 2026-10-07** — the ranking is a function, not a lottery: `monte-carlo-ppr.ts` gains `makeSeededRng`/`seededRngFrom` and `pprCascade` seeds the walk from the query and seed set when the caller supplies no rng; `scorePagesByNeedles` breaks ties by breadth of match, then path. 9 tests. **One claim was wrong and is corrected here:** `candidate-window.ts`'s pool-order tie is a contract, not a lottery — callers pass the pool ctime-ascending and the dedup prompt's KV-prefix cache depends on it. A path-ascending change there broke three tests and was reverted; the contract is now pinned by a test. **P2b ✅ 2026-10-07** — graded CJK matching: a needle that is one continuous CJK run of 4+ characters scores against the page when it shares **two or more** character bigrams, because `tokenizeQuery` hands the lexical stage whole clauses and exact matching made a Chinese query all-or-nothing. Latin and short CJK needles keep the exact rule. 6 tests. It is a floor, not a gradient — a gradient needs IDF weights over a corpus and is a separate step. P3 not started. **Everything above this line is superseded by the architecture section below.**
+**Progress:** see the phase table below — P0/P1/P2a/P2b landed 2026-10-07, Phase 1 landed 2026-10-08.
 
 **The implementation, as phases.** Superseded 2026-10-08 by the architecture
 below: the P0-P4 split scattered one scoring function across seven patches. Each
@@ -164,55 +164,26 @@ representation (segmentation + term index)
 graph expansion = a parallel recall channel, not part of ranking
 ```
 
-A hand-tuned linear weight over text with no IDF keeps producing anomalies —
-stop words, generic words, long documents, ties — and every anomaly became
-another patch. Eleven had accumulated on one scoring function. BM25F folds the
-seven scoring ones into one: the summary and prose tiers become fields, DF
-suppression and IDF weighting come from the term statistics, length
-normalisation and term saturation come with the function, and continuous scores
-make ties rare. `k1 = 1.2` and `b = 0.75` are literature defaults; **the field
-weights are not** — dropping the title weight from 3 to 1 moved MRR from 0.86 to
-0.55, so they are calibrated on the harness, never assumed.
+A hand-tuned linear weight over text with no IDF keeps producing anomalies — stop words, generic words, long documents, ties — and every anomaly became another patch. Eleven had accumulated on one scoring function. BM25F folds the seven scoring ones into one: the summary and prose tiers become fields, DF suppression and IDF weighting come from the term statistics, length normalisation and term saturation come with the function, and continuous scores make ties rare. `k1 = 1.2` and `b = 0.75` are literature defaults; **the field weights are not** — dropping the title weight from 3 to 1 moved MRR from 0.86 to 0.55, so they are calibrated on the harness, never assumed.
 
-**Two couplings that fix the order.** Segmentation and BM25F land in the **same**
-phase: without segmentation a Chinese query is one token and the IDF table is
-built over whole clauses, which is not a ranker. And `lexStrong`'s constants —
-`LEX_MATCH_MIN_COUNT = 3`, `LEX_MATCH_MIN_TOP_SCORE = 5`, `lexIsReliable` — are
-calibrated on the old score's absolute scale. BM25F has no absolute scale, so
-they fail silently. They become relative statistics: the name tier's share of
-the query's total IDF.
+**Two couplings that fix the order.** Segmentation and BM25F land in the **same** phase: without segmentation a Chinese query is one token and the IDF table is built over whole clauses, which is not a ranker. And `lexStrong`'s constants — `LEX_MATCH_MIN_COUNT = 3`, `LEX_MATCH_MIN_TOP_SCORE = 5`, `lexIsReliable` — are calibrated on the old score's absolute scale. BM25F has no absolute scale, so they fail silently. They become relative statistics: the name tier's share of the query's total IDF.
 
 | Phase | What it does | Order |
 |---|---|---|
-| **1** | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line | first — the boilerplate words would pollute every later calibration |
+| **1** ✅ 2026-10-08 | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line. `firstBodyLine` skipped the provenance blockquote instead, so every stub indexed the same sentence. Gate is the flag, not the text — a page may legitimately open with a blockquote. 4 tests, and the generated corpus shows 0 of 350 pages changed | first — the boilerplate words would pollute every later calibration |
 | **2** | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch | **one phase, not two** |
 | **3** | `lexStrong` becomes a coverage statistic | silent failure otherwise |
 | **4** | determinism, reverse adjacency pre-built in `GraphCache`, the hub-link loop hoisted (380 calls to 20) | orthogonal, independent wins |
 | **5** | harness + diagnostic command: four segmentation regimes, a cross-lingual fixture, a seeds-only ablation arm, and a **candidate-pool source count** | accepts 2 and 6 |
 | **6** | assembly layer: RRF fusion (`k = 60`) plus source coverage | **precondition measured, see below** |
 | **7** | process items; `contextKeywords` as its own PR | it is on the write path |
+| **8** | write-side: stop writing dead related entries (keep the name in `log.md` + the lint report per DocTpoint), the alias budget to 3, wire `hub-link-distinctiveness` into a fix | dropped by the restructure and put back |
 
-**What the assembly measurement settled.** On the maintainer's `wiki/` the top-50
-candidates for six realistic questions cover **9.3 distinct sources on average**;
-the top-10 that actually loads covers **3.5**, dominant source **77 %**. On the
-controlled `expB` vault: 4.8 against 3.3, dominant 58 %. The cleanest case is
-「强化学习 推理能力」— ten sources in the pool, **one** loaded. So the pool is not
-short of cross-source pages; the selection throws them away. That is what the
-issue's "reserved budget" was always about, and its native home is the assembly
-step, not a new kind of edge.
+**What the assembly measurement settled.** On the maintainer's `wiki/` the top-50 candidates for six realistic questions cover **9.3 distinct sources on average**; the top-10 that actually loads covers **3.5**, dominant source **77 %**. On the controlled `expB` vault: 4.8 against 3.3, dominant 58 %. The cleanest case is 「强化学习 推理能力」— ten sources in the pool, **one** loaded. So the pool is not short of cross-source pages; the selection throws them away. That is what the issue's "reserved budget" was always about, and its native home is the assembly step, not a new kind of edge.
 
-**Two limits the same measurement found.** Source coverage can only act on pages
-carrying a `sources:` ref: **97 %** on a freshly generated vault, **25 %** on the
-maintainer's mixed-generation `wiki/` (538 of 2141). The gain moves with the age
-of the library. And one of the six questions —「模型 并行 训练」— had a
-single-source pool to begin with, where assembly cannot help at all; that is why
-the diagnostic command reports the pool's source count.
+**Two limits the same measurement found.** Source coverage can only act on pages carrying a `sources:` ref: **97 %** on a freshly generated vault, **25 %** on the maintainer's mixed-generation `wiki/` (538 of 2141). The gain moves with the age of the library. And one of the six questions —「模型 并行 训练」— had a single-source pool to begin with, where assembly cannot help at all; that is why the diagnostic command reports the pool's source count.
 
-**M0 is re-scoped, not cancelled.** The assembly step fixes the query. It does
-not touch a word of the Related section a human reads, and #358's complementary
-memory model makes that reader a real consumer. M0 now serves **reading**, and
-its priority depends on how often Related sections are read — which nobody has
-measured.
+**M0 is re-scoped, not cancelled.** The assembly step fixes the query. It does not touch a word of the Related section a human reads, and #358's complementary memory model makes that reader a real consumer. M0 now serves **reading**, and its priority depends on how often Related sections are read — which nobody has measured.
 
 **Shelved: replacing the Monte Carlo walk with power iteration.** The semantic
 mapping is a silent-failure risk and this arm's contribution is not yet known;
