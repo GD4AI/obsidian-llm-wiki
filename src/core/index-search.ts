@@ -5,23 +5,29 @@ interface PageRef {
   title: string;
   aliases: string[];
   summary?: string;
+  /** Source slug from the index line's `source:` marker. Absent when unknown. */
+  sourceSlug?: string;
   score: number;
 }
 
 export function parseIndexForPages(indexContent: string): Omit<PageRef, 'score'>[] {
   const pages: Omit<PageRef, 'score'>[] = [];
   // Per-line match (one match per line — avoids regex greedy-cross-newline).
-  // Captures: 1: path, 2: optional aliases, 3: optional summary (after " - ").
-  const lineRegex = /^- \[\[([^\]|]+)(?:\|[^\]]+)?\]\]\s*(?:`aliases:\s*([^`]+)`)?(?:\s*-\s*(.+))?$/;
+  // Captures: 1: path, 2: optional aliases, 3: optional source slug, 4: optional summary (after " - ").
+  // `source:` is the #819 review wiring: without it PageRef.sourceSlug is never
+  // set and the assembly layer's source coverage cannot act in production.
+  // Older indexes carry no marker, parse fine, and leave the slug undefined.
+  const lineRegex = /^- \[\[([^\]|]+)(?:\|[^\]]+)?\]\]\s*(?:`aliases:\s*([^`]+)`)?\s*(?:`source:\s*([^`]+)`)?(?:\s*-\s*(.+))?$/;
   for (const line of indexContent.split('\n')) {
     const match = lineRegex.exec(line);
     if (!match) continue;
     const path = match[1];
     const aliasStr = match[2] || '';
-    const summary = (match[3] || '').trim();
+    const sourceSlug = (match[3] || '').trim();
+    const summary = (match[4] || '').trim();
     const title = path.split('/').pop() || path;
     const aliases = aliasStr.split(',').map(a => a.trim()).filter(Boolean);
-    pages.push({ path, title, aliases, summary });
+    pages.push({ path, title, aliases, summary, ...(sourceSlug ? { sourceSlug } : {}) });
   }
   return pages;
 }

@@ -123,11 +123,13 @@ export class IndexGenerator {
       const content = await readContent(file);
       const aliases = this.parseAliases(content);
       const aliasStr = aliases.length > 0 ? ` \`aliases: ${aliases.join(', ')}\`` : '';
+      const sourceSlug = this.parseSourceSlug(content);
+      const sourceStr = sourceSlug ? ` \`source: ${sourceSlug}\`` : '';
       if (withSummary) {
         const summary = this.firstBodyLine(content);
-        section += `- [[${folder}/${file.basename}|${file.basename}]]${aliasStr} - ${summary}\n`;
+        section += `- [[${folder}/${file.basename}|${file.basename}]]${aliasStr}${sourceStr} - ${summary}\n`;
       } else {
-        section += `- [[${folder}/${file.basename}|${file.basename}]]${aliasStr}\n`;
+        section += `- [[${folder}/${file.basename}|${file.basename}]]${aliasStr}${sourceStr}\n`;
       }
     }
     return section;
@@ -170,6 +172,21 @@ export class IndexGenerator {
       return !(isStub && t.startsWith('>'));
     });
     return lines[0]?.substring(0, 100) || 'No summary';
+  }
+
+  /**
+   * Helper for renderSection: the page's source slug from its `sources:`
+   * frontmatter value. Accepts the inline `[[sources/x]]` form and the block
+   * `- "[[sources/x]]"` form. Returns null when the value is missing or empty —
+   * an empty key means "unknown", not "unattributed", and inventing a slug would
+   * poison the coverage rule.
+   */
+  private parseSourceSlug(content: string): string | null {
+    const fm = parseFrontmatter(content);
+    const raw: unknown = fm?.sources;
+    const text = Array.isArray(raw) ? raw.join(' ') : typeof raw === 'string' ? raw : '';
+    const m = /\[\[sources\/([^\]|]+)(?:\|[^\]]+)?\]\]/.exec(text);
+    return m ? m[1].trim() : null;
   }
 
   /**

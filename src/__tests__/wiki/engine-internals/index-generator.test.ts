@@ -210,3 +210,34 @@ describe('IndexGenerator — stub pages (Phase 1)', () => {
     expect(await gen.getPageSummary(makeFileStub('p') as unknown as TFile)).toBe('No summary');
   });
 });
+
+describe('IndexGenerator — source slug in the index line (#819 wiring)', () => {
+  const mkFile = (name: string) => ({ basename: name }) as unknown as TFile;
+
+  const render = async (content: string) => {
+    const gen = new IndexGenerator({} as never);
+    return (gen as unknown as {
+      renderSection(l: string, f: TFile[], folder: string, w: boolean, r: () => Promise<string>): Promise<string>;
+    }).renderSection('Entities', [mkFile('Alpha')], 'wiki/entities', false, async () => content);
+  };
+
+  it('writes a source marker from an inline sources value', async () => {
+    const out = await render('---\nsources: "[[sources/paper-ais]]"\n---\n# Alpha\n');
+    expect(out).toContain('`source: paper-ais`');
+  });
+
+  it('writes a source marker from a block sources value', async () => {
+    const out = await render('---\nsources:\n  - "[[sources/paper-zh]]"\n---\n# Alpha\n');
+    expect(out).toContain('`source: paper-zh`');
+  });
+
+  it('writes no marker when the sources key is empty — unknown is not invented', async () => {
+    const out = await render('---\nsources:\ntags: [x]\n---\n# Alpha\n');
+    expect(out).not.toContain('`source:');
+  });
+
+  it('writes no marker when there is no sources key at all', async () => {
+    const out = await render('---\ntags: [x]\n---\n# Alpha\n');
+    expect(out).not.toContain('`source:');
+  });
+});
