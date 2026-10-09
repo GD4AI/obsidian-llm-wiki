@@ -29,6 +29,64 @@ is current state.
 
 ## Current state (2026-10-07)
 
+### Execution record — read this before continuing the #729 phases
+
+Written 2026-10-08 so the work resumes at the right place with the same
+judgements. Delete this block once the seven phases below have landed.
+
+**Where the work is.** Branch `feat/729-reader-recall-2026-10-07`, PR **#819**,
+head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
+`e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
+floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
+Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
+docs only. **Next step is Phase 1.**
+
+**The seven phases, with their targets.**
+
+| Phase | Target |
+|---|---|
+| **1** stub summary | `src/wiki/engine-internals/index-generator.ts:137-156` `firstBodyLine` — skip the boilerplate by the `stub: true` frontmatter flag (NOT by text prefix) and take the extraction summary that `src/wiki/page-factory/stub-page.ts` writes after it |
+| **2** segmentation + index + BM25F | `src/core/ppr-cascade.ts:202` `tokenizeQuery`, `src/core/candidate-window.ts` `contextKeywords`, and `src/core/retrieval-profile.ts` `scoreProfile` which BM25F replaces. **One phase — segmentation and the ranker cannot be split**, because without segmentation a Chinese query is one token and the IDF table is built over whole clauses |
+| **3** `lexStrong` coverage | `src/wiki/query-engine/pipeline/select-seeds.ts:111-112`, constants `LEX_MATCH_MIN_COUNT = 3` at `src/constants.ts:829` and `LEX_MATCH_MIN_TOP_SCORE = 5` at `:846`. Also `src/core/ppr-cascade.ts` `lexScoreOf` is a rank placeholder and `mergeWithPPR` fuses `ppr + hint×0.1×maxPpr` by hand — change both, RRF `k = 60` |
+| **4** determinism + adjacency | `src/core/monte-carlo-ppr.ts` seed per (query, seed path) — drop `graphSize`; pre-build reverse adjacency in `src/wiki/engine-internals/graph-cache.ts`; hoist the PPR loop in `src/core/hub-link-distinctiveness.ts` (380 calls to 20) |
+| **5** harness + diagnostic | fixtures over four segmentation regimes **plus source-language ≠ wiki-language**; a seeds-only ablation arm; report candidate-pool source count |
+| **6** assembly | greedy pick with source coverage; `src/wiki/query-engine/QueryView-class.ts` `mergeWithPPR` is where `slice(0, topN)` happens; `PageRef` has **no** `sources` field — take it from frontmatter |
+| **7** process | the ROADMAP prune below; `contextKeywords` as its own PR (it is on the write path) |
+
+**Rejected — do not re-propose.**
+
+| Option | Why rejected |
+|---|---|
+| "≥ 2 distinct needles" floor for the summary tier | starves single-keyword queries (`AMPK`) |
+| absolute evidence threshold `sum(w) ≥ 1` | `w = ln(N/df)/ln N ≥ 1` is equivalent to `df ≤ 1`, so `deepseek` at w=0.56 could never fill in |
+| reusing `CANDIDATE_WINDOW_DF_CAP = 0.5` for summaries | calibrated on long body text; on real summaries `the` measured 0.25 and the cap left 56 pages hitting |
+| bigram floor as the primary CJK rule | becomes a **true fallback** only: fires on exact miss, weight 1, proportional to coverage. Korean agglutination (`장애가`) is the reason it stays at all |
+| power iteration over the Monte Carlo walk | shelved; restart only if the ablation shows the graph arm carries weight, a comparison script matches the visit-count semantics, and lint timing is measured |
+| A/B arms with an embedding index | the plugin is zero-embedding |
+
+**How to re-derive the numbers.** The scripts lived in `/tmp` and are gone. Three
+measurements, all read-only over `**/*.md`: (a) graph shape —
+`node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`; (b)
+summary-tier document frequency — first non-heading body line after the
+frontmatter, cut at 100 chars, then `df(term) = pages containing term / pages`;
+(c) assembly — score pages on query tokens (title 3, body 1), take top-50 and
+top-10, read each page's `sources: [[sources/<slug>]]` refs, report distinct
+source count and the dominant source's share. Ingest experiments need a provider
+key which the maintainer supplies per session; the recorded run used
+`anthropic-compatible` / `MiniMax-M3` / `https://api.minimaxi.com/anthropic`
+through `tools/dev-instrument/run-instrument.mjs <vault> <source>`.
+
+**Pending debt.** `ROADMAP.md` is 522 lines against a 500 ceiling. The prune
+deletes the superseded progress line (1608 bytes) and the five-arm paragraph
+block that phase 5 now carries — about 25 lines. It belongs in the same change
+as the next ROADMAP edit, not later.
+
+**Known false positives — do not "fix".** `shazam_verify` reports orphan `setup`
+at `tools/dev-instrument/run-instrument.mjs:54` and
+`tools/dev-instrument/run-graph-audit.mjs:41`; both are esbuild plugin callback
+properties. Hint-level unused vars in `scripts/update-fixture.mjs` and
+`src/core/hub-link-distinctiveness.ts:74` are pre-existing.
+
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
 **v1.28.0 shipped without its named head.** #729 Phase 1 was the plan of record; it did not go in.
