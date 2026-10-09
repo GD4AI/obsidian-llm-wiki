@@ -254,3 +254,28 @@ describe('lexMatchByTitleAndAliases — the BM25F default (Phase 4)', () => {
     expect(withCorpus[0].score).toBeGreaterThan(0);
   });
 });
+
+describe('the legacy scorer switch (#819 step 7) — the two scorers must really differ', () => {
+  const mk = (title: string, aliases: string[] = [], summary = '') =>
+    ({ path: `p/${title}`, title, aliases, summary, score: 0 });
+
+  it('ranks differently under legacy, which is why the switch exists', () => {
+    // `learning` sits in two titles, so its IDF is low and BM25F discounts it.
+    // `reward` sits in one summary, so its IDF is high. Legacy is a fixed linear
+    // weight and rates title 3 against summary 1, so it prefers the title page.
+    // The two orders must differ — that is what the switch is for.
+    const pages = [
+      mk('Learning', [], 'A survey'),
+      mk('Learning theory', [], 'Bounds and risk'),
+      mk('Alignment', [], 'Shaped by reward'),
+    ];
+    const query = 'learning reward';
+    const modern = lexMatchBm25(query, pages.map(p => ({ ...p })), {});
+    const legacy = lexMatchBm25(query, pages.map(p => ({ ...p })), { scorer: 'legacy' });
+    expect(modern.length).toBeGreaterThan(0);
+    expect(legacy.length).toBeGreaterThan(0);
+    const orderChanged = modern.some((h, i) => legacy[i]?.page.path !== h.page.path)
+      || modern.length !== legacy.length;
+    expect(orderChanged).toBe(true);
+  });
+});

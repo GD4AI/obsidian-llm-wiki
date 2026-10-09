@@ -107,7 +107,10 @@ export async function selectPprSeeds(
     title: p.title, aliases: p.aliases, summary: '', text: '',
   }));
   const corpusTerms = buildCorpusTerms(nameTierTerms);
-  const lexHits = lexMatchByTitleAndAliases(query, pageRefs, { corpus: corpusTerms });
+  const lexHits = lexMatchByTitleAndAliases(query, pageRefs, {
+    corpus: corpusTerms,
+    ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
+  });
   const lexCount = lexHits.length;
 
   const tokens = tokenizeQuery(query);

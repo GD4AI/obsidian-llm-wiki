@@ -58,6 +58,15 @@ export interface SeedSelectorSettings {
   model: string;
   queryModel?: string;
   disableThinking?: boolean;
+  /**
+   * #819 review, step 7. A new ranking is on by default and must be switchable
+   * off. When true the query path runs the old hand-tuned linear scorer
+   * (`scoreProfile`, title 3 / alias 2 / summary 1 / text 1) instead of BM25F.
+   * The two rank differently — top-5 overlap measured 2.4 of 5 — and until the
+   * harness carries accuracy evidence, a user who sees worse results needs a way
+   * back.
+   */
+  legacyScorer?: boolean;
 }
 
 /**
