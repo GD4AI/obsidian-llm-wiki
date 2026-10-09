@@ -146,10 +146,6 @@ The metric is recall@K plus **the cross-source share of the loaded pages**, whic
 subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged. The measurement has two
 halves: a synthetic corpus with known truth that runs without anybody, and the real vault at `n >= 20` that needs the maintainer and @DocTpoint.
 
-**The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
-
-**Progress:** see the phase table below — P0/P1/P2a/P2b landed 2026-10-07, Phase 1 landed 2026-10-08.
-
 **The implementation, as phases.** Superseded 2026-10-08 by the architecture
 below: the P0-P4 split scattered one scoring function across seven patches. Each
 phase carries a test that fails without it, Gate 1 green after each commit.
@@ -172,8 +168,8 @@ A hand-tuned linear weight over text with no IDF keeps producing anomalies — s
 
 | Phase | What it does | Order |
 |---|---|---|
-| **1** ✅ 2026-10-08 | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line. `firstBodyLine` skipped the provenance blockquote instead, so every stub indexed the same sentence. Gate is the flag, not the text — a page may legitimately open with a blockquote. 4 tests, and the generated corpus shows 0 of 350 pages changed | first — the boilerplate words would pollute every later calibration |
-| **2** ✅ 2026-10-08 | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch. **Landed.** The lex stage keeps `scorer: 'legacy'` until phase 4, on purpose — its gate is calibrated on that scale | **one phase, not two** |
+| **1** ✅ | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line. Gate is the flag, not the text — a page may legitimately open with a blockquote | first — the boilerplate words would pollute every later calibration |
+| **2** ✅ | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch. The lex stage keeps `scorer: 'legacy'` until phase 4, because its gate is calibrated on that scale | **one phase, not two** |
 | **3** | harness + diagnostic command: four segmentation regimes, a cross-lingual fixture, a seeds-only ablation arm, and a **candidate-pool source count**. **Moved up from 5 on 2026-10-08** — phases 2 and 4 both need calibrated constants and the harness is what produces them. Shipping `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2, summary 1, text 1}` as if it were measured would break the plan's own rule that field weights are calibrated, never assumed | **now precedes what it calibrates** |
 | **4** | `lexStrong` becomes a unitless coverage statistic, and the lex stage moves off `scorer: 'legacy'` in the **same** change | **silent failure measured, not assumed** — with BM25F behind the lex stage the LLM escalation gate fired 4 times where it must fire 0, because `LEX_MATCH_MIN_TOP_SCORE = 5` cannot hold against scores near 0.5 |
 | **5** | determinism, reverse adjacency pre-built in `GraphCache`, the hub-link loop hoisted (380 calls to 20) | orthogonal, independent wins |
