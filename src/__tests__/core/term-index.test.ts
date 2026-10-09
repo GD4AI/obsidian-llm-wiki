@@ -21,6 +21,53 @@ import {
   DEFAULT_FIELD_WEIGHTS,
 } from '../../core/term-index';
 
+describe('segment — Unicode normalisation and code-point safety (#819 review, fix A + B)', () => {
+  /** An orphaned high or low surrogate. A stray half of a surrogate pair. */
+  const ORPHAN_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+  it('composes NFD Hangul to its NFC form, matching a page written either way', () => {
+    const nfd = '한글'.normalize('NFD');
+    const nfc = '한글';
+    expect(nfd).not.toBe(nfc);
+    expect(segment(nfd)).toEqual(segment(nfc));
+  });
+
+  it('folds full-width Latin to half-width, so ＡＭＰＫ matches AMPK', () => {
+    expect(segment('ＡＭＰＫ')).toEqual(segment('AMPK'));
+  });
+
+  it('composes half-width katakana to full-width', () => {
+    expect(segment('ﾒﾄﾎﾙﾐﾝ')).toEqual(segment('メトホルミン'));
+  });
+
+  it('keeps diacritics on the primary term — café is not cafe', () => {
+    expect(segment('café')).toEqual(['café']);
+    expect(segment('café')).not.toEqual(segment('cafe'));
+  });
+
+  it('emits no orphaned surrogate for an astral-plane ideograph inside a run', () => {
+    // 𠮷 is U+20BB7 — one code point, two UTF-16 units. Slicing the joined
+    // string by UTF-16 units split it and produced a bare low surrogate.
+    const terms = segment('𠮷野家のメニュー');
+    expect(terms.length).toBeGreaterThan(0);
+    for (const t of terms) expect(t).not.toMatch(ORPHAN_SURROGATE);
+  });
+
+  it('treats an astral-plane ideograph as ONE character, not two', () => {
+    // If 𠮷 were two units, the boundaryless run 𠮷野家 would yield bigrams that
+    // start at half a code point. Code-point slicing does not.
+    const terms = segment('𠮷野家');
+    expect(terms).not.toContain('\udfb7野');
+  });
+
+  it('keeps the existing CJK segmentation unchanged apart from normalisation', () => {
+    expect(segment('LSTM模型')).toEqual(['lstm', '模型']);
+    // 概念更新 is one boundaryless run of 4 characters, so it contributes the
+    // three overlapping bigrams 概念 / 念更 / 更新. This is the old contract.
+    expect(segment('概念 概念更新')).toEqual(['概念', '概念', '念更', '更新']);
+  });
+});
+
 describe('segment — bounded-word scripts split on word characters', () => {
   it('splits English and lowercases', () => {
     expect(segment('Annealed Importance Sampling')).toEqual([

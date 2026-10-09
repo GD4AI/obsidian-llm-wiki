@@ -44,11 +44,22 @@ const NOT_WORD_CHAR = new RegExp(`[^${WORD_CHAR_CLASS}]`, 'u');
  * boundary-less script with a word character is split at the script change, so
  * `LSTM模型` contributes `lstm` and `模型`.
  *
+ * The input is normalised to **NFKC** first (#819 review, fix A). That composes
+ * NFD Hangul and accents to their canonical form, folds full-width Latin, and
+ * composes half-width katakana, so a page written either way indexes the same
+ * terms. It does **not** strip diacritics: `café` stays `café` and is a different
+ * term from `cafe`. Folding is reserved for the unseen-word fallback, where it
+ * can only rescue a zero score and can never merge two exact terms.
+ *
+ * Runs are kept as **code-point** arrays, never as strings (#819 review, fix B).
+ * Slicing a joined string by UTF-16 units split astral-plane ideographs such as
+ * 𠮷 (U+20BB7) and emitted an orphaned low surrogate as a term.
+ *
  * Pure. No IO. Deterministic for the same input.
  */
 export function segment(text: string): string[] {
   const terms: string[] = [];
-  const lower = text.toLowerCase();
+  const lower = text.normalize('NFKC').toLowerCase();
   const chars = [...lower];
   let i = 0;
   while (i < chars.length) {
@@ -65,12 +76,13 @@ export function segment(text: string): string[] {
       if (NO_BOUNDARY.test(c) !== boundaryless) break;
       j += 1;
     }
-    const run = chars.slice(i, j).join('');
+    const run = chars.slice(i, j);
     if (boundaryless) {
-      if (run.length === 1) terms.push(run);
-      else for (let k = 0; k + 1 < run.length; k += 1) terms.push(run.slice(k, k + 2));
-    } else if (WORD_CHAR.test(run)) {
-      terms.push(run);
+      if (run.length === 1) terms.push(run[0]);
+      else for (let k = 0; k + 1 < run.length; k += 1) terms.push(run[k] + run[k + 1]);
+    } else {
+      const word = run.join('');
+      if (WORD_CHAR.test(word)) terms.push(word);
     }
     i = j;
   }
