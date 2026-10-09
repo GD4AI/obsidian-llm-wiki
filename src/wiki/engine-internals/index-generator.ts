@@ -26,6 +26,7 @@
 import { TFile, normalizePath } from 'obsidian';
 import { TEXTS } from '../../texts';
 import { parseFrontmatter } from '../../core/frontmatter';
+import { isStubPage } from '../page-factory/stub-page';
 
 export interface IndexGeneratorOptions {
   wikiFolder: string;
@@ -140,6 +141,16 @@ export class IndexGenerator {
    * `parseFrontmatter` and the entire `^---\n…\n---` block is skipped as
    * a unit, so property lines like `title: T` no longer leak into the
    * summary on pages without `## Heading` openers.
+   *
+   * #729 Phase 1: a dissent stub's body is `# name`, then a provenance
+   * blockquote ("Stub created by the ingest candidate gate …"), then the
+   * extraction summary, then a quoted mention. The blockquote went into the
+   * index entry, so every stub page listed the same sentence instead of the
+   * summary the extraction had already paid for. The gate is the `stub: true`
+   * frontmatter flag, **not** the text: a page may legitimately open with a
+   * blockquote and must keep it. On a stub, quoted lines are provenance and
+   * are skipped; an empty result reports `No summary` rather than inventing
+   * one.
    */
   private firstBodyLine(content: string): string {
     const fm = parseFrontmatter(content);
@@ -152,7 +163,12 @@ export class IndexGenerator {
         body = content.substring(endIdx + 4);
       }
     }
-    const lines = body.split('\n').filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('---'));
+    const isStub = isStubPage(fm);
+    const lines = body.split('\n').filter(l => {
+      const t = l.trim();
+      if (!t || t.startsWith('#') || t.startsWith('---')) return false;
+      return !(isStub && t.startsWith('>'));
+    });
     return lines[0]?.substring(0, 100) || 'No summary';
   }
 

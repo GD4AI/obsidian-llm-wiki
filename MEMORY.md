@@ -29,6 +29,100 @@ is current state.
 
 ## Current state (2026-10-07)
 
+### Execution record — read this before continuing the #729 phases
+
+Written 2026-10-08 so the work resumes at the right place with the same
+judgements. Delete this block once the seven phases below have landed.
+
+**Where the work is.** Branch `feat/729-reader-recall-2026-10-07`, PR **#819**,
+head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
+`e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
+floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
+Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
+docs only. **Next step is Phase 3 — the harness**, moved ahead of the phases that need it. See "Two decisions taken 2026-10-08" below.
+
+**The seven phases, with their targets.**
+
+**Two decisions taken 2026-10-08, on the maintainer's instruction.**
+
+1. **The harness moves ahead of what it calibrates.** Phases 3 and 4 both need
+   calibrated constants — the BM25F field weights, and the `lexStrong` coverage
+   threshold. The harness that produces them was scheduled at phase 5. That
+   inversion was caught when `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2,
+   summary 1, text 1}` turned out to be the old hand-tuned ratio wearing a new
+   name: the plan says field weights are calibrated on the harness and never
+   assumed, and the constant as written assumed them. Shipping it unlabelled
+   would have broken the plan's own rule. The cost of moving the harness up is
+   that phase 4's implementation arrives later; the cost of not moving it is
+   that phases 3 and 4 draw conclusions from numbers nobody measured and are
+   re-derived afterwards.
+2. **The lex stage keeps `scorer: 'legacy'` until phase 4.** Its documented
+   contract is the absolute score scale (title 3 / alias 2) and `lexStrong` is
+   calibrated on exactly that. Moving one without the other is the measured
+   silent failure. The cost is a known gap: Stage 1 seed ranking has no IDF
+   suppression until phase 4 closes it. Accepted rather than papered over.
+
+| Phase | Target |
+|---|---|
+| **1** ✅ 2026-10-08 | `src/wiki/engine-internals/index-generator.ts` `firstBodyLine` — the provenance blockquote went into the index entry, so every stub page listed the same sentence instead of the extraction summary. Fixed by the `stub: true` frontmatter flag through the **existing** `isStubPage` helper (`page-factory/stub-page.ts:91`, which accepts both `'true'` and `true`) rather than re-deriving the check or matching text. **Do not use a text prefix** — a page may legitimately open with a blockquote and must keep it. 4 tests, plus a read-only sweep of the 350-page generated corpus showing 0 non-stub summaries changed |
+| **2** ✅ 2026-10-08 landed | `src/core/term-index.ts` (new): `segment`, `buildPageTerms`, `buildCorpusTerms`, `bm25fScore`; wired into `scorePagesByNeedles` with `scorer: 'legacy'` behind a switch. Split is Unicode script property — **no language names in the module**. 30 tests. Two real bugs the tests caught: `df` counted a term once per field so it passed `docCount` and every IDF went negative; and the wiring edit split the function in two. Original targets: `src/core/ppr-cascade.ts:202` `tokenizeQuery`, `src/core/candidate-window.ts` `contextKeywords`, and `src/core/retrieval-profile.ts` `scoreProfile` which BM25F replaces. **One phase — segmentation and the ranker cannot be split**, because without segmentation a Chinese query is one token and the IDF table is built over whole clauses |
+| **3** `lexStrong` coverage — **coupling now measured, not assumed** | Landed behind: with BM25F the LLM escalation gate fired **4× where it must fire 0** (`LEX_MATCH_MIN_TOP_SCORE = 5` cannot hold against scores near 0.5), so the lex stage keeps `scorer: 'legacy'` until Phase 3 moves scorer and gate together. Targets: `src/wiki/query-engine/pipeline/select-seeds.ts:111-112`, constants `LEX_MATCH_MIN_COUNT = 3` at `src/constants.ts:829` and `LEX_MATCH_MIN_TOP_SCORE = 5` at `:846`. Also `src/core/ppr-cascade.ts` `lexScoreOf` is a rank placeholder and `mergeWithPPR` fuses `ppr + hint×0.1×maxPpr` by hand — change both, RRF `k = 60` |
+| **4** determinism + adjacency | `src/core/monte-carlo-ppr.ts` seed per (query, seed path) — drop `graphSize`; pre-build reverse adjacency in `src/wiki/engine-internals/graph-cache.ts`; hoist the PPR loop in `src/core/hub-link-distinctiveness.ts` (380 calls to 20) |
+| **5** harness + diagnostic | fixtures over four segmentation regimes **plus source-language ≠ wiki-language**; a seeds-only ablation arm; report candidate-pool source count |
+| **6** assembly | greedy pick with source coverage; `src/wiki/query-engine/QueryView-class.ts` `mergeWithPPR` is where `slice(0, topN)` happens; `PageRef` has **no** `sources` field — take it from frontmatter |
+| **7** process | the ROADMAP prune below; `contextKeywords` as its own PR (it is on the write path) |
+
+**Rejected — do not re-propose.**
+
+| Option | Why rejected |
+|---|---|
+| "≥ 2 distinct needles" floor for the summary tier | starves single-keyword queries (`AMPK`) |
+| absolute evidence threshold `sum(w) ≥ 1` | `w = ln(N/df)/ln N ≥ 1` is equivalent to `df ≤ 1`, so `deepseek` at w=0.56 could never fill in |
+| reusing `CANDIDATE_WINDOW_DF_CAP = 0.5` for summaries | calibrated on long body text; on real summaries `the` measured 0.25 and the cap left 56 pages hitting |
+| bigram floor as the primary CJK rule | becomes a **true fallback** only: fires on exact miss, weight 1, proportional to coverage. Korean agglutination (`장애가`) is the reason it stays at all |
+| power iteration over the Monte Carlo walk | shelved; restart only if the ablation shows the graph arm carries weight, a comparison script matches the visit-count semantics, and lint timing is measured |
+| A/B arms with an embedding index | the plugin is zero-embedding |
+
+**Where the test material lives.**
+`/Users/greener/project/obsidian-llm-wiki-testdata/` — outside the repo, so it is
+not in git and not subject to the doc ceilings. It holds `generated/expA-main/`
+(166 pages, ingested from `main`) and `generated/expB-branch/` (174 pages, from
+this branch), both real LLM-wiki output in Chinese wiki language from the same
+five papers; `scripts/` with the three measurement scripts; and
+`audit/graph-audit-outputs.txt`. Its own README says which phase uses which
+part. The five source papers stay in the maintainer's vault under `AI学习资料/`.
+
+**How to re-derive the numbers.** `testdata/scripts/` holds the three
+measurements, all read-only over `**/*.md`: (a) graph shape —
+`node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`; (b)
+summary-tier document frequency — first non-heading body line after the
+frontmatter, cut at 100 chars, then `df(term) = pages containing term / pages`;
+(c) assembly — score pages on query tokens (title 3, body 1), take top-50 and
+top-10, read each page's `sources: [[sources/<slug>]]` refs, report distinct
+source count and the dominant source's share. Ingest experiments need a provider
+key which the maintainer supplies per session and which is **never** stored in
+the test data; the recorded run used `anthropic-compatible` / `MiniMax-M3` /
+`https://api.minimaxi.com/anthropic` through
+`tools/dev-instrument/run-instrument.mjs <vault> <source>`.
+
+**The matched pair is the useful artifact.** `expA-main` and `expB-branch` were
+ingested from the same five papers under two different commits. Their graph
+shapes agree (99.7 % intra-source on both) while their page counts differ
+(166 vs 174). That difference bounds the LLM sampling variance, and it is the
+number any A/B claim has to beat before it means anything. Use `expA-main` as
+the regression corpus for "this branch must not change ingest output".
+
+**Pending debt.** `ROADMAP.md` is 522 lines against a 500 ceiling. The prune
+deletes the superseded progress line (1608 bytes) and the five-arm paragraph
+block that phase 5 now carries — about 25 lines. It belongs in the same change
+as the next ROADMAP edit, not later.
+
+**Known false positives — do not "fix".** `shazam_verify` reports orphan `setup`
+at `tools/dev-instrument/run-instrument.mjs:54` and
+`tools/dev-instrument/run-graph-audit.mjs:41`; both are esbuild plugin callback
+properties. Hint-level unused vars in `scripts/update-fixture.mjs` and
+`src/core/hub-link-distinctiveness.ts:74` are pre-existing.
+
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
 **v1.28.0 shipped without its named head.** #729 Phase 1 was the plan of record; it did not go in.
@@ -342,6 +436,31 @@ own header says it is not a session log. The standing decisions stay above, in
 ---
 
 ## Lessons learned (from session memory)
+
+**Three rules from the #729 reader-recall work (2026-10-08), merged here rather than
+logged as a new dated block.**
+
+- **Never hand-tune what a standard probabilistic model already solves.** A
+  linear weight over text with no IDF keeps producing anomalies — stop words,
+  generic words, long documents, ties — and each anomaly invites another patch.
+  Eleven accumulated on one scoring function before this was seen. BM25F folds
+  seven of them into one function whose `k1`/`b` have literature defaults.
+  Field weights do **not**: moving the title weight from 3 to 1 moved MRR from
+  0.86 to 0.55. Calibrate fields on a harness; assume nothing about them.
+- **A test whose query language and document language differ cannot test the
+  document-side tier.** An English query against Chinese summaries gave
+  `the` DF ≈ 0 and zero rank inversions, which read as "the pollution never
+  fires" and was really "the tier never fires". Three conclusions were drawn
+  from that before the mismatch was named. Check the language pairing before
+  reading a null result as a null effect. The project is multilingual and
+  cross-lingual (English sources into a Chinese wiki is a real configuration),
+  so fixtures cover four segmentation regimes **plus** source ≠ wiki language.
+- **A constant calibrated on one score's absolute scale fails silently when the
+  scale changes.** `LEX_MATCH_MIN_COUNT = 3` and `LEX_MATCH_MIN_TOP_SCORE = 5`
+  were set on title-and-alias scores; adding a weaker tier made them pass more
+  often and nothing reported it. Replacing the scorer with BM25F would have
+  broken them the same way. Gate conditions that gate a decision need a
+  statistic that has no unit — a coverage ratio, not a count.
 
 Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private

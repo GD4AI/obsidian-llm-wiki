@@ -117,6 +117,14 @@ export function selectCandidateWindow<T extends WindowPage>(
 
   return pool
     .map((page, i) => ({ page, i, score: (lexical.get(page.path) ?? 0) + textScore[i] }))
+    // Ties keep the CALLER'S pool order, and that is a contract, not an
+    // accident: callers pass the pool ctime-ascending and the dedup prompt's
+    // KV-prefix cache depends on that order holding across calls (see
+    // `src/__tests__/wiki/page-factory/dedup-prompt-order.test.ts`). A change
+    // to path-ascending here was tried and reverted on 2026-10-07 — it broke
+    // three tests and a load-bearing property. The tie lottery #729 measured is
+    // in the seed ranking (`retrieval-profile` / `scorePagesByNeedles`), not
+    // here.
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .slice(0, topK)
     .map(r => r.page);

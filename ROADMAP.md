@@ -125,9 +125,14 @@ mechanism does not explain, so that observation still needs its own check. That 
 an estimate rather than a function: a rerun moves the numbers. Five runs per arm cannot separate two arms under that variance. Seeding the rng from the query hash is a
 prerequisite, not a refinement.
 
-**What the pass runs.** Two prerequisite fixes go into #781 first, each with a test that fails without it: a seeded rng, and a tie-break that is not the caller's pool order —
-neutral and reproducible (path-lexicographic) for the measurement, because a recency-biased product policy is a separate decision and must not be smuggled in as a measurement
-choice. Then five arms, all with the same model, the same character budget, thinking off, truth from the notes, and a blind rater:
+**Where the work runs.** Not on #781. The measurement decides whether that PR is needed, and putting the decision on the branch under judgement would assume its own
+conclusion. The work goes on `feat/729-reader-recall-2026-10-07`, one commit per phase, one PR at the end. #781 stays held and untouched: it returns with the shared
+tie-break if the measurement says the graph is short of reachability, and it becomes the negative result this section names if it is not.
+
+Two prerequisite fixes lead, each with a test that fails without it: a seeded rng, and a tie-break that is not the caller's pool order. The tie-break orders by text relevance
+before path, because a path-only rule replaces an ordering nobody chose with an alphabetical one — the same defect in a different hat.
+
+The five arms stay as designed, all with the same model, the same character budget, thinking off, truth from the notes, and a blind rater:
 
 | Arm | Retrieval over | What it isolates |
 |---|---|---|
@@ -138,14 +143,95 @@ choice. Then five arms, all with the same model, the same character budget, thin
 | **E** | C′ plus a reserved cross-source budget, applied by hand | the proposal itself |
 
 The metric is recall@K plus **the cross-source share of the loaded pages**, which the tie-break finding predicts sits near zero. `n >= 20` multi-source questions, with a CJK
-subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged.
+subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged. The measurement has two
+halves: a synthetic corpus with known truth that runs without anybody, and the real vault at `n >= 20` that needs the maintainer and @DocTpoint.
 
-**The work splits in two.** The automatable half is a synthetic corpus with known ground truth — N sources against M entities, cross-source links placed by hand — run through
-the pipeline deterministically, reporting recall@K and the cross-source share per arm. It is reproducible and needs nobody. The half that decides is the real vault against a
-real provider at `n >= 20`, blind-rated, and it needs the maintainer and @DocTpoint.
+**The implementation, as phases.** Each carries a test that fails without it, Gate 1 green after each commit, and no phase changes a file format.
 
-**A third finding, outside this pass.** For a Chinese query the lexical stage is nearly all-or-nothing, because one clause is one token. It affects every query path, not only
-M0, so it belongs in its own issue rather than in the shape of this one.
+**Progress:** see the phase table below — P0/P1/P2a/P2b landed 2026-10-07, Phase 1 landed 2026-10-08.
+
+**The implementation, as phases.** Superseded 2026-10-08 by the architecture
+below: the P0-P4 split scattered one scoring function across seven patches. Each
+phase carries a test that fails without it, Gate 1 green after each commit.
+
+**The architecture. Four parts, one job each.**
+
+```
+representation (segmentation + term index)
+   ↓ ranking   (BM25F — one probabilistic function)
+   ↓ assembly  (RRF fusion + source coverage + budget)   ← the issue's own symptom
+   ↓ fallback  (LLM keyword bridge)                      ← the ceiling of the floor/ceiling framing
+graph expansion = a parallel recall channel, not part of ranking
+```
+
+A hand-tuned linear weight over text with no IDF keeps producing anomalies — stop words, generic words, long documents, ties — and every anomaly became another patch. Eleven had accumulated on one scoring function. BM25F folds the seven scoring ones into one: the summary and prose tiers become fields, DF suppression and IDF weighting come from the term statistics, length normalisation and term saturation come with the function, and continuous scores make ties rare. `k1 = 1.2` and `b = 0.75` are literature defaults; **the field weights are not** — dropping the title weight from 3 to 1 moved MRR from 0.86 to 0.55, so they are calibrated on the harness, never assumed.
+
+**Two couplings that fix the order.** Segmentation and BM25F land in the **same** phase: without segmentation a Chinese query is one token and the IDF table is built over whole clauses, which is not a ranker. And `lexStrong`'s constants — `LEX_MATCH_MIN_COUNT = 3`, `LEX_MATCH_MIN_TOP_SCORE = 5`, `lexIsReliable` — are calibrated on the old score's absolute scale. BM25F has no absolute scale, so they fail silently. They become relative statistics: the name tier's share of the query's total IDF.
+
+**A third coupling, found while implementing rather than while planning.** The harness that calibrates field weights and the coverage threshold was scheduled after the phases that need it. That inversion was caught when the shipped `DEFAULT_FIELD_WEIGHTS` turned out to be the old hand-tuned ratio wearing a new name — the plan says field weights are calibrated on the harness and never assumed, and the constant as written assumed them. The harness moved ahead of what it calibrates. The alternative was to let phases 3 and 4 draw conclusions from uncalibrated numbers and re-derive them later.
+
+| Phase | What it does | Order |
+|---|---|---|
+| **1** ✅ 2026-10-08 | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line. `firstBodyLine` skipped the provenance blockquote instead, so every stub indexed the same sentence. Gate is the flag, not the text — a page may legitimately open with a blockquote. 4 tests, and the generated corpus shows 0 of 350 pages changed | first — the boilerplate words would pollute every later calibration |
+| **2** ✅ 2026-10-08 | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch. **Landed.** The lex stage keeps `scorer: 'legacy'` until phase 4, on purpose — its gate is calibrated on that scale | **one phase, not two** |
+| **3** | harness + diagnostic command: four segmentation regimes, a cross-lingual fixture, a seeds-only ablation arm, and a **candidate-pool source count**. **Moved up from 5 on 2026-10-08** — phases 2 and 4 both need calibrated constants and the harness is what produces them. Shipping `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2, summary 1, text 1}` as if it were measured would break the plan's own rule that field weights are calibrated, never assumed | **now precedes what it calibrates** |
+| **4** | `lexStrong` becomes a unitless coverage statistic, and the lex stage moves off `scorer: 'legacy'` in the **same** change | **silent failure measured, not assumed** — with BM25F behind the lex stage the LLM escalation gate fired 4 times where it must fire 0, because `LEX_MATCH_MIN_TOP_SCORE = 5` cannot hold against scores near 0.5 |
+| **5** | determinism, reverse adjacency pre-built in `GraphCache`, the hub-link loop hoisted (380 calls to 20) | orthogonal, independent wins |
+| **6** | assembly layer: RRF fusion (`k = 60`) plus source coverage | **precondition measured, see below** |
+| **7** | process items; `contextKeywords` as its own PR | it is on the write path |
+| **8** | write-side: stop writing dead related entries (keep the name in `log.md` + the lint report per DocTpoint), the alias budget to 3, wire `hub-link-distinctiveness` into a fix | dropped by the restructure and put back |
+
+**What the assembly measurement settled.** On the maintainer's `wiki/` the top-50 candidates for six realistic questions cover **9.3 distinct sources on average**; the top-10 that actually loads covers **3.5**, dominant source **77 %**. On the controlled `expB` vault: 4.8 against 3.3, dominant 58 %. The cleanest case is 「强化学习 推理能力」— ten sources in the pool, **one** loaded. So the pool is not short of cross-source pages; the selection throws them away. That is what the issue's "reserved budget" was always about, and its native home is the assembly step, not a new kind of edge.
+
+**Two limits the same measurement found.** Source coverage can only act on pages carrying a `sources:` ref: **97 %** on a freshly generated vault, **25 %** on the maintainer's mixed-generation `wiki/` (538 of 2141). The gain moves with the age of the library. And one of the six questions —「模型 并行 训练」— had a single-source pool to begin with, where assembly cannot help at all; that is why the diagnostic command reports the pool's source count.
+
+**M0 is re-scoped, not cancelled.** The assembly step fixes the query. It does not touch a word of the Related section a human reads, and #358's complementary memory model makes that reader a real consumer. M0 now serves **reading**, and its priority depends on how often Related sections are read — which nobody has measured.
+
+**Shelved: replacing the Monte Carlo walk with power iteration.** The semantic
+mapping is a silent-failure risk and this arm's contribution is not yet known;
+the seeds-only ablation arm exists to answer exactly that. Restart on three
+conditions: the ablation shows the graph arm carries real weight, a comparison
+script shows the visit-count semantics can be matched exactly, and lint timing
+is measured. The independent wins it promised are already in phase 4.
+
+**Measured 2026-10-08 — three vaults and one controlled pair.** The instrument is
+`node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. It reads and never writes.
+
+| Vault | nodes | edges | planet top-10 | intra-source | top-10 edges | 3-hop directed | 3-hop undirected |
+|---|---|---|---|---|---|---|---|
+| `wiki/` — mixed generations, 2143 pages | 2143 | 12840 | 14.5% | 34.4% | 6.7% | **12.2%** | **63.7%** |
+| `test8/` — one generation | 175 | 850 | 26.6% | 96.7% | 20.0% | 21.4% | 43.8% |
+| **expB** — controlled, 5 papers, this branch | 172 | 1000 | 34.9% | **99.7%** | 27.8% | 75.9% | 84.4% |
+| **expA** — the same 5 papers, `main` | 164 | 935 | 35.4% | **99.7%** | 18.9% | — | — |
+
+To reproduce the controlled pair: five files from `AI学习资料/` —
+*Chain-of-Thought Prompting Elicits Reasoning…*, *DeepSeek_LLM_2024-01*,
+*DeepSeek-V2_2024-06*, *DeepSeek_V3_2024-12*, *DeepSeek_V4* — sha256 prefixes
+`56be158ff40e`, `67d28ebd25f3`, `bba091c419c0`, `9242c8912923`, `80ed79d9d057`,
+ingested one at a time through `tools/dev-instrument/run-instrument.mjs` with
+MiniMax-M3 on `anthropic-compatible`, thinking off. Each paper takes 6-13
+minutes and produces 28-47 pages. Two of the ten runs failed on a network drop
+and succeeded on retry — a run that reports `success false` with
+`obsidianFetchBridge network error` is worth one retry before it is read as a
+defect.
+
+**What the numbers settle.** The intra-source share is **99.7 % on a freshly
+generated vault, on both branches** — so the star shape is the extraction
+prompt's doing at `ingestion.ts:33`, not a generator generation. The highest
+in-degree nodes are the source pages themselves, one per note, which is the
+planet shape directly. And the directed-to-undirected gap is wide on an old
+vault (12.2 against 63.7) and narrow on a fresh one (75.9 against 84.4), so a
+reverse-edge walk is worth roughly **50 points on the maintainer's `wiki/`** and
+about **8 on a new vault**. The estimate changes with the age of the graph, not
+with the code.
+
+Three findings set this shape. The verbatim source vocabulary already reaches the page — `prompts/ingestion.ts:30` requires 2-4 verbatim sentences and
+`create-page.ts:246-256` writes them as the Mentions section — and the reader never reads them. The index summary is not a summary field: `core/frontmatter.ts:290-291` has
+no `summary` key, and `index-generator.ts:137-156` takes the first body line cut at 100 characters, while the extraction's 4-6 sentence summary is used once as a prompt
+input and dropped. And `core/hub-link-distinctiveness.ts:7-9` already computes which hub links are mutually redundant and only reports them.
+
+The Related section headings stay as they are. They live in the schema and `section-header-canonicalizer` depends on their labels; renaming them for vocabulary is a breaking
+change for a small gain. M2 is rejected rather than deferred for vaults whose ground truth is the notes.
 
 The decision queue used to say "Three options in MEMORY §'Seed stage'". **That section does not exist**, and no other file held the three options. The row named three and
 wrote down one. They are set out here, on the axis of what each one commits to.
