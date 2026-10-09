@@ -47,13 +47,13 @@ An external review of this branch was verified against production code; all eigh
 
 | # | Work | Why this order |
 |---|---|---|
-| **1** | **Four small fixes** — morphology fallback (BM25F lost `needleHits`' word-prefix tolerance: `model` matched `models`), NFKC normalisation in `segment`, code-point slicing (`segment('𠮷野家')` yields an orphaned low surrogate), alias length normalisation (measured 41% against a 67% intent). Each gets a regression fixture | **These are regressions and correctness bugs. They outrank any new capability.** |
-| **2** | **Wire `PageRef.sourceSlug`** from frontmatter in `read-index.ts:41-45` | The assembly layer is a **no-op in production** until this lands. The A/B numbers came from a dev tool that parsed frontmatter by hand. |
-| **3** | **Harder fixtures + a relevance metric** — evidence-page recall@K | My A/B measured **source count**, which is what the rule optimises. Self-fulfilling. Reproduced: 8 relevant pages from one source, budget 10 loads **1**, while the metric reports 10 sources / 10% dominant and reads as an improvement. |
-| **4** | **Calibrate the coverage penalty strength** on the harness | `/(1+taken)` has no visible constant but its **strength is set implicitly by the score scale**. RRF compresses ranks 1-50 to 1.8x while the penalty is 2x. My "no lambda to calibrate" claim was wrong. |
-| **5** | Graph-based attribution — **measure coverage before believing it** | Old vaults' star shape means source pages have real inlinks. An inlink is evidence, not a guess. Unverified hypothesis. |
-| **6** | **Split the PR** — 29 commits, 5000+ lines, mixing read/write/tools/docs | Reviewer's point, accepted. |
-| **7** | **A user-visible switch** for the scorer, or keep legacy as default until accuracy evidence exists | Project rule is "on by default WITH an off switch". Only a function parameter exists today. |
+| **1** | **Four small fixes** — morphology fallback (BM25F lost `needleHits`' word-prefix tolerance: `model` matched `models`), NFKC normalisation in `segment`, code-point slicing (`segment('𠮷野家')` yields an orphaned low surrogate), alias length normalisation (measured 41% against a 67% intent). Each gets a regression fixture | ✅ **DONE 2026-10-09** (`575c7626`, `2bea2f7a`, `6db885ac`). Three extra defects found while building: a shell-test anti-pattern in my own fixtures, `acc / matched` instead of `acc / grams.length`, and a precision regression from short-word fallback (fixed with a five-character floor). |
+| **2** | **Wire `PageRef.sourceSlug`** from frontmatter in `read-index.ts:41-45` | ✅ **DONE 2026-10-09** (`f66e1491`). Index line gains an optional `source: <slug>` marker. Compatible extension. |
+| **3** | **Harder fixtures + a relevance metric** — evidence-page recall@K | ✅ **DONE 2026-10-09** (`dacecbfe`). HARD_ENTRIES, acceptance asserted: **inverted scorer must lose**. Measured HARD DEFAULT 0.833 vs INVERTED 0.472. |
+| **4** | **Calibrate the coverage penalty strength** on the harness | ❌ TODO. The harness can now decide. |
+| **5** | Graph-based attribution — **measure coverage before believing it** | ❌ TODO. |
+| **6** | **Split the PR** — 29 commits, 5000+ lines, mixing read/write/tools/docs | ❌ TODO. Do last. |
+| **7** | **A user-visible switch** for the scorer | ✅ **DONE 2026-10-09** (`2164661d`, `a55d4b8b`). Bottom Advanced settings panel, all 11 locales. |
 
 **Three statements are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) the A/B figure as production-representative — `sourceSlug` is never set in production; (c) "the assembly step is a no-op on old vaults" attributed solely to low attribution — unattributed pages are **never penalised**, which systematically favours them, and part of the 9.3→43.3 growth is the rule's doing.
 
