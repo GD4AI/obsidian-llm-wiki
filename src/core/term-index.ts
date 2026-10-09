@@ -92,6 +92,8 @@ export function segment(text: string): string[] {
 /** One page's term statistics for one field. `tf` counts terms. */
 export interface FieldTerms {
   readonly tf: ReadonlyMap<string, number>;
+  /** Character-gram counts for the unseen-word fallback (#819 review, fix D). */
+  readonly gramTf: ReadonlyMap<string, number>;
   readonly length: number;
 }
 
@@ -112,18 +114,50 @@ export interface CorpusTerms {
   readonly docFreq: ReadonlyMap<string, number>;
   /** Mean length per field, for BM25F length normalisation. */
   readonly avgFieldLength: Readonly<Record<FieldName, number>>;
+  /** Character-gram document frequency, for the unseen-word fallback. */
+  readonly gramDocFreq: ReadonlyMap<string, number>;
 }
 
 function countField(texts: readonly string[]): FieldTerms {
   const tf = new Map<string, number>();
+  const gramTf = new Map<string, number>();
   let length = 0;
   for (const t of texts) {
     for (const term of segment(t)) {
       length += 1;
       tf.set(term, (tf.get(term) ?? 0) + 1);
+      // Grams are a rescue path for unseen query words, not a second content
+      // stream. They are counted separately and never in `length`, so they
+      // cannot distort the length normalisation.
+      for (const g of new Set(wordGrams(term))) {
+        gramTf.set(g, (gramTf.get(g) ?? 0) + 1);
+      }
     }
   }
-  return { tf, length };
+  return { tf, gramTf, length };
+}
+
+/** Character width of the fallback gram. Three letters survives an inflection. */
+export const GRAM_N = 3;
+
+/**
+ * Character n-grams of one bounded-word term, for the unseen-word fallback
+ * (#819 review, fix D). A boundaryless run is already bigrammed and gets none.
+ *
+ * Combining diacritics U+0300–U+036F are folded **here only**. The primary term
+ * keeps them, so `café` and `cafe` remain distinct exact terms and Vietnamese
+ * `má`/`ma`/`mạ` each match their own page. Folding happens on the rescue path,
+ * where it can only lift a zero score and can never merge two exact terms.
+ *
+ * Pure. No IO.
+ */
+export function wordGrams(term: string): string[] {
+  if (term.length === 0 || NO_BOUNDARY.test(term)) return [];
+  const cps = [...term.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC')];
+  if (cps.length < GRAM_N) return [];
+  const out: string[] = [];
+  for (let k = 0; k + GRAM_N <= cps.length; k += 1) out.push(cps.slice(k, k + GRAM_N).join(''));
+  return out;
 }
 
 /** Build one page's term statistics. Pure. */
@@ -153,15 +187,22 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
   // intent is the declared weight ratio of 2:3. A field nobody holds stays 0 and
   // the scorer's `|| 1` keeps it out of the way.
   const having: Record<FieldName, number> = { title: 0, alias: 0, summary: 0, text: 0 };
+  const gramDocFreq = new Map<string, number>();
   for (const page of pages) {
     // Document frequency counts a DOCUMENT once, not once per field. Counting
     // per field let one page push `df` past `docCount`, which made
     // `N - df + 0.5` negative and every score negative with it.
     const seen = new Set<string>();
+    const seenGrams = new Set<string>();
     for (const field of FIELD_ORDER) {
       const f = page.fields[field];
       totals[field] += f.length;
       if (f.length > 0) having[field] += 1;
+      for (const g of f.gramTf.keys()) {
+        if (seenGrams.has(g)) continue;
+        seenGrams.add(g);
+        gramDocFreq.set(g, (gramDocFreq.get(g) ?? 0) + 1);
+      }
       for (const term of f.tf.keys()) {
         if (seen.has(term)) continue;
         seen.add(term);
@@ -176,7 +217,7 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
     summary: having.summary ? totals.summary / having.summary : 0,
     text: having.text ? totals.text / having.text : 0,
   };
-  return { docCount: n, docFreq, avgFieldLength };
+  return { docCount: n, docFreq, avgFieldLength, gramDocFreq };
 }
 
 /**
@@ -261,7 +302,43 @@ export function bm25fScore(
   let score = 0;
   for (const term of new Set(queryTerms)) {
     const df = corpus.docFreq.get(term) ?? 0;
-    if (df === 0) continue;
+    if (df === 0) {
+      // Unseen word (#819 review, fix D). Its trigrams stand in for it, and the
+      // average keeps a full overlap worth exactly one term. The exact path is
+      // untouched: a word present in the corpus never reaches this branch, so
+      // the fallback cannot compete with the very term it would approximate.
+      const grams = [...new Set(wordGrams(term))];
+      if (grams.length === 0) continue;
+      let acc = 0;
+      let matched = 0;
+      for (const g of grams) {
+        const gdf = corpus.gramDocFreq.get(g) ?? 0;
+        if (gdf === 0) continue;
+        const gidf = Math.log(1 + (corpus.docCount - gdf + 0.5) / (gdf + 0.5));
+        let weighted = 0;
+        for (const field of FIELD_ORDER) {
+          const f = page.fields[field];
+          const tf = f.gramTf.get(g) ?? 0;
+          if (tf === 0) continue;
+          const avg = corpus.avgFieldLength[field] || 1;
+          const norm = 1 - b + (b * f.length) / avg;
+          weighted += weights[field] * (tf / norm);
+        }
+        if (weighted === 0) continue;
+        matched += 1;
+        acc += (gidf * weighted) / (k1 + weighted);
+      }
+      // A fallback needs at least two overlapping grams AND at least three
+      // grams to begin with. One trigram is coincidence, and a short word has
+      // too little signal: `kann` matched `Pekannüsse` on both its grams. This
+      // is the same reasoning the boundary-less path uses — a two-character
+      // needle has one bigram and would open the floor to half the vault. So a
+      // word under five characters cannot fall back at all; it still matches
+      // exactly when it exists in the corpus.
+      if (grams.length < 3 || matched < 2) continue;
+      score += acc / grams.length;
+      continue;
+    }
     const idf = Math.log(1 + (corpus.docCount - df + 0.5) / (df + 0.5));
     let weighted = 0;
     for (const field of FIELD_ORDER) {

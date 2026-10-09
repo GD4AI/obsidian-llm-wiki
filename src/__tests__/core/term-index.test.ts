@@ -18,6 +18,7 @@ import {
   buildCorpusTerms,
   bm25fScore,
   nameTierCoverage,
+  wordGrams,
   DEFAULT_FIELD_WEIGHTS,
 } from '../../core/term-index';
 
@@ -439,5 +440,101 @@ describe('avgFieldLength averages over the pages that HAVE the field (#819 revie
     const pages = [mkp('A B', [], ''), mkp('C D', [], '')];
     const corpus = buildCorpusTerms(pages);
     expect(corpus.avgFieldLength.alias).toBe(0);
+  });
+});
+
+describe('unseen-word fallback to character trigrams (#819 review, fix D)', () => {
+  const page = (title: string, summary = '') =>
+    buildPageTerms({ title, aliases: [], summary, text: '' });
+
+  const ranks = (query: string, pages: readonly ReturnType<typeof page>[], target: number) => {
+    const corpus = buildCorpusTerms(pages);
+    const terms = query.normalize('NFKC').toLowerCase().split(/\s+/).filter(Boolean);
+    const scored = pages.map((p, i) => ({
+      i,
+      score: bm25fScore(terms, p, corpus, DEFAULT_FIELD_WEIGHTS),
+    }));
+    scored.sort((a, b) => b.score - a.score || a.i - b.i);
+    return { rank: scored.findIndex(s => s.i === target), score: scored.find(s => s.i === target)!.score };
+  };
+
+  /**
+   * Assert the target page is first AND carries a real score. Ranking alone is
+   * not enough: when every page scores 0 the stable sort still puts index 0
+   * first, so a rank-only assertion passes without the fix and proves nothing.
+   */
+  const beats = (query: string, pages: readonly ReturnType<typeof page>[], target: number) => {
+    const r = ranks(query, pages, target);
+    expect(r.score).toBeGreaterThan(0);
+    expect(r.rank).toBe(0);
+    return r;
+  };
+
+  it('wordGrams returns character trigrams for a bounded-word term', () => {
+    expect(wordGrams('neural')).toEqual(['neu', 'eur', 'ura', 'ral']);
+  });
+
+  it('wordGrams returns nothing for a boundaryless run — it is already bigrammed', () => {
+    expect(wordGrams('模型')).toEqual([]);
+  });
+
+  it('wordGrams returns nothing for a term shorter than the gram width', () => {
+    expect(wordGrams('ai')).toEqual([]);
+  });
+
+  it('matches an English plural from its singular query — networks on Neural network', () => {
+    // The query word must be ONLY the inflected one. Querying `neural network`
+    // would match `neural` exactly and never reach the fallback.
+    const pages = [page('Neural network'), page('Gradient descent'), page('Adam optimiser')];
+    beats('networks', pages, 0);
+  });
+
+  it('matches German compounding — Funktion der Mitochondrien on Mitochondrienfunktion', () => {
+    const pages = [page('Mitochondrienfunktion'), page('Zellatmung'), page('ATP-Synthase')];
+    beats('Funktion der Mitochondrien', pages, 0);
+  });
+
+  it('matches Russian inflection — нейронные сети on Нейронная сеть', () => {
+    const pages = [page('Нейронная сеть'), page('Градиентный спуск')];
+    beats('нейронные сети', pages, 0);
+  });
+
+  it('folds diacritics only on the fallback — cafe resume on Café et résumé', () => {
+    const pages = [page('Café et résumé'), page('Pain au chocolat')];
+    beats('cafe resume', pages, 0);
+  });
+
+  it('exact matches always outrank fallback matches — insulin beats insuline', () => {
+    // `insulin` exists in the corpus, so the exact path runs and the fallback
+    // never fires. The page holding the exact term wins and the page holding
+    // only a near-miss gets nothing. That IS the precedence property.
+    const pages = [page('Insulin'), page('Insuline therapy')];
+    const corpus = buildCorpusTerms(pages);
+    const exact = bm25fScore(['insulin'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const other = bm25fScore(['insulin'], pages[1], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(exact).toBeGreaterThan(0);
+    expect(exact).toBeGreaterThan(other);
+  });
+
+  it('a full gram overlap is worth one term — it neither beats nor loses to exact', () => {
+    // The fallback averages over the grams it contributes, so a complete overlap
+    // lands at roughly the same value as the exact term. The property to protect
+    // is that it does not EXCEED the exact match.
+    const pages = [page('Neural networks')];
+    const corpus = buildCorpusTerms(pages);
+    const exact = bm25fScore(['neural'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const unseen = bm25fScore(['neuralx'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(unseen).toBeGreaterThan(0);
+    expect(unseen).toBeLessThanOrEqual(exact * 1.05);
+  });
+
+  it('a partial gram overlap scores below a full one', () => {
+    const pages = [page('Mitochondrienfunktion')];
+    const corpus = buildCorpusTerms(pages);
+    const full = bm25fScore(['mitochondrien'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const partial = bm25fScore(['chondrienx'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(full).toBeGreaterThan(0);
+    expect(partial).toBeGreaterThan(0);
+    expect(partial).toBeLessThan(full);
   });
 });
