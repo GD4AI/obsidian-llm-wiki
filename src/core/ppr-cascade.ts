@@ -25,6 +25,16 @@ import {
   WORD_CHAR_CLASS,
   BOUNDED_WORD_CHAR,
 } from './retrieval-profile';
+import {
+  segment,
+  buildPageTerms,
+  buildCorpusTerms,
+  bm25fScore,
+  DEFAULT_FIELD_WEIGHTS,
+  FIELD_ORDER,
+  type CorpusTerms,
+  type FieldWeights,
+} from './term-index';
 
 // `needleHits` moves to `retrieval-profile.ts`, which owns "how a query matches
 // a page", and is re-exported here so existing callers keep their import path.
@@ -61,41 +71,80 @@ export function formatPageRefSummary(p: PageRef): string {
 }
 
 /**
- * Score pages by per-needle overlap against title + aliases. Shared
- * primitive behind both Stage 1 (lex, needles = tokenized query) and
- * Stage 1.5b (LLM-generated keywords). Needles are expected
- * lowercased; each page's title + aliases are lowercased internally.
- *
- * Scoring per needle:
- *   - title hit: 3
- *   - alias hit: 2
- *
- * Returns pages with score > 0, sorted by score descending, with the
- * count of needles matched (`tokensFound`) so callers can apply a
+ * Score pages by per-needle overlap. Shared primitive behind Stage 1 (lex,
+ * needles = tokenized query) and Stage 1.5b (LLM-generated keywords). Needles
+ * are expected lowercased; each page's title + aliases are lowercased
+ * internally. Returns pages with score > 0, sorted by score descending, with
+ * the count of needles matched (`tokensFound`) so callers can apply a
  * multi-needle bonus. Pure function — no IO.
+ *
+ * #729 Phase 2: the default scorer is now BM25F over a term index built from
+ * title, aliases and summary. The hand-tuned linear scorer (`scoreProfile`,
+ * title 3 / alias 2 / summary 1 / text 1) is kept behind `scorer: 'legacy'`
+ * and is not the default. The project convention is a new feature on by
+ * default with a switch to turn it off, not the reverse.
+ *
+ * Why BM25F rather than another weight table: a linear weight over text with
+ * no IDF cannot say that a generic term is worth less than a specific one, and
+ * every anomaly that produced became another patch — eleven on one function.
+ * See `term-index.ts`.
+ *
+ * The corpus IDF table is built once per call unless the caller passes one.
+ * Callers that score many queries over the same page set should build it once
+ * and pass it; rebuilding it per query is the one performance trap in this
+ * layer.
  */
-// The character classes and the needle matcher live in `retrieval-profile.ts`.
-// The tokenizer keeps its two own regexes here because nothing else uses them.
-const WORD_RUN = new RegExp(`${BOUNDED_WORD_CHAR}{2,}`, 'gu');
-/**
- * Leading/trailing characters that are not part of any word — punctuation
- * for our purposes. Two alternatives so a token that is nothing but
- * punctuation collapses to the empty string.
- */
-const EDGE_PUNCTUATION = new RegExp(`^[^${WORD_CHAR_CLASS}]+|[^${WORD_CHAR_CLASS}]+$`, 'gu');
+export interface ScorePagesOptions {
+  /** `bm25f` (default) or `legacy` — the old linear scorer, kept for A/B. */
+  readonly scorer?: 'bm25f' | 'legacy';
+  /** A prebuilt IDF table over the same page set. Built from `pages` when absent. */
+  readonly corpus?: CorpusTerms;
+  /** Field weights. Defaults to the old ratio; the harness calibrates them. */
+  readonly weights?: FieldWeights;
+}
 
 export function scorePagesByNeedles(
   pages: PageRef[],
   needles: string[],
+  options: ScorePagesOptions = {},
 ): Array<{ page: PageRef; score: number; tokensFound: number }> {
+  const useLegacy = options.scorer === 'legacy';
+  // BM25F needs one query term list, segmented the same way the index is.
+  // A needle is already a token; segmenting it turns a Chinese clause into
+  // bigrams, which is what makes a Chinese query match at all.
+  const queryTerms = useLegacy ? needles : needles.flatMap(n => segment(n));
+  const pageTerms = useLegacy ? [] : pages.map(p => buildPageTerms({
+    title: p.title,
+    aliases: p.aliases,
+    summary: p.summary ?? '',
+    text: '',
+  }));
+  const corpus = useLegacy ? undefined : (options.corpus ?? buildCorpusTerms(pageTerms));
+  const weights = options.weights ?? DEFAULT_FIELD_WEIGHTS;
+
   const scored: Array<{ page: PageRef; score: number; tokensFound: number }> = [];
-  for (const page of pages) {
-    // Four tiers — title, alias, summary, prose — from one table. The summary
-    // tier is the fix for #729's measured loss; see `retrieval-profile.ts`.
-    const { score, tokensFound } = scoreProfile(
-      { title: page.title, aliases: page.aliases, summary: page.summary },
-      needles,
-    );
+  for (let i = 0; i < pages.length; i += 1) {
+    const page = pages[i];
+    let score: number;
+    let tokensFound: number;
+    if (useLegacy) {
+      // Four tiers — title, alias, summary, prose — from one table. The summary
+      // tier is the fix for #729's measured loss; see `retrieval-profile.ts`.
+      const s = scoreProfile(
+        { title: page.title, aliases: page.aliases, summary: page.summary },
+        needles,
+      );
+      score = s.score;
+      tokensFound = s.tokensFound;
+    } else {
+      score = bm25fScore(queryTerms, pageTerms[i], corpus!, weights);
+      // Breadth still matters to callers that apply a multi-needle bonus, so
+      // count how many distinct needles landed rather than how many terms.
+      tokensFound = needles.filter(n => segment(n).some(t => {
+        for (const f of FIELD_ORDER) if (pageTerms[i].fields[f].tf.has(t)) return true;
+        return false;
+      })).length;
+    }
     if (score > 0) {
       scored.push({ page, score, tokensFound });
     }
@@ -113,6 +162,16 @@ export function scorePagesByNeedles(
   );
   return scored;
 }
+
+// The character classes and the needle matcher live in `retrieval-profile.ts`.
+// The tokenizer keeps its two own regexes here because nothing else uses them.
+const WORD_RUN = new RegExp(`${BOUNDED_WORD_CHAR}{2,}`, 'gu');
+/**
+ * Leading/trailing characters that are not part of any word — punctuation
+ * for our purposes. Two alternatives so a token that is nothing but
+ * punctuation collapses to the empty string.
+ */
+const EDGE_PUNCTUATION = new RegExp(`^[^${WORD_CHAR_CLASS}]+|[^${WORD_CHAR_CLASS}]+$`, 'gu');
 
 /**
  * v1.24.1 PATCH Phase 5.5.0: lex match against TITLE + ALIASES only
@@ -143,7 +202,16 @@ export function lexMatchByTitleAndAliases(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
 
-  return scorePagesByNeedles(pages, tokens).map(s => {
+  // The lex stage keeps the **legacy** scorer for now, and that is deliberate
+  // rather than a hedge: this function's documented contract is the absolute
+  // score scale (title 3 / alias 2), and `lexStrong`'s gate is calibrated on
+  // exactly that scale (`LEX_MATCH_MIN_TOP_SCORE = 5`). Moving one without the
+  // other is the silent failure the #729 plan names — the gate stops firing and
+  // nothing reports it. Measured on the way to this commit: with BM25F here the
+  // LLM escalation gate fired 4 times where it must fire 0. Phase 3 moves the
+  // scorer and the gate together, and makes the gate a unitless coverage
+  // statistic so no scale survives to drift against.
+  return scorePagesByNeedles(pages, tokens, { scorer: 'legacy' }).map(s => {
     let score = s.score;
     if (s.tokensFound === tokens.length && tokens.length > 1) {
       score += 2;

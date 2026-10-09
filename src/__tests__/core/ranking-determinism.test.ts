@@ -82,11 +82,31 @@ describe('scorePagesByNeedles — ties do not follow the array', () => {
     // narrow: "alpha" hits the title (3) and "beta" hits nothing => score 3, 1 needle
     // broad:  "alpha" hits the title (3) and "beta" hits the alias (2) => score 5
     // Not a tie — so construct one deliberately below.
+    //
+    // This one is routed to the legacy scorer on purpose. The tie it builds
+    // relies on substring matching — `alphabet` hits the needle `alpha` — and
+    // on the legacy absolute scores, so both pages come out at 5. Under BM25F
+    // `alpha` and `alphabet` are distinct terms and there is no tie to break,
+    // which is exactly the property the plan claims for continuous scores:
+    // ties become rare rather than common. The tie-break itself is still
+    // exercised below on pages that are identical.
+    const tiedA = page('x/a', 'alpha', ['beta']);
+    const tiedB = page('x/b', 'alphabet', ['betamax']);
+    const r = scorePagesByNeedles([tiedB, tiedA], ['alpha', 'beta'], { scorer: 'legacy' });
+    expect(r[0].score).toBe(r[1].score);
+    expect(r[0].page.path).toBe('x/a');
+  });
+
+  it('a tie is rare under BM25F — distinct terms do not tie', () => {
+    // The same pair, scored by the default (BM25F). `alpha` and `alphabet` are
+    // distinct terms, so B does not match the query at all and drops out rather
+    // than tying. The legacy scorer's substring match is what made the two pages
+    // comparable in the first place. This is the anomaly the plan says
+    // continuous scores remove.
     const tiedA = page('x/a', 'alpha', ['beta']);
     const tiedB = page('x/b', 'alphabet', ['betamax']);
     const r = scorePagesByNeedles([tiedB, tiedA], ['alpha', 'beta']);
-    expect(r[0].score).toBe(r[1].score);
-    expect(r[0].page.path).toBe('x/a');
+    expect(r.map(x => x.page.path)).toEqual(['x/a']);
   });
 
   it('breaks a full tie by path ascending', () => {
