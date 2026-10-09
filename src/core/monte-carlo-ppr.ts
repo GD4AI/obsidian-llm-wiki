@@ -154,10 +154,18 @@ export function makeSeededRng(seed: string): () => number {
  * The seed set is sorted before it is joined: `[a, b]` and `[b, a]` are one
  * query, not two.
  */
+/**
+ * Deterministic rng for one query and seed set.
+ *
+ * The seed is the query and the seed paths only. It used to include the graph
+ * size, which meant adding an unrelated page to the vault changed every walk's
+ * randomness and moved rankings that had nothing to do with the change. The
+ * seed is what makes a rerun reproduce; it must depend on what the caller
+ * asked for, not on how big the world happened to be.
+ */
 export function seededRngFrom(
   query: string,
   seeds: readonly string[],
-  graphSize: number,
 ): () => number {
-  return makeSeededRng(`${query}\u0000${[...seeds].sort().join('\u0001')}\u0000${graphSize}`);
+  return makeSeededRng(`${query}\u0000${[...seeds].sort().join('\u0001')}`);
 }

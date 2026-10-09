@@ -458,7 +458,7 @@ function pprFromSeeds(
   // `Math.random` default made two runs over one query differ, which is a
   // lottery rather than a ranking: #729 cannot separate two arms under that
   // variance, and a user who asks twice gets two answers.
-  const walkRng = rng ?? seededRngFrom(query, seeds, graph.nodes.length);
+  const walkRng = rng ?? seededRngFrom(query, seeds);
   const merged = new Map<string, number>();
   for (const seed of seeds) {
     if (!graph.nodes.includes(seed)) continue;

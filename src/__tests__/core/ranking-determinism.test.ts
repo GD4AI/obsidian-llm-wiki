@@ -19,6 +19,31 @@
 
 import { describe, it, expect } from 'vitest';
 import { makeSeededRng, seededRngFrom } from '../../core/monte-carlo-ppr';
+
+describe('seededRngFrom — the seed is the request, not the world', () => {
+  // Regression. The seed used to include the graph size, so adding an
+  // unrelated page changed every walk's randomness and moved rankings that had
+  // nothing to do with the change. A rerun is only a rerun if the seed depends
+  // on what was asked.
+  it('is unaffected by the size of the graph', () => {
+    // The old signature took graphSize and mixed it into the seed. It is gone:
+    // there is no size to pass, and that is the assertion.
+    const a = seededRngFrom('query', ['s1', 's2']);
+    const b = seededRngFrom('query', ['s1', 's2']);
+    expect(a()).toBe(b());
+  });
+
+  it('depends on the query and the seed set, and on nothing else', () => {
+    const base = seededRngFrom('q', ['a', 'b'])();
+    expect(seededRngFrom('q', ['a', 'b'])()).toBe(base);
+    expect(seededRngFrom('other', ['a', 'b'])()).not.toBe(base);
+    expect(seededRngFrom('q', ['a', 'c'])()).not.toBe(base);
+  });
+
+  it('is independent of seed order — the set is sorted before hashing', () => {
+    expect(seededRngFrom('q', ['a', 'b'])()).toBe(seededRngFrom('q', ['b', 'a'])());
+  });
+});
 import { scorePagesByNeedles, type PageRef } from '../../core/ppr-cascade';
 import { selectCandidateWindow, type WindowPage } from '../../core/candidate-window';
 
@@ -64,9 +89,9 @@ describe('makeSeededRng', () => {
   });
 
   it('derives one rng from the query and the seed set', () => {
-    const one = seededRngFrom('what is this', ['a/b'], 100)();
-    const two = seededRngFrom('what is this', ['a/b'], 100)();
-    const other = seededRngFrom('what is this', ['a/c'], 100)();
+    const one = seededRngFrom('what is this', ['a/b'])();
+    const two = seededRngFrom('what is this', ['a/b'])();
+    const other = seededRngFrom('what is this', ['a/c'])();
     expect(one).toBe(two);
     expect(one).not.toBe(other);
   });
