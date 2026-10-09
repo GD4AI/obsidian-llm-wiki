@@ -39,7 +39,27 @@ head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
 `e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
 floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
 Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
-docs only. **Next step is Phase 3 — the harness**, moved ahead of the phases that need it. See "Two decisions taken 2026-10-08" below.
+docs only. **All eight phases shipped (2026-10-09). An external review then overturned three of my claims and changed the order.** Read §"Post-review plan" before continuing.
+
+**Post-review plan (2026-10-09) — read this before continuing.**
+
+An external review of this branch was verified against production code; all eight claims hold. Full detail with measurements is on [#819 comment](https://github.com/GD4AI/obsidian-llm-wiki/pull/819#issuecomment-6078993662). **Do not merge the assembly layer before step 3.**
+
+| # | Work | Why this order |
+|---|---|---|
+| **1** | **Four small fixes** — morphology fallback (BM25F lost `needleHits`' word-prefix tolerance: `model` matched `models`), NFKC normalisation in `segment`, code-point slicing (`segment('𠮷野家')` yields an orphaned low surrogate), alias length normalisation (measured 41% against a 67% intent). Each gets a regression fixture | **These are regressions and correctness bugs. They outrank any new capability.** |
+| **2** | **Wire `PageRef.sourceSlug`** from frontmatter in `read-index.ts:41-45` | The assembly layer is a **no-op in production** until this lands. The A/B numbers came from a dev tool that parsed frontmatter by hand. |
+| **3** | **Harder fixtures + a relevance metric** — evidence-page recall@K | My A/B measured **source count**, which is what the rule optimises. Self-fulfilling. Reproduced: 8 relevant pages from one source, budget 10 loads **1**, while the metric reports 10 sources / 10% dominant and reads as an improvement. |
+| **4** | **Calibrate the coverage penalty strength** on the harness | `/(1+taken)` has no visible constant but its **strength is set implicitly by the score scale**. RRF compresses ranks 1-50 to 1.8x while the penalty is 2x. My "no lambda to calibrate" claim was wrong. |
+| **5** | Graph-based attribution — **measure coverage before believing it** | Old vaults' star shape means source pages have real inlinks. An inlink is evidence, not a guess. Unverified hypothesis. |
+| **6** | **Split the PR** — 29 commits, 5000+ lines, mixing read/write/tools/docs | Reviewer's point, accepted. |
+| **7** | **A user-visible switch** for the scorer, or keep legacy as default until accuracy evidence exists | Project rule is "on by default WITH an off switch". Only a function parameter exists today. |
+
+**Three statements are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) the A/B figure as production-representative — `sourceSlug` is never set in production; (c) "the assembly step is a no-op on old vaults" attributed solely to low attribution — unattributed pages are **never penalised**, which systematically favours them, and part of the 9.3→43.3 growth is the rule's doing.
+
+**The metric lesson.** The rule optimises source count, and I measured source count. Any future claim needs a metric the rule does NOT directly optimise. Today that is evidence-page recall@K.
+
+**Reviewer offered to draft step 1's patch.** I review rather than author it — lowest risk, clearest boundary.
 
 **The seven phases, with their targets.**
 
