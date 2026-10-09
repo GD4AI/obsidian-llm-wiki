@@ -46,6 +46,21 @@ export interface Assemblable {
   readonly sourceSlug?: string;
 }
 
+/**
+ * A candidate the assembly step can compare across tiers.
+ *
+ * `tier` is a lexicographic band, not a weight. Lower tier always picks first.
+ * It exists because one ordering guarantee is not a preference but a promise:
+ * the query path pays for seed pages with an LLM call, and a ranking that lets
+ * an unreached keyword hit displace them throws away what that call bought.
+ * Measured once already — with 76 lex hits the top ten were all lex and the
+ * seeds were gone. A band preserves the promise with no coefficient, so there
+ * is nothing to calibrate.
+ */
+export interface Tiered extends Assemblable {
+  readonly tier?: number;
+}
+
 export interface RrfInput<T> {
   readonly candidates: readonly RankedCandidate<T>[];
   /** Not used in the formula; reported so a reader can tell channels apart. */
@@ -117,7 +132,7 @@ export interface AssemblyResult<T> {
  *
  * Pure. Deterministic. Ties break on `key`.
  */
-export function assembleWithCoverage<T extends Assemblable>(
+export function assembleWithCoverage<T extends Tiered>(
   candidates: ReadonlyArray<{ item: T; score: number }>,
   budget: number,
 ): AssemblyResult<T> {
@@ -126,15 +141,23 @@ export function assembleWithCoverage<T extends Assemblable>(
     if (c.item.sourceSlug !== undefined) poolSources.add(c.item.sourceSlug);
   }
   const remaining = [...candidates].sort(
-    (a, b) => b.score - a.score || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
+    (a, b) =>
+      (a.item.tier ?? 0) - (b.item.tier ?? 0)
+      || b.score - a.score
+      || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
   );
   const taken = new Map<string, number>();
   const picked: AssemblyResult<T>['picked'] = [];
   while (picked.length < budget && remaining.length > 0) {
+    // The lowest tier still present owns the pick. Within a tier the coverage
+    // rule decides. A later tier never displaces an earlier one, whatever the
+    // score says — that is what makes it a band rather than a weight.
+    const lowestTier = remaining[0].item.tier ?? 0;
     let bestIndex = 0;
     let bestEffective = -Infinity;
     for (let i = 0; i < remaining.length; i += 1) {
       const c = remaining[i];
+      if ((c.item.tier ?? 0) !== lowestTier) continue;
       const slug = c.item.sourceSlug;
       const penalty = slug === undefined ? 0 : (taken.get(slug) ?? 0);
       const effective = c.score / (1 + penalty);

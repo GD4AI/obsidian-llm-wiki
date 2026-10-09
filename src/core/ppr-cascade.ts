@@ -35,6 +35,12 @@ import {
   type CorpusTerms,
   type FieldWeights,
 } from './term-index';
+import {
+  rrfFuse,
+  assembleWithCoverage,
+  type Tiered,
+  type RankedCandidate,
+} from './assembly';
 
 // `needleHits` moves to `retrieval-profile.ts`, which owns "how a query matches
 // a page", and is re-exported here so existing callers keep their import path.
@@ -46,6 +52,13 @@ export interface PageRef {
   path: string;
   title: string;
   aliases: string[];
+  /**
+   * Source note slug this page was derived from, read from the `sources:`
+   * frontmatter ref. Optional because most pages do not carry one — 25 % of
+   * the measured mixed-generation vault does — and the assembly step treats an
+   * absent slug as "no coverage signal", never as "penalise".
+   */
+  sourceSlug?: string;
   /**
    * Optional text representation of the page — typically the summary
    * line from the wiki index. When provided, lexMatch uses this in
@@ -262,9 +275,6 @@ const DEFAULT_MIN_EDGES = 30;
 const DEFAULT_MIN_EDGE_DENSITY = 1.0;
 const DEFAULT_SEED_MIN_DEGREE = 1;
 const DEFAULT_TOP_N = 10;
-/** Share of the top PPR mass the lex rank hint may add — see mergeWithPPR. */
-const LEX_HINT_WEIGHT = 0.1;
-
 /**
  * Tokenize a query into individual searchable terms. Language-aware:
  *
@@ -597,47 +607,54 @@ function mergeWithPPR(
   const byPath = new Map<string, PageRef>();
   for (const p of pages) byPath.set(p.path, p);
 
-  // Merge: PPR mass is the ranker; the lex rank hint breaks ties among
-  // reached pages and orders the pages PPR never reached. The two live
-  // on different scales — lexScoreOf is a rank placeholder in (0, 1],
-  // PPR mass on a 3,000-node graph is ~0.05 for a seed — so the old
-  // `max(lex, ppr)` let any keyword hit outrank every PPR seed: with 76
-  // lex hits the top ten were all lex, and the seeds the LLM stage had
-  // just paid for were gone.
+  // #729 Phase 6. Two ranked lists fused by RRF, then a greedy pick with
+  // source coverage.
   //
-  // Reached pages: ppr + hint × LEX_HINT_WEIGHT × maxPpr — the hint can
-  // reorder pages within a tenth of the top mass (e.g. several seeds of
-  // equal mass), nothing further apart. Unreached pages: hint scaled
-  // strictly below the smallest mass, so one monotone key sorts both.
-  let minPpr = Infinity;
-  let maxPpr = 0;
-  for (const v of pprScores.values()) {
-    if (v <= 0) continue;
-    if (v < minPpr) minPpr = v;
-    if (v > maxPpr) maxPpr = v;
+  // This replaces `ppr + hint × maxPpr × a hand-picked weight`, which added a
+  // rank placeholder in (0, 1] to PPR mass around 0.05 through a coefficient
+  // chosen for a scale. The two never shared a unit. RRF adds 1/(k+rank) and
+  // reads no score at all, so there is no coefficient whose meaning depends on
+  // a scale.
+  //
+  // The cut is `assembleWithCoverage`, not `slice(0, topN)`. That is the
+  // issue's own symptom: top-50 held 9.3 sources and top-10 loaded 3.5, with
+  // one measured case loading 1 of 10. Pages with no `sourceSlug` are never
+  // penalised — 75 % of an old vault carries no ref, and pushing those down
+  // punishes the layer's blind spot rather than rewarding diversity.
+  interface AssemblablePage extends Tiered {
+    readonly page: PageRef;
   }
-  const reachedHintScale = maxPpr * LEX_HINT_WEIGHT;
-  const unreachedHintScale = Number.isFinite(minPpr) ? minPpr / 2 : 1;
+  // Tier 0 is everything PPR reached — the seeds the LLM stage paid for and
+  // their neighbourhood. Tier 1 is a lex-only hit. The band is a promise, not
+  // a weight: an unreached keyword hit cannot displace a seed regardless of
+  // score. Without it RRF puts a lex rank-1 and a PPR rank-1 at the same
+  // 1/(60+1), and the seeds vanish.
+  const wrap = (page: PageRef, tier: number): AssemblablePage => ({
+    key: page.path,
+    tier,
+    page,
+    ...(page.sourceSlug !== undefined ? { sourceSlug: page.sourceSlug } : {}),
+  });
 
-  const merged = new Map<string, { page: PageRef; score: number; arm: PageMatch['arm'] }>();
+  const reachedPaths = new Set([...pprScores.keys()].filter(p => pprScores.get(p)! > 0));
+  const lexList: RankedCandidate<AssemblablePage>[] = lex.map((page, i) => ({
+    item: wrap(page, reachedPaths.has(page.path) ? 0 : 1), rank: i + 1,
+  }));
+  const pprList: RankedCandidate<AssemblablePage>[] = [...pprScores.entries()]
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([path]) => byPath.get(path))
+    .filter((p): p is PageRef => p !== undefined)
+    .map((page, i) => ({ item: wrap(page, 0), rank: i + 1 }));
 
-  for (const page of lex) {
-    const ppr = pprScores.get(page.path) ?? 0;
-    const hint = lexScoreOf(page, lex);
-    const score = ppr > 0
-      ? ppr + hint * reachedHintScale
-      : hint * unreachedHintScale;
-    merged.set(page.path, { page, score, arm });
-  }
-  for (const [path, ppr] of pprScores) {
-    if (merged.has(path)) continue;
-    const page = byPath.get(path);
-    if (!page) continue;
-    merged.set(path, { page, score: ppr, arm });
-  }
+  const fused = rrfFuse<AssemblablePage>([
+    { channel: 'lex', candidates: lexList },
+    { channel: 'ppr', candidates: pprList },
+  ]);
 
-  return [...merged.values()]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN)
-    .map(({ page, score }) => ({ page, score, arm }));
+  const assembled = assembleWithCoverage(
+    fused.map(f => ({ item: f.item, score: f.score })),
+    topN,
+  );
+  return assembled.picked.map(p => ({ page: p.item.page, score: p.score, arm }));
 }
