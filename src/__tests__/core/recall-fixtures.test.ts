@@ -14,7 +14,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildSyntheticCorpus,
   builtInFixtures,
+  hardFixtures,
   SYNTHETIC_ENTRIES,
+  HARD_ENTRIES,
 } from '../../core/recall-fixtures';
 import {
   runHarness,
@@ -25,6 +27,7 @@ import {
 import {
   buildPageTerms,
   buildCorpusTerms,
+  bm25fScore,
   DEFAULT_FIELD_WEIGHTS,
   segment,
 } from '../../core/term-index';
@@ -157,5 +160,58 @@ describe('the synthetic/real split is real', () => {
     // Structural metrics still work — that is the real layer's whole job.
     expect(report.meanPoolSources).toBe(0);
     expect(report.results[0].unattributedCount).toBe(1);
+  });
+});
+
+describe('the adversarial set — the inverted scorer MUST lose (#819 step 3)', () => {
+  /**
+   * Summary weighted three times over title. On the easy set this scores MRR
+   * 1.000, exactly like DEFAULT_FIELD_WEIGHTS, which is why the easy set cannot
+   * calibrate anything. If it still wins here, this set is too easy as well.
+   */
+  const INVERTED = { title: 1, alias: 1, summary: 3, text: 1 } as const;
+
+  const mrr = (weights: typeof DEFAULT_FIELD_WEIGHTS): number => {
+    const { pages, fixtures } = hardFixtures();
+    const pageTerms = pages.map(p => buildPageTerms({
+      title: p.title, aliases: p.aliases, summary: p.summary ?? '', text: '',
+    }));
+    const corpus = buildCorpusTerms(pageTerms);
+    let sum = 0;
+    for (let i = 0; i < fixtures.length; i += 1) {
+      // The query must go through `segment`, exactly as the production path
+      // does. Splitting on whitespace alone turns a Chinese query into one term
+      // that matches no bigram in the index.
+      const terms = segment(fixtures[i].query);
+      const scored = pageTerms.map((pt, j) => ({ j, score: bm25fScore(terms, pt, corpus, weights) }));
+      scored.sort((a, b) => b.score - a.score || a.j - b.j);
+      const targetIdx = pages.findIndex(p => p.path === fixtures[i].relevant[0]);
+      const rank = scored.findIndex(s => s.j === targetIdx);
+      sum += rank >= 0 ? 1 / (rank + 1) : 0;
+    }
+    return sum / fixtures.length;
+  };
+
+  it('the default scorer does well on the adversarial set', () => {
+    expect(mrr(DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(0.5);
+  });
+
+  it('the inverted scorer scores BELOW the default — the set discriminates', () => {
+    const def = mrr(DEFAULT_FIELD_WEIGHTS);
+    const inv = mrr(INVERTED);
+    // The boolean acceptance criterion. If this fails the set is still too easy
+    // and no calibration derived from it is worth anything.
+    expect(inv).toBeLessThan(def);
+  });
+
+  it('every adversarial entry has a distractor that repeats the query in its summary', () => {
+    for (const entry of HARD_ENTRIES) {
+      const words = entry.query.toLowerCase().split(/\s+/).filter(Boolean);
+      const repeat = entry.distractors.some(d => {
+        const s = (d.summary ?? '').toLowerCase();
+        return words.every(w => s.includes(w));
+      });
+      expect(repeat, `entry ${entry.id} has no summary-repeating distractor`).toBe(true);
+    }
   });
 });

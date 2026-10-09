@@ -216,6 +216,131 @@ export const SYNTHETIC_ENTRIES: readonly SyntheticEntry[] = [
   },
 ];
 
+/**
+ * Adversarial entries (#819 step 3). Every one is built so the target wins on
+ * TITLE while a distractor wins on SUMMARY by repeating the query words. That is
+ * the only shape that can tell the field weights apart: the easy set above lets
+ * an inverted scorer — summary three times over title — score MRR 1.000, exactly
+ * like DEFAULT_FIELD_WEIGHTS, so it decides nothing.
+ *
+ * Acceptance is a boolean, not a judgement: **the inverted scorer must lose
+ * here**. If it does not, the set is still too easy and no accuracy claim from
+ * the harness is worth anything.
+ *
+ * Also covers inflection and diacritics, where the target's surface form does
+ * not equal the query's and only the fallback can reach it.
+ */
+export const HARD_ENTRIES: readonly SyntheticEntry[] = [
+  {
+    id: 'hard-title-vs-summary-en',
+    regime: 'latin',
+    sourceLanguage: 'en', queryLanguage: 'en',
+    query: 'annealed importance sampling',
+    target: {
+      path: 'hard/annealed', title: 'Annealed Importance Sampling',
+      aliases: [], summary: 'A method for estimating a normalizing constant.',
+      sourceSlug: 'paper-ais',
+    },
+    distractors: [
+      distractor('hard/monte-notes', 'Monte Carlo Notes',
+        'Annealed importance sampling appears in annealed importance sampling runs. Annealed importance sampling annealed importance sampling.', 'paper-mc'),
+      distractor('hard/sampling-survey', 'Sampling Survey',
+        'Importance sampling and annealed importance sampling together, annealed importance sampling repeated.', 'paper-ss'),
+    ],
+  },
+  {
+    id: 'hard-title-vs-summary-de',
+    regime: 'latin',
+    sourceLanguage: 'de', queryLanguage: 'de',
+    query: 'wahrscheinlichkeitsverteilung',
+    target: {
+      path: 'hard/verteilung', title: 'Wahrscheinlichkeitsverteilung',
+      aliases: [], summary: 'Verteilung über Ereignisse.',
+      sourceSlug: 'paper-de',
+    },
+    distractors: [
+      distractor('hard/ereignisse', 'Ereignisse und Räume',
+        'Wahrscheinlichkeitsverteilung und Wahrscheinlichkeitsverteilung und Wahrscheinlichkeitsverteilung.', 'paper-er'),
+    ],
+  },
+  {
+    id: 'hard-title-vs-summary-zh',
+    regime: 'han',
+    sourceLanguage: 'zh', queryLanguage: 'zh',
+    query: '注意力机制',
+    target: {
+      path: 'hard/attention', title: '注意力机制',
+      aliases: [], summary: '一种加权方法。',
+      sourceSlug: 'paper-zh',
+    },
+    distractors: [
+      distractor('hard/model-notes', '模型笔记',
+        '注意力机制 注意力机制 在实践中常用。', 'paper-tn'),
+    ],
+  },
+  {
+    id: 'hard-inflection-en',
+    regime: 'latin',
+    sourceLanguage: 'en', queryLanguage: 'en',
+    query: 'mitochondrial function',
+    target: {
+      path: 'hard/mito', title: 'Mitochondrial Function',
+      aliases: [], summary: 'What the organelle does.',
+      sourceSlug: 'paper-mito',
+    },
+    distractors: [
+      distractor('hard/organelle', 'Organelle Survey',
+        'Mitochondrial function mitochondrial function noted here.', 'paper-org'),
+    ],
+  },
+  {
+    // The query word must be long enough for the fallback to fire — five
+    // characters or more. `cafe` is four and cannot fall back at all, which is
+    // the documented floor, so using it here would test the floor rather than
+    // the diacritic folding.
+    id: 'hard-diacritic-fr',
+    regime: 'latin',
+    sourceLanguage: 'fr', queryLanguage: 'fr',
+    query: 'résumé',
+    target: {
+      path: 'hard/cafe', title: 'Café et résumé',
+      aliases: [], summary: 'Lieu de rencontre.',
+      sourceSlug: 'paper-fr',
+    },
+    distractors: [
+      distractor('hard/bistro', 'Bistro Notes',
+        'résumé résumé résumé en français.', 'paper-bistro'),
+    ],
+  },
+  {
+    // Solvable cross-lingual: the target carries an alias in the query language.
+    // A fixture with no shared script at all is not hard, it is impossible, and
+    // it drags the whole set's MRR down for no signal.
+    id: 'hard-cross-lingual-en-zh',
+    regime: 'cross-lingual',
+    sourceLanguage: 'zh', queryLanguage: 'en',
+    query: 'reinforcement learning',
+    target: {
+      path: 'hard/rl-zh', title: '强化学习',
+      aliases: ['Reinforcement learning'], summary: '通过奖励学习策略。',
+      sourceSlug: 'paper-rl',
+    },
+    distractors: [
+      distractor('hard/rl-en-notes', 'Research Notes',
+        'reinforcement learning reinforcement learning in practice.', 'paper-rn'),
+    ],
+  },
+];
+
+/** Convenience: the adversarial set, ready for `runHarness`. */
+export function hardFixtures(): {
+  pages: SourcedPage[];
+  fixtures: Fixture[];
+  queryTerms: Map<string, string[]>;
+} {
+  return buildSyntheticCorpus(HARD_ENTRIES);
+}
+
 /** Convenience: the whole built-in set, ready for `runHarness`. */
 export function builtInFixtures(): {
   pages: SourcedPage[];
