@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Notice, TFile } from 'obsidian';
-import { runAliasCompletion, runDeadLinkFixes, runEmptyPageFixes, runOrphanFixes, runDuplicateMerges, runRetagViolations } from '../../../wiki/lint/fix-runners';
+import { runAliasCompletion, runDeadLinkFixes, runEmptyPageFixes, runOrphanFixes, runDuplicateMerges, runRetagViolations, runHubLinkFixes } from '../../../wiki/lint/fix-runners';
 import type { LintContext } from '../../../wiki/lint/types';
 import { AliasGenerationLLMSchema, TagFixLLMSchema } from '../../../llm-sdk/output-schemas';
 
@@ -836,5 +836,102 @@ describe('runRetagViolations — typed-output migration (#443 expanded scope)', 
     const ctx = makeTagMigrationCtx({ createMessage });
     await runRetagViolations(ctx, undefined, [tagMigrationViolation]);
     expect(createMessage).toHaveBeenCalled();
+  });
+});
+
+// #729 Phase 8 — the hub-link detector gets a fix.
+describe('runHubLinkFixes', () => {
+  const HUB_CONTENT = [
+    '# Hub', '',
+    '## Body', '',
+    'Prose keeps [[wiki/entities/Keep|Keep]] where it is discussed.',
+    '',
+    '## Related', '',
+    '- [[wiki/entities/Redundant|Redundant]]',
+    '- [[wiki/entities/Keep|Keep]]',
+    '',
+  ].join('\n');
+
+  const issue = (over: Partial<import('../../../core/hub-link-distinctiveness').HubLinkDensityIssue> = {}) => ({
+    pagePath: 'wiki/entities/Hub.md',
+    inDegree: 12,
+    totalRelatedLinks: 4,
+    distinctivenessScore: 0.2,
+    recommendation: 'strip' as const,
+    lowDistinctivenessTargets: ['entities/Redundant'],
+    ...over,
+  });
+
+  const ctxWith = (content: string) => {
+    const file = Object.assign(new TFile(), { path: 'wiki/entities/Hub.md', basename: 'Hub' });
+    return makeCtx({
+      app: {
+        vault: {
+          adapter: { write: vi.fn() },
+          getAbstractFileByPath: vi.fn().mockReturnValue(file),
+          read: vi.fn().mockResolvedValue(content),
+        },
+      } as unknown as LintContext['app'],
+    });
+  };
+
+  it('strips the named links and writes through the declared-intent entry', async () => {
+    const ctx = ctxWith(HUB_CONTENT);
+    const r = await runHubLinkFixes(ctx, undefined, [issue()]);
+    expect(r.fixed).toBe(1);
+    const written = (ctx.wikiEngine.writeFileWithIntent as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(written).not.toContain('|Redundant]]');
+    expect(written).toContain('[[wiki/entities/Keep|Keep]]');
+    // Prose outside the Related section keeps its link.
+    expect(written).toContain('Prose keeps [[wiki/entities/Keep|Keep]] where it is discussed.');
+  });
+
+  it('does nothing when the recommendation is keep', async () => {
+    const ctx = ctxWith(HUB_CONTENT);
+    const r = await runHubLinkFixes(ctx, undefined, [issue({ recommendation: 'keep' })]);
+    expect(r.fixed).toBe(0);
+    expect(ctx.wikiEngine.writeFileWithIntent).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there are no low-distinctiveness targets', async () => {
+    const ctx = ctxWith(HUB_CONTENT);
+    const r = await runHubLinkFixes(ctx, undefined, [issue({ lowDistinctivenessTargets: [] })]);
+    expect(r.fixed).toBe(0);
+  });
+
+  it('never resurrects a page — the write is create:false', async () => {
+    const ctx = ctxWith(HUB_CONTENT);
+    await runHubLinkFixes(ctx, undefined, [issue()]);
+    const intent = (ctx.wikiEngine.writeFileWithIntent as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    expect(intent.create).toBe(false);
+    expect(intent.cancel).toBe('lint');
+  });
+
+  it('reports a missing file instead of throwing', async () => {
+    const ctx = makeCtx({
+      app: {
+        vault: {
+          adapter: { write: vi.fn() },
+          getAbstractFileByPath: vi.fn().mockReturnValue(null),
+        },
+      } as unknown as LintContext['app'],
+    });
+    const r = await runHubLinkFixes(ctx, undefined, [issue()]);
+    expect(r.fixed).toBe(0);
+    expect(r.results[0]).toContain('file not found');
+  });
+
+  it('aborts when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      runHubLinkFixes(ctxWith(HUB_CONTENT), controller.signal, [issue()]),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('calls no LLM — the graph analysis was already paid for', async () => {
+    const ctx = ctxWith(HUB_CONTENT);
+    await runHubLinkFixes(ctx, undefined, [issue()]);
+    expect(ctx.llmClient?.createMessage).not.toHaveBeenCalled();
   });
 });

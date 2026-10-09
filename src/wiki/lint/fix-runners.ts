@@ -16,6 +16,7 @@ import { renderTemplate } from '../../core/template-renderer';
 import { TOKENS_LINT_ALIAS_BATCH, NOTICE_ERROR, NOTICE_RATE_LIMIT } from '../../constants';
 import { buildWikiLanguageDirective } from '../system-prompts';
 import { TagViolation } from './scanners';
+import { stripLowDistinctivenessLinks, type HubLinkDensityIssue } from '../../core/hub-link-distinctiveness';
 import { AliasGenerationLLMSchema, TagFixLLMSchema } from '../../llm-sdk/output-schemas';
 import { callLlm } from '../../core/llm-dispatch';
 import { LINT_WRITE_INTENT } from '../../types';
@@ -672,6 +673,72 @@ Task: Return a JSON object with a single field "tags" that is an array of string
           fixed++;
           results.push(val.message);
         }
+      }
+    }
+  } finally {
+    fixNotice.hide();
+  }
+  return { fixed, results };
+}
+
+/**
+ * #729 Phase 8 — wire the hub-link detector into a fix.
+ *
+ * The detector has flagged redundant Related links since v1.23.0 and has never
+ * done anything about them. A report is not a fix: the user reads "these four
+ * links are mutually redundant" and then edits four links by hand.
+ *
+ * The fix strips only the targets the scan already named as low-distinctiveness,
+ * and only inside the Related section. Prose elsewhere in the page keeps its
+ * links — a name discussed in the body is content, and removing it would edit
+ * the author's argument rather than the link list.
+ *
+ * No LLM call. The analysis is graph distance and it was already paid for.
+ */
+export async function runHubLinkFixes(
+  ctx: LintContext,
+  signal: AbortSignal | undefined,
+  issues: readonly HubLinkDensityIssue[],
+): Promise<{ fixed: number; results: string[] }> {
+  checkCancelled(signal);
+  const t = TEXTS[ctx.settings.language];
+  const todo = issues.filter(i =>
+    (i.recommendation === 'strip' || i.recommendation === 'review') && i.lowDistinctivenessTargets.length > 0);
+  if (todo.length === 0) return { fixed: 0, results: [] };
+
+  const results: string[] = [];
+  let fixed = 0;
+  const fixNotice = new Notice('', 0);
+  const wikiFolder = ctx.settings.wikiFolder;
+  try {
+    for (let i = 0; i < todo.length; i += 1) {
+      checkCancelled(signal);
+      const issue = todo[i];
+      fixNotice.setMessage(t.lintFixProgress
+        .replace('{current}', String(i + 1))
+        .replace('{total}', String(todo.length))
+        .replace('{target}', issue.pagePath));
+      const file = ctx.app.vault.getAbstractFileByPath(issue.pagePath);
+      if (!(file instanceof TFile)) {
+        results.push(`${issue.pagePath}: file not found`);
+        continue;
+      }
+      const before = await ctx.app.vault.read(file);
+      const { content: after, removed } = stripLowDistinctivenessLinks(
+        before, issue.lowDistinctivenessTargets, wikiFolder);
+      if (removed === 0) {
+        results.push(`${issue.pagePath}: ${t.lintFixNoAction}`);
+        continue;
+      }
+      // Update-only: this fixer must never resurrect a page that disappeared
+      // between the scan and the write.
+      const wrote = await ctx.wikiEngine.writeFileWithIntent(
+        issue.pagePath, after, { ...LINT_WRITE_INTENT, create: false });
+      if (wrote) {
+        fixed += 1;
+        results.push(`${issue.pagePath}: ${removed} redundant related link(s) removed`);
+      } else {
+        results.push(`${issue.pagePath}: file disappeared before write`);
       }
     }
   } finally {

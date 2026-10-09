@@ -169,6 +169,49 @@ function parseRelatedTargets(content: string, wikiFolder: string): string[] {
 }
 
 /**
+ * Remove low-distinctiveness links from a page's Related section.
+ *
+ * Pure. No IO. Returns the new content and how many links were removed, so a
+ * fix runner can report what it did and a test can assert the mutation rather
+ * than just the count.
+ *
+ * The removal is by line, not by substring: a bullet that names the target
+ * goes, a bullet that names something else stays even if the two share a word.
+ * Prose outside the Related section is never touched — a name may be discussed
+ * in the body where it is content, and stripping it there would be editing the
+ * author's argument.
+ */
+export function stripLowDistinctivenessLinks(
+  content: string,
+  targets: readonly string[],
+  wikiFolder: string,
+): { content: string; removed: number } {
+  if (targets.length === 0) return { content, removed: 0 };
+  const strip = new Set(targets.map(t => t.trim()));
+  const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
+  const sections = content.split(/^(?=##\s+)/m);
+  let removed = 0;
+  const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
+  const rewritten = sections.map(sec => {
+    const headingEnd = sec.indexOf('\n');
+    const heading = (headingEnd === -1 ? sec : sec.slice(0, headingEnd))
+      .replace(/^##\s+/, '').trim().toLowerCase();
+    if (heading !== 'related' && heading !== 'see also' && heading !== 'related pages') return sec;
+    return sec.split('\n').filter(line => {
+      let m: RegExpExecArray | null;
+      linkRegex.lastIndex = 0;
+      while ((m = linkRegex.exec(line)) !== null) {
+        const raw = m[1].trim();
+        const target = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
+        if (strip.has(target)) { removed += 1; return false; }
+      }
+      return true;
+    }).join('\n');
+  });
+  return { content: rewritten.join(''), removed };
+}
+
+/**
  * Scan a pageMap for hub pages with low link distinctiveness in
  * their ## Related section.
  */

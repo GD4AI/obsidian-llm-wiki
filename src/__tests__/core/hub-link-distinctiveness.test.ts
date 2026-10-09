@@ -37,6 +37,7 @@ import { describe, it, expect } from 'vitest';
 import {
   scoreHubLinkDistinctiveness,
   scanHubLinkDensity,
+  stripLowDistinctivenessLinks,
   type HubLinkDensityIssue,
 } from '../../core/hub-link-distinctiveness';
 import type { Graph } from '../../core/monte-carlo-ppr';
@@ -313,5 +314,69 @@ describe('scanHubLinkDensity — only analyzes hubs', () => {
     const result = scanHubLinkDensity(pm, g, { ...DETERMINISTIC_PPR });
     expect(result.length).toBe(1);
     expect(result[0].pagePath).toBe('A');
+  });
+});
+
+describe('stripLowDistinctivenessLinks (#729 Phase 8)', () => {
+  const PAGE = [
+    '# Hub',
+    '',
+    '## Body',
+    '',
+    'The treatment mentions [[wiki/entities/Dup|Dup]] as background.',
+    '',
+    '## Related',
+    '',
+    '- [[wiki/entities/Dup|Dup]]',
+    '- [[wiki/entities/Keep|Keep]]',
+    '- [[wiki/entities/Dup2|Dup2]]',
+    '',
+  ].join('\n');
+
+  it('removes the named links and keeps the rest', () => {
+    const r = stripLowDistinctivenessLinks(PAGE, ['entities/Dup', 'entities/Dup2'], 'wiki');
+    expect(r.removed).toBe(2);
+    // Checked against the Related section only. The body mentions the same
+    // name and is deliberately left alone — see the next test.
+    const related = r.content.split(/^##\s+/m).find(s => /^related\b/i.test(s)) ?? '';
+    expect(related).toContain('[[wiki/entities/Keep|Keep]]');
+    expect(related).not.toContain('[[wiki/entities/Dup|Dup]]');
+    expect(related).not.toContain('[[wiki/entities/Dup2|Dup2]]');
+    expect(related).not.toContain('|Dup]]');
+    expect(related).not.toContain('|Dup2]]');
+  });
+
+  it('never touches prose outside the Related section', () => {
+    // The body mentions the same name where it is content. Stripping it there
+    // would be editing the author's argument rather than the link list.
+    const r = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
+    expect(r.content).toContain('The treatment mentions [[wiki/entities/Dup|Dup]] as background.');
+  });
+
+  it('removes by line — a bullet naming something else survives even on a shared word', () => {
+    const r = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
+    expect(r.removed).toBe(1);
+    expect(r.content).toContain('[[wiki/entities/Dup2|Dup2]]');
+  });
+
+  it('reports zero and returns the content unchanged when nothing matches', () => {
+    const r = stripLowDistinctivenessLinks(PAGE, ['entities/Nope'], 'wiki');
+    expect(r.removed).toBe(0);
+    expect(r.content).toBe(PAGE);
+  });
+
+  it('is a no-op with an empty target list', () => {
+    expect(stripLowDistinctivenessLinks(PAGE, [], 'wiki')).toEqual({ content: PAGE, removed: 0 });
+  });
+
+  it('leaves a page with no Related section alone', () => {
+    const other = '# X\n\n## Body\n\n- [[wiki/entities/Dup|Dup]]\n';
+    expect(stripLowDistinctivenessLinks(other, ['entities/Dup'], 'wiki')).toEqual({ content: other, removed: 0 });
+  });
+
+  it('is deterministic', () => {
+    const a = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
+    const b = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
+    expect(a).toEqual(b);
   });
 });
