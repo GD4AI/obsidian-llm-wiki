@@ -737,6 +737,8 @@ export const JA_TEXTS = {
     reingestConfirmNo: 'スキップ',
     lintDedupIncludeSourcesName: '重複検出にソースを含める',
     lintDedupIncludeSourcesDesc: 'デフォルトで有効です。有効にすると、本文が同一のソースが lint で重複としてフラグ付けされます。誤検出が多い場合は無効にしてください。',
+    legacyScorerName: '旧クエリスコアラー',
+    legacyScorerDesc: 'デフォルトで無効です。有効にすると、クエリの並び替えに新しい BM25F ではなく旧手動調整スコアラーを使います。更新後に検索結果が悪化した場合は有効にしてください。',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'ソースが言及するだけの候補をスキップ',
     skipMentionOnlyCandidatesDesc: 'デフォルトでは無効。有効にすると、ノートの本文に名前が現れない抽出エンティティ・概念（存在しない、または括弧内・列挙・短い箇条書きのみ）はページを作成せず、追加のモデル呼び出しも行わず、他の候補の関連リストからも除外されます。単語境界プロファイルのある Wiki 言語で動作します（ドイツ語は測定済み、英・仏・西・葡・蘭語は推定）。その他の言語では、適用できないことを取り込み時に一度報告します。用語集型の保管庫や箇条書き中心のノートで、名前の挙がった語をすべてページにしたい場合は無効のままにしてください。',

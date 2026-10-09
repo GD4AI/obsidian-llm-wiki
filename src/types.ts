@@ -552,6 +552,13 @@ export interface LLMWikiSettings {
    * false positives.
    */
   lintDedupIncludeSources?: boolean;
+  /**
+   * #819 step 7. Run the old hand-tuned linear query scorer instead of BM25F.
+   * A new ranking is on by default and must be switchable off; the two rank
+   * differently (top-5 overlap measured 2.4 of 5) and until the harness carries
+   * accuracy evidence a user who sees worse results needs a way back.
+   */
+  legacyScorer?: boolean;
 
   /**
    * Issue #514: when on, an extracted entity or concept whose name the note

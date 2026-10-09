@@ -537,6 +537,8 @@ export const DE_TEXTS = {
     reingestConfirmNo: 'Überspringen',
     lintDedupIncludeSourcesName: 'Quellen in Deduplizierung einbeziehen',
     lintDedupIncludeSourcesDesc: 'Standardmäßig aktiviert. Wenn aktiv, werden Quellen mit identischem Body während lint als Duplikate markiert. Deaktivieren, wenn dein Quellkorpus Falsch-Positiv-Meldungen erzeugt.',
+    legacyScorerName: 'Älterer Such-Scorer',
+    legacyScorerDesc: 'Standardmäßig deaktiviert. Wenn aktiv, nutzt die Suchreihenfolge den älteren, handabgestimmten Scorer statt des neueren BM25F. Aktivieren, wenn die Suchergebnisse nach einem Update schlechter wurden.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'Nur erwähnte Kandidaten überspringen',
     skipMentionOnlyCandidatesDesc: 'Standardmäßig aus. Wenn aktiv, bekommt eine extrahierte Entität oder ein Konzept, dessen Name im Fließtext der Notiz nicht vorkommt — gar nicht, oder nur in Klammern, Aufzählungen oder kurzen Listenpunkten — keine Seite und keinen weiteren Modellaufruf und wird aus den Verwandt-Listen der anderen Kandidaten entfernt. Gilt für Wiki-Sprachen mit Wortgrenzen-Profil (Deutsch gemessen; Englisch, Französisch, Spanisch, Portugiesisch, Niederländisch geschätzt); bei anderen Sprachen meldet der Ingest einmal, dass er nicht greifen kann. Aus lassen bei Glossar-Vaults oder Stichpunkt-Notizen, in denen jeder genannte Begriff eine Seite werden soll.',
