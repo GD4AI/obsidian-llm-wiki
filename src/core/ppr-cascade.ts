@@ -18,7 +18,7 @@
 // (query-engine caches the graph and rebuilds it on ingest). This
 // keeps the cascade testable without an Obsidian dependency.
 
-import { personalizedPageRank, seededRngFrom, type Graph, type PPROptions } from './monte-carlo-ppr';
+import { personalizedPageRank, seededRngFrom, buildReverseAdjacency, type Graph, type PPROptions } from './monte-carlo-ppr';
 import {
   needleHits,
   scoreProfile,
@@ -414,11 +414,17 @@ function isGraphMature(graph: Graph, options: PPRCascadeOptions): boolean {
   // (We do a single BFS from the first node; if it reaches > 50%
   // of nodes, the graph is connected-enough.)
   if (graph.nodes.length === 0) return false;
+  // Reverse adjacency, built once. The loop below used to scan every entry of
+  // `graph.edges` for each dequeued node to find who points at it — O(V*E).
+  // On the measured 2143-node / 12840-edge vault that is 27 million
+  // comparisons for one maturity check. Lookup is O(1) after this.
+  const incoming = buildReverseAdjacency(graph);
   const firstNode = graph.nodes[0];
   const visited = new Set<string>([firstNode]);
   const queue: string[] = [firstNode];
-  while (queue.length > 0) {
-    const node = queue.shift()!;
+  let head = 0;
+  while (head < queue.length) {
+    const node = queue[head++];
     for (const next of graph.edges.get(node) ?? []) {
       if (!visited.has(next)) {
         visited.add(next);
@@ -427,8 +433,8 @@ function isGraphMature(graph: Graph, options: PPRCascadeOptions): boolean {
     }
     // Reverse edges: also follow incoming edges (treat as undirected
     // for connectivity).
-    for (const [from, targets] of graph.edges) {
-      if (targets.includes(node) && !visited.has(from)) {
+    for (const from of incoming.get(node) ?? []) {
+      if (!visited.has(from)) {
         visited.add(from);
         queue.push(from);
       }

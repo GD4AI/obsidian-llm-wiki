@@ -86,6 +86,16 @@ export function scoreHubLinkDistinctiveness(
   // Step 1: For each target, run PPR to get its score from the hub.
   // (Used for fallback if the redundancy map is degenerate.)
   // Step 2: For each target t, compute mean PPR(t | seed=u) for u in others.
+  //
+  // The PPR walk from `u` depends only on `u`. It used to sit inside the `t`
+  // loop and was recomputed for every pair — n*(n-1) walks instead of n. On a
+  // hub with 20 related links that is 380 walks instead of 20. Hoisted. The
+  // algorithm is unchanged and so is every number it produces; only the number
+  // of walks changes.
+  const pprBySeed = new Map<string, ReadonlyMap<string, number>>();
+  for (const u of relatedTargets) {
+    pprBySeed.set(u, personalizedPageRank(graph, u, options));
+  }
   const redundancyByTarget = new Map<string, number>();
   for (const t of relatedTargets) {
     let total = 0;
@@ -93,8 +103,7 @@ export function scoreHubLinkDistinctiveness(
     for (const u of relatedTargets) {
       if (t === u) continue;
       // PPR from u: t's score reflects how "visible" t is from u.
-      const ppr = personalizedPageRank(graph, u, options);
-      total += ppr.get(t) ?? 0;
+      total += pprBySeed.get(u)?.get(t) ?? 0;
       count++;
     }
     const mean = count > 0 ? total / count : 0;

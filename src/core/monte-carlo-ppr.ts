@@ -26,6 +26,26 @@ export interface Graph {
   edges: Map<string, string[]>;
 }
 
+/**
+ * Reverse adjacency: node → the nodes that point at it.
+ *
+ * Built once and looked up, instead of scanning every entry of `graph.edges`
+ * for each query. The scan was O(V*E) — 27 million comparisons for one
+ * maturity check on the measured 2143-node / 12840-edge vault. Pure, and cheap
+ * enough to pre-build alongside the graph so several passes can share it.
+ */
+export function buildReverseAdjacency(graph: Graph): Map<string, string[]> {
+  const incoming = new Map<string, string[]>();
+  for (const [from, targets] of graph.edges) {
+    for (const to of targets) {
+      const list = incoming.get(to);
+      if (list) list.push(from);
+      else incoming.set(to, [from]);
+    }
+  }
+  return incoming;
+}
+
 export interface PPROptions {
   numWalks?: number;
   maxSteps?: number;
