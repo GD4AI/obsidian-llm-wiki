@@ -118,10 +118,14 @@ block that phase 5 now carries — about 25 lines. It belongs in the same change
 as the next ROADMAP edit, not later.
 
 **Known false positives — do not "fix".** `shazam_verify` reports orphan `setup`
-at `tools/dev-instrument/run-instrument.mjs:54` and
-`tools/dev-instrument/run-graph-audit.mjs:41`; both are esbuild plugin callback
-properties. Hint-level unused vars in `scripts/update-fixture.mjs` and
-`src/core/hub-link-distinctiveness.ts:74` are pre-existing.
+at `tools/dev-instrument/run-instrument.mjs:54`,
+`tools/dev-instrument/run-graph-audit.mjs:41` and
+`tools/dev-instrument/run-recall-harness.mjs:42`; all three are esbuild plugin
+callback properties. It also reports `lexScore` at
+`tools/dev-instrument/run-recall-harness.mjs:136`, which is a local function
+passed by value into `formatRecallDiagnostic`. Hint-level unused vars in
+`scripts/update-fixture.mjs` and `src/core/hub-link-distinctiveness.ts:74` are
+pre-existing.
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 

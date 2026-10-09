@@ -183,3 +183,45 @@ describe('prepare', () => {
     expect(corpus.docFreq.get('alpha')).toBe(1);
   });
 });
+
+describe('the window flags are three answers, not two', () => {
+  // Regression. `poolSources <= 1` labelled a window with NO source refs as
+  // "single-source: assembly cannot help", which is a different fact with a
+  // different consequence. Zero means the layer cannot see; one means it can
+  // see and there is only one thing to load.
+  it('a window with no source refs is unattributed, not single-source', () => {
+    const pages: SourcedPage[] = [
+      { path: 'q/a', title: 'Alpha', aliases: [], summary: 'alpha' },
+      { path: 'q/b', title: 'Alpha two', aliases: [], summary: 'alpha' },
+    ];
+    const fixtures: Fixture[] = [{ id: 'f', query: 'alpha', relevant: [], regime: 'latin' }];
+    const [r] = poolReport(fixtures, pages, new Map([['f', ['alpha']]]), { k: 10, poolK: 50 });
+    expect(r.poolSources).toBe(0);
+    expect(r.unattributedWindow).toBe(true);
+    expect(r.singleSourceWindow).toBe(false);
+  });
+
+  it('a window with exactly one source is single-source, not unattributed', () => {
+    const pages: SourcedPage[] = [
+      { path: 'q/a', title: 'Alpha', aliases: [], summary: 'alpha', sourceSlug: 'only' },
+      { path: 'q/b', title: 'Alpha two', aliases: [], summary: 'alpha', sourceSlug: 'only' },
+    ];
+    const fixtures: Fixture[] = [{ id: 'f', query: 'alpha', relevant: [], regime: 'latin' }];
+    const [r] = poolReport(fixtures, pages, new Map([['f', ['alpha']]]), { k: 10, poolK: 50 });
+    expect(r.poolSources).toBe(1);
+    expect(r.singleSourceWindow).toBe(true);
+    expect(r.unattributedWindow).toBe(false);
+  });
+
+  it('a window with two sources is neither', () => {
+    const pages: SourcedPage[] = [
+      { path: 'q/a', title: 'Alpha', aliases: [], summary: 'alpha', sourceSlug: 's1' },
+      { path: 'q/b', title: 'Alpha two', aliases: [], summary: 'alpha', sourceSlug: 's2' },
+    ];
+    const fixtures: Fixture[] = [{ id: 'f', query: 'alpha', relevant: [], regime: 'latin' }];
+    const [r] = poolReport(fixtures, pages, new Map([['f', ['alpha']]]), { k: 10, poolK: 50 });
+    expect(r.poolSources).toBe(2);
+    expect(r.singleSourceWindow).toBe(false);
+    expect(r.unattributedWindow).toBe(false);
+  });
+});

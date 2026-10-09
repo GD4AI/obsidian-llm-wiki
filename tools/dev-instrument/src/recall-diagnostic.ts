@@ -87,8 +87,14 @@ export interface PoolReport {
   /** Distinct sources in what actually loaded (top-K). */
   readonly loadedSources: number;
   readonly dominantShare: number;
-  /** True when the window itself is single-source: assembly cannot help. */
+  /** True when the window holds exactly one source: assembly cannot diversify
+   *  it. Zero is a different answer — that is "no attribution at all", which is
+   *  the blind case, not the narrow one. Conflating them labelled a corpus with
+   *  no source refs as "assembly cannot help", when the real reason is that the
+   *  layer cannot see. */
   readonly singleSourceWindow: boolean;
+  /** True when no page in the window carries a source ref at all. */
+  readonly unattributedWindow: boolean;
   readonly unattributedInWindow: number;
 }
 
@@ -118,7 +124,8 @@ export function poolReport(
       poolSources: r.poolSources,
       loadedSources: r.retrievedSources,
       dominantShare: r.dominantSourceShare,
-      singleSourceWindow: r.poolSources <= 1,
+      singleSourceWindow: r.poolSources === 1,
+      unattributedWindow: r.poolSources === 0,
       unattributedInWindow: r.unattributedCount,
     };
   });
