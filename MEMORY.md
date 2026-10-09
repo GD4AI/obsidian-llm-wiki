@@ -343,6 +343,31 @@ own header says it is not a session log. The standing decisions stay above, in
 
 ## Lessons learned (from session memory)
 
+**Three rules from the #729 reader-recall work (2026-10-08), merged here rather than
+logged as a new dated block.**
+
+- **Never hand-tune what a standard probabilistic model already solves.** A
+  linear weight over text with no IDF keeps producing anomalies — stop words,
+  generic words, long documents, ties — and each anomaly invites another patch.
+  Eleven accumulated on one scoring function before this was seen. BM25F folds
+  seven of them into one function whose `k1`/`b` have literature defaults.
+  Field weights do **not**: moving the title weight from 3 to 1 moved MRR from
+  0.86 to 0.55. Calibrate fields on a harness; assume nothing about them.
+- **A test whose query language and document language differ cannot test the
+  document-side tier.** An English query against Chinese summaries gave
+  `the` DF ≈ 0 and zero rank inversions, which read as "the pollution never
+  fires" and was really "the tier never fires". Three conclusions were drawn
+  from that before the mismatch was named. Check the language pairing before
+  reading a null result as a null effect. The project is multilingual and
+  cross-lingual (English sources into a Chinese wiki is a real configuration),
+  so fixtures cover four segmentation regimes **plus** source ≠ wiki language.
+- **A constant calibrated on one score's absolute scale fails silently when the
+  scale changes.** `LEX_MATCH_MIN_COUNT = 3` and `LEX_MATCH_MIN_TOP_SCORE = 5`
+  were set on title-and-alias scores; adding a weaker tier made them pass more
+  often and nothing reported it. Replacing the scorer with BM25F would have
+  broken them the same way. Gate conditions that gate a decision need a
+  statistic that has no unit — a coverage ratio, not a count.
+
 Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private
 memory directory for this project.
