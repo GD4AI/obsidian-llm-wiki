@@ -450,7 +450,7 @@ export const DE_TEXTS = {
     startupCheckSourcesCleaned: '{files} Datei(en), {entries} Eintrag/Einträge bereinigt',
     startupCheckIncompleteClean: 'unvollständige Seiten: keine',
     startupCheckIncompleteArchived: 'unvollständige Seiten: {count} archiviert (wiederherstellbar aus .trash)',
-    startupCheckDisableHint: 'Zum Deaktivieren: Einstellungen → Auto-Wartung → Schnellkorrekturen beim Start ausführen',
+    startupCheckDisableHint: 'Zum Deaktivieren: Einstellungen → Automatische Wartung → Quick-Fix-Ergebnis anzeigen',
     lintWikiStart: 'Wiki-Prüfung wird gestartet...',
     lintWikiComplete: 'Wiki-Prüfung abgeschlossen',
     lintWikiFailed: 'Wiki-Prüfung fehlgeschlagen',

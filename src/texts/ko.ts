@@ -450,7 +450,7 @@ export const KO_TEXTS = {
     startupCheckSourcesCleaned: '{files}개 파일, {entries}개 항목 정리',
     startupCheckIncompleteClean: '미완성 페이지: 없음',
     startupCheckIncompleteArchived: '미완성 페이지: {count}개 아카이브 (.trash에서 복원 가능)',
-    startupCheckDisableHint: '비활성화하려면 설정 → 자동 유지보수 → 시작 시 빠른 수정 실행',
+    startupCheckDisableHint: '비활성화하려면 설정 → 자동 유지보수 → 빠른 수정 결과 표시',
     lintWikiStart: '위키 린트 시작 중...',
     lintWikiComplete: '위키 린트 완료',
     lintWikiFailed: '위키 린트 실패',

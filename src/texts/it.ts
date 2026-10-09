@@ -454,7 +454,7 @@ export const IT_TEXTS = {
     startupCheckSourcesCleaned: 'pulite {files} file, {entries} voce/i',
     startupCheckIncompleteClean: 'pagine incomplete: nessuna',
     startupCheckIncompleteArchived: 'pagine incomplete: {count} archiviate (recuperabili da .trash)',
-    startupCheckDisableHint: 'Per disabilitare, vai su Impostazioni → Manutenzione automatica → Esegui correzioni rapide all\'avvio',
+    startupCheckDisableHint: 'Per disabilitare, vai su Impostazioni → Manutenzione automatica → Mostra risultato correzioni rapide',
     autoIngestRunning: 'Acquisizione automatica di {count} file modificato/i...',
     autoIngestComplete: 'Acquisizione automatica completata: {success} riusciti, {fail} falliti',
     scheduledLintRunning: 'Esecuzione del lint Wiki pianificato...',
