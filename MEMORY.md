@@ -64,7 +64,16 @@ docs only. **Next step is Phase 1.**
 | power iteration over the Monte Carlo walk | shelved; restart only if the ablation shows the graph arm carries weight, a comparison script matches the visit-count semantics, and lint timing is measured |
 | A/B arms with an embedding index | the plugin is zero-embedding |
 
-**How to re-derive the numbers.** The scripts lived in `/tmp` and are gone. Three
+**Where the test material lives.**
+`/Users/greener/project/obsidian-llm-wiki-testdata/` — outside the repo, so it is
+not in git and not subject to the doc ceilings. It holds `generated/expA-main/`
+(166 pages, ingested from `main`) and `generated/expB-branch/` (174 pages, from
+this branch), both real LLM-wiki output in Chinese wiki language from the same
+five papers; `scripts/` with the three measurement scripts; and
+`audit/graph-audit-outputs.txt`. Its own README says which phase uses which
+part. The five source papers stay in the maintainer's vault under `AI学习资料/`.
+
+**How to re-derive the numbers.** `testdata/scripts/` holds the three
 measurements, all read-only over `**/*.md`: (a) graph shape —
 `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`; (b)
 summary-tier document frequency — first non-heading body line after the
@@ -72,9 +81,17 @@ frontmatter, cut at 100 chars, then `df(term) = pages containing term / pages`;
 (c) assembly — score pages on query tokens (title 3, body 1), take top-50 and
 top-10, read each page's `sources: [[sources/<slug>]]` refs, report distinct
 source count and the dominant source's share. Ingest experiments need a provider
-key which the maintainer supplies per session; the recorded run used
-`anthropic-compatible` / `MiniMax-M3` / `https://api.minimaxi.com/anthropic`
-through `tools/dev-instrument/run-instrument.mjs <vault> <source>`.
+key which the maintainer supplies per session and which is **never** stored in
+the test data; the recorded run used `anthropic-compatible` / `MiniMax-M3` /
+`https://api.minimaxi.com/anthropic` through
+`tools/dev-instrument/run-instrument.mjs <vault> <source>`.
+
+**The matched pair is the useful artifact.** `expA-main` and `expB-branch` were
+ingested from the same five papers under two different commits. Their graph
+shapes agree (99.7 % intra-source on both) while their page counts differ
+(166 vs 174). That difference bounds the LLM sampling variance, and it is the
+number any A/B claim has to beat before it means anything. Use `expA-main` as
+the regression corpus for "this branch must not change ingest output".
 
 **Pending debt.** `ROADMAP.md` is 522 lines against a 500 ceiling. The prune
 deletes the superseded progress line (1608 bytes) and the five-arm paragraph
