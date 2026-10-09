@@ -147,6 +147,12 @@ export function buildPageTerms(input: {
 export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
   const docFreq = new Map<string, number>();
   const totals: Record<FieldName, number> = { title: 0, alias: 0, summary: 0, text: 0 };
+  // Pages that HAVE a non-empty field (#819 review, fix C). Averaging field
+  // length over ALL pages dragged `alias` to 0.055 when most pages have none,
+  // which made an alias hit worth about a seventh of a title hit. The design
+  // intent is the declared weight ratio of 2:3. A field nobody holds stays 0 and
+  // the scorer's `|| 1` keeps it out of the way.
+  const having: Record<FieldName, number> = { title: 0, alias: 0, summary: 0, text: 0 };
   for (const page of pages) {
     // Document frequency counts a DOCUMENT once, not once per field. Counting
     // per field let one page push `df` past `docCount`, which made
@@ -155,6 +161,7 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
     for (const field of FIELD_ORDER) {
       const f = page.fields[field];
       totals[field] += f.length;
+      if (f.length > 0) having[field] += 1;
       for (const term of f.tf.keys()) {
         if (seen.has(term)) continue;
         seen.add(term);
@@ -164,10 +171,10 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
   }
   const n = pages.length;
   const avgFieldLength: Record<FieldName, number> = {
-    title: n ? totals.title / n : 0,
-    alias: n ? totals.alias / n : 0,
-    summary: n ? totals.summary / n : 0,
-    text: n ? totals.text / n : 0,
+    title: having.title ? totals.title / having.title : 0,
+    alias: having.alias ? totals.alias / having.alias : 0,
+    summary: having.summary ? totals.summary / having.summary : 0,
+    text: having.text ? totals.text / having.text : 0,
   };
   return { docCount: n, docFreq, avgFieldLength };
 }

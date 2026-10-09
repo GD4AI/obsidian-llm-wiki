@@ -389,3 +389,55 @@ describe('nameTierCoverage — the unitless replacement for the absolute-scale g
     expect(a).toBe(b);
   });
 });
+
+describe('avgFieldLength averages over the pages that HAVE the field (#819 review, fix C)', () => {
+  const mkp = (title: string, aliases: string[], summary: string) =>
+    buildPageTerms({ title, aliases, summary, text: '' });
+
+  it('does not let pages without aliases drag the alias average to near zero', () => {
+    // One page has one alias, four have none. Dividing by all pages gives 0.2,
+    // which makes an alias hit worth a fraction of a title hit. Dividing by the
+    // pages that have aliases gives 1.
+    const pages = [
+      mkp('Target Alpha', ['nick'], ''),
+      mkp('Beta Gamma', [], ''),
+      mkp('Delta Epsilon', [], ''),
+      mkp('Zeta Eta', [], ''),
+      mkp('Theta Iota', [], ''),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    expect(corpus.avgFieldLength.alias).toBeCloseTo(1, 6);
+  });
+
+  it('scores an alias hit close to a title hit, where the design intent is 2:3', () => {
+    const pages = [
+      mkp('Target Alpha', ['nick'], ''),
+      mkp('Beta Gamma', [], ''),
+      mkp('Delta Epsilon', [], ''),
+      mkp('Zeta Eta', [], ''),
+      mkp('Theta Iota', [], ''),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    const byTitle = bm25fScore(['target'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const byAlias = bm25fScore(['nick'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    // Alias weight is 2, title weight is 3, and both fields are one term long.
+    // The ratio must land near 2:3, not the 14-41% the all-pages average gave.
+    const ratio = byAlias / byTitle;
+    expect(ratio).toBeGreaterThan(0.6);
+    expect(ratio).toBeLessThanOrEqual(1.0);
+  });
+
+  it('leaves the title average untouched — every page has a title', () => {
+    const pages = [mkp('A B', [], ''), mkp('C D', [], ''), mkp('E F', [], '')];
+    const corpus = buildCorpusTerms(pages);
+    // Titles are two terms each and every page has one, so the two definitions
+    // agree here. A regression would show up as a different number.
+    expect(corpus.avgFieldLength.title).toBeCloseTo(2, 6);
+  });
+
+  it('keeps a field with no holders at 0 and lets the scorer fall back to 1', () => {
+    const pages = [mkp('A B', [], ''), mkp('C D', [], '')];
+    const corpus = buildCorpusTerms(pages);
+    expect(corpus.avgFieldLength.alias).toBe(0);
+  });
+});
