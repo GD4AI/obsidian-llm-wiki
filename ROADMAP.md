@@ -146,9 +146,7 @@ The metric is recall@K plus **the cross-source share of the loaded pages**, whic
 subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged. The measurement has two
 halves: a synthetic corpus with known truth that runs without anybody, and the real vault at `n >= 20` that needs the maintainer and @DocTpoint.
 
-**The implementation, as phases.** Superseded 2026-10-08 by the architecture
-below: the P0-P4 split scattered one scoring function across seven patches. Each
-phase carries a test that fails without it, Gate 1 green after each commit.
+**The implementation, as phases.** Superseded 2026-10-08 by the architecture below: the P0-P4 split scattered one scoring function across seven patches. Each phase carries a test that fails without it, Gate 1 green after each commit.
 
 **The architecture. Four parts, one job each.**
 
@@ -179,22 +177,23 @@ A hand-tuned linear weight over text with no IDF keeps producing anomalies — s
 
 **What the assembly measurement settled.** On the maintainer's `wiki/` the top-50 candidates for six realistic questions cover **9.3 distinct sources on average**; the top-10 that actually loads covers **3.5**, dominant source **77 %**. On the controlled `expB` vault: 4.8 against 3.3, dominant 58 %. The cleanest case is 「强化学习 推理能力」— ten sources in the pool, **one** loaded. So the pool is not short of cross-source pages; the selection throws them away. That is what the issue's "reserved budget" was always about, and its native home is the assembly step, not a new kind of edge.
 
-**Two limits the same measurement found.** Source coverage can only act on pages carrying a `sources:` ref. Measured precisely 2026-10-09 on the maintainer's `wiki/` (2145 pages): **4.8 %** have a non-empty `sources:` in frontmatter, **91.4 % have the key with an empty value**, 21.1 % carry `[[sources/…]]` in the body from the Mentions quotes, and **29.9 %** carry a ref anywhere. On a freshly generated vault the figure is 97 %. The earlier "25 %" was the anywhere figure rounded, and it hid that the frontmatter value is empty on 91 % of pages — which is a write-path defect, not just an age effect. And one of the six questions —「模型 并行 训练」— had a single-source pool to begin with, where assembly cannot help at all; that is why the diagnostic command reports the pool's source count.
+**Two limits the same measurement found.** Source coverage can only act on pages carrying a `sources:` ref. Measured precisely 2026-10-09 across three vaults: the controlled `expB` at **96 %**, `test8` at **84 %**, and the maintainer's early-version `wiki/` (2145 pages) at **30 %** — where 4.8 % have a non-empty `sources:` in frontmatter, **91.4 % have the key with an empty value**, and 21.1 % carry `[[sources/…]]` in the body from the Mentions quotes. The empty keys are an artefact of an **earlier plugin version that did not treat `source` as required**; later vaults write it correctly, so this is version history rather than a live write-path defect. And one of the six questions —「模型 并行 训练」— had a single-source pool to begin with, where assembly cannot help at all; that is why the diagnostic command reports the pool's source count.
 
-**The A/B effect measurement, run 2026-10-09.** `node tools/dev-instrument/run-assembly-ab.mjs <wikiDir>` runs both selection rules over the same corpus and the same queries, so the only difference is the rule. Arm A sorts by score and takes the top 10; arm B is RRF plus the coverage pick. On the 174-page controlled vault, 6 queries: distinct sources in the top-10 go **3.67 → 4.50**, and the dominant source's share among *attributed* pages goes **51 % → 31 %**. One query —「LSTM 架构」— does not move at all.
+**The A/B effect measurement, run 2026-10-09.** `node tools/dev-instrument/run-assembly-ab.mjs <wikiDir>` runs both selection rules over the same corpus and the same queries, so the only difference is the rule. Arm A sorts by score and takes the top 10; arm B is RRF plus the coverage pick. Three corpora, and the effect tracks **attribution and pool diversity together**:
 
-**The same measurement on the maintainer's `wiki/` shows the rule doing nothing: 0.67 → 0.67, dominant 22 % → 22 %.** The reason is the attribution limit above, now quantified as an effect size rather than a caveat: 9.3 of the 10 budget slots go to pages carrying no `sources:` ref, so there is nothing in the budget for the rule to diversify. **On a mixed-generation vault the assembly step is a no-op until source attribution improves.** That is the honest scope of phase 6, and it is why the diagnostic reports the unattributed share alongside the source count.
+| Corpus | pages | attribution | distinct sources | dominant, attributed |
+|---|---|---|---|---|
+| `expB` controlled | 174 | 96 % | 3.67 → **4.50** | 51 % → **31 %** |
+| `test8` newer vault | 177 | **84 %** | 3.00 → **3.50** | 52 % → **43 %** |
+| `wiki/` early-version | 2145 | 30 % | 0.67 → 0.67 | 22 % → 22 % |
 
-**Budget is NOT at a plateau at 10, and the small corpus nearly misled this.** Measured over both: on the 174-page vault source coverage is flat from budget 10 upward (4.50 at 10, 20 and 50), which made 5 look like 96 % of the work. On the 2145-page vault the count climbs — **0.17 at budget 5, 0.67 at 10, 2.17 at 20, 6.67 at 50**. The plateau was a corpus-size artifact: the small corpus has about five matching sources in total. **The budget should not be lowered.** Whether it should rise is open, and what scales everywhere is unattributed pages: 9.3 per query at budget 10 on the large vault, 43.3 at 50.
+`test8` proves the rule works on a real vault, not only on a controlled one — and it also shows the effect is weaker there than on `expB`, because the pool holds fewer distinct sources to begin with. On the early-version `wiki/` the rule does nothing at all: 9.3 of the 10 budget slots go to pages carrying no `sources:` ref, so there is nothing in the budget to diversify. **The assembly step needs both attribution and a multi-source pool.** That is the honest scope of phase 6.
+
+**Budget is NOT at a plateau at 10, and the small corpora nearly misled this.** On the 174- and 177-page vaults source coverage is flat from budget 5 upward, which made 5 look like 96 % of the work. On the 2145-page vault the count climbs — **0.17 at budget 5, 0.67 at 10, 2.17 at 20, 6.67 at 50**. A small corpus has only a handful of matching sources in total, so any budget past that had nothing left to add. **The budget should not be lowered.** Whether it should rise is open, and what scales everywhere is unattributed pages: 9.3 per query at budget 10 on the large vault, 43.3 at 50.
 
 **M0 is re-scoped, not cancelled.** The assembly step fixes the query. It does not touch a word of the Related section a human reads, and #358's complementary memory model makes that reader a real consumer. M0 now serves **reading**, and its priority depends on how often Related sections are read — which nobody has measured.
 
-**Shelved: replacing the Monte Carlo walk with power iteration.** The semantic
-mapping is a silent-failure risk and this arm's contribution is not yet known;
-the seeds-only ablation arm exists to answer exactly that. Restart on three
-conditions: the ablation shows the graph arm carries real weight, a comparison
-script shows the visit-count semantics can be matched exactly, and lint timing
-is measured. The independent wins it promised are already in phase 4.
+**Shelved: replacing the Monte Carlo walk with power iteration.** The semantic mapping is a silent-failure risk and this arm's contribution is not yet known; the seeds-only ablation arm exists to answer exactly that. Restart on three conditions: the ablation shows the graph arm carries real weight, a comparison script shows the visit-count semantics can be matched exactly, and lint timing is measured. The independent wins it promised are already in phase 5.
 
 **Measured 2026-10-08 — three vaults and one controlled pair.** The instrument is
 `node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`. It reads and never writes.
