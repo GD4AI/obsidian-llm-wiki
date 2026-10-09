@@ -181,6 +181,10 @@ A hand-tuned linear weight over text with no IDF keeps producing anomalies — s
 
 **Two limits the same measurement found.** Source coverage can only act on pages carrying a `sources:` ref: **97 %** on a freshly generated vault, **25 %** on the maintainer's mixed-generation `wiki/` (538 of 2141). The gain moves with the age of the library. And one of the six questions —「模型 并行 训练」— had a single-source pool to begin with, where assembly cannot help at all; that is why the diagnostic command reports the pool's source count.
 
+**The A/B effect measurement, run 2026-10-09.** `node tools/dev-instrument/run-assembly-ab.mjs <wikiDir>` runs both selection rules over the same corpus and the same queries, so the only difference is the rule. Arm A sorts by score and takes the top 10; arm B is RRF plus the coverage pick. On the 174-page controlled vault, 6 queries: distinct sources in the top-10 go **3.67 → 4.50**, and the dominant source's share among *attributed* pages goes **51 % → 31 %**. One query —「LSTM 架构」— does not move at all.
+
+**The same measurement on the maintainer's `wiki/` shows the rule doing nothing: 0.67 → 0.67, dominant 22 % → 22 %.** The reason is the limit above, now quantified as an effect size rather than a caveat: 9.3 of the 10 budget slots go to pages carrying no `sources:` ref, so there is nothing in the budget for the rule to diversify. **On a mixed-generation vault the assembly step is a no-op until source attribution improves.** That is the honest scope of phase 6, and it is why the diagnostic reports the unattributed share alongside the source count.
+
 **M0 is re-scoped, not cancelled.** The assembly step fixes the query. It does not touch a word of the Related section a human reads, and #358's complementary memory model makes that reader a real consumer. M0 now serves **reading**, and its priority depends on how often Related sections are read — which nobody has measured.
 
 **Shelved: replacing the Monte Carlo walk with power iteration.** The semantic
