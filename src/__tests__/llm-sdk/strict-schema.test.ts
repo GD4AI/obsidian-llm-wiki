@@ -286,7 +286,11 @@ describe('wire-body regression across the zod 3 and zod 4 representations (#669)
     const raw = JSON.stringify(zodSchema(shape).jsonSchema);
     expect(raw).not.toBe(JSON.stringify(FROZEN_V3_RAW));
     expect(JSON.stringify(FROZEN_V3_RAW)).toContain('"additionalProperties":true');
-    expect(raw).toContain('"additionalProperties":false');
+    // AI SDK v7's zod adapter emits `{}` (open) where v6 + zod 4 emitted
+    // `false`. This test documents the raw adapter, not the wire: the
+    // production plain tier restores `false` in `buildOutputArgs`.
+    expect(raw).toContain('"additionalProperties":{}');
+    expect(raw).not.toContain('"additionalProperties":false');
   });
 
   it('the frozen v3 body and the live v4 body normalise byte-equal', () => {

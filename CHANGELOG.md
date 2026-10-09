@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Coordinated AI SDK v7 / provider-spec v4 upgrade (Issue #764).** `ai` 6.0.230 → 7.0.116 with matching `@ai-sdk/anthropic` 4.0.65, `@ai-sdk/openai` 4.0.78, and `@ai-sdk/openai-compatible` 3.0.57. The four packages move together so `LanguageModelV4` is assignable. Force-disable thinking still puts `reasoning_effort: 'none'` on the openai-compat wire. The plain-tier structured-output body still ships `additionalProperties: false` (v7's zod adapter now emits `{}`; the production path restores the closed contract). The plugin remains a CJS bundle; the package is not converted to ESM.
+
 ### Fixed
 
 - Settings changes that rebuild the panel now preserve its scroll position instead of jumping back to the top (#752).

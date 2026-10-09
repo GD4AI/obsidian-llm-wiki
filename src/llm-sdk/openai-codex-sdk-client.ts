@@ -7,7 +7,7 @@ import type { CodexAuthManager } from './openai-codex/auth-manager';
 import { CODEX_MODELS } from './openai-codex/constants';
 import { normalizeCodexRequest } from './openai-codex/request-adapter';
 import { wrapReasoningContent } from '../core/markdown';
-import { extractReasoningText } from './finish-reason';
+import { extractResultReasoning } from './finish-reason';
 import { forcedTextPromptSystem } from './json-prompt-prefix';
 
 type CodexAuth = Pick<CodexAuthManager, 'getAccess' | 'refreshAfterUnauthorized'>;
@@ -164,7 +164,7 @@ export class OpenAICodexSdkClient implements LLMClient {
       // appear to "lose" their chain-of-thought in the Query response.
       let reasoningContent = '';
       try {
-        reasoningContent = extractReasoningText(await result.reasoning);
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         /* no reasoning for this provider — ignore */
       }

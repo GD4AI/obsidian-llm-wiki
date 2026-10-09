@@ -61,7 +61,7 @@ src/
 ├── texts.ts             # i18n texts (barrel, 11 locales: EN canonical + 10 translations)
 ├── prompts/              # LLM prompt templates by domain
 ├── llm-client-wrapper.ts # Advanced settings injection wrapper
-├── llm-sdk/             # Vercel AI-SDK v6 client factories (v1.23.0, replaces llm-client.ts)
+├── llm-sdk/             # Vercel AI-SDK v7 client factories (v1.23.0 as v6, #764 upgrade)
 │   ├── create-llm-client.ts        # Factory: async + sync shim + preload
 │   ├── openai-sdk-client.ts        # OpenAI via @ai-sdk/openai (Responses API for reasoning models)
 │   ├── anthropic-sdk-client.ts     # Anthropic via @ai-sdk/anthropic (baseURL support for Coding Plan / z.ai / GLM)
