@@ -52,10 +52,16 @@ import { generateQueryKeywords } from './query-keywords';
 import {
   DEFAULT_QUERY_TOP_N_PAGES,
   LEX_MATCH_MIN_COUNT,
-  LEX_MATCH_MIN_TOP_SCORE,
   LEX_FALLBACK_TOP_K,
   QUERY_SEED_LLM_MAX_CANDIDATES,
 } from '../../../constants';
+import {
+  segment,
+  buildPageTerms,
+  buildCorpusTerms,
+  nameTierCoverage,
+  LEX_COVERAGE_MIN,
+} from '../../../core/term-index';
 
 export interface SeedSelectionResult {
   matches: PageMatch[];
@@ -95,20 +101,42 @@ export async function selectPprSeeds(
   const effectiveTopN = Math.max(1, Math.min(DEFAULT_QUERY_TOP_N_PAGES, pageRefs.length));
 
   // === Stage 1: lex match against title + aliases (NO summary) ===
-  const lexHits = lexMatchByTitleAndAliases(query, pageRefs);
+  // One corpus table per query, shared by the lex scoring and the coverage
+  // gate. Building it twice was the performance trap this layer has.
+  const nameTierTerms = pageRefs.map(p => buildPageTerms({
+    title: p.title, aliases: p.aliases, summary: '', text: '',
+  }));
+  const corpusTerms = buildCorpusTerms(nameTierTerms);
+  const lexHits = lexMatchByTitleAndAliases(query, pageRefs, { corpus: corpusTerms });
   const lexCount = lexHits.length;
-  const lexTopScore = lexCount > 0 ? lexHits[0].score : 0;
-  console.debug(
-    `[Stage 1] lex match: count=${lexCount} top1_score=${lexTopScore} ` +
-    `threshold(top=${LEX_MATCH_MIN_TOP_SCORE}, count=${LEX_MATCH_MIN_COUNT})`,
-  );
 
   const tokens = tokenizeQuery(query);
   const reliable = lexIsReliable(tokens);
+  // The gate is a ratio now, not a score. `lexTopScore >= 5` was calibrated on
+  // the title 3 / alias 2 weight table and its meaning left with that table —
+  // measured, the LLM escalation gate fired 4 times where it must fire 0, and
+  // 100 % of queries escalated on a real 174-page vault. Nothing reported it.
+  // `nameTierCoverage` is the name tier's share of the query's total IDF: no
+  // scale to drift against, and a matched rare term moves it more than a
+  // matched stop word. See `term-index.ts`.
+  const queryTerms = tokens.flatMap(t => segment(t));
+  const topPageTerms = lexCount > 0
+    ? buildPageTerms({
+        title: lexHits[0].page.title,
+        aliases: lexHits[0].page.aliases,
+        summary: '',
+        text: '',
+      })
+    : null;
+  const coverage = topPageTerms ? nameTierCoverage(queryTerms, topPageTerms, corpusTerms) : 0;
+  console.debug(
+    `[Stage 1] lex match: count=${lexCount} coverage=${coverage.toFixed(3)} ` +
+    `threshold(coverage=${LEX_COVERAGE_MIN}, count=${LEX_MATCH_MIN_COUNT})`,
+  );
   // Lex is "strong" — no LLM escalation — only when structural + reliable
   // BOTH pass. See select-seeds.ts history (Phase 5.5.0 escalation bug
   // fix) for the conjunction rationale.
-  const lexStrong = lexTopScore >= LEX_MATCH_MIN_TOP_SCORE
+  const lexStrong = coverage >= LEX_COVERAGE_MIN
     && lexCount >= LEX_MATCH_MIN_COUNT
     && reliable;
   const needsLLM = !lexStrong;

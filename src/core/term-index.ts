@@ -185,6 +185,51 @@ export interface FieldWeights {
 /** The old hand-tuned ratio, as a starting point for the harness to move. */
 export const DEFAULT_FIELD_WEIGHTS: FieldWeights = { title: 3, alias: 2, summary: 1, text: 1 };
 
+/**
+ * The name tier's share of the query's total IDF. Unitless, in [0, 1].
+ *
+ * This replaces `lexStrong`'s absolute-scale gate. The old gate read
+ * `lexTopScore >= 5`, where the score was title 3 / alias 2 — a number whose
+ * meaning came entirely from that weight table. BM25F has no absolute scale,
+ * so the same comparison fails silently: measured, the LLM escalation gate
+ * fired 4 times on a suite where it must fire 0, and 100 % of queries
+ * escalated on a real 174-page vault. Nothing in the code reported it.
+ *
+ * A ratio has no scale to drift against. Matching a rare term moves it more
+ * than matching a stop word, which is the discrimination the old count could
+ * not express: two pages matching one needle each were equal even when one
+ * needle was `deepseek` and the other was `the`.
+ *
+ * The threshold is a separate question from the statistic and is calibrated on
+ * the harness, not assumed. `LEX_COVERAGE_MIN` is the starting point.
+ */
+export function nameTierCoverage(
+  queryTerms: readonly string[],
+  page: PageTerms,
+  corpus: CorpusTerms,
+): number {
+  const unique = [...new Set(queryTerms)];
+  if (unique.length === 0) return 0;
+  let total = 0;
+  let matched = 0;
+  for (const term of unique) {
+    const df = corpus.docFreq.get(term) ?? 0;
+    // A term in no document has no IDF to contribute and cannot match. It
+    // counts in the denominator only when it exists somewhere, so a typo in
+    // the query does not drag the ratio toward zero for every page.
+    if (df === 0) continue;
+    const idf = Math.log(1 + (corpus.docCount - df + 0.5) / (df + 0.5));
+    total += idf;
+    const inNameTier = page.fields.title.tf.has(term) || page.fields.alias.tf.has(term);
+    if (inNameTier) matched += idf;
+  }
+  if (total === 0) return 0;
+  return matched / total;
+}
+
+/** Starting point for the coverage gate. Calibrated on the harness. */
+export const LEX_COVERAGE_MIN = 0.5;
+
 /** Score one page against a query. Pure. */
 export function bm25fScore(
   queryTerms: readonly string[],

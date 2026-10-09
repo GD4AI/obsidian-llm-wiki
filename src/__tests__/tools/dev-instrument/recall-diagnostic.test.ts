@@ -145,30 +145,33 @@ describe('rankInversions — synthetic layer only', () => {
 });
 
 describe('escalationReport', () => {
-  const pass = () => ({ topScore: 6, hitCount: 3, reliable: true });
-  const fail = () => ({ topScore: 0.5, hitCount: 1, reliable: false });
+  // `strength` is unitless — the name tier's share of the query's total IDF.
+  // It used to be a score on the title 3 / alias 2 scale and the old thresholds
+  // (5, 3) were written against that scale.
+  const pass = () => ({ strength: 0.8, hitCount: 3, reliable: true });
+  const fail = () => ({ strength: 0.1, hitCount: 1, reliable: false });
 
   it('reports the share of queries that would call the LLM', () => {
-    const r = escalationReport(['a', 'b', 'c'], q => (q === 'a' ? pass() : fail()), 5, 3);
+    const r = escalationReport(['a', 'b', 'c'], q => (q === 'a' ? pass() : fail()), 0.5, 3);
     expect(r.needsLLM).toBe(2);
     expect(r.total).toBe(3);
     expect(r.ratio).toBeCloseTo(2 / 3);
   });
 
   it('is 1.0 when every query fails the gate — the measured silent failure', () => {
-    // With BM25F scores near 0.5 and a threshold of 5, this is what production
-    // looked like before phase 4. The number makes the failure visible instead
-    // of hidden behind "the LLM was called more".
+    // With a ratio near 0.1 against a threshold of 5 on an absolute scale, this
+    // is what production looked like before phase 4. The number makes the
+    // failure visible instead of hidden behind "the LLM was called more".
     const r = escalationReport(['a', 'b'], fail, 5, 3);
     expect(r.ratio).toBe(1);
   });
 
   it('is 0.0 when the gate holds on every query', () => {
-    expect(escalationReport(['a', 'b'], pass, 5, 3).ratio).toBe(0);
+    expect(escalationReport(['a', 'b'], pass, 0.5, 3).ratio).toBe(0);
   });
 
   it('reports zero rather than NaN with no queries', () => {
-    const r = escalationReport([], pass, 5, 3);
+    const r = escalationReport([], pass, 0.5, 3);
     expect(r.total).toBe(0);
     expect(r.ratio).toBe(0);
   });

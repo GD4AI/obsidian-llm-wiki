@@ -130,26 +130,38 @@ const DEFAULT_QUERIES = queries.length > 0 ? queries : [
   'deepseek',
 ];
 
-// The lexical gate is scored the way `scorePagesByNeedles` with the legacy
-// scorer would score it: title 3, alias 2, summary 1, matched per needle.
-// Passing the real thresholds makes the report show what production does.
+// The lexical gate is scored the way production scores it now: the name tier's
+// share of the query's total IDF, which is a ratio in [0, 1] and has no scale
+// to drift against. The old version of this block computed title 3 / summary 1
+// and reported 100 % escalation on this corpus — which was true of the old gate
+// and became misleading the moment production moved.
 function lexScore(query) {
-  const needles = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = segment(query);
+  const unique = [...new Set(terms)];
+  const df = new Map();
+  for (const page of pages) {
+    const seen = new Set(segment(`${page.title} ${(page.aliases ?? []).join(' ')} ${page.summary ?? ''}`));
+    for (const t of seen) df.set(t, (df.get(t) ?? 0) + 1);
+  }
+  const N = pages.length || 1;
   let best = 0;
   let hits = 0;
   for (const page of pages) {
-    const title = page.title.toLowerCase();
-    const summary = (page.summary ?? '').toLowerCase();
-    let score = 0;
-    let found = 0;
-    for (const n of needles) {
-      if (title.includes(n)) { score += 3; found += 1; }
-      else if (summary.includes(n)) { score += 1; found += 1; }
+    const nameTier = new Set(segment(`${page.title} ${(page.aliases ?? []).join(' ')}`));
+    let total = 0;
+    let matched = 0;
+    for (const t of unique) {
+      const d = df.get(t) ?? 0;
+      if (d === 0) continue;
+      const idf = Math.log(1 + (N - d + 0.5) / (d + 0.5));
+      total += idf;
+      if (nameTier.has(t)) matched += idf;
     }
-    if (found > 0) hits += 1;
-    if (score > best) best = score;
+    const coverage = total > 0 ? matched / total : 0;
+    if (coverage > 0) hits += 1;
+    if (coverage > best) best = coverage;
   }
-  return { topScore: best, hitCount: hits, reliable: needles.length > 0 };
+  return { strength: best, hitCount: hits, reliable: unique.length > 0 };
 }
 
 const report = formatRecallDiagnostic(pages, {

@@ -180,27 +180,31 @@ export interface EscalationReport {
   readonly needsLLM: number;
   readonly total: number;
   readonly ratio: number;
-  readonly details: ReadonlyArray<{ query: string; topScore: number; hitCount: number; needsLLM: boolean }>;
+  /** `strength` is a unitless ratio in [0, 1] — the name tier's share of the
+   *  query's total IDF. It used to be a score on the title 3 / alias 2 scale,
+   *  and the field name followed the metric. Keeping the name after the metric
+   *  changed is how a reader ends up thinking a ratio is a score. */
+  readonly details: ReadonlyArray<{ query: string; strength: number; hitCount: number; needsLLM: boolean }>;
 }
 
 /**
  * The needsLLM ratio, from the gate as production runs it.
  *
- * This is the number the `lexStrong` constants control. The reason phase 4 has
- * to move them is visible here: with the absolute-scale thresholds and BM25F
- * scores the ratio goes to 1 and the LLM is called on every query, which is the
- * measured silent failure.
+ * This is the number the gate's constants control. The reason phase 4 had to
+ * change them is visible here: with an absolute-scale threshold and a scorer
+ * that has no absolute scale the ratio goes to 1 and the LLM is called on every
+ * query, which is the measured silent failure.
  */
 export function escalationReport(
   queries: readonly string[],
-  score: (query: string) => { topScore: number; hitCount: number; reliable: boolean },
-  minTopScore: number,
+  score: (query: string) => { strength: number; hitCount: number; reliable: boolean },
+  minStrength: number,
   minCount: number,
 ): EscalationReport {
   const details = queries.map(query => {
-    const { topScore, hitCount, reliable } = score(query);
-    const needsLLM = !(topScore >= minTopScore && hitCount >= minCount && reliable);
-    return { query, topScore, hitCount, needsLLM };
+    const { strength, hitCount, reliable } = score(query);
+    const needsLLM = !(strength >= minStrength && hitCount >= minCount && reliable);
+    return { query, strength, hitCount, needsLLM };
   });
   const needsLLM = details.filter(d => d.needsLLM).length;
   return {

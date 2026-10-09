@@ -17,6 +17,7 @@ import {
   buildPageTerms,
   buildCorpusTerms,
   bm25fScore,
+  nameTierCoverage,
   DEFAULT_FIELD_WEIGHTS,
 } from '../../core/term-index';
 
@@ -259,5 +260,85 @@ describe('document frequency counts a document once, not once per field', () => 
       expect(df).toBeLessThanOrEqual(corpus.docCount);
     }
     expect(bm25fScore(['a'], pages[0], corpus)).toBeGreaterThan(0);
+  });
+});
+
+describe('nameTierCoverage — the unitless replacement for the absolute-scale gate', () => {
+  const mk = (title: string, aliases: string[] = [], summary = '', text = '') =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('is 0 when nothing in the name tier matches', () => {
+    const page = mk('Something else', ['other'], 'unrelated text');
+    const corpus = buildCorpusTerms([page, mk('deepseek'), mk('ampk')]);
+    expect(nameTierCoverage(['deepseek'], page, corpus)).toBe(0);
+  });
+
+  it('is 1 when the name tier covers the whole query', () => {
+    const page = mk('Deepseek ampk');
+    const corpus = buildCorpusTerms([page, mk('other'), mk('another')]);
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus)).toBe(1);
+  });
+
+  it('stays inside [0, 1] — a ratio has no scale to drift against', () => {
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b'), mk('c')]);
+    for (const q of [['deepseek'], ['deepseek', 'ampk'], ['deepseek', 'ampk', 'a']]) {
+      const c = nameTierCoverage(q, page, corpus);
+      expect(c).toBeGreaterThanOrEqual(0);
+      expect(c).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('a matched rare term moves it more than a matched stop word', () => {
+    // The discrimination the old count could not express: two pages matching
+    // one needle each were equal even when one needle was `deepseek` and the
+    // other was `the`.
+    const common = mk('the');
+    const rare = mk('deepseek');
+    const corpus = buildCorpusTerms([
+      common, rare, mk('the x'), mk('the y'), mk('the z'), mk('other'),
+    ]);
+    const fromRare = nameTierCoverage(['deepseek', 'the'], rare, corpus);
+    const fromCommon = nameTierCoverage(['deepseek', 'the'], common, corpus);
+    expect(fromRare).toBeGreaterThan(fromCommon);
+  });
+
+  it('ignores a summary-only hit — the name tier is title and aliases', () => {
+    const page = mk('Nothing', [], 'deepseek appears only in the summary');
+    const corpus = buildCorpusTerms([page, mk('deepseek'), mk('other')]);
+    expect(nameTierCoverage(['deepseek'], page, corpus)).toBe(0);
+  });
+
+  it('a term absent from the corpus does not drag the ratio down', () => {
+    // A typo in the query must not make every page look like a non-match.
+    const page = mk('Deepseek');
+    const corpus = buildCorpusTerms([page, mk('other')]);
+    expect(nameTierCoverage(['deepseek', 'zzztypo'], page, corpus)).toBe(1);
+  });
+
+  it('an empty query is 0, not NaN', () => {
+    const page = mk('Deepseek');
+    const corpus = buildCorpusTerms([page]);
+    expect(nameTierCoverage([], page, corpus)).toBe(0);
+    expect(nameTierCoverage(['zzznotpresent'], page, corpus)).toBe(0);
+  });
+
+  it('does not depend on field weights — nothing to recalibrate when they move', () => {
+    // The old gate read `lexTopScore >= 5`, and 5 meant "title 3 plus alias 2".
+    // Move the weights and the number silently changes meaning. This one has
+    // no weights to move.
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b')]);
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus))
+      .toBe(nameTierCoverage(['deepseek', 'ampk'], page, corpus));
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus)).toBe(1);
+  });
+
+  it('is deterministic', () => {
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b')]);
+    const a = nameTierCoverage(['deepseek', 'ampk', 'a'], page, corpus);
+    const b = nameTierCoverage(['deepseek', 'ampk', 'a'], page, corpus);
+    expect(a).toBe(b);
   });
 });

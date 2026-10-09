@@ -21,10 +21,9 @@ import {
 import { builtInFixtures } from '../../../src/core/recall-fixtures';
 import type { Fixture } from '../../../src/core/recall-harness';
 import {
-  LEX_MATCH_MIN_TOP_SCORE,
   LEX_MATCH_MIN_COUNT,
 } from '../../../src/constants';
-import { segment } from '../../../src/core/term-index';
+import { segment, LEX_COVERAGE_MIN } from '../../../src/core/term-index';
 
 // Re-exported so the runner can inject the same segmenter production uses,
 // without reaching into src/ from the .mjs entry point.
@@ -38,12 +37,13 @@ export interface RecallDiagnosticOptions {
   /** Size of the candidate window. Default 50. */
   readonly poolK?: number;
   /** Lexical gate thresholds, so a reader can see what the constants do. */
-  readonly minTopScore?: number;
+  readonly minStrength?: number;
   readonly minCount?: number;
   /** Segment a query into index terms. Injected so the CLI stays pure. */
   readonly segmentQuery: (q: string) => string[];
-  /** Score one query the way the lexical stage does, for the escalation report. */
-  readonly lexScore: (q: string) => { topScore: number; hitCount: number; reliable: boolean };
+  /** Score one query the way the lexical stage does. `strength` is unitless:
+   *  the name tier's share of the query's total IDF. */
+  readonly lexScore: (q: string) => { strength: number; hitCount: number; reliable: boolean };
 }
 
 export interface RecallDiagnosticReport {
@@ -66,7 +66,7 @@ export function formatRecallDiagnostic(
 ): RecallDiagnosticReport {
   const k = options.k ?? 10;
   const poolK = options.poolK ?? 50;
-  const minTopScore = options.minTopScore ?? LEX_MATCH_MIN_TOP_SCORE;
+  const minStrength = options.minStrength ?? LEX_COVERAGE_MIN;
   const minCount = options.minCount ?? LEX_MATCH_MIN_COUNT;
 
   const { pageTerms, corpus } = prepare(pages);
@@ -88,7 +88,7 @@ export function formatRecallDiagnostic(
   const pools = poolReport(queryFixtures, pages, queryTermsById, {
     k, poolK, pageTerms, corpus,
   });
-  const escalation = escalationReport(options.queries, options.lexScore, minTopScore, minCount);
+  const escalation = escalationReport(options.queries, options.lexScore, minStrength, minCount);
   const inversions = rankInversions(fixtures, [...pages], queryTerms, {
     pageTerms: undefined, corpus: undefined,
   });
@@ -129,11 +129,15 @@ export function formatRecallDiagnostic(
   lines.push(`  single-source windows: ${pools.filter(p => p.singleSourceWindow).length} of ${pools.length}`);
   lines.push(`  unattributed windows: ${pools.filter(p => p.unattributedWindow).length} of ${pools.length}`);
   lines.push('');
-  lines.push(`--- Lexical gate (topScore >= ${minTopScore}, count >= ${minCount}) ---`);
+  lines.push(`--- Lexical gate (coverage >= ${minStrength}, count >= ${minCount}) ---`);
+  for (const d of escalation.details) {
+    lines.push(`  ${d.query}  coverage ${fixed(d.strength)} · name-tier pages ${d.hitCount}${d.needsLLM ? '  -> escalates' : ''}`);
+  }
   lines.push(`queries that would call the LLM: ${escalation.needsLLM} of ${escalation.total} (${pct(escalation.ratio)})`);
   if (escalation.ratio >= 0.99) {
-    lines.push('  every query escalates. That is the measured failure of an absolute-scale gate over a');
-    lines.push('  scorer with no absolute scale, and it is what phase 4 fixes.');
+    lines.push('  every query escalates. Check the per-query line above to see which clause fails:');
+    lines.push('  a low coverage means the name tier misses the query, a low page count means the');
+    lines.push('  corpus has few pages carrying those terms in a title or alias at all.');
   }
   lines.push('');
   lines.push('--- Rank inversions ---');

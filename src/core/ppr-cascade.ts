@@ -198,22 +198,34 @@ const EDGE_PUNCTUATION = new RegExp(`^[^${WORD_CHAR_CLASS}]+|[^${WORD_CHAR_CLASS
 export function lexMatchByTitleAndAliases(
   query: string,
   pages: PageRef[],
+  options: { corpus?: CorpusTerms; scorer?: 'bm25f' | 'legacy' } = {},
 ): Array<{ page: PageRef; score: number; arm: 'lex' }> {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
 
-  // The lex stage keeps the **legacy** scorer for now, and that is deliberate
-  // rather than a hedge: this function's documented contract is the absolute
-  // score scale (title 3 / alias 2), and `lexStrong`'s gate is calibrated on
-  // exactly that scale (`LEX_MATCH_MIN_TOP_SCORE = 5`). Moving one without the
-  // other is the silent failure the #729 plan names — the gate stops firing and
-  // nothing reports it. Measured on the way to this commit: with BM25F here the
-  // LLM escalation gate fired 4 times where it must fire 0. Phase 3 moves the
-  // scorer and the gate together, and makes the gate a unitless coverage
-  // statistic so no scale survives to drift against.
-  return scorePagesByNeedles(pages, tokens, { scorer: 'legacy' }).map(s => {
+  // BM25F is the scorer here now, and the gate in select-seeds no longer reads
+  // this score — it reads `nameTierCoverage`, which has no scale to drift
+  // against. That pair moves together: the old gate was calibrated on this
+  // function's absolute score (title 3 / alias 2), and one without the other is
+  // the measured silent failure where the LLM escalation gate fired 4 times on
+  // a suite where it must fire 0.
+  //
+  // `scorer: 'legacy'` keeps the old absolute-scale contract reachable. Its
+  // tests document title 3 / alias 2, and that contract is real — it is just
+  // not what the default path runs any more.
+  const legacy = options.scorer === 'legacy';
+  const scored = scorePagesByNeedles(pages, tokens, {
+    corpus: options.corpus,
+    ...(legacy ? { scorer: 'legacy' as const } : {}),
+  });
+  return scored.map(s => {
+    // No additive breadth bonus on the BM25F path. BM25F already rewards
+    // breadth: a page that matches more query terms sums more term
+    // contributions. Adding a constant on top of a score with no absolute scale
+    // is the hand-rolled fusion this line of work removes. The legacy path keeps
+    // it, because its contract says so.
     let score = s.score;
-    if (s.tokensFound === tokens.length && tokens.length > 1) {
+    if (legacy && s.tokensFound === tokens.length && tokens.length > 1) {
       score += 2;
     }
     return { page: s.page, score, arm: 'lex' as const };
