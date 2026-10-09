@@ -1,0 +1,218 @@
+/**
+ * #729 Phase 6 — the assembly step.
+ *
+ * The first test reproduces the measured symptom and shows the rule fixing it.
+ * 「强化学习 推理能力」 had ten sources in the top-50 pool and loaded one. If a
+ * change cannot beat that on a pool constructed to look like it, the change is
+ * not doing what the issue asked for.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  rrfFuse,
+  assembleWithCoverage,
+  RRF_K,
+  type Assemblable,
+} from '../../core/assembly';
+
+function page(key: string, sourceSlug?: string): Assemblable {
+  return sourceSlug === undefined ? { key } : { key, sourceSlug };
+}
+
+describe('rrfFuse', () => {
+  it('a page in two channels outranks a page in one at the same rank', () => {
+    const a = page('a', 's1');
+    const b = page('b', 's2');
+    const fused = rrfFuse([
+      { channel: 'lex', candidates: [{ item: a, rank: 1 }, { item: b, rank: 2 }] },
+      { channel: 'ppr', candidates: [{ item: a, rank: 1 }] },
+    ]);
+    expect(fused[0].item.key).toBe('a');
+    expect(fused[0].channels).toBe(2);
+    expect(fused[1].channels).toBe(1);
+  });
+
+  it('never looks at a score — no scale to reconcile', () => {
+    // The old `mergeWithPPR` added `ppr + hint × 0.1 × maxPpr`: two score
+    // scales with no shared unit, joined by a hand-picked coefficient. RRF
+    // adds 1/(k+rank) and there is no coefficient in it.
+    const a = page('a', 's1');
+    const b = page('b', 's2');
+    const one = rrfFuse([
+      { channel: 'x', candidates: [{ item: a, rank: 1 }, { item: b, rank: 2 }] },
+    ]);
+    const two = rrfFuse([
+      { channel: 'x', candidates: [{ item: a, rank: 1 }, { item: b, rank: 2 }] },
+    ]);
+    expect(one).toEqual(two);
+    expect(one[0].score).toBeCloseTo(1 / (RRF_K + 1));
+  });
+
+  it('rank and agreement both count — and at k=60 agreement can outweigh rank', () => {
+    // Measured, not assumed: 1/(60+1) = 0.0164 against 2×1/(60+50) = 0.0182.
+    // Two channels agreeing on a page DO beat one channel's top pick at this k.
+    // That is the design — cross-channel agreement is the signal RRF exists to
+    // capture — and stating it here stops someone "fixing" it later.
+    const top = page('top', 's1');
+    const tail = page('tail', 's2');
+    const fused = rrfFuse([
+      { channel: 'a', candidates: [{ item: top, rank: 1 }] },
+      { channel: 'b', candidates: [{ item: tail, rank: 50 }] },
+      { channel: 'c', candidates: [{ item: tail, rank: 50 }] },
+    ]);
+    expect(fused[0].item.key).toBe('tail');
+    expect(fused[0].channels).toBe(2);
+  });
+
+  it('a single rank-1 beats a single rank-50 — rank always contributes more', () => {
+    const top = page('top', 's1');
+    const tail = page('tail', 's2');
+    const fused = rrfFuse([
+      { channel: 'a', candidates: [{ item: top, rank: 1 }, { item: tail, rank: 50 }] },
+    ]);
+    expect(fused[0].item.key).toBe('top');
+  });
+
+  it('is deterministic and breaks ties on key, never on input order', () => {
+    const a = page('a', 's1');
+    const b = page('b', 's1');
+    const one = rrfFuse([{ channel: 'x', candidates: [{ item: a, rank: 1 }, { item: b, rank: 1 }] }]);
+    const two = rrfFuse([{ channel: 'x', candidates: [{ item: b, rank: 1 }, { item: a, rank: 1 }] }]);
+    expect(one.map(r => r.item.key)).toEqual(two.map(r => r.item.key));
+    expect(one.map(r => r.item.key)).toEqual(['a', 'b']);
+  });
+
+  it('an empty list is empty, not an error', () => {
+    expect(rrfFuse([])).toEqual([]);
+    expect(rrfFuse([{ channel: 'x', candidates: [] }])).toEqual([]);
+  });
+});
+
+describe('assembleWithCoverage — the issue own symptom', () => {
+  it('ten sources in the pool do not collapse into one', () => {
+    // The measured case: 「强化学习 推理能力」, top-50 across ten sources,
+    // top-10 loading one. Constructed so the fix has something to beat: one
+    // source holds every top score, which is what the naive cut takes.
+    const candidates = [];
+    for (let j = 0; j < 10; j += 1) {
+      candidates.push({ item: page(`dominant-${j}`, 'paper-0'), score: 100 - j });
+    }
+    for (let i = 1; i < 10; i += 1) {
+      for (let j = 0; j < 3; j += 1) {
+        candidates.push({
+          item: page(`s${i}-p${j}`, `paper-${i}`),
+          score: 50 - i * 0.1 - j * 0.01,
+        });
+      }
+    }
+    const naive = [...candidates].sort((a, b) => b.score - a.score).slice(0, 10);
+    const naiveSources = new Set(naive.map(c => c.item.sourceSlug)).size;
+    const result = assembleWithCoverage(candidates, 10);
+    // The naive cut loads only the dominant source. That is the symptom.
+    expect(naiveSources).toBe(1);
+    expect(result.pickedSources).toBeGreaterThan(naiveSources);
+    expect(result.dominantShare).toBeLessThan(0.5);
+  });
+
+  it('diminishing return is monotone — a higher score never ranks lower at equal coverage', () => {
+    const candidates = [
+      { item: page('low', 's1'), score: 1 },
+      { item: page('high', 's2'), score: 2 },
+    ];
+    const r = assembleWithCoverage(candidates, 2);
+    expect(r.picked[0].item.key).toBe('high');
+  });
+
+  it('introduces no constant — the first from a source is full, the second is half', () => {
+    // This is the property that matters for the whole line of work: there is
+    // no lambda here to calibrate and no threshold to guess.
+    const candidates = [
+      { item: page('a', 's1'), score: 10 },
+      { item: page('b', 's1'), score: 10 },
+      { item: page('c', 's2'), score: 6 },
+    ];
+    const r = assembleWithCoverage(candidates, 2);
+    expect(r.picked.map(p => p.item.key)).toEqual(['a', 'c']);
+    expect(r.picked[0].effective).toBeCloseTo(10);
+    expect(r.picked[1].effective).toBeCloseTo(6);
+  });
+
+  it('never penalises a page with no source ref — that is the blind spot, not a choice', () => {
+    // 75 % of the measured mixed-generation vault carries no `sources:` ref.
+    // Pushing those down would not be diversity; it would punish the layer's
+    // own blind spot.
+    const candidates = [
+      { item: page('bare-1'), score: 10 },
+      { item: page('bare-2'), score: 9 },
+      { item: page('sourced', 's1'), score: 8 },
+    ];
+    const r = assembleWithCoverage(candidates, 3);
+    expect(r.picked.map(p => p.item.key)).toEqual(['bare-1', 'bare-2', 'sourced']);
+    expect(r.unattributedPicked).toBe(2);
+  });
+
+  it('reports a single-source pool rather than pretending to fix it', () => {
+    const candidates = [
+      { item: page('a', 'only'), score: 10 },
+      { item: page('b', 'only'), score: 9 },
+    ];
+    const r = assembleWithCoverage(candidates, 2);
+    expect(r.singleSourcePool).toBe(true);
+    expect(r.unattributedPool).toBe(false);
+    expect(r.pickedSources).toBe(1);
+  });
+
+  it('reports an unattributed pool as blind, which is not the same as narrow', () => {
+    const candidates = [
+      { item: page('a'), score: 10 },
+      { item: page('b'), score: 9 },
+    ];
+    const r = assembleWithCoverage(candidates, 2);
+    expect(r.unattributedPool).toBe(true);
+    expect(r.singleSourcePool).toBe(false);
+    expect(r.poolSources).toBe(0);
+  });
+
+  it('honours the budget', () => {
+    const candidates = Array.from({ length: 20 }, (_, i) => ({
+      item: page(`p${i}`, `s${i}`), score: 20 - i,
+    }));
+    expect(assembleWithCoverage(candidates, 5).picked).toHaveLength(5);
+    expect(assembleWithCoverage(candidates, 0).picked).toHaveLength(0);
+  });
+
+  it('is deterministic', () => {
+    const candidates = [
+      { item: page('a', 's1'), score: 5 },
+      { item: page('b', 's1'), score: 5 },
+      { item: page('c', 's2'), score: 5 },
+    ];
+    const r1 = assembleWithCoverage(candidates, 3);
+    const r2 = assembleWithCoverage(candidates, 3);
+    expect(r1.picked.map(p => p.item.key)).toEqual(r2.picked.map(p => p.item.key));
+    expect(r1.picked.map(p => p.item.key)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('reports dominant share so a reader can see the collapse', () => {
+    const candidates = [
+      { item: page('a', 's1'), score: 10 },
+      { item: page('b', 's1'), score: 9 },
+      { item: page('c', 's1'), score: 8 },
+    ];
+    const r = assembleWithCoverage(candidates, 3);
+    expect(r.dominantShare).toBeCloseTo(1);
+    expect(r.pickedSources).toBe(1);
+  });
+
+  it('the pool source count is the window, not the vault', () => {
+    // Counting the whole vault makes every pool look rich and hides the case
+    // the limit is about. The candidates passed in ARE the window.
+    const window = [
+      { item: page('a', 's1'), score: 3 },
+      { item: page('b', 's2'), score: 2 },
+    ];
+    expect(assembleWithCoverage(window, 2).poolSources).toBe(2);
+    const narrow = [{ item: page('a', 's1'), score: 3 }];
+    expect(assembleWithCoverage(narrow, 1).poolSources).toBe(1);
+  });
+});
