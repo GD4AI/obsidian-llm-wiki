@@ -108,8 +108,20 @@ export function shapeRelatedLists(
         if (placed) continue;
         if (willExist.has(k)) { hasLive = put(name, undefined, into) || hasLive; continue; }
         if (!prefixed && tagLeaves.has(k)) { tags.push({ on: self, name }); continue; }
-        if (!seen.has(k)) unanswered.push({ on: self, name });
-        put(name, undefined, into);
+        if (!seen.has(k)) {
+          // The name is information; the link is the wrong carrier. A dead
+          // related entry is a guessed folder path, it takes a slot in a capped
+          // list, and it does not become live when the page is later born in
+          // the other folder. So record the name and do not assert the
+          // relation. DocTpoint's question on #729 asked where the name goes
+          // once the write stops — it goes to `log.md` as a counted fact and
+          // into the lint report as an actionable item, both durable.
+          // Previously the name was pushed here AND written as a link, while
+          // `unanswered` itself reached a debug line and was dropped.
+          unanswered.push({ on: self, name });
+          seen.add(k);
+        }
+        continue;
       }
     }
     // Siblings only rescue an orphan. Written for every page they were 99 %

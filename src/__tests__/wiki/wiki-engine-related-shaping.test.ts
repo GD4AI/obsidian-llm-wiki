@@ -36,10 +36,15 @@ describe('WikiEngine.ingestSource — related shaping', () => {
       .filter(m => m.includes('Related entities:'))
       .map(m => `${(m.match(/Related entities:[^\\]*/) ?? [''])[0]} | ${(m.match(/Related concepts:[^\\]*/) ?? [''])[0]}`);
     expect(lines).toEqual([
-      // Berberin: Metformin under its vault title, Secukinumab kept as written, Vitamin K2 as a note that will be a page — live entries, so no sibling
-      'Related entities: Metformin, Secukinumab, Vitamin K2 | Related concepts: No related concepts',
+      // Berberin: Metformin under its vault title, Secukinumab recorded as
+      // unanswered but NOT written (it answers nothing, and a link to an
+      // absent page is a guessed folder path that never becomes live),
+      // Vitamin K2 as a note that will be a page — live entries, so no sibling
+      'Related entities: Metformin, Vitamin K2 | Related concepts: No related concepts',
       // Insulinresistenz: its only name is unanswered, so the sibling entity rescues it; the unanswered concept kept
-      'Related entities: Berberin | Related concepts: Metabolisches Syndrom',
+      // 'Metabolisches Syndrom' answers nothing either, so it is recorded and
+      // not written — the same rule as Secukinumab above.
+      'Related entities: Berberin | Related concepts: No related concepts',
     ]);
 
     // The written page carries the sections rendered from the
@@ -47,7 +52,7 @@ describe('WikiEngine.ingestSource — related shaping', () => {
     // planned paths — whatever the model returned; no sibling concept, the
     // page has live entries of its own.
     const berberinPage = h.files.get('wiki/entities/berberin.md') ?? '';
-    expect(berberinPage).toContain('## Verwandte Entitäten\n\n- [[entities/Metformin|Metformin]]\n- [[entities/secukinumab|Secukinumab]]\n- [[entities/vitamin-k2|Vitamin K2]]\n');
+    expect(berberinPage).toContain('## Verwandte Entitäten\n\n- [[entities/Metformin|Metformin]]\n- [[entities/vitamin-k2|Vitamin K2]]\n');
     expect(berberinPage).not.toContain('concepts/insulinresistenz');
 
     const msg = h.progressMessages.find(m => m.startsWith('Related lists:'));

@@ -19,9 +19,15 @@ const deps = {
 };
 
 describe('shapeRelatedLists', () => {
-  it('keeps a related name nothing answers as written and counts it', () => {
+  it('records a related name nothing answers without asserting the relation', () => {
+    // The name is information; the link is the wrong carrier. DocTpoint asked
+    // on #729 where the name goes once the write stops: it is recorded here,
+    // and goes to `log.md` and the lint report as a durable, actionable item.
+    // What does NOT happen is a link to a page that does not exist — it takes a
+    // slot in a capped list and never becomes live when the page is later born
+    // in the other folder.
     const r = shapeRelatedLists({ entities: [ent('Berberin', { related_entities: ['Secukinumab'] })], concepts: [] }, deps);
-    expect(r.entities[0].related_entities).toEqual(['Secukinumab']);
+    expect(r.entities[0].related_entities).toEqual([]);
     expect(r.unanswered).toEqual([{ on: 'Berberin', name: 'Secukinumab' }]);
   });
 
@@ -64,7 +70,10 @@ describe('shapeRelatedLists', () => {
       { entities: [ent('A1', { related_entities: ['Niemand'] }), ent('A2'), ent('A3'), ent('A4'), ent('A5')], concepts: [] },
       deps,
     );
-    expect(r.entities[0].related_entities).toEqual(['Niemand', 'A2', 'A3', 'A4']); // frontier name kept, then 3 siblings
+    // 'Niemand' answers nothing, so it is recorded as unanswered and NOT
+    // written as a link. What remains is the three siblings. The name is kept
+    // as information, not as an edge to an absent page.
+    expect(r.entities[0].related_entities).toEqual(['A2', 'A3', 'A4']);
     expect(r.entities[1].related_entities).toHaveLength(RELATED_SIBLING_CAP);
     expect(r.siblings).toBe(5 * RELATED_SIBLING_CAP);
   });
@@ -104,7 +113,13 @@ describe('shapeRelatedLists', () => {
     const twice = shapeRelatedLists(once, deps);
     expect(twice.entities).toEqual(once.entities);
     expect(twice.concepts).toEqual(once.concepts);
-    expect(twice.unanswered).toEqual([{ on: 'A', name: 'Gone' }]);
+    // `unanswered` is a PER-PASS record, not a durable field. The first pass
+    // recorded 'Gone' and did not write it; the second pass has nothing left to
+    // look at, so it reports none. That is the record's semantics — it says
+    // "what this run could not answer", and `log.md` is where it persists.
+    // Idempotency holds for the shapes, which is what a second pass must not
+    // change.
+    expect(twice.unanswered).toEqual([]);
     expect(twice.siblings).toBe(0);
   });
 });
