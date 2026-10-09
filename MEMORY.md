@@ -39,9 +39,28 @@ head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
 `e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
 floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
 Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
-docs only. **Next step is Phase 3** — `lexStrong` becomes a unitless coverage statistic and the lex stage moves off `scorer: 'legacy'` in the same change.
+docs only. **Next step is Phase 3 — the harness**, moved ahead of the phases that need it. See "Two decisions taken 2026-10-08" below.
 
 **The seven phases, with their targets.**
+
+**Two decisions taken 2026-10-08, on the maintainer's instruction.**
+
+1. **The harness moves ahead of what it calibrates.** Phases 3 and 4 both need
+   calibrated constants — the BM25F field weights, and the `lexStrong` coverage
+   threshold. The harness that produces them was scheduled at phase 5. That
+   inversion was caught when `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2,
+   summary 1, text 1}` turned out to be the old hand-tuned ratio wearing a new
+   name: the plan says field weights are calibrated on the harness and never
+   assumed, and the constant as written assumed them. Shipping it unlabelled
+   would have broken the plan's own rule. The cost of moving the harness up is
+   that phase 4's implementation arrives later; the cost of not moving it is
+   that phases 3 and 4 draw conclusions from numbers nobody measured and are
+   re-derived afterwards.
+2. **The lex stage keeps `scorer: 'legacy'` until phase 4.** Its documented
+   contract is the absolute score scale (title 3 / alias 2) and `lexStrong` is
+   calibrated on exactly that. Moving one without the other is the measured
+   silent failure. The cost is a known gap: Stage 1 seed ranking has no IDF
+   suppression until phase 4 closes it. Accepted rather than papered over.
 
 | Phase | Target |
 |---|---|

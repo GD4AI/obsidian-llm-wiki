@@ -168,13 +168,15 @@ A hand-tuned linear weight over text with no IDF keeps producing anomalies — s
 
 **Two couplings that fix the order.** Segmentation and BM25F land in the **same** phase: without segmentation a Chinese query is one token and the IDF table is built over whole clauses, which is not a ranker. And `lexStrong`'s constants — `LEX_MATCH_MIN_COUNT = 3`, `LEX_MATCH_MIN_TOP_SCORE = 5`, `lexIsReliable` — are calibrated on the old score's absolute scale. BM25F has no absolute scale, so they fail silently. They become relative statistics: the name tier's share of the query's total IDF.
 
+**A third coupling, found while implementing rather than while planning.** The harness that calibrates field weights and the coverage threshold was scheduled after the phases that need it. That inversion was caught when the shipped `DEFAULT_FIELD_WEIGHTS` turned out to be the old hand-tuned ratio wearing a new name — the plan says field weights are calibrated on the harness and never assumed, and the constant as written assumed them. The harness moved ahead of what it calibrates. The alternative was to let phases 3 and 4 draw conclusions from uncalibrated numbers and re-derive them later.
+
 | Phase | What it does | Order |
 |---|---|---|
 | **1** ✅ 2026-10-08 | stub pages by the `stub: true` frontmatter flag, take the extraction summary after the boilerplate line. `firstBodyLine` skipped the provenance blockquote instead, so every stub indexed the same sentence. Gate is the flag, not the text — a page may legitimately open with a blockquote. 4 tests, and the generated corpus shows 0 of 350 pages changed | first — the boilerplate words would pollute every later calibration |
-| **2** | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch | **one phase, not two** |
-| **3** | `lexStrong` becomes a coverage statistic | silent failure otherwise |
-| **4** | determinism, reverse adjacency pre-built in `GraphCache`, the hub-link loop hoisted (380 calls to 20) | orthogonal, independent wins |
-| **5** | harness + diagnostic command: four segmentation regimes, a cross-lingual fixture, a seeds-only ablation arm, and a **candidate-pool source count** | accepts 2 and 6 |
+| **2** ✅ 2026-10-08 | segmentation + term index + BM25F replacing `scoreProfile`; the old scorer kept behind a switch. **Landed.** The lex stage keeps `scorer: 'legacy'` until phase 4, on purpose — its gate is calibrated on that scale | **one phase, not two** |
+| **3** | harness + diagnostic command: four segmentation regimes, a cross-lingual fixture, a seeds-only ablation arm, and a **candidate-pool source count**. **Moved up from 5 on 2026-10-08** — phases 2 and 4 both need calibrated constants and the harness is what produces them. Shipping `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2, summary 1, text 1}` as if it were measured would break the plan's own rule that field weights are calibrated, never assumed | **now precedes what it calibrates** |
+| **4** | `lexStrong` becomes a unitless coverage statistic, and the lex stage moves off `scorer: 'legacy'` in the **same** change | **silent failure measured, not assumed** — with BM25F behind the lex stage the LLM escalation gate fired 4 times where it must fire 0, because `LEX_MATCH_MIN_TOP_SCORE = 5` cannot hold against scores near 0.5 |
+| **5** | determinism, reverse adjacency pre-built in `GraphCache`, the hub-link loop hoisted (380 calls to 20) | orthogonal, independent wins |
 | **6** | assembly layer: RRF fusion (`k = 60`) plus source coverage | **precondition measured, see below** |
 | **7** | process items; `contextKeywords` as its own PR | it is on the write path |
 | **8** | write-side: stop writing dead related entries (keep the name in `log.md` + the lint report per DocTpoint), the alias budget to 3, wire `hub-link-distinctiveness` into a fix | dropped by the restructure and put back |
