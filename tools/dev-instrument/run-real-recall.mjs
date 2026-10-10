@@ -47,10 +47,14 @@ function titleOf(text, fallback) {
 
 function summaryOf(text) {
   const lines = text.split('\n');
-  let started = false;
+  // Count the frontmatter fences and read only after the CLOSING one. The
+  // previous `started = started || !started` flipped to true at the FIRST fence
+  // and stayed there, so every page's "summary" was its first frontmatter line.
+  // Caught by @DocTpoint on a 2831-page German vault, 2026-10-10.
+  let fences = 0;
   for (const line of lines) {
-    if (/^---\s*$/.test(line)) { started = started || !started; continue; }
-    if (!started) continue;
+    if (/^---\s*$/.test(line)) { fences += 1; continue; }
+    if (fences < 2) continue;
     const t = line.trim();
     if (!t || t.startsWith('#') || t.startsWith('>') || t.startsWith('-') || t.startsWith('|')) continue;
     return t.slice(0, 100);

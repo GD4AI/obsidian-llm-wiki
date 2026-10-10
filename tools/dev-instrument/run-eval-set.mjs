@@ -48,10 +48,14 @@ function titleOf(text, fallback) {
   return m ? m[1].trim() : fallback;
 }
 function summaryOf(text) {
-  let started = false;
+  // Count the frontmatter fences and read only after the CLOSING one. The
+  // previous `started = started || !started` flipped to true at the FIRST fence
+  // and stayed there, so every page's "summary" was its first frontmatter line.
+  // Caught by @DocTpoint on a 2831-page German vault, 2026-10-10.
+  let fences = 0;
   for (const line of text.split('\n')) {
-    if (/^---\s*$/.test(line)) { started = started || !started; continue; }
-    if (!started) continue;
+    if (/^---\s*$/.test(line)) { fences += 1; continue; }
+    if (fences < 2) continue;
     const t = line.trim();
     if (!t || t.startsWith('#') || t.startsWith('>') || t.startsWith('-') || t.startsWith('|')) continue;
     return t.slice(0, 100);
@@ -228,8 +232,54 @@ function evaluateFused(label, channels, lambda) {
 }
 
 console.log(`\n=== Phase 0 — does the graph bridge the gap? Lex vs ppr vs both ===`);
+
+// CONTROL 1 — the random baseline. Ten random pages hit the truth with
+// probability 10/N. Any recall below this is worse than guessing. @DocTpoint's
+// point: the buggy-summary numbers sat UNDER it on all three vaults.
+{
+  let hits = 0, n = 0;
+  for (const q of bridge) {
+    const pool = pages.map(p => p.key).filter(k => k !== q.truth);
+    const picked = [];
+    for (let i = 0; i < Math.min(K, pool.length); i += 1) {
+      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    if (picked.includes(q.truth)) hits += 1;
+    n += 1;
+  }
+  console.log(`  ${'random 10 pages'.padEnd(26)} bridge recall@${K}=${(hits / Math.max(1, n)).toFixed(3)}   <- the floor to beat`);
+}
+
+// CONTROL 2 — the truth edge. The truth is defined as "A links to B" and ppr
+// walks that same edge, so part of ppr's gain is circular. Removing the A->B
+// edge before the walk separates the real bridging from the tautology.
+function rankPprWithoutTruthEdge(q) {
+  const from = q.from;
+  const stripped = {
+    nodes: graph.nodes,
+    edges: new Map([...graph.edges].map(([k, v]) => [k, k === from ? v.filter(t => byName.get(t)?.key !== q.truth) : v])),
+  };
+  const pprPages = pages.map(p => ({ path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0 }));
+  const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph: stripped, topN: 200 });
+  return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
+}
+
+// CONTROL 3 — what the set rewards by construction. Any ranker that simply
+// returns A's own links scores near 1.0. That is the ceiling, not a result.
+{
+  let hits = 0, n = 0;
+  for (const q of bridge) {
+    const a = byName.get(q.from);
+    const links = a ? [...a.links].map(t => byName.get(t)?.key).filter(Boolean) : [];
+    if (links.includes(q.truth)) hits += 1;
+    n += 1;
+  }
+  console.log(`  ${'return A\'s own links'.padEnd(26)} bridge recall@${K}=${(hits / Math.max(1, n)).toFixed(3)}   <- the ceiling by construction`);
+}
+
 evaluateFused('lex only', [rankBm25f], 0);
 evaluateFused('ppr only', [rankPpr], 0);
+evaluateFused('ppr, truth edge removed', [rankPprWithoutTruthEdge], 0);
 evaluateFused('lex + ppr', [rankBm25f, rankPpr], 0);
 evaluateFused('lex + ppr, lambda 0.25', [rankBm25f, rankPpr], 0.25);
 
