@@ -28,6 +28,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, basename } from 'node:path';
 import { assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
+import { pprCascade } from '../../src/core/ppr-cascade.ts';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment, DEFAULT_FIELD_WEIGHTS,
 } from '../../src/core/term-index.ts';
@@ -185,6 +186,52 @@ evaluate('legacy scorer', rankLegacy, undefined);
 evaluate('bm25f, no diversity', rankBm25f, 0);
 evaluate('bm25f, lambda 0.25', rankBm25f, 0.25);
 evaluate('bm25f, lambda 1', rankBm25f, 1);
+
+// ---- Phase 0: does the GRAPH bridge the vocabulary gap? ----
+// The runs above use the lex channel only. Production fuses lex with ppr, and
+// ppr walks the link graph from the seeds. If A links to B and A is a seed —
+// which it must be, since the query is phrased in A's words — the walk should
+// reach B. Nobody had measured that.
+const graph = {
+  nodes: pages.map(p => p.key),
+  edges: new Map(pages.map(p => [p.key, [...p.links].map(t => byName.get(t)?.key).filter(Boolean)])),
+};
+
+function rankPpr(q) {
+  const pprPages = pages.map(p => ({
+    path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0,
+  }));
+  const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: 200 });
+  return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
+}
+
+function evaluateFused(label, channels, lambda) {
+  const run = (set) => {
+    let hits = 0, rr = 0, n = 0;
+    for (const q of set) {
+      const lists = channels.map((ch, ci) => {
+        const ranked = ch(q);
+        return { channel: `c${ci}`, candidates: ranked.map((s, i) => ({ item: s.item, rank: i + 1 })) };
+      });
+      const fused = rrfFuse(lists);
+      const r = assembleWithCoverage(fused.map(f => ({ item: f.item, score: f.score })), BUDGET, lambda === undefined ? {} : { lambda });
+      const picked = r.picked.map(x => x.item.key);
+      const rank = picked.indexOf(q.truth);
+      if (rank >= 0) { hits += 1; rr += 1 / (rank + 1); }
+      n += 1;
+    }
+    return { recall: hits / Math.max(1, n), mrr: rr / Math.max(1, n) };
+  };
+  const b = run(bridge);
+  const s = run(self);
+  console.log(`  ${label.padEnd(26)} bridge recall@${K}=${b.recall.toFixed(3)} MRR=${b.mrr.toFixed(3)} | self recall@${K}=${s.recall.toFixed(3)} MRR=${s.mrr.toFixed(3)}`);
+}
+
+console.log(`\n=== Phase 0 — does the graph bridge the gap? Lex vs ppr vs both ===`);
+evaluateFused('lex only', [rankBm25f], 0);
+evaluateFused('ppr only', [rankPpr], 0);
+evaluateFused('lex + ppr', [rankBm25f, rankPpr], 0);
+evaluateFused('lex + ppr, lambda 0.25', [rankBm25f, rankPpr], 0.25);
 
 console.log('\n  bridge = query phrased in page A\'s words, answer is the page A links to');
 console.log('  self   = query phrased in the page\'s own words, answer is the page');
