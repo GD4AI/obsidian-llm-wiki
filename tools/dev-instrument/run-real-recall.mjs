@@ -24,7 +24,7 @@
  */
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { assembleWithCoverage } from '../../src/core/assembly.ts';
+import { assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment, DEFAULT_FIELD_WEIGHTS,
 } from '../../src/core/term-index.ts';
@@ -126,7 +126,18 @@ for (const lambda of LAMBDAS) {
       score: bm25fScore(terms, pt, corpus, DEFAULT_FIELD_WEIGHTS),
     }));
     scored.sort((a, b) => b.score - a.score);
-    const r = assembleWithCoverage(scored, BUDGET, { lambda });
+    // Through `rrfFuse`, exactly as `mergeWithPPR` does in production. Feeding
+    // raw BM25F scores straight to `assembleWithCoverage` was a training-serving
+    // skew: the coverage penalty is multiplicative, so its strength is set by the
+    // score scale, and RRF compresses the top ranks to within 1.1x while raw
+    // scores span far more. Calibrating lambda on one scale and serving on the
+    // other does not transfer. See #819.
+    const fused = rrfFuse([{ channel: 'lex', candidates: scored.map((s, i) => ({ item: s.item, rank: i + 1 })) }]);
+    const r = assembleWithCoverage(
+      fused.map(f => ({ item: f.item, score: f.score })),
+      BUDGET,
+      { lambda },
+    );
     const picked = r.picked.map(x => x.item.key);
     n += 1;
 

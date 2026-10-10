@@ -20,7 +20,7 @@
  *   npx tsx tools/dev-instrument/run-lambda-scan.mjs <wikiDir>       # real vault
  */
 import { hardFixtures, builtInFixtures } from '../../src/core/recall-fixtures.ts';
-import { assembleWithCoverage } from '../../src/core/assembly.ts';
+import { assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment,
   DEFAULT_FIELD_WEIGHTS,
@@ -73,12 +73,16 @@ function scanSynthetic(label, fixFn) {
   }));
   const corpus = buildCorpusTerms(pts);
 
-  // Per query, rank by BM25F and hand the ranked list to the assembly layer.
+  // Per query, rank by BM25F, fuse through RRF exactly as production does, and
+  // hand the result to the assembly layer. Raw scores would be a training-serving
+  // skew: the coverage penalty is multiplicative and its strength follows the
+  // score scale. See #819.
   const perQuery = fixtures.map((f, i) => {
     const terms = segment(f.query);
     const scored = pts.map((pt, j) => ({ item: { key: pages[j].path, sourceSlug: pages[j].sourceSlug }, score: bm25fScore(terms, pt, corpus, DEFAULT_FIELD_WEIGHTS) }));
     scored.sort((a, b) => b.score - a.score);
-    return { fixture: f, candidates: scored };
+    const fused = rrfFuse([{ channel: 'lex', candidates: scored.map((s, j) => ({ item: s.item, rank: j + 1 })) }]);
+    return { fixture: f, candidates: fused.map(f2 => ({ item: f2.item, score: f2.score })) };
   });
 
   console.log(`\n=== ${label} — synthetic, ${fixtures.length} queries, budget ${SYNTH_BUDGET} ===`);
@@ -129,7 +133,8 @@ async function scanVault(dir) {
       const terms = segment(q);
       const scored = pts.map((pt, j) => ({ item: { key: pageRefs[j].path, sourceSlug: pageRefs[j].sourceSlug }, score: bm25fScore(terms, pt, corpus, DEFAULT_FIELD_WEIGHTS) }));
       scored.sort((a, b) => b.score - a.score);
-      const r = assembleWithCoverage(scored, BUDGET, { lambda });
+      const fused = rrfFuse([{ channel: 'lex', candidates: scored.map((s, j) => ({ item: s.item, rank: j + 1 })) }]);
+      const r = assembleWithCoverage(fused.map(f2 => ({ item: f2.item, score: f2.score })), BUDGET, { lambda });
       sources += r.pickedSources;
       dom += r.dominantShare;
       bare += r.picked.filter(p => p.sourceSlug === null).length;

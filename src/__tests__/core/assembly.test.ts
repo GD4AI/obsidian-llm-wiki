@@ -107,7 +107,7 @@ describe('assembleWithCoverage — the issue own symptom', () => {
     }
     const naive = [...candidates].sort((a, b) => b.score - a.score).slice(0, 10);
     const naiveSources = new Set(naive.map(c => c.item.sourceSlug)).size;
-    const result = assembleWithCoverage(candidates, 10);
+    const result = assembleWithCoverage(candidates, 10, { lambda: 0.25 });
     // The naive cut loads only the dominant source. That is the symptom.
     expect(naiveSources).toBe(1);
     expect(result.pickedSources).toBeGreaterThan(naiveSources);
@@ -132,17 +132,22 @@ describe('assembleWithCoverage — the issue own symptom', () => {
       { item: page('b', 's1'), score: 10 },
       { item: page('c', 's2'), score: 6 },
     ];
-    // At lambda 1 the second s1 page falls to 5 and loses to c's 6. At the
-    // calibrated 0.25 it falls only to 8 and stays ahead — the damping is a
-    // preference, not an eviction.
+    // At lambda 1 the second s1 page falls to 5 and loses to c's 6. At 0.25 it
+    // falls only to 8 and stays ahead — the damping is a preference, not an
+    // eviction. The default is now lambda 0, so it is passed explicitly here.
     const r1 = assembleWithCoverage(candidates, 2, { lambda: 1 });
     expect(r1.picked.map(p => p.item.key)).toEqual(['a', 'c']);
     expect(r1.picked[1].effective).toBeCloseTo(6);
 
-    const r = assembleWithCoverage(candidates, 2);
+    const r = assembleWithCoverage(candidates, 2, { lambda: 0.25 });
     expect(r.picked.map(p => p.item.key)).toEqual(['a', 'b']);
     expect(r.picked[0].effective).toBeCloseTo(10);
     expect(r.picked[1].effective).toBeCloseTo(8);
+
+    // Lambda 0 does not damp at all: the second s1 page keeps its full score.
+    const r0 = assembleWithCoverage(candidates, 2);
+    expect(r0.picked.map(p => p.item.key)).toEqual(['a', 'b']);
+    expect(r0.picked[1].effective).toBeCloseTo(10);
   });
 
   it('never penalises a page with no source ref — that is the blind spot, not a choice', () => {
@@ -198,7 +203,8 @@ describe('assembleWithCoverage — the issue own symptom', () => {
     const r1 = assembleWithCoverage(candidates, 3);
     const r2 = assembleWithCoverage(candidates, 3);
     expect(r1.picked.map(p => p.item.key)).toEqual(r2.picked.map(p => p.item.key));
-    expect(r1.picked.map(p => p.item.key)).toEqual(['a', 'c', 'b']);
+    // Lambda 0 is plain score order.
+    expect(r1.picked.map(p => p.item.key)).toEqual(['a', 'b', 'c']);
   });
 
   it('reports dominant share so a reader can see the collapse', () => {
@@ -255,8 +261,18 @@ describe('coverage lambda — the relevance cost is measured, not assumed (#819 
     expect(loadedRelevant(1)).toBe(1);
   });
 
-  it('the calibrated default 0.25 keeps four of the eight for one source less', () => {
+  it('the default is lambda 0 — the diversity rule is OFF until one is chosen', () => {
+    // The calibration that put 0.25 here was done on raw BM25F scores while
+    // production serves RRF scores. Under RRF every lambda above zero costs
+    // 25-55% of the co-citation recall across three vaults, and what it buys is
+    // source count. So the default is the no-diversity rule.
     const r = assembleWithCoverage(scenario(), 10);
+    expect(r.picked.filter(p => p.sourceSlug === 'A').length).toBe(8);
+    expect(r.pickedSources).toBe(3);
+  });
+
+  it('lambda 0.25 keeps four of the eight for one source less', () => {
+    const r = assembleWithCoverage(scenario(), 10, { lambda: 0.25 });
     expect(r.picked.filter(p => p.sourceSlug === 'A').length).toBe(4);
     expect(r.pickedSources).toBe(7);
   });

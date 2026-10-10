@@ -128,16 +128,24 @@ export interface AssemblyResult<T> {
  * **λ is a real constant and it is calibrated, not assumed.** An earlier version
  * of this comment claimed the rule "has no coefficient, so there is nothing here
  * to calibrate wrong". That was wrong: the form is fixed but its strength is set
- * implicitly by the score scale. RRF compresses ranks 1-50 into 1.8x while the
- * penalty at λ = 1 is 2x, so a source's second page lost to any new-source page
- * and eight relevant pages from one source yielded one loaded. See #819.
+ * implicitly by the score scale. See #819.
  *
- * λ = 0.25, measured 2026-10-09 on three real vaults and one stress scenario.
- * Against λ = 1 it keeps **83-93 % of the co-citation recall** while giving up
- * **1-2 % of the source diversity**, and it loads **four** of eight same-source
- * relevant pages in the stress scenario where λ = 1 loads **one**. λ = 1 was
- * the original default and the data does not support it. See
- * `tools/dev-instrument/run-real-recall.mjs`.
+ * **λ = 0 by default — the diversity rule is OFF.** Measured 2026-10-10 through
+ * `rrfFuse` first, which is what production does. Any earlier calibration that
+ * fed raw BM25F scores in here was a training-serving skew: RRF compresses the
+ * top ranks to within 1.1x, so the same λ bites far harder than it did offline.
+ *
+ *   co-citation recall   λ=0    λ=0.25   λ=1
+ *   test10  358p         0.089  0.050    0.040
+ *   test8   177p         0.160  0.108    0.065
+ *   wiki/  2145p         0.112  0.084    0.084
+ *
+ * Every λ above zero costs 25-55% of the co-citation recall, and what it buys
+ * is source count. The recall cost is larger than the diversity gain on every
+ * vault measured. Pass `lambda` explicitly to turn it on once a rule has been
+ * chosen on a real evaluation set. The tier band still applies at λ = 0 — the
+ * LLM-paid seeds keep their promise, and that is a band, not diversity.
+ * See `tools/dev-instrument/run-real-recall.mjs`.
  *
  * Pages with no `sourceSlug` are never penalised. Penalising them would push
  * down the 75 % of an old vault that carries no ref, which is not diversity,
@@ -153,7 +161,7 @@ export interface CoverageOptions {
   readonly lambda?: number;
 }
 
-export const COVERAGE_LAMBDA_DEFAULT = 0.25;
+export const COVERAGE_LAMBDA_DEFAULT = 0;
 
 export function assembleWithCoverage<T extends Tiered>(
   candidates: ReadonlyArray<{ item: T; score: number }>,
