@@ -280,8 +280,67 @@ function rankPprWithoutTruthEdge(q) {
 evaluateFused('lex only', [rankBm25f], 0);
 evaluateFused('ppr only', [rankPpr], 0);
 evaluateFused('ppr, truth edge removed', [rankPprWithoutTruthEdge], 0);
-evaluateFused('lex + ppr', [rankBm25f, rankPpr], 0);
+evaluateFused('lex + ppr (rrf)', [rankBm25f, rankPpr], 0);
 evaluateFused('lex + ppr, lambda 0.25', [rankBm25f, rankPpr], 0.25);
+
+// ---- Candidate fusion rules, measured not argued ----
+// A' MAX FUSION. Take each channel's normalised score and keep the larger. When
+// ppr ranks B third and lex ranks it 200th, B keeps ppr's score instead of
+// having it averaged away. This is the failure the rrf sum has.
+function evaluateMax(label, channels) {
+  const run = (set) => {
+    let hits = 0, rr = 0, n = 0;
+    for (const q of set) {
+      const per = channels.map(ch => ch(q));
+      const normMax = per.map(ranked => ranked.length ? ranked[0].score : 1);
+      const byKey = new Map();
+      for (let ci = 0; ci < per.length; ci += 1) {
+        for (const s of per[ci]) {
+          const v = normMax[ci] ? s.score / normMax[ci] : 0;
+          const prev = byKey.get(s.item.key);
+          if (prev === undefined || v > prev) byKey.set(s.item.key, v);
+        }
+      }
+      const fused = [...byKey.entries()].map(([key, score]) => ({
+        item: { key, sourceSlug: byName.get(key)?.sourceSlug }, score,
+      }));
+      const r = assembleWithCoverage(fused, BUDGET, {});
+      const rank = r.picked.map(x => x.item.key).indexOf(q.truth);
+      if (rank >= 0) { hits += 1; rr += 1 / (rank + 1); }
+      n += 1;
+    }
+    return { recall: hits / Math.max(1, n), mrr: rr / Math.max(1, n) };
+  };
+  const b = run(bridge), s = run(self);
+  console.log(`  ${label.padEnd(26)} bridge recall@${K}=${b.recall.toFixed(3)} MRR=${b.mrr.toFixed(3)} | self recall@${K}=${s.recall.toFixed(3)} MRR=${s.mrr.toFixed(3)}`);
+}
+
+// C' QUOTA UNION. No fusion at all: take the top k from each channel and union
+// them. Guarantees both channels contribute, and nothing is averaged away.
+function evaluateQuota(label, channels, perChannel) {
+  const run = (set) => {
+    let hits = 0, rr = 0, n = 0;
+    for (const q of set) {
+      const picked = [];
+      for (const ch of channels) {
+        for (const s of ch(q).slice(0, perChannel)) {
+          if (!picked.includes(s.item.key)) picked.push(s.item.key);
+        }
+      }
+      const rank = picked.slice(0, BUDGET).indexOf(q.truth);
+      if (rank >= 0) { hits += 1; rr += 1 / (rank + 1); }
+      n += 1;
+    }
+    return { recall: hits / Math.max(1, n), mrr: rr / Math.max(1, n) };
+  };
+  const b = run(bridge), s = run(self);
+  console.log(`  ${label.padEnd(26)} bridge recall@${K}=${b.recall.toFixed(3)} MRR=${b.mrr.toFixed(3)} | self recall@${K}=${s.recall.toFixed(3)} MRR=${s.mrr.toFixed(3)}`);
+}
+
+evaluateMax('A\' MAX fusion', [rankBm25f, rankPpr]);
+evaluateQuota("C' QUOTA 5+5", [rankBm25f, rankPpr], 5);
+evaluateQuota("C' QUOTA 3+7", [rankBm25f, rankPpr], 3);
+evaluateQuota("C' QUOTA 7+3", [rankBm25f, rankPpr], 7);
 
 console.log('\n  bridge = query phrased in page A\'s words, answer is the page A links to');
 console.log('  self   = query phrased in the page\'s own words, answer is the page');
