@@ -68,7 +68,26 @@ Same trap for any `gh api -f` value that should come from a file. Always read th
 
 **The metric lesson.** The rule optimises source count, and I measured source count. Any future claim needs a metric the rule does NOT directly optimise. Today that is evidence-page recall@K.
 
-**Where it stands (2026-10-10).** Branch `feat/729-reader-recall-2026-10-07`, 51 commits, PR #819. Gate 1: 4634 tests / 327 files. **The floor is measured and holds**: on self-questions BM25F scores MRR 1.000 against the legacy scorer's 0.973-0.997, and the two are within noise on bridge questions. **Default is `lambda 0` — the diversity rule is OFF**, because under production RRF scores any lambda above zero costs 25-55% of the co-citation recall, and the proxy partly rewards lambda 0 by construction so that is a conservative landing rather than a proven win. **Bridge recall is 0.3-3.7% for EVERY lexical scorer including the legacy one.** A vocabulary gap cannot be crossed by a weight vector. That is #729's actual subject and it is NOT solved by this branch.
+**Where it stands (2026-10-10).** Branch `feat/729-reader-recall-2026-10-07`, 56 commits, PR #819. Gate 1: 4641 tests / 327 files. **Max fusion replaced the RRF sum** (`d3eb3c4d`): bridge recall 0.350→0.534 on test10, 0.576→0.638 on test8; self MRR down 0.054 and 0.007. `maxFuse` takes the LARGER of the two channels' normalised scores — zero parameters, zero thresholds. QUOTA 7+3 (top 7 lex, top 3 ppr) holds self MRR at 1.000 and gains less bridge; switch to it if self accuracy must not move. **The floor holds**: self-questions score MRR 1.000 against the legacy scorer's 0.973-0.997. **Default is `lambda 0`** — under production RRF scores any lambda above zero costs 25-55% of the co-citation recall.
+
+**Bridge recall tops out near 0.6. Two levers were measured and neither closes the gap:**
+
+| lever | bridge | verdict |
+|---|---|---|
+| **index the page BODY as `text`** | lex **+33-57%** (0.294→0.462 test10, 0.471→0.627 test8), MAX **unchanged** | **floor lift, not ceiling**. Worth doing for a vault with no graph yet. The query path passes `text: ''` today. |
+| **co-citation projection (#781's design)** | **-34%** (0.537→0.356) | **REJECT.** Each source's pages form a clique, the edge count explodes and drowns the specific A→B edge. Only revisit with clique-size-decayed weights. |
+
+**Next work, in order — resume here after compaction:**
+
+1. **PPR walk parameters** (steps / damping). Zero new mechanism. The measured ceiling is ppr's link-graph reachability, so this is the direct lever.
+2. **Decide on wiring the body index.** Floor lift only; near-zero cost since the graph cache already reads every page. Helps a vault with no graph — first query, sparse, mobile.
+3. **Split the PR.** Three PRs: read-side core + tools (tightly coupled, DO NOT split), write-side (independent), docs. Verify Gate 1 per PR and that the file union equals the branch's file set.
+
+**Four claims of mine are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) "the Chinese template terms dilute discriminative terms" — IDF at df=0.99 is 0.01; (c) "the budget should scale with corpus size" — wrong target; (d) "bottom line violated" as a headline — six fixtures is a property test, not a statistical baseline.
+
+**Three measurement designs of mine were wrong and the corrections matter:** the lambda calibration fed raw BM25F scores while production serves RRF (15% vs 44%); `coCitRecall = sameSrcShare x K/|S|` is an algebraic identity so the "two proxies" were one degree of freedom; and `summaryOf` used `started = started || !started`, which never skipped the frontmatter, so every "summary" was the first frontmatter key and the bridge numbers sat BELOW the random baseline (@DocTpoint caught it on a 2831-page German vault).
+
+**The evaluation set's ceiling is 1.000 by construction** — "return A's own links" always wins because the truth is the A→B edge. Always report against the random floor (10/N) and the truth-edge-removed arm.
 
 **Four claims of mine are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) "the Chinese template terms dilute discriminative terms" — IDF at df=0.99 is 0.01 and they already contribute nothing, and a stop-list would reintroduce language rules into a module that has none; (c) "the budget should scale with corpus size" — wrong target, the bottleneck is attribution coverage; (d) "bottom line violated" as a headline — six hand-written fixtures with deliberately repeated distractors is a property test, not a statistical baseline.
 
