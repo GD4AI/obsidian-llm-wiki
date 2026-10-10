@@ -322,7 +322,7 @@ export function bm25fScore(
           if (tf === 0) continue;
           const avg = corpus.avgFieldLength[field] || 1;
           const norm = 1 - b + (b * f.length) / avg;
-          weighted += weights[field] * (tf / norm);
+          weighted += weights[field] * (tf / (k1 * norm + tf));
         }
         if (weighted === 0) continue;
         matched += 1;
@@ -347,7 +347,19 @@ export function bm25fScore(
       if (tf === 0) continue;
       const avg = corpus.avgFieldLength[field] || 1;
       const norm = 1 - b + (b * f.length) / avg;
-      weighted += weights[field] * (tf / norm);
+      // Per-field tf saturation (#819 P0-1), in the classic BM25 form
+      // `tf / (k1*norm + tf)`. Repetition is weak evidence — saying a word three
+      // times is not three facts. With a LINEAR tf inside the field sum, `1 x 3`
+      // in summary exactly cancels `3 x 1` in title and the two tie, which is
+      // how a keyword-stuffed distractor outranked a title hit.
+      //
+      // The length normaliser sits INSIDE the saturation denominator, not
+      // outside it. Dividing a saturated tf by `norm` over-corrects: a page that
+      // repeats a term and is proportionally longer then scores BELOW a shorter
+      // page mentioning it once, which is wrong — density is what should be
+      // rewarded. In this form repetition helps with diminishing returns and
+      // length still damps it.
+      weighted += weights[field] * (tf / (k1 * norm + tf));
     }
     if (weighted === 0) continue;
     score += (idf * weighted) / (k1 + weighted);

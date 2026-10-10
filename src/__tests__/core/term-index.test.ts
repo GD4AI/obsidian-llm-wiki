@@ -538,3 +538,58 @@ describe('unseen-word fallback to character trigrams (#819 review, fix D)', () =
     expect(partial).toBeLessThan(full);
   });
 });
+
+describe('per-field tf saturation (#819 P0-1) — repetition is weak evidence', () => {
+  /**
+   * A keyword-stuffed distractor must not beat a title hit. This is the defect
+   * the adversarial fixtures caught: with a LINEAR tf inside the field sum,
+   * `1 x 3` in summary exactly cancels `3 x 1` in title and the two tie. The
+   * legacy scorer never had it, because it awards a fixed weight on first match
+   * and ignores repetitions entirely.
+   */
+  const page = (title: string, summary: string) =>
+    buildPageTerms({ title, aliases: [], summary, text: '' });
+
+  it('a query word repeated three times in a summary does not tie one mention in a title', () => {
+    const target = page('Café et résumé', 'Lieu de rencontre.');
+    const stuffed = page('Bistro Notes', 'résumé résumé résumé en français.');
+    const corpus = buildCorpusTerms([target, stuffed]);
+    const q = segment('résumé');
+    const a = bm25fScore(q, target, corpus, DEFAULT_FIELD_WEIGHTS);
+    const b = bm25fScore(q, stuffed, corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(a).toBeGreaterThan(b);
+  });
+
+  it('the margin survives heavier stuffing — six repeats still lose to one title mention', () => {
+    const target = page('Café et résumé', 'Lieu de rencontre.');
+    const stuffed = page('Bistro Notes', 'résumé résumé résumé résumé résumé résumé.');
+    const corpus = buildCorpusTerms([target, stuffed]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, target, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, stuffed, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+
+  it('repetition still COUNTS — a second mention is worth more than the first', () => {
+    // Saturation is diminishing return, not a cap. If this fails the change
+    // over-corrected and turned into "first match only", which is the legacy
+    // scorer's other behaviour.
+    const one = page('Alpha', 'résumé here.');
+    const two = page('Beta', 'résumé here résumé there.');
+    const corpus = buildCorpusTerms([one, two]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, two, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, one, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+
+  it('the same word in two fields still beats one field alone', () => {
+    const both = page('résumé', 'Un résumé ici.');
+    const single = page('résumé', '');
+    const corpus = buildCorpusTerms([both, single]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, both, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, single, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+});
