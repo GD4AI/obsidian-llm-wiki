@@ -50,12 +50,21 @@ An external review of this branch was verified against production code; all eigh
 | **1** | **Four small fixes** — morphology fallback (BM25F lost `needleHits`' word-prefix tolerance: `model` matched `models`), NFKC normalisation in `segment`, code-point slicing (`segment('𠮷野家')` yields an orphaned low surrogate), alias length normalisation (measured 41% against a 67% intent). Each gets a regression fixture | ✅ **DONE 2026-10-09** (`575c7626`, `2bea2f7a`, `6db885ac`). Three extra defects found while building: a shell-test anti-pattern in my own fixtures, `acc / matched` instead of `acc / grams.length`, and a precision regression from short-word fallback (fixed with a five-character floor). |
 | **2** | **Wire `PageRef.sourceSlug`** from frontmatter in `read-index.ts:41-45` | ✅ **DONE 2026-10-09** (`f66e1491`). Index line gains an optional `source: <slug>` marker. Compatible extension. |
 | **3** | **Harder fixtures + a relevance metric** — evidence-page recall@K | ✅ **DONE 2026-10-09** (`dacecbfe`). HARD_ENTRIES, acceptance asserted: **inverted scorer must lose**. Measured HARD DEFAULT 0.833 vs INVERTED 0.472. |
-| **4** | **Calibrate the coverage penalty strength** on the harness | ❌ TODO. The harness can now decide. |
+| **4** | **Calibrate the coverage penalty strength** on the harness | ✅ **DONE 2026-10-09** (`b8c90df8`). `lambda` is explicit; default **changed 1 → 0.25**, measured on three real vaults via two proxies (co-citation set as the relevant set, same-source share as the concentration). Keeps 83-93% of the co-citation recall for 1-2% of the diversity. **Two caveats a reviewer should check: the co-citation proxy over-approximates relevance, and seed selection caps at 5 per source.** @DocTpoint asked to re-test. |
 | **5** | Graph-based attribution — **measure coverage before believing it** | ❌ TODO. |
 | **6** | **Split the PR** — 29 commits, 5000+ lines, mixing read/write/tools/docs | ❌ TODO. Do last. |
 | **7** | **A user-visible switch** for the scorer | ✅ **DONE 2026-10-09** (`2164661d`, `a55d4b8b`). Bottom Advanced settings panel, all 11 locales. |
 
 **Three statements are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) the A/B figure as production-representative — `sourceSlug` is never set in production; (c) "the assembly step is a no-op on old vaults" attributed solely to low attribution — unattributed pages are **never penalised**, which systematically favours them, and part of the 9.3→43.3 growth is the rule's doing.
+
+**`gh api -f key=@file` does NOT read the file — it sends the literal string `@file`.** Caught 2026-10-09: a PR comment body came out as the 18-character path `/tmp/pr819edit.md` instead of the 4458-character content. The working form builds a JSON payload and passes it with `--input`:
+
+```bash
+python3 -c "import json; json.dump({'body': open('/tmp/x.md').read()}, open('/tmp/p.json','w'))"
+gh api repos/OWNER/REPO/issues/comments/ID -X PATCH --input /tmp/p.json
+```
+
+Same trap for any `gh api -f` value that should come from a file. Always read the body back and check its length before moving on.
 
 **The metric lesson.** The rule optimises source count, and I measured source count. Any future claim needs a metric the rule does NOT directly optimise. Today that is evidence-page recall@K.
 
