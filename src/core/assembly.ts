@@ -121,10 +121,23 @@ export interface AssemblyResult<T> {
 /**
  * Greedy pick with diminishing return per source.
  *
- * `effective = score / (1 + alreadyTakenFromThisSource)`. The first page from a
- * source is worth its full score; the second is worth half; the third a third.
- * That is the whole rule. It is monotone — a higher score never ranks lower —
- * and it has no coefficient, so there is nothing here to calibrate wrong.
+ * `effective = score / (1 + λ · alreadyTakenFromThisSource)`. At λ = 1 the first
+ * page from a source is worth its full score, the second half, the third a third.
+ * The rule is monotone — a higher score never ranks lower.
+ *
+ * **λ is a real constant and it is calibrated, not assumed.** An earlier version
+ * of this comment claimed the rule "has no coefficient, so there is nothing here
+ * to calibrate wrong". That was wrong: the form is fixed but its strength is set
+ * implicitly by the score scale. RRF compresses ranks 1-50 into 1.8x while the
+ * penalty at λ = 1 is 2x, so a source's second page lost to any new-source page
+ * and eight relevant pages from one source yielded one loaded. See #819.
+ *
+ * λ = 0.25, measured 2026-10-09 on three real vaults and one stress scenario.
+ * Against λ = 1 it keeps **83-93 % of the co-citation recall** while giving up
+ * **1-2 % of the source diversity**, and it loads **four** of eight same-source
+ * relevant pages in the stress scenario where λ = 1 loads **one**. λ = 1 was
+ * the original default and the data does not support it. See
+ * `tools/dev-instrument/run-real-recall.mjs`.
  *
  * Pages with no `sourceSlug` are never penalised. Penalising them would push
  * down the 75 % of an old vault that carries no ref, which is not diversity,
@@ -132,10 +145,22 @@ export interface AssemblyResult<T> {
  *
  * Pure. Deterministic. Ties break on `key`.
  */
+export interface CoverageOptions {
+  /**
+   * Strength of the diminishing return. 0 disables it and the pick is plain
+   * score order. Calibrated on the harness — see `scanCoverageLambda`.
+   */
+  readonly lambda?: number;
+}
+
+export const COVERAGE_LAMBDA_DEFAULT = 0.25;
+
 export function assembleWithCoverage<T extends Tiered>(
   candidates: ReadonlyArray<{ item: T; score: number }>,
   budget: number,
+  options: CoverageOptions = {},
 ): AssemblyResult<T> {
+  const lambda = options.lambda ?? COVERAGE_LAMBDA_DEFAULT;
   const poolSources = new Set<string>();
   for (const c of candidates) {
     if (c.item.sourceSlug !== undefined) poolSources.add(c.item.sourceSlug);
@@ -159,7 +184,7 @@ export function assembleWithCoverage<T extends Tiered>(
       const c = remaining[i];
       if ((c.item.tier ?? 0) !== lowestTier) continue;
       const slug = c.item.sourceSlug;
-      const penalty = slug === undefined ? 0 : (taken.get(slug) ?? 0);
+      const penalty = slug === undefined ? 0 : lambda * (taken.get(slug) ?? 0);
       const effective = c.score / (1 + penalty);
       if (effective > bestEffective) {
         bestEffective = effective;

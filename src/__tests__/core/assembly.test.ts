@@ -123,18 +123,26 @@ describe('assembleWithCoverage — the issue own symptom', () => {
     expect(r.picked[0].item.key).toBe('high');
   });
 
-  it('introduces no constant — the first from a source is full, the second is half', () => {
-    // This is the property that matters for the whole line of work: there is
-    // no lambda here to calibrate and no threshold to guess.
+  it('the first page from a source is full, the second is damped by lambda', () => {
+    // The claim this test used to make — "there is no lambda here to
+    // calibrate" — was WRONG and is retracted. The form is fixed but its
+    // strength is set implicitly by the score scale, and it is now explicit.
     const candidates = [
       { item: page('a', 's1'), score: 10 },
       { item: page('b', 's1'), score: 10 },
       { item: page('c', 's2'), score: 6 },
     ];
+    // At lambda 1 the second s1 page falls to 5 and loses to c's 6. At the
+    // calibrated 0.25 it falls only to 8 and stays ahead — the damping is a
+    // preference, not an eviction.
+    const r1 = assembleWithCoverage(candidates, 2, { lambda: 1 });
+    expect(r1.picked.map(p => p.item.key)).toEqual(['a', 'c']);
+    expect(r1.picked[1].effective).toBeCloseTo(6);
+
     const r = assembleWithCoverage(candidates, 2);
-    expect(r.picked.map(p => p.item.key)).toEqual(['a', 'c']);
+    expect(r.picked.map(p => p.item.key)).toEqual(['a', 'b']);
     expect(r.picked[0].effective).toBeCloseTo(10);
-    expect(r.picked[1].effective).toBeCloseTo(6);
+    expect(r.picked[1].effective).toBeCloseTo(8);
   });
 
   it('never penalises a page with no source ref — that is the blind spot, not a choice', () => {
@@ -214,5 +222,57 @@ describe('assembleWithCoverage — the issue own symptom', () => {
     expect(assembleWithCoverage(window, 2).poolSources).toBe(2);
     const narrow = [{ item: page('a', 's1'), score: 3 }];
     expect(assembleWithCoverage(narrow, 1).poolSources).toBe(1);
+  });
+});
+
+describe('coverage lambda — the relevance cost is measured, not assumed (#819 step 4)', () => {
+  /**
+   * The scenario from the external review. One source holds EIGHT relevant
+   * pages at ranks 1-8. Eleven other sources hold one irrelevant page each at
+   * ranks 9-19. Budget 10. Source count alone calls every answer a win: at
+   * lambda 1 it reports 10 sources and a 10% dominant share while loading ONE
+   * of the eight pages that answer the question.
+   */
+  const scenario = () => {
+    const cand = [];
+    for (let i = 0; i < 8; i += 1) {
+      cand.push({ item: { key: `A${i}`, sourceSlug: 'A' }, score: 0.0164 - i * 0.0001 });
+    }
+    for (let i = 0; i < 11; i += 1) {
+      cand.push({ item: { key: `S${i}`, sourceSlug: `S${i}` }, score: 0.0091 - i * 0.00005 });
+    }
+    return cand;
+  };
+
+  const loadedRelevant = (lambda: number) =>
+    assembleWithCoverage(scenario(), 10, { lambda }).picked.filter(p => p.sourceSlug === 'A').length;
+
+  it('lambda 0 keeps every relevant page but gives up the diversity', () => {
+    expect(loadedRelevant(0)).toBe(8);
+  });
+
+  it('lambda 1 loads only ONE of the eight — the cost the review named', () => {
+    expect(loadedRelevant(1)).toBe(1);
+  });
+
+  it('the calibrated default 0.25 keeps four of the eight for one source less', () => {
+    const r = assembleWithCoverage(scenario(), 10);
+    expect(r.picked.filter(p => p.sourceSlug === 'A').length).toBe(4);
+    expect(r.pickedSources).toBe(7);
+  });
+
+  it('lambda 0.5 keeps twice as many relevant pages for one source less', () => {
+    const r = assembleWithCoverage(scenario(), 10, { lambda: 0.5 });
+    expect(r.picked.filter(p => p.sourceSlug === 'A').length).toBe(2);
+    expect(r.pickedSources).toBe(9);
+  });
+
+  it('the penalty is monotone in lambda — raising it never loads MORE from one source', () => {
+    let prev = Infinity;
+    for (const lambda of [0, 0.25, 0.5, 1, 2, 5]) {
+      const n = loadedRelevant(lambda);
+      expect(n).toBeLessThanOrEqual(prev);
+      prev = n;
+    }
   });
 });
