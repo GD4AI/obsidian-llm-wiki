@@ -47,6 +47,17 @@ function titleOf(text, fallback) {
   const m = /^#\s+(.+)$/m.exec(text);
   return m ? m[1].trim() : fallback;
 }
+function bodyOf(text) {
+  let fences = 0;
+  const out = [];
+  for (const line of text.split('\n')) {
+    if (/^---\s*$/.test(line)) { fences += 1; continue; }
+    if (fences < 2) continue;
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
 function summaryOf(text) {
   // Count the frontmatter fences and read only after the CLOSING one. The
   // previous `started = started || !started` flipped to true at the FIRST fence
@@ -83,6 +94,7 @@ async function loadVault(dir) {
           key: rel, name: basename(rel),
           title: titleOf(text, e.name.replace(/\.md$/, '')),
           summary: summaryOf(text),
+          body: bodyOf(text),
           sourceSlug: slugFromFrontmatter(text),
           links: outlinks(text),
         });
@@ -104,6 +116,12 @@ for (const p of pages) { if (!byName.has(p.name)) byName.set(p.name, p); byName.
 
 const pts = pages.map(p => buildPageTerms({ title: p.title, aliases: [], summary: p.summary, text: '' }));
 const corpus = buildCorpusTerms(pts);
+// The same corpus with the page BODY indexed as the `text` field. The query path
+// passes `text: ''` today, so this field is dark in production. Measuring it is
+// the point: 99% of bridge questions have their query terms in the target's
+// body and nowhere else, so in principle this is where the answer lives.
+const ptsText = pages.map(p => buildPageTerms({ title: p.title, aliases: [], summary: p.summary, text: p.body }));
+const corpusText = buildCorpusTerms(ptsText);
 
 // Term sets, for the vocabulary-gap test.
 const termsOf = (p) => new Set(segment(`${p.title} ${p.summary}`));
@@ -145,6 +163,11 @@ console.log(`  pages ${pages.length} · bridge questions ${bridge.length} · sel
 
 function rankBm25f(q) {
   const scored = pts.map((pt, j) => ({ item: { key: pages[j].key, sourceSlug: pages[j].sourceSlug }, score: bm25fScore(q.queryTerms, pt, corpus, DEFAULT_FIELD_WEIGHTS) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored;
+}
+function rankBm25fWithText(q) {
+  const scored = ptsText.map((pt, j) => ({ item: { key: pages[j].key, sourceSlug: pages[j].sourceSlug }, score: bm25fScore(q.queryTerms, pt, corpusText, DEFAULT_FIELD_WEIGHTS) }));
   scored.sort((a, b) => b.score - a.score);
   return scored;
 }
@@ -200,6 +223,36 @@ const graph = {
   nodes: pages.map(p => p.key),
   edges: new Map(pages.map(p => [p.key, [...p.links].map(t => byName.get(t)?.key).filter(Boolean)])),
 };
+
+// Track 3 — the co-citation projection (#781's design). Two pages that cite the
+// same source are about that source, so they get an edge between them. This
+// gives ppr paths it does not have through explicit links alone.
+const coCitEdges = new Map(graph.nodes.map(k => [k, []]));
+{
+  const bySource = new Map();
+  for (const p of pages) {
+    if (p.sourceSlug === undefined) continue;
+    if (!bySource.has(p.sourceSlug)) bySource.set(p.sourceSlug, []);
+    bySource.get(p.sourceSlug).push(p.key);
+  }
+  for (const [, members] of bySource) {
+    for (const a of members) {
+      for (const b of members) {
+        if (a !== b && !coCitEdges.get(a).includes(b)) coCitEdges.get(a).push(b);
+      }
+    }
+  }
+}
+const graphCoCit = {
+  nodes: graph.nodes,
+  edges: new Map([...graph.edges].map(([k, v]) => [k, [...new Set([...v, ...(coCitEdges.get(k) ?? [])])]])),
+};
+
+function rankPprCoCit(q) {
+  const pprPages = pages.map(p => ({ path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0 }));
+  const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph: graphCoCit, topN: 200 });
+  return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
+}
 
 function rankPpr(q) {
   const pprPages = pages.map(p => ({
@@ -341,6 +394,22 @@ evaluateMax('A\' MAX fusion', [rankBm25f, rankPpr]);
 evaluateQuota("C' QUOTA 5+5", [rankBm25f, rankPpr], 5);
 evaluateQuota("C' QUOTA 3+7", [rankBm25f, rankPpr], 3);
 evaluateQuota("C' QUOTA 7+3", [rankBm25f, rankPpr], 7);
+
+// ---- Track 1: the `text` field is dark in the query path. Does lighting it
+// close the vocabulary gap? The diagnostic says 99% of bridge questions have
+// their query terms in the target's body and nowhere else.
+console.log(`\n=== Track 1 — indexing the page BODY as the text field ===`);
+evaluateFused('lex, body indexed', [rankBm25fWithText], 0);
+evaluateMax('MAX, body indexed', [rankBm25fWithText, rankPpr]);
+evaluateMax('MAX, body NOT indexed', [rankBm25f, rankPpr]);
+
+// ---- Track 3: does the co-citation projection give ppr more to walk? ----
+console.log(`\n=== Track 3 — co-citation edges in the graph ===`);
+evaluateFused('ppr, links only', [rankPpr], 0);
+evaluateFused('ppr, + co-citation', [rankPprCoCit], 0);
+evaluateMax('MAX, links only', [rankBm25f, rankPpr]);
+evaluateMax('MAX, + co-citation', [rankBm25f, rankPprCoCit]);
+evaluateMax('MAX, body + co-citation', [rankBm25fWithText, rankPprCoCit]);
 
 console.log('\n  bridge = query phrased in page A\'s words, answer is the page A links to');
 console.log('  self   = query phrased in the page\'s own words, answer is the page');
