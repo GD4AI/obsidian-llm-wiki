@@ -41,7 +41,7 @@ floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merge
 Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
 docs only. **All eight phases shipped (2026-10-09). An external review then overturned three of my claims and changed the order.** Read §"Post-review plan" before continuing.
 
-**Post-review plan (2026-10-09) — read this before continuing.**
+**Post-review plan (2026-10-09) — read this before continuing.** All seven items closed 2026-10-10. See §"Where it stands" for the closing state.
 
 An external review of this branch was verified against production code; all eight claims hold. Full detail with measurements is on [#819 comment](https://github.com/GD4AI/obsidian-llm-wiki/pull/819#issuecomment-6078993662). **Do not merge the assembly layer before step 3.**
 
@@ -67,6 +67,12 @@ gh api repos/OWNER/REPO/issues/comments/ID -X PATCH --input /tmp/p.json
 Same trap for any `gh api -f` value that should come from a file. Always read the body back and check its length before moving on.
 
 **The metric lesson.** The rule optimises source count, and I measured source count. Any future claim needs a metric the rule does NOT directly optimise. Today that is evidence-page recall@K.
+
+**Where it stands (2026-10-10).** Branch `feat/729-reader-recall-2026-10-07`, 51 commits, PR #819. Gate 1: 4634 tests / 327 files. **The floor is measured and holds**: on self-questions BM25F scores MRR 1.000 against the legacy scorer's 0.973-0.997, and the two are within noise on bridge questions. **Default is `lambda 0` — the diversity rule is OFF**, because under production RRF scores any lambda above zero costs 25-55% of the co-citation recall, and the proxy partly rewards lambda 0 by construction so that is a conservative landing rather than a proven win. **Bridge recall is 0.3-3.7% for EVERY lexical scorer including the legacy one.** A vocabulary gap cannot be crossed by a weight vector. That is #729's actual subject and it is NOT solved by this branch.
+
+**Four claims of mine are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) "the Chinese template terms dilute discriminative terms" — IDF at df=0.99 is 0.01 and they already contribute nothing, and a stop-list would reintroduce language rules into a module that has none; (c) "the budget should scale with corpus size" — wrong target, the bottleneck is attribution coverage; (d) "bottom line violated" as a headline — six hand-written fixtures with deliberately repeated distractors is a property test, not a statistical baseline.
+
+**Two measurement designs of mine were wrong and the corrections matter:** the lambda calibration fed raw BM25F scores while production serves RRF scores (training-serving skew, 15% vs 44%), and `coCitRecall = sameSrcShare x K/|S|` is an algebraic identity, so the "two proxies" were one degree of freedom.
 
 **Reviewer offered to draft step 1's patch.** I review rather than author it — lowest risk, clearest boundary.
 
