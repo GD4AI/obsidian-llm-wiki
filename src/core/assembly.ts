@@ -71,12 +71,67 @@ export interface RrfInput<T> {
 export const RRF_K = 60;
 
 /**
+ * Max fusion over one or more ranked lists (#819, max fusion).
+ *
+ * Score is `max over lists of (1/(k+rank) normalised by that list's best)`. A
+ * page one channel ranks high keeps that standing even when the other channel
+ * cannot see it at all. RRF SUMS instead, so a page ppr puts at rank 3 and lex
+ * puts at rank 200 gets dragged down by the rank it did not earn.
+ *
+ * Each channel is normalised by its own best contribution, so the two scales do
+ * not have to be reconciled. There is no parameter and no threshold — the only
+ * knob is `k`, which is RRF's and is not tuned here either.
+ *
+ * Measured on the corrected evaluation set (test10, test8): bridge recall
+ * 0.517 / 0.669 against RRF's 0.391 / 0.583, self MRR 0.907 / 0.939 against
+ * 0.945 / 0.940. It trades 0.093 of self accuracy for 0.223 of bridge recall on
+ * test10.
+ *
+ * Pure. Deterministic. Ties break on `key` ascending, never on input order.
+ */
+export function maxFuse<T extends Assemblable>(
+  lists: readonly RrfInput<T>[],
+  k: number = RRF_K,
+): Array<{ item: T; score: number; channels: number }> {
+  const byKey = new Map<string, { item: T; score: number; channels: number }>();
+  for (const list of lists) {
+    if (list.candidates.length === 0) continue;
+    // Each channel is normalised by its OWN best contribution. Without this the
+    // channel with the larger raw scale would win every tie, and the two
+    // channels' scales are not comparable — that is exactly why RRF ranks them
+    // rather than mixing their scores.
+    let best = 0;
+    for (const { rank } of list.candidates) {
+      const c = 1 / (k + rank);
+      if (c > best) best = c;
+    }
+    if (!Number.isFinite(best) || best <= 0) continue;
+    for (const { item, rank } of list.candidates) {
+      const normalised = 1 / (k + rank) / best;
+      const existing = byKey.get(item.key);
+      if (existing) {
+        if (normalised > existing.score) existing.score = normalised;
+        existing.channels += 1;
+      } else {
+        byKey.set(item.key, { item, score: normalised, channels: 1 });
+      }
+    }
+  }
+  return [...byKey.values()].sort(
+    (a, b) => b.score - a.score || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
+  );
+}
+
+/**
  * Reciprocal rank fusion over one or more ranked lists.
  *
  * Score is `sum over lists of 1 / (k + rank)`. A page appearing in several
  * lists accumulates, which is the point: agreement across channels is the
  * signal, and neither channel's score scale has to be reconciled with the
  * other's.
+ *
+ * Kept for the A/B comparison and for any caller that wants agreement rather
+ * than either-channel-likes. Production uses {@link maxFuse} — see #819.
  *
  * Pure. Deterministic. Ties break on `key` ascending, never on input order.
  */

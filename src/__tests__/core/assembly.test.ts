@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   rrfFuse,
+  maxFuse,
   assembleWithCoverage,
   RRF_K,
   type Assemblable,
@@ -18,6 +19,82 @@ import {
 function page(key: string, sourceSlug?: string): Assemblable {
   return sourceSlug === undefined ? { key } : { key, sourceSlug };
 }
+
+describe('maxFuse — a page one channel likes keeps that score (#819, max fusion)', () => {
+  /**
+   * RRF sums the two channels' contributions. When ppr ranks a page third and
+   * lex ranks it 200th, the sum drags it down and the answer is lost. Taking the
+   * LARGER of the two normalised scores is what the reader needs: each channel
+   * speaks on the questions it is good at and is not diluted by the other.
+   *
+   * No parameter. No threshold. This is the whole rule.
+   */
+  it('keeps the higher channel score instead of averaging the two', () => {
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: page('a'), rank: 1 }, { item: page('b'), rank: 200 }] },
+      { channel: 'ppr', candidates: [{ item: page('b'), rank: 3 }, { item: page('c'), rank: 4 }] },
+    ]);
+    const byKey = new Map(fused.map(f => [f.item.key, f.score]));
+    // b is rank 3 on ppr and rank 200 on lex. Under a sum its high ppr standing
+    // is diluted. Under max it keeps the ppr value.
+    expect(byKey.get('b')).toBeCloseTo(1 / (60 + 3) / (1 / (60 + 3)));
+  });
+
+  it('normalises each channel by its own best score', () => {
+    // lex scores on a wildly different scale from ppr. Without per-channel
+    // normalisation the larger-scale channel would win every tie.
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: page('a'), rank: 1 }] },
+      { channel: 'ppr', candidates: [{ item: page('b'), rank: 1 }] },
+    ]);
+    for (const f of fused) expect(f.score).toBeCloseTo(1);
+  });
+
+  it('a page in only one channel scores on that channel alone', () => {
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: page('a'), rank: 1 }, { item: page('b'), rank: 2 }] },
+      { channel: 'ppr', candidates: [{ item: page('c'), rank: 1 }] },
+    ]);
+    const byKey = new Map(fused.map(f => [f.item.key, f.score]));
+    expect(byKey.get('b')).toBeGreaterThan(0);
+    expect(byKey.get('c')).toBeCloseTo(1);
+  });
+
+  it('the same page from BOTH channels takes the larger, and records both', () => {
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: page('a'), rank: 1 }] },
+      { channel: 'ppr', candidates: [{ item: page('a'), rank: 5 }] },
+    ]);
+    expect(fused).toHaveLength(1);
+    expect(fused[0].score).toBeCloseTo(1);
+    expect(fused[0].channels).toBe(2);
+  });
+
+  it('an empty channel contributes nothing and does not divide by zero', () => {
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [] },
+      { channel: 'ppr', candidates: [{ item: page('a'), rank: 1 }] },
+    ]);
+    expect(fused).toHaveLength(1);
+    expect(fused[0].score).toBeCloseTo(1);
+    expect(Number.isFinite(fused[0].score)).toBe(true);
+  });
+
+  it('beats the RRF sum on the case it was built for', () => {
+    // The defect, stated as a test: ppr finds the answer at rank 3, lex cannot
+    // find it at all. Under RRF the answer loses to a page both channels mildly
+    // like. Under max it wins.
+    const lists = [
+      { channel: 'lex', candidates: [{ item: page('noise1'), rank: 1 }, { item: page('noise2'), rank: 2 }, { item: page('answer'), rank: 200 }] },
+      { channel: 'ppr', candidates: [{ item: page('answer'), rank: 3 }, { item: page('noise1'), rank: 10 }, { item: page('noise2'), rank: 11 }] },
+    ];
+    const rrf = rrfFuse(lists);
+    const max = maxFuse(lists);
+    const rankOf = (arr: Array<{ item: { key: string } }>, key: string) =>
+      arr.findIndex(f => f.item.key === key);
+    expect(rankOf(max, 'answer')).toBeLessThan(rankOf(rrf, 'answer'));
+  });
+});
 
 describe('rrfFuse', () => {
   it('a page in two channels outranks a page in one at the same rank', () => {

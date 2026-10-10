@@ -36,7 +36,7 @@ import {
   type FieldWeights,
 } from './term-index';
 import {
-  rrfFuse,
+  maxFuse,
   assembleWithCoverage,
   type Tiered,
   type RankedCandidate,
@@ -647,7 +647,7 @@ function mergeWithPPR(
     .filter((p): p is PageRef => p !== undefined)
     .map((page, i) => ({ item: wrap(page, 0), rank: i + 1 }));
 
-  const fused = rrfFuse<AssemblablePage>([
+  const fused = maxFuse<AssemblablePage>([
     { channel: 'lex', candidates: lexList },
     { channel: 'ppr', candidates: pprList },
   ]);
