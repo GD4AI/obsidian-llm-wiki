@@ -261,6 +261,15 @@ function rankPpr(q) {
   const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: 200 });
   return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
 }
+function rankPprWith(pprOptions) {
+  return (q) => {
+    const pprPages = pages.map(p => ({
+      path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0,
+    }));
+    const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: 200, pprOptions });
+    return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
+  };
+}
 
 function evaluateFused(label, channels, lambda) {
   const run = (set) => {
@@ -410,6 +419,26 @@ evaluateFused('ppr, + co-citation', [rankPprCoCit], 0);
 evaluateMax('MAX, links only', [rankBm25f, rankPpr]);
 evaluateMax('MAX, + co-citation', [rankBm25f, rankPprCoCit]);
 evaluateMax('MAX, body + co-citation', [rankBm25fWithText, rankPprCoCit]);
+
+// ---- Track 1b: the PPR walk parameters. Zero new mechanism, and the measured
+// ceiling is ppr's link-graph reachability, so this is the direct lever. The
+// defaults are numWalks=3000, maxSteps=50, damping=0.05.
+console.log(`\n=== PPR walk parameter sweep ===`);
+for (const d of [0.01, 0.05, 0.15, 0.30]) {
+  evaluateFused(`  damping ${d}`, [rankPprWith({ damping: d })], 0);
+}
+for (const s of [10, 50, 200]) {
+  evaluateFused(`  maxSteps ${s}`, [rankPprWith({ maxSteps: s })], 0);
+}
+for (const w of [500, 3000, 10000]) {
+  evaluateFused(`  numWalks ${w}`, [rankPprWith({ numWalks: w })], 0);
+}
+console.log(`\n=== PPR parameter COMBINATIONS under MAX fusion ===`);
+evaluateMax('  damping 0.05 + steps 50 DEFAULT', [rankBm25f, rankPprWith({ damping: 0.05, maxSteps: 50 })]);
+evaluateMax('  damping 0.30 + steps 10', [rankBm25f, rankPprWith({ damping: 0.30, maxSteps: 10 })]);
+evaluateMax('  damping 0.15 + steps 10', [rankBm25f, rankPprWith({ damping: 0.15, maxSteps: 10 })]);
+evaluateMax('  damping 0.30 + steps 50', [rankBm25f, rankPprWith({ damping: 0.30, maxSteps: 50 })]);
+evaluateMax('  damping 0.15 + steps 50', [rankBm25f, rankPprWith({ damping: 0.15, maxSteps: 50 })]);
 
 console.log('\n  bridge = query phrased in page A\'s words, answer is the page A links to');
 console.log('  self   = query phrased in the page\'s own words, answer is the page');
