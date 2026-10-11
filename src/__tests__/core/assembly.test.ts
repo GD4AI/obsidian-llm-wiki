@@ -369,3 +369,61 @@ describe('coverage lambda — the relevance cost is measured, not assumed (#819 
     }
   });
 });
+
+describe('maxFuse — ties prefer the earlier channel (#819, post-review)', () => {
+  const p = (key: string, sourceSlug?: string) => ({ key, tier: 0, ...(sourceSlug !== undefined ? { sourceSlug } : {}) });
+
+  it('puts the first channel ahead when both channels rank their own top page first', () => {
+    // A lex rank-1 and a PPR rank-1 both normalise to 1.0, because the
+    // contribution is 1/(k+rank) and rank 1 is rank 1 in either channel. The
+    // old tie-break sorted on `key` ascending, which is arbitrary — it decided
+    // whether a self-question's answer came first or second by spelling. The
+    // first channel is the lexical one at every call site, and a self-question
+    // is phrased in the page's own words, so the lexical channel must win.
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: p('target'), rank: 1 }] },
+      { channel: 'ppr', candidates: [{ item: p('other'), rank: 1 }] },
+    ]);
+    expect(fused[0].item.key).toBe('target');
+  });
+
+  it('still prefers the earlier channel when the lexical page sorts later alphabetically', () => {
+    // The regression that motivated the fix: with the old key-ascending rule a
+    // page named `zeta` lost to `alpha` even when the lexical channel ranked it
+    // first. Self MRR fell from 1.000 to 0.85 on three vaults for exactly this.
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: p('zeta'), rank: 1 }] },
+      { channel: 'ppr', candidates: [{ item: p('alpha'), rank: 1 }] },
+    ]);
+    expect(fused[0].item.key).toBe('zeta');
+  });
+
+  it('keeps the higher normalised score regardless of channel order', () => {
+    // The tie-break is only a tie-break. A strictly better score still wins.
+    // Each channel is normalised by its OWN best contribution, so a channel-top
+    // page is always 1.0 — the second place is what is comparable here.
+    const fused = maxFuse([
+      { channel: 'lex', candidates: [{ item: p('a'), rank: 1 }, { item: p('b'), rank: 2 }] },
+      { channel: 'ppr', candidates: [{ item: p('b'), rank: 1 }, { item: p('a'), rank: 2 }] },
+    ]);
+    // Both are 1.0 from one channel and <1 from the other; max keeps 1.0, so
+    // the tie-break applies and the earlier channel decides.
+    expect(fused[0].item.key).toBe('a');
+    // A page that is only second in both channels cannot outrank a channel top.
+    const fused2 = maxFuse([
+      { channel: 'lex', candidates: [{ item: p('top'), rank: 1 }, { item: p('low'), rank: 4 }] },
+      { channel: 'ppr', candidates: [{ item: p('low'), rank: 2 }, { item: p('top'), rank: 3 }] },
+    ]);
+    expect(fused2[0].item.key).toBe('top');
+  });
+
+  it('is deterministic across runs and does not depend on Map iteration quirks', () => {
+    const build = () => maxFuse([
+      { channel: 'lex', candidates: [{ item: p('m'), rank: 1 }, { item: p('n'), rank: 2 }] },
+      { channel: 'ppr', candidates: [{ item: p('n'), rank: 1 }, { item: p('m'), rank: 2 }] },
+    ]);
+    const first = build().map(x => x.item.key);
+    const second = build().map(x => x.item.key);
+    expect(first).toEqual(second);
+  });
+});

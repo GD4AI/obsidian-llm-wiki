@@ -27,7 +27,7 @@
  */
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, basename } from 'node:path';
-import { assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
+import { assembleWithCoverage, rrfFuse, maxFuse } from '../../src/core/assembly.ts';
 import { pprCascade } from '../../src/core/ppr-cascade.ts';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment, DEFAULT_FIELD_WEIGHTS,
@@ -301,7 +301,11 @@ console.log(`\n=== Phase 0 — does the graph bridge the gap? Lex vs ppr vs both
 {
   let hits = 0, n = 0;
   for (const q of bridge) {
-    const pool = pages.map(p => p.key).filter(k => k !== q.truth);
+    // The pool MUST include the truth. The floor is 10/N, which only holds when
+    // every page is in the draw. An earlier version filtered the truth out first
+    // and the arm printed 0.000 on every vault, which is not a floor — it is a
+    // control that cannot hit and therefore says nothing.
+    const pool = pages.map(p => p.key);
     const picked = [];
     for (let i = 0; i < Math.min(K, pool.length); i += 1) {
       picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -354,17 +358,18 @@ function evaluateMax(label, channels) {
     let hits = 0, rr = 0, n = 0;
     for (const q of set) {
       const per = channels.map(ch => ch(q));
-      const normMax = per.map(ranked => ranked.length ? ranked[0].score : 1);
-      const byKey = new Map();
-      for (let ci = 0; ci < per.length; ci += 1) {
-        for (const s of per[ci]) {
-          const v = normMax[ci] ? s.score / normMax[ci] : 0;
-          const prev = byKey.get(s.item.key);
-          if (prev === undefined || v > prev) byKey.set(s.item.key, v);
-        }
-      }
-      const fused = [...byKey.entries()].map(([key, score]) => ({
-        item: { key, sourceSlug: byName.get(key)?.sourceSlug }, score,
+      // P0 post-review: use the PRODUCTION `maxFuse`, not a local copy. The local
+      // one normalised raw scores; the shipped one consumes per-channel ranks and
+      // breaks ties on the earlier channel. On the German re-test the local arm
+      // returned exactly the ppr-only numbers in every column, so lex never
+      // changed a pick and everything measured "under MAX" was measured on ppr
+      // alone. Never re-implement the thing being measured.
+      const lists = per.map((ranked, ci) => ({
+        channel: `c${ci}`,
+        candidates: ranked.map((s, i) => ({ item: s.item, rank: i + 1 })),
+      }));
+      const fused = maxFuse(lists).map(f => ({
+        item: { key: f.item.key, sourceSlug: byName.get(f.item.key)?.sourceSlug }, score: f.score,
       }));
       const r = assembleWithCoverage(fused, BUDGET, {});
       const rank = r.picked.map(x => x.item.key).indexOf(q.truth);
@@ -429,6 +434,27 @@ function evaluateQuota(label, channels, perChannel) {
   };
   const b = run(bridge), s = run(self);
   console.log(`  ${label.padEnd(26)} bridge recall@${K}=${b.recall.toFixed(3)} MRR=${b.mrr.toFixed(3)} | self recall@${K}=${s.recall.toFixed(3)} MRR=${s.mrr.toFixed(3)}`);
+}
+
+// ---- P0 post-review: the cross-source subset. #729 is about a question whose
+// answer lies on a page the asker did NOT share a source with. The full bridge
+// set is 64% same-source pairs on the measured German vault, where the two pages
+// already share wording and nothing has to be bridged. Only the no-shared-source
+// pairs test the actual issue.
+console.log(`\n=== Cross-source subset (no shared source between A and B) ===`);
+{
+  const crossQs = bridge.filter(q => {
+    const a = byName.get(q.from);
+    const b = byName.get(q.truth);
+    return a && b && a.sourceSlug !== b.sourceSlug;
+  });
+  console.log(`  (${crossQs.length} of ${bridge.length} bridge pairs have no shared source)`);
+  const prev = bridge.slice();
+  bridge.splice(0, bridge.length, ...crossQs);
+  evaluateFused('lex only', [rankBm25f], 0);
+  evaluateFused('ppr 0.30/10', [rankPprWith({ damping: 0.30, maxSteps: 10 })], 0);
+  evaluateMax('maxFuse', [rankBm25f, rankPprWith({ damping: 0.30, maxSteps: 10 })]);
+  bridge.splice(0, bridge.length, ...prev);
 }
 
 evaluateMax('A\' MAX fusion', [rankBm25f, rankPpr]);

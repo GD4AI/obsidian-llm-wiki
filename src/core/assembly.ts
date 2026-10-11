@@ -87,14 +87,20 @@ export const RRF_K = 60;
  * 0.945 / 0.940. It trades 0.093 of self accuracy for 0.223 of bridge recall on
  * test10.
  *
- * Pure. Deterministic. Ties break on `key` ascending, never on input order.
+ * Pure. Deterministic. Ties go to the EARLIER channel, then to `key` ascending.
+ * The earlier channel is the lexical one at every call site, and a self-question
+ * is phrased in the page's own words — so a tie that resolved on spelling used to
+ * decide whether the answer came first or second, and cost self MRR up to 0.43 on
+ * measured vaults. Channel order is therefore part of the contract: pass the
+ * lexical channel first.
  */
 export function maxFuse<T extends Assemblable>(
   lists: readonly RrfInput<T>[],
   k: number = RRF_K,
 ): Array<{ item: T; score: number; channels: number }> {
-  const byKey = new Map<string, { item: T; score: number; channels: number }>();
-  for (const list of lists) {
+  const byKey = new Map<string, { item: T; score: number; channels: number; channelIndex: number }>();
+  for (let li = 0; li < lists.length; li += 1) {
+    const list = lists[li];
     if (list.candidates.length === 0) continue;
     // Each channel is normalised by its OWN best contribution. Without this the
     // channel with the larger raw scale would win every tie, and the two
@@ -110,15 +116,22 @@ export function maxFuse<T extends Assemblable>(
       const normalised = 1 / (k + rank) / best;
       const existing = byKey.get(item.key);
       if (existing) {
-        if (normalised > existing.score) existing.score = normalised;
+        if (normalised > existing.score) {
+          existing.score = normalised;
+          existing.channelIndex = li;
+        } else if (normalised === existing.score && li < existing.channelIndex) {
+          // Equal contribution from two channels. The earlier one decides.
+          existing.channelIndex = li;
+        }
         existing.channels += 1;
       } else {
-        byKey.set(item.key, { item, score: normalised, channels: 1 });
+        byKey.set(item.key, { item, score: normalised, channels: 1, channelIndex: li });
       }
     }
   }
   return [...byKey.values()].sort(
-    (a, b) => b.score - a.score || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
+    (a, b) => b.score - a.score || (a.channelIndex - b.channelIndex)
+      || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
   );
 }
 
