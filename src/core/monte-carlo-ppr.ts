@@ -53,9 +53,14 @@ export interface PPROptions {
   rng?: () => number;
 }
 
-const DEFAULT_NUM_WALKS = 3000;
-const DEFAULT_MAX_STEPS = 50;
-const DEFAULT_DAMPING = 0.05;
+// Walk parameters, calibrated on the ground-truth evaluation set across two
+// vaults (test10 358 pages, test8 177 pages). damping 0.30 + maxSteps 10 moves
+// bridge recall@10 +8% and +11% over the earlier 0.05 / 50, self recall@10 stays
+// 1.000 on both, and numWalks is flat across 500 / 3000 / 10000. Re-measure on
+// both vaults before touching these; tuning on one vault alone overfits.
+export const DEFAULT_NUM_WALKS = 3000;
+export const DEFAULT_MAX_STEPS = 10;
+export const DEFAULT_DAMPING = 0.30;
 
 export function personalizedPageRank(
   graph: Graph,
