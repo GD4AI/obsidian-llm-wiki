@@ -216,7 +216,9 @@ export interface CoverageOptions {
   readonly lambda?: number;
 }
 
-export const COVERAGE_LAMBDA_DEFAULT = 0;
+import { COVERAGE_LAMBDA } from '../constants';
+
+export const COVERAGE_LAMBDA_DEFAULT = COVERAGE_LAMBDA;
 
 export function assembleWithCoverage<T extends Tiered>(
   candidates: ReadonlyArray<{ item: T; score: number }>,

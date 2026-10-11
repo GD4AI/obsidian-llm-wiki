@@ -270,11 +270,17 @@ export interface PPRCascadeOptions {
   rng?: () => number;
 }
 
-const DEFAULT_MIN_PAGES = 30;
-const DEFAULT_MIN_EDGES = 30;
-const DEFAULT_MIN_EDGE_DENSITY = 1.0;
-const DEFAULT_SEED_MIN_DEGREE = 1;
-const DEFAULT_TOP_N = 10;
+import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE } from '../constants';
+
+// The assembly budget and the graph-maturity gate live in `src/constants.ts`
+// with every other retrieval knob. `DEFAULT_TOP_N` is kept as an alias because
+// the option is named `topN` at every call site and renaming the option would be
+// a breaking change for no gain.
+const DEFAULT_MIN_PAGES = PPR_MIN_PAGES;
+const DEFAULT_MIN_EDGES = PPR_MIN_EDGES;
+const DEFAULT_MIN_EDGE_DENSITY = PPR_MIN_EDGE_DENSITY;
+const DEFAULT_SEED_MIN_DEGREE = PPR_SEED_MIN_DEGREE;
+const DEFAULT_TOP_N = RETRIEVAL_BUDGET;
 /**
  * Tokenize a query into individual searchable terms. Language-aware:
  *

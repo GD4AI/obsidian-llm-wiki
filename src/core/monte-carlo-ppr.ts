@@ -53,14 +53,14 @@ export interface PPROptions {
   rng?: () => number;
 }
 
-// Walk parameters, calibrated on the ground-truth evaluation set across two
-// vaults (test10 358 pages, test8 177 pages). damping 0.30 + maxSteps 10 moves
-// bridge recall@10 +8% and +11% over the earlier 0.05 / 50, self recall@10 stays
-// 1.000 on both, and numWalks is flat across 500 / 3000 / 10000. Re-measure on
-// both vaults before touching these; tuning on one vault alone overfits.
-export const DEFAULT_NUM_WALKS = 3000;
-export const DEFAULT_MAX_STEPS = 10;
-export const DEFAULT_DAMPING = 0.30;
+import { PPR_NUM_WALKS, PPR_MAX_STEPS, PPR_DAMPING } from '../constants';
+
+// Walk parameters live in `src/constants.ts` so every retrieval knob is
+// calibrated in one place. They were measured on the ground-truth evaluation set
+// across two vaults; see that file for the numbers and the re-measurement rule.
+export const DEFAULT_NUM_WALKS = PPR_NUM_WALKS;
+export const DEFAULT_MAX_STEPS = PPR_MAX_STEPS;
+export const DEFAULT_DAMPING = PPR_DAMPING;
 
 export function personalizedPageRank(
   graph: Graph,

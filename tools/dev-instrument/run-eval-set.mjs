@@ -261,12 +261,12 @@ function rankPpr(q) {
   const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: 200 });
   return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
 }
-function rankPprWith(pprOptions) {
+function rankPprWith(pprOptions, topN) {
   return (q) => {
     const pprPages = pages.map(p => ({
       path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0,
     }));
-    const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: 200, pprOptions });
+    const matches = pprCascade(q.queryTerms.join(' '), pprPages, { graph, topN: topN ?? 200, pprOptions });
     return matches.map(m => ({ item: { key: m.page.path, sourceSlug: byName.get(m.page.path)?.sourceSlug }, score: m.score }));
   };
 }
@@ -377,6 +377,38 @@ function evaluateMax(label, channels) {
   console.log(`  ${label.padEnd(26)} bridge recall@${K}=${b.recall.toFixed(3)} MRR=${b.mrr.toFixed(3)} | self recall@${K}=${s.recall.toFixed(3)} MRR=${s.mrr.toFixed(3)}`);
 }
 
+// Same as evaluateMax but with an explicit budget, so the recall-vs-budget curve
+// can be measured. The shipped budget is 10; the curve says whether that is the
+// right place to sit.
+function evaluateMaxWith(label, channels, budget) {
+  const run = (set) => {
+    let hits = 0, rr = 0, n = 0;
+    for (const q of set) {
+      const per = channels.map(ch => ch(q));
+      const normMax = per.map(ranked => (ranked.length ? ranked[0].score : 1) || 1);
+      const byKey = new Map();
+      for (let ci = 0; ci < per.length; ci += 1) {
+        for (const s of per[ci]) {
+          const v = s.score / normMax[ci];
+          const prev = byKey.get(s.item.key);
+          if (prev === undefined || v > prev) byKey.set(s.item.key, v);
+        }
+      }
+      const fused = [...byKey.entries()].map(([key, score]) => ({
+        item: { key, sourceSlug: byName.get(key)?.sourceSlug }, score,
+      }));
+      const r = assembleWithCoverage(fused, budget, {});
+      const rank = r.picked.map(x => x.item.key).indexOf(q.truth);
+      if (rank >= 0) { hits += 1; rr += 1 / (rank + 1); }
+      n += 1;
+    }
+    return { recall: hits / Math.max(1, n), mrr: rr / Math.max(1, n) };
+  };
+  const br = run(bridge);
+  const sf = run(self);
+  console.log(`    ${label.padEnd(22)} bridge recall@${budget}=${br.recall.toFixed(3)} MRR=${br.mrr.toFixed(3)} | self recall@${budget}=${sf.recall.toFixed(3)} MRR=${sf.mrr.toFixed(3)}`);
+}
+
 // C' QUOTA UNION. No fusion at all: take the top k from each channel and union
 // them. Guarantees both channels contribute, and nothing is averaged away.
 function evaluateQuota(label, channels, perChannel) {
@@ -439,6 +471,18 @@ evaluateMax('  damping 0.30 + steps 10', [rankBm25f, rankPprWith({ damping: 0.30
 evaluateMax('  damping 0.15 + steps 10', [rankBm25f, rankPprWith({ damping: 0.15, maxSteps: 10 })]);
 evaluateMax('  damping 0.30 + steps 50', [rankBm25f, rankPprWith({ damping: 0.30, maxSteps: 50 })]);
 evaluateMax('  damping 0.15 + steps 50', [rankBm25f, rankPprWith({ damping: 0.15, maxSteps: 50 })]);
+
+// ---- First principles: where does recall get lost? Two caps sit on the path.
+// `topN` cuts the candidate pool before fusion. `budget` cuts the picked set
+// after it. Neither was measured against recall before.
+console.log(`\n=== Recall vs BUDGET (how many pages the reader gets) ===`);
+for (const b of [5, 10, 20, 30, 50]) {
+  evaluateMaxWith(`  budget ${b}`, [rankBm25f, rankPpr], b);
+}
+console.log(`\n=== Recall vs topN (candidate pool cap before fusion) ===`);
+for (const n of [50, 200, 500, 2000]) {
+  evaluateMax(`  topN ${n}`, [rankBm25f, rankPprWith({ damping: 0.30, maxSteps: 10 }, n)]);
+}
 
 console.log('\n  bridge = query phrased in page A\'s words, answer is the page A links to');
 console.log('  self   = query phrased in the page\'s own words, answer is the page');
