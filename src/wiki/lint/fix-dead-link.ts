@@ -1,4 +1,4 @@
-import { EngineContext } from '../../types';
+import { EngineContext, FULL_WRITE_INTENT, LINT_WRITE_INTENT, WriteIntent } from '../../types';
 import { activeVocabularyLists } from '../../core/vocabulary';
 import { PROMPTS } from '../../prompts';
 import { TOKENS_LINT_PAGE_FIX, WIKI_SUBFOLDERS, CANDIDATE_WINDOW_TOP_K } from '../../constants';
@@ -19,6 +19,12 @@ import { buildStubFrontmatter } from '../page-factory/stub-page';
 
 /** Characters to each side of the dead link that describe what it points to (300 in all, the dedup summary length). */
 const DEAD_LINK_CONTEXT_RADIUS = 150;
+
+// Corrections update existing pages and refresh the page index. They must not
+// start the full gate's asynchronous completion stamp beside the next fix.
+export const DEAD_LINK_SOURCE_WRITE_INTENT: WriteIntent = { ...LINT_WRITE_INTENT, notify: true };
+// Stub creation still needs the page guard, but belongs to the lint run.
+export const DEAD_LINK_STUB_WRITE_INTENT: WriteIntent = { ...FULL_WRITE_INTENT, cancel: 'lint' };
 
 const PLURAL_MAP: Record<string, string> = {
   entity: WIKI_SUBFOLDERS.entities,
@@ -169,6 +175,10 @@ export async function fixDeadLink(
   // ---- Pre-check: deterministic title + alias match ----
   const sourceContent =
     (await ctx.tryReadFile(sourcePath)) || '(empty)';
+  const sourceLinks = sourceContent.matchAll(/\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]+)?\]\]/g);
+  if (!Array.from(sourceLinks).some(match => match[1].trim() === targetName)) {
+    return 'no action taken (link no longer present)';
+  }
   const targetBasename = targetName.includes('/')
     ? targetName.split('/').pop()!
     : targetName;
@@ -185,6 +195,7 @@ export async function fixDeadLink(
     }
     const newLink = buildDeadLinkReplacement(preMatch, ctx.settings.wikiFolder);
     const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
+    if (updatedContent === sourceContent) return 'no action taken (link unchanged)';
     await ctx.createOrUpdateFile(sourcePath, updatedContent);
     return `pre-check corrected (alias match): ${newLink}`;
   }
@@ -288,6 +299,7 @@ export async function fixDeadLink(
     const usableLink = normalizeCorrectLink(result.correct_link);
     if (usableLink) {
       const updatedContent = replaceDeadLink(sourceContent, targetName, usableLink);
+      if (updatedContent === sourceContent) return 'no action taken (link unchanged)';
       await ctx.createOrUpdateFile(sourcePath, updatedContent);
       return `corrected: ${usableLink}`;
     }
@@ -310,6 +322,7 @@ export async function fixDeadLink(
     if (aliasMatch) {
       const newLink = `[[${makeRelPath(aliasMatch.path, ctx.settings.wikiFolder)}|${aliasMatch.displayTitle || aliasMatch.title}]]`;
       const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
+      if (updatedContent === sourceContent) return 'no action taken (link unchanged)';
       await ctx.createOrUpdateFile(sourcePath, updatedContent);
       return `safety-net corrected (alias match for stub): ${newLink}`;
     }
