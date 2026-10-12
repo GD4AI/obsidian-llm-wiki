@@ -118,6 +118,19 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **The decision this batch cannot make for itself.** #825 asks whether `collectResolvingReferences` (`link-retarget.ts:198`) should read `frontmatterLinks`. #386 excluded them on purpose and #590 records that. Widening it changes the write behaviour of every merge, so it is a decision, not a fix. The recommendation is to ship the `stale > 0` half first and treat the frontmatter scope separately.
 
+**The batch plan, for whoever picks this up.** Branch `fix/lint-dead-link-family` from `main`. One PR, four commits in this order, each revertible on its own, and each beginning with a test that fails without the change. #823 is **not** in it — see above. Four fixes, one subsystem, so one review rather than four.
+
+| Seq | # | Where | The test that must fail first |
+|---|---|---|---|
+| 1 | **#826** | `dedup-phase.ts:735` drops self-pairs after `normalizeLLMPath`; a hard guard in `runDuplicateMerges` (`fix-runners.ts:423`) and in `mergeDuplicatePages` (`merge-duplicates.ts:15`) before any write or delete | A self-pair is dropped; `mergeDuplicatePages(x, x)` refuses; `deleteFile` is never called |
+| 2 | **#824** | `validateOrphanLinkTarget` (`orphan-matcher.ts:45`) resolves through the existing page index; `buildOrphanLinkUpdate` (`:61`) drops a line that already carries the link | An unresolvable target is not appended; a duplicate is not appended; "linked from" is not reported when no inbound link was written |
+| 3 | **#827** | The stub branch at `fix-dead-link.ts:325` gets three rules: a single generic word, a code identifier, and a name that appears only inside inline code or a quote | `MyFile` and `Name` create no page; an inline-code name creates no page; **a genuinely unknown entity still does** — over-filtering is the failure mode to test against |
+| 4 | **#825** (stale half only) | `merge-duplicates.ts:194`: when `retargeted.stale > 0`, do not delete, and surface `stale` in the run result | `stale > 0` keeps the source and reports it; `stale === 0` deletes exactly as before |
+
+**Three notes a picker-up needs.** #824 changes an **exported** signature: `validateOrphanLinkTarget` has unit tests and one caller (`link-orphan.ts:93`), so the resolver is an **optional** parameter and the existing call keeps its behaviour. #825's frontmatter half is **not** in the batch — it is decided in #835. And #833's English sentinel (`startsWith('no action taken')` in `fix-runners.ts`, matching literals in `fix-dead-link.ts`) is the same subsystem and is worth folding into seq 1 or 2, because a wording edit there silently restores the false "fixed" counts that #823 was about.
+
+**The order is the ROI order, and the last row is last on purpose.** #825 is the only one whose correct behaviour changes what a merge *deletes*, so it carries the highest risk and belongs where it can be reverted without touching the other three.
+
 **The dependency decisions in the same window.** Three, and each now has an outcome.
 
 `@typescript-eslint`: PR **#821** took only the parser to 8.71.1 — dependabot's normal one-dependency shape — which left the parser and the plugin, both direct devDependencies, from different versions. **Resolved by #834**, which moves the pair together. Measured while doing it: **the pair bump does not remove the second copy of `@typescript-eslint/types`**, because `eslint-plugin-obsidianmd@0.4.2` pins its own `typescript-eslint` chain at 8.59.1 and the meta-package pins its sub-packages exactly. `pnpm dedupe` does not collapse them and was reverted: it converged nothing on that set while moving `picomatch`, `fdir`, `tinyglobby` and `ignore`. Collapsing the two belongs to the release-time Bot-alignment step, which already raises `eslint-plugin-obsidianmd` to its latest for this reason.
