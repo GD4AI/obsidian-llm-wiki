@@ -546,6 +546,8 @@ export const IT_TEXTS = {
     reingestConfirmNo: 'Salta',
     lintDedupIncludeSourcesName: 'Includi fonti nella deduplicazione',
     lintDedupIncludeSourcesDesc: 'Attivo per impostazione predefinita. Quando attivo, le fonti con corpo identico vengono segnalate come duplicati durante il lint. Disattiva se il tuo corpus di fonti genera falsi positivi.',
+    legacyScorerName: 'Vecchio punteggio di ricerca',
+    legacyScorerDesc: 'Disattivo per impostazione predefinita. Quando attivo, l’ordinamento delle ricerche usa il vecchio punteggio tarato a mano invece del nuovo BM25F. Attivalo se i risultati sono peggiorati dopo un aggiornamento.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'Salta i candidati che la fonte si limita a menzionare',
     skipMentionOnlyCandidatesDesc: 'Disattivo per impostazione predefinita. Quando attivo, un’entità o un concetto estratto il cui nome non compare nel testo corrente della nota — assente, o solo tra parentesi, in elenchi o in brevi voci puntate — non riceve alcuna pagina né ulteriori chiamate al modello, e viene rimosso dalle liste dei correlati degli altri candidati. Funziona per le lingue del wiki con un profilo di confini di parola (tedesco misurato; inglese, francese, spagnolo, portoghese, olandese stimati); per le altre lingue l’ingestione segnala una volta che non può applicarsi. Lascialo disattivo per vault di tipo glossario o note a punti elenco in cui ogni termine nominato deve diventare una pagina.',
