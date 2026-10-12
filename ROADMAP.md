@@ -66,15 +66,17 @@ This is the first section to read after a compact. Each row is a decision, not a
 The work is done or scoped, and the missing piece is a call. Everything here now sits on
 `v1.29.0 MINOR` or `v1.28.x PATCH`; nothing here blocks v1.28.0, which shipped 2026-10-04.
 
-**Milestone map (restructured 2026-10-04; counts re-derived 2026-10-12).** Three windows are open. Every open issue and PR is assigned: the 2026-10-12 triage assigned the 13 items that had drifted in unassigned, and the two dependabot PRs that arrived during it.
+**Milestone map (restructured 2026-10-04).** Three windows are open, and every open issue and PR is assigned to one of them.
 
-| Milestone | Open | What belongs in it |
-|---|---|---|
-| `v1.28.x PATCH` | 14 | Bug fixes, docs and engineering hygiene. No new features |
-| `v1.29.0 MINOR` | 11 | New capabilities, and the #729 design track's head |
-| `v1.27.0+ research` | 16 | Ideas with no committed version — experimental, or awaiting a design conversation |
+| Milestone | What belongs in it |
+|---|---|
+| `v1.28.x PATCH` | Bug fixes, docs and engineering hygiene. No new features |
+| `v1.29.0 MINOR` | New capabilities, and the #729 design track's head |
+| `v1.27.0+ research` | Ideas with no committed version — experimental, or awaiting a design conversation |
 
-The 2026-10-12 counts are `open_issues` read back from the API, not carried forward. The previous table read 12 / 16 / 16 and its `v1.29.0 MINOR` figure was five items high — the move of #729's work into PRs (#781, #819) and the closure of #764 #752 #608 #687 by release had not been subtracted.
+**The per-milestone counts are deliberately not carried here.** This table held them until 2026-10-12, when they were found **wrong across all three rows** — the previous figures read 12 / 16 / 16 and `v1.29.0 MINOR` was five items high, because the move of #729's work into PRs (#781, #819) and the closure of #764 #752 #608 #687 by release had never been subtracted. Re-deriving them fixed that, and then they moved again inside the hour as four PRs and one issue arrived. **A number that changes hourly does not belong in a planning document; it belongs in a command.** Read them with `gh api "/repos/GD4AI/obsidian-llm-wiki/milestones?state=open" --jq '.[] | "\(.title): \(.open_issues)"'`.
+
+The invariant that *is* carried: **nothing is unassigned.** On 2026-10-12 thirteen items had drifted in unassigned while this section claimed all three windows held everything. Checking the invariant is one command too, and it is the check that found the drift.
 
 The restructure replaced two milestones that had outlived their names. **`v1.27.x PATCH`** still held 11 items under a title naming a window that closed with v1.27.2 on
 2026-09-15. Its 10 PATCH-scale items moved to `v1.28.x PATCH`. #568 (an `enhancement`, not a fix) moved to `v1.29.0 MINOR`. **`v1.27.0 MINOR`** was empty and
