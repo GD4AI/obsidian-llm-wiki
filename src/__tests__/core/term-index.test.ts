@@ -276,9 +276,11 @@ describe('the rejected options stay rejected', () => {
     expect(bm25fScore(['deepseek'], pages[0], corpus)).toBeGreaterThan(0);
   });
 
-  it('the default field weights are the old ratio, so behaviour is comparable', () => {
-    // The harness moves these. What must not happen is losing the ratio
-    // silently on the way to BM25F.
+  it('the default field weights keep the title on top and the body at full weight', () => {
+    // The harness moves these. What must not happen is losing the title's
+    // dominance silently on the way to BM25F. B-1 (#819) measured the body at
+    // 0.15 / 0.3 / 0.6 / 1.0 on two vaults: the bridge curve is monotonic and
+    // self-resolution is 1.000 throughout, so the body carries weight 1.
     expect(DEFAULT_FIELD_WEIGHTS).toEqual({ title: 3, alias: 2, summary: 1, text: 1 });
     const inTitle = mk('AMPK', 'x', 'y');
     const inSummary = mk('Z', 'AMPK', 'y');
@@ -591,5 +593,62 @@ describe('per-field tf saturation (#819 P0-1) — repetition is weak evidence', 
     expect(bm25fScore(q, both, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
       bm25fScore(q, single, corpus, DEFAULT_FIELD_WEIGHTS),
     );
+  });
+});
+
+// B-1 (#819). The body is the only lexical lever that crosses a real vocabulary
+// gap. Measured on the strict set — pairs where A and B share under a third of
+// their terms — the lex channel scores 0.000 with `text: ''` and 0.415 with the
+// body indexed, on test8. The query path passed `text: ''` before this change,
+// so the field was dark in production and the only reason the eval tool saw the
+// gain was that it built its own index.
+describe('body field weight (#819 B-1) — the vocabulary-gap lever', () => {
+  it('carries the body at full weight — the curve is monotonic and self stays 1.000', () => {
+    // B-1 (#819). Measured across 0.15 / 0.3 / 0.6 / 1.0 on test8 and test10 the
+    // bridge curve is MONOTONIC (0.221 / 0.334 / 0.385 on test8) and
+    // self-resolution is 1.000 at every value, up to 2.0. There is no trade to
+    // make, so there is no reason to discount the body below the summary.
+    //
+    // A 0.3 value was tried and reverted: it came from an external calibration
+    // reporting a 0.3-0.6 plateau on a different corpus, and on ours that
+    // plateau does not exist in that range.
+    expect(DEFAULT_FIELD_WEIGHTS.text).toBe(1);
+  });
+
+  it('lets a term that appears only in the body make the page findable', () => {
+    // The behaviour the weight exists for: a question phrased in one page's
+    // words, answered by a page that uses different words in its title and
+    // summary but carries the query terms in its body.
+    const target = buildPageTerms({
+      title: 'Neural network',
+      aliases: [],
+      summary: 'A model built from layers.',
+      text: 'Backpropagation adjusts the weights after each epoch.',
+    });
+    const other = buildPageTerms({
+      title: 'Gradient descent',
+      aliases: [],
+      summary: 'An optimisation method.',
+      text: 'The learning rate controls step size.',
+    });
+    const corpus = buildCorpusTerms([target, other]);
+    const query = ['backpropagation'];
+    const score = bm25fScore(query, target, corpus, DEFAULT_FIELD_WEIGHTS);
+    const scoreOther = bm25fScore(query, other, corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeGreaterThan(scoreOther);
+  });
+
+  it('does not let the body swamp the title tier', () => {
+    // A page whose title is the exact query must outrank a page that merely
+    // repeats the term in its body. The body carries weight 1 against the
+    // title's 3, and the per-field tf saturation caps repetition — measured,
+    // self-resolution is 1.000 at every body weight from 0.15 to 2.0.
+    const byTitle = buildPageTerms({ title: 'Transformer', aliases: [], summary: '', text: 'irrelevant filler words here' });
+    const byBody = buildPageTerms({ title: 'Attention mechanism', aliases: [], summary: '', text: 'transformer transformer transformer transformer' });
+    const corpus = buildCorpusTerms([byTitle, byBody]);
+    const query = ['transformer'];
+    expect(bm25fScore(query, byTitle, corpus, DEFAULT_FIELD_WEIGHTS))
+      .toBeGreaterThan(bm25fScore(query, byBody, corpus, DEFAULT_FIELD_WEIGHTS));
   });
 });

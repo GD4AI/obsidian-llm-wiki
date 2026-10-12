@@ -67,6 +67,15 @@ export interface PageRef {
    * match because the summary mentions the topic).
    */
   summary?: string;
+  /**
+   * Page BODY. B-1 (#819): the only lexical lever that crosses a real
+   * vocabulary gap. On the strict set — pairs where A and B share under a third
+   * of their terms — the lex channel scores 0.000 without it and 0.415 with it,
+   * on test8. Optional because the wiki index does not carry bodies and the
+   * graph cache is what holds them; a caller that cannot supply one loses the
+   * lever, not the whole ranking.
+   */
+  text?: string;
 }
 
 /**
@@ -130,7 +139,11 @@ export function scorePagesByNeedles(
     title: p.title,
     aliases: p.aliases,
     summary: p.summary ?? '',
-    text: '',
+    // B-1 (#819): the page BODY. Passed empty before this, so the field was
+    // dark in production while the eval tool measured a 0.000 -> 0.415 gain
+    // from it on the strict vocabulary-gap set. Callers that hold a body pass
+    // it; callers that do not lose the lever and nothing else.
+    text: p.text ?? '',
   }));
   const corpus = useLegacy ? undefined : (options.corpus ?? buildCorpusTerms(pageTerms));
   const weights = options.weights ?? DEFAULT_FIELD_WEIGHTS;

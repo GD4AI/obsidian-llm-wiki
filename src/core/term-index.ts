@@ -243,6 +243,23 @@ export interface FieldWeights {
 }
 
 /** The old hand-tuned ratio, as a starting point for the harness to move. */
+/**
+ * Field weights for BM25F. `text` is the page BODY.
+ *
+ * B-1 (#819): the body is the only lexical lever that crosses a real vocabulary
+ * gap. Measured on the strict set — pairs where A and B share under a third of
+ * their terms — the lex channel scores 0.000 with `text: ''` and 0.385 at
+ * weight 1 on test8, 0.268 on test10.
+ *
+ * The weight is 1, not a discount. Measured across 0.15 / 0.3 / 0.6 / 1.0 on
+ * both vaults the curve is MONOTONIC — 0.221 / 0.334 / 0.385 on test8 — and
+ * self-resolution stays 1.000 at every value, up to and including 2.0. There is
+ * no trade to make here, so there is no reason to discount.
+ *
+ * A 0.3 value was tried and reverted. It came from an external calibration that
+ * reported a 0.3-0.6 plateau on a different corpus; on ours the plateau does
+ * not exist in that range. External numbers describe external corpora.
+ */
 export const DEFAULT_FIELD_WEIGHTS: FieldWeights = { title: 3, alias: 2, summary: 1, text: 1 };
 
 /**

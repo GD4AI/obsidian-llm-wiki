@@ -73,14 +73,23 @@ describe('scoreProfile — a low-weight tier only adds candidates', () => {
 });
 
 describe('scoreProfile — the page prose, when the caller has it', () => {
-  it('gives the prose the same low tier as the summary', () => {
+  it('gives the prose the same tier as the summary — 1 against 1', () => {
     // The Mentions section holds 2-4 verbatim sentences from the note. It is
-    // on disk and the seed stage never read it.
+    // on disk and the seed stage never read it. B-1 (#819) wired it into the
+    // query path and measured the weight: 0.15 / 0.3 / 0.6 / 1.0 on two vaults
+    // gives a monotonic bridge curve and self-resolution of 1.000 throughout,
+    // so there is no reason to discount the body below the summary.
     const r = scoreProfile(
       p({ title: 'Other', text: 'Verbatim from the note: the consolidation kernel forms here.' }),
       ['consolidation'],
     );
     expect(r.score).toBe(1);
+    // A summary hit and a body hit on the same term score the same.
+    const s = scoreProfile(
+      p({ title: 'Other', summary: 'The consolidation kernel forms here.' }),
+      ['consolidation'],
+    );
+    expect(s.score).toBe(r.score);
   });
 
   it('does not let a long body drown a name hit', () => {
