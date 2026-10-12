@@ -970,14 +970,3 @@ export const PPR_MIN_PAGES = 30;
 export const PPR_MIN_EDGES = 30;
 export const PPR_MIN_EDGE_DENSITY = 1.0;
 export const PPR_SEED_MIN_DEGREE = 1;
-
-/**
- * Exponent on the per-seed lexical weight in the PPR merge. B-2 (#819): the
- * merge is a weighted SUM over seeds, not a max, and this decides how sharply
- * the strongest seed dominates. At 1 the weight is proportional to the lexical
- * evidence; at 2 the top seed behaves like a single-seed walk and the rest add
- * only what the top one does not cover. The external re-test measured 2 as best
- * or tied best at five seeds, and best when 70% of the query words were dropped
- * to stop the asker's own page from always ranking first.
- */
-export const SEED_WEIGHT_GAMMA = 2;

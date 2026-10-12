@@ -283,7 +283,7 @@ export interface PPRCascadeOptions {
   rng?: () => number;
 }
 
-import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE, SEED_WEIGHT_GAMMA } from '../constants';
+import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE } from '../constants';
 
 // The assembly budget and the graph-maturity gate live in `src/constants.ts`
 // with every other retrieval knob. `DEFAULT_TOP_N` is kept as an alias because
@@ -473,53 +473,28 @@ function isGraphMature(graph: Graph, options: PPRCascadeOptions): boolean {
 }
 
 /**
- * Build a path → PPR score map by running PPR for each seed and merging.
- *
- * B-2 (#819). The merge is a LEX-WEIGHTED SUM, not a max. PPR is linear in the
- * restart vector, so running it once per seed and weighting by that seed's
- * lexical evidence is the same as one walk with a weighted restart: the strong
- * seed drives the walk and the weak ones contribute what they actually know.
- *
- * The max form gave every seed unconditional equal standing, so a seed the
- * lexical stage ranked third could dominate a node as completely as the one it
- * ranked first. Measured by the external re-test at five seeds: 0.470 with max
- * against 0.585 with the weighted sum.
- *
- * `seedWeights[i]` is the lexical evidence for `seeds[i]`, on any scale — it is
- * normalised internally so only the RATIOS matter. Omitted means equal weights.
- *
- * `gamma` sharpens the weighting. At 1 the weight is proportional to the
- * evidence; at 2 the top seed dominates the way a single-seed walk would, which
- * is what the measurement selected.
+ * Build a path → PPR score map by running PPR for each seed and
+ * merging (max score per node).
  */
-export function pprFromSeeds(
+function pprFromSeeds(
   graph: Graph,
   seeds: string[],
   pprOptions: PPROptions | undefined,
   rng: (() => number) | undefined,
   query: string,
-  seedWeights?: readonly number[],
-  gamma: number = SEED_WEIGHT_GAMMA,
 ): Map<string, number> {
   // The walk is a function of its inputs. Without a seed the old
   // `Math.random` default made two runs over one query differ, which is a
   // lottery rather than a ranking: #729 cannot separate two arms under that
   // variance, and a user who asks twice gets two answers.
   const walkRng = rng ?? seededRngFrom(query, seeds);
-  const raw = seedWeights && seedWeights.length === seeds.length
-    ? seedWeights.map(w => (Number.isFinite(w) && w > 0 ? w : 0))
-    : seeds.map(() => 1);
-  const top = Math.max(...raw, 0);
   const merged = new Map<string, number>();
-  for (let i = 0; i < seeds.length; i += 1) {
-    const seed = seeds[i];
+  for (const seed of seeds) {
     if (!graph.nodes.includes(seed)) continue;
-    const normalised = top > 0 ? raw[i] / top : 1;
-    const weight = top > 0 ? Math.pow(normalised, gamma) : 1;
-    if (weight <= 0) continue;
     const result = personalizedPageRank(graph, seed, { ...(pprOptions ?? {}), rng: walkRng });
     for (const [node, score] of result) {
-      merged.set(node, (merged.get(node) ?? 0) + weight * score);
+      const existing = merged.get(node) ?? 0;
+      if (score > existing) merged.set(node, score);
     }
   }
   return merged;
@@ -573,9 +548,6 @@ export function pprCascade(
       const seedMinDegree = options.seedMinDegree ?? DEFAULT_SEED_MIN_DEGREE;
       const validSeeds = explicitSeeds.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        // Explicit seeds carry no lexical evidence to weight by — they came from
-        // the LLM semantic stage, not from a ranking — so they merge at equal
-        // weight.
         const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
         return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
       }
@@ -585,15 +557,7 @@ export function pprCascade(
       const seedPaths = lex.slice(0, 3).map(p => p.path);
       const validSeeds = seedPaths.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        // Lex-derived seeds: weight each by how strongly the lexical stage
-        // preferred it. `lexMatch` ranks but exposes no score, so position IS
-        // the evidence here. B-2 (#819): a max merge let a third-ranked seed
-        // dominate a node as completely as the first.
-        const weights = validSeeds.map(s => {
-          const idx = seedPaths.indexOf(s);
-          return idx >= 0 ? 1 / (idx + 1) : 1;
-        });
-        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query, weights);
+        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
         return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
       }
     }

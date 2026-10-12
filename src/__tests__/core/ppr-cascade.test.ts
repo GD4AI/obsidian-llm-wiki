@@ -28,7 +28,7 @@
 //   "Powered by graph-first PPR" or fall back to plain lex.
 
 import { describe, it, expect } from 'vitest';
-import { pprCascade, pprFromSeeds, type PageRef, type Graph } from '../../core/ppr-cascade';
+import { pprCascade, type PageRef, type Graph } from '../../core/ppr-cascade';
 import { makeRng } from '../__support__/rng';
 
 function page(path: string, title: string, aliases: string[] = []): PageRef {
@@ -382,51 +382,5 @@ describe('pprCascade — graceful degradation', () => {
     expect(paths).toContain('P5');
     // NONEXISTENT is not a real page → never appears.
     expect(paths).not.toContain('NONEXISTENT');
-  });
-});
-
-// B-2 (#819). The merge across seeds used to take the max per node, which gave
-// every seed unconditional equal standing: a seed the lexical stage ranked
-// third could dominate a node as completely as the one it ranked first. PPR is
-// linear in the restart vector, so weighting each seed's walk by its lexical
-// evidence is the same as one walk with a weighted restart.
-describe('pprFromSeeds — lex-weighted merge (#819 B-2)', () => {
-  const g: Graph = {
-    nodes: ['A', 'B', 'C', 'D'],
-    edges: new Map([['A', ['B']], ['B', ['C']], ['C', ['D']], ['D', []]]),
-  };
-
-  it('lets the stronger seed dominate, instead of giving both equal standing', () => {
-    // Two seeds, A strongly preferred and D weakly. The merged mass near A
-    // relative to the mass near D is what the weighting moves: a max or equal
-    // merge lets the weak seed's walk fill its own neighbourhood at full value,
-    // and the weighted sum scales it down to what the lexical stage actually
-    // believed about that seed.
-    const weighted = pprFromSeeds(g, ['A', 'D'], undefined, () => 0.5, 'q', [1, 0.1]);
-    const equal = pprFromSeeds(g, ['A', 'D'], undefined, () => 0.5, 'q');
-    const ratio = (m: Map<string, number>) => (m.get('A') ?? 0) / Math.max(1e-9, m.get('D') ?? 0);
-    expect(ratio(weighted)).toBeGreaterThan(ratio(equal));
-  });
-
-  it('sharpens the weighting with gamma, so the top seed behaves like a single-seed walk', () => {
-    const sharp = pprFromSeeds(g, ['A', 'D'], undefined, () => 0.5, 'q', [1, 0.5], 2);
-    const flat = pprFromSeeds(g, ['A', 'D'], undefined, () => 0.5, 'q', [1, 0.5], 1);
-    // gamma 2 squares the 0.5 to 0.25; gamma 1 keeps it at 0.5. The weak seed's
-    // neighbourhood therefore contributes proportionally less under gamma 2.
-    const ratio = (m: Map<string, number>) => (m.get('A') ?? 0) / Math.max(1e-9, m.get('D') ?? 0);
-    expect(ratio(sharp)).toBeGreaterThan(ratio(flat));
-  });
-
-  it('reproduces equal weighting when no weights are given', () => {
-    // Omitting the weights must not silently change the shape of the merge.
-    const withEqual = pprFromSeeds(g, ['A', 'B'], undefined, () => 0.5, 'q', [1, 1]);
-    const without = pprFromSeeds(g, ['A', 'B'], undefined, () => 0.5, 'q');
-    expect(without.get('A')).toBeCloseTo(withEqual.get('A') ?? 0, 10);
-  });
-
-  it('is deterministic across runs', () => {
-    const first = pprFromSeeds(g, ['A', 'C'], undefined, undefined, 'same query', [1, 0.4]);
-    const second = pprFromSeeds(g, ['A', 'C'], undefined, undefined, 'same query', [1, 0.4]);
-    expect([...first.entries()]).toEqual([...second.entries()]);
   });
 });
