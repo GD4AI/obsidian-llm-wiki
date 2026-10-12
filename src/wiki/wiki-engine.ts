@@ -62,7 +62,7 @@ import {
 } from './system-prompts';
 import { WikiPageIndex } from './lint/get-existing-pages';
 import { correctRelatedLinkPrefixes, repointFolderTypedLinks } from '../core/related-link-corrector';
-import { fixDeadLink } from './lint/fix-dead-link';
+import { fixDeadLink, DEAD_LINK_SOURCE_WRITE_INTENT, DEAD_LINK_STUB_WRITE_INTENT } from './lint/fix-dead-link';
 import { fillEmptyPage } from './lint/fill-empty-page';
 import { deleteEmptyStubs, type DeleteEmptyStubsResult } from './lint/delete-empty-stubs';
 import { linkOrphanPage } from './lint/link-orphan';
@@ -2237,7 +2237,17 @@ export class WikiEngine {
   }
 
   async fixDeadLink(sourcePath: string, targetName: string): Promise<string> {
-    return fixDeadLink(this.ctx, sourcePath, targetName);
+    return fixDeadLink({
+      ...this.ctx,
+      createOrUpdateFile: async (path, content) => {
+        // Source corrections must not recreate deleted pages. Stubs may create
+        // pages, but neither write may report success when the gate declines it.
+        const written = await this.writeFileWithIntent(path, content, path === sourcePath
+          ? DEAD_LINK_SOURCE_WRITE_INTENT
+          : DEAD_LINK_STUB_WRITE_INTENT);
+        if (!written) throw new Error(`Dead-link write declined: ${path}`);
+      },
+    }, sourcePath, targetName);
   }
 
   async fillEmptyPage(pagePath: string, existingContent?: string): Promise<string> {
