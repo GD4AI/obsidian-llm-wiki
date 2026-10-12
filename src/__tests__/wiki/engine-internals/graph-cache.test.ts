@@ -72,3 +72,48 @@ describe('GraphCache', () => {
     expect(cache.hasCachedGraph()).toBe(true);
   });
 });
+describe('GraphCache reverse adjacency (#729 Phase 5)', () => {
+  it('is built with the graph and maps a node to what points at it', async () => {
+    const loader = vi.fn().mockResolvedValue([
+      { path: 'entities/A', content: '---\ntype: entity\n---\n# A\n\n[[entities/B]]' },
+      { path: 'entities/B', content: '---\ntype: entity\n---\n# B' },
+    ]);
+    const cache = new GraphCache({ wikiFolder: 'wiki', loadPages: loader });
+    const paths = new Set(['entities/A', 'entities/B']);
+    const inc = await cache.getReverseAdjacency(paths);
+    expect(inc.get('entities/B')).toContain('entities/A');
+  });
+
+  it('returns the same map instance while the graph is unchanged', async () => {
+    // The point of caching it here rather than building it at the use site is
+    // that a caller can hold the reference.
+    const loader = vi.fn().mockResolvedValue([{ path: 'a', content: '' }]);
+    const cache = new GraphCache({ wikiFolder: 'wiki', loadPages: loader });
+    const paths = new Set(['a']);
+    const first = await cache.getReverseAdjacency(paths);
+    const second = await cache.getReverseAdjacency(paths);
+    expect(second).toBe(first);
+  });
+
+  it('is dropped by invalidate() so a stale walk cannot survive a vault change', async () => {
+    const loader = vi.fn().mockResolvedValue([
+      { path: 'a', content: '[[b]]' },
+      { path: 'b', content: '' },
+    ]);
+    const cache = new GraphCache({ wikiFolder: 'wiki', loadPages: loader });
+    const paths = new Set(['a', 'b']);
+    const before = await cache.getReverseAdjacency(paths);
+    expect(before.get('b')).toBeDefined();
+    cache.invalidate();
+    const after = await cache.getReverseAdjacency(paths);
+    expect(after).not.toBe(before);
+  });
+
+  it('builds the graph if getReverseAdjacency is called first', async () => {
+    const loader = vi.fn().mockResolvedValue([{ path: 'a', content: '' }]);
+    const cache = new GraphCache({ wikiFolder: 'wiki', loadPages: loader });
+    await cache.getReverseAdjacency(new Set(['a']));
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(cache.hasCachedGraph()).toBe(true);
+  });
+});

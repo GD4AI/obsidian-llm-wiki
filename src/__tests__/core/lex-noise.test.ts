@@ -156,8 +156,18 @@ describe('mergeWithPPR — PPR mass ranks, the lex hint only orders the rest', (
     const result = pprCascade('alphafold', pages, {
       graph: g, seeds: ['R0'], topN: 60, rng: makeRng(1),
     });
-    const scores = result.map(m => m.score);
-    for (let i = 1; i < scores.length; i++) expect(scores[i - 1]).toBeGreaterThanOrEqual(scores[i]);
+    // The property is ORDERING, not score monotonicity. Assembly applies
+    // diminishing return per source, so within a band a lower raw score can be
+    // picked before a higher one — that is the rule working. What must hold is
+    // that every PPR-reached page comes before every page PPR never reached,
+    // because the seed pages are what an LLM call paid for and an unreached
+    // keyword hit must not displace them.
+    const order = result.map(m => m.page.path);
+    const firstUnreached = order.findIndex(p => p.startsWith('N'));
+    const lastReached = order.map(p => p.startsWith('R')).lastIndexOf(true);
+    if (firstUnreached !== -1 && lastReached !== -1) {
+      expect(lastReached).toBeLessThan(firstUnreached);
+    }
     const nPaths = result.filter(m => m.page.path.startsWith('N')).map(m => m.page.path);
     expect(nPaths.length).toBe(12);
     expect(nPaths[0]).toBe('N0');

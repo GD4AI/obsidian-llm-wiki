@@ -43,6 +43,7 @@ export async function readWikiIndex(
     title: p.title,
     aliases: p.aliases,
     summary: p.summary,
+    ...(p.sourceSlug !== undefined ? { sourceSlug: p.sourceSlug } : {}),
   }));
   const allPaths = new Set(allPages.map(p => p.path));
   return { indexContent, pageRefs, allPaths };

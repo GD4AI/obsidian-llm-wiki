@@ -26,6 +26,26 @@ export interface Graph {
   edges: Map<string, string[]>;
 }
 
+/**
+ * Reverse adjacency: node → the nodes that point at it.
+ *
+ * Built once and looked up, instead of scanning every entry of `graph.edges`
+ * for each query. The scan was O(V*E) — 27 million comparisons for one
+ * maturity check on the measured 2143-node / 12840-edge vault. Pure, and cheap
+ * enough to pre-build alongside the graph so several passes can share it.
+ */
+export function buildReverseAdjacency(graph: Graph): Map<string, string[]> {
+  const incoming = new Map<string, string[]>();
+  for (const [from, targets] of graph.edges) {
+    for (const to of targets) {
+      const list = incoming.get(to);
+      if (list) list.push(from);
+      else incoming.set(to, [from]);
+    }
+  }
+  return incoming;
+}
+
 export interface PPROptions {
   numWalks?: number;
   maxSteps?: number;
@@ -33,9 +53,14 @@ export interface PPROptions {
   rng?: () => number;
 }
 
-const DEFAULT_NUM_WALKS = 3000;
-const DEFAULT_MAX_STEPS = 50;
-const DEFAULT_DAMPING = 0.05;
+import { PPR_NUM_WALKS, PPR_MAX_STEPS, PPR_DAMPING } from '../constants';
+
+// Walk parameters live in `src/constants.ts` so every retrieval knob is
+// calibrated in one place. They were measured on the ground-truth evaluation set
+// across two vaults; see that file for the numbers and the re-measurement rule.
+export const DEFAULT_NUM_WALKS = PPR_NUM_WALKS;
+export const DEFAULT_MAX_STEPS = PPR_MAX_STEPS;
+export const DEFAULT_DAMPING = PPR_DAMPING;
 
 export function personalizedPageRank(
   graph: Graph,
@@ -96,4 +121,56 @@ export function personalizedPageRank(
     result.set(node, count / total);
   }
   return result;
+}
+
+/**
+ * A deterministic PRNG: mulberry32 over an FNV-1a hash of the seed string.
+ *
+ * Why this exists. `options.rng ?? Math.random` made the graph arm an
+ * estimate rather than a function: the same query ran to a different ranking
+ * each time. #729's measurement cannot separate two arms under that variance,
+ * and a user who asks the same question twice gets two answers. A seeded
+ * generator turns the walk into a function of its inputs, which is what a
+ * ranking is supposed to be.
+ *
+ * Pure function. No IO, no global state.
+ */
+export function makeSeededRng(seed: string): () => number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  let state = (h ^ 0x9e3779b9) >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The rng a query gets when the caller does not supply one. The seed is the
+ * question, the seed set and the graph size, so two different questions do
+ * not walk the same paths and one question always walks the same ones.
+ *
+ * The seed set is sorted before it is joined: `[a, b]` and `[b, a]` are one
+ * query, not two.
+ */
+/**
+ * Deterministic rng for one query and seed set.
+ *
+ * The seed is the query and the seed paths only. It used to include the graph
+ * size, which meant adding an unrelated page to the vault changed every walk's
+ * randomness and moved rankings that had nothing to do with the change. The
+ * seed is what makes a rerun reproduce; it must depend on what the caller
+ * asked for, not on how big the world happened to be.
+ */
+export function seededRngFrom(
+  query: string,
+  seeds: readonly string[],
+): () => number {
+  return makeSeededRng(`${query}\u0000${[...seeds].sort().join('\u0001')}`);
 }

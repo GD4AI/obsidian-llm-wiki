@@ -1,0 +1,654 @@
+/**
+ * #729 Phase 2 — the representation and ranking layer.
+ *
+ * Replaces `retrieval-profile.ts`'s hand-tuned linear weights with BM25F.
+ * The tests below pin the properties the hand-tuned scorer did **not** have,
+ * and the ones it must not regress on.
+ *
+ * Segmentation is by Unicode script property, not by language. That is the
+ * corpus-statistics principle from the plan: no `if (lang === …)` anywhere, and
+ * the four regimes the fixtures cover (English/German, Chinese,
+ * Japanese/Korean, Russian) all work through the same code path.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  segment,
+  buildPageTerms,
+  buildCorpusTerms,
+  bm25fScore,
+  nameTierCoverage,
+  wordGrams,
+  DEFAULT_FIELD_WEIGHTS,
+} from '../../core/term-index';
+
+describe('segment — Unicode normalisation and code-point safety (#819 review, fix A + B)', () => {
+  /** An orphaned high or low surrogate. A stray half of a surrogate pair. */
+  const ORPHAN_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+  it('composes NFD Hangul to its NFC form, matching a page written either way', () => {
+    const nfd = '한글'.normalize('NFD');
+    const nfc = '한글';
+    expect(nfd).not.toBe(nfc);
+    expect(segment(nfd)).toEqual(segment(nfc));
+  });
+
+  it('folds full-width Latin to half-width, so ＡＭＰＫ matches AMPK', () => {
+    expect(segment('ＡＭＰＫ')).toEqual(segment('AMPK'));
+  });
+
+  it('composes half-width katakana to full-width', () => {
+    expect(segment('ﾒﾄﾎﾙﾐﾝ')).toEqual(segment('メトホルミン'));
+  });
+
+  it('keeps diacritics on the primary term — café is not cafe', () => {
+    expect(segment('café')).toEqual(['café']);
+    expect(segment('café')).not.toEqual(segment('cafe'));
+  });
+
+  it('emits no orphaned surrogate for an astral-plane ideograph inside a run', () => {
+    // 𠮷 is U+20BB7 — one code point, two UTF-16 units. Slicing the joined
+    // string by UTF-16 units split it and produced a bare low surrogate.
+    const terms = segment('𠮷野家のメニュー');
+    expect(terms.length).toBeGreaterThan(0);
+    for (const t of terms) expect(t).not.toMatch(ORPHAN_SURROGATE);
+  });
+
+  it('treats an astral-plane ideograph as ONE character, not two', () => {
+    // If 𠮷 were two units, the boundaryless run 𠮷野家 would yield bigrams that
+    // start at half a code point. Code-point slicing does not.
+    const terms = segment('𠮷野家');
+    expect(terms).not.toContain('\udfb7野');
+  });
+
+  it('keeps the existing CJK segmentation unchanged apart from normalisation', () => {
+    expect(segment('LSTM模型')).toEqual(['lstm', '模型']);
+    // 概念更新 is one boundaryless run of 4 characters, so it contributes the
+    // three overlapping bigrams 概念 / 念更 / 更新. This is the old contract.
+    expect(segment('概念 概念更新')).toEqual(['概念', '概念', '念更', '更新']);
+  });
+});
+
+describe('segment — bounded-word scripts split on word characters', () => {
+  it('splits English and lowercases', () => {
+    expect(segment('Annealed Importance Sampling')).toEqual([
+      'annealed', 'importance', 'sampling',
+    ]);
+  });
+
+  it('splits Russian the same way — spaces, not language', () => {
+    expect(segment('Глубокое обучение модели')).toEqual([
+      'глубокое', 'обучение', 'модели',
+    ]);
+  });
+
+  it('keeps German compounds as one term', () => {
+    expect(segment('Wahrscheinlichkeitsverteilung')).toEqual(['wahrscheinlichkeitsverteilung']);
+  });
+});
+
+describe('segment — boundary-less scripts contribute bigrams', () => {
+  it('splits Chinese into character bigrams', () => {
+    expect(segment('深度学习')).toEqual(['深度', '度学', '学习']);
+  });
+
+  it('a single boundary-less character stands alone — a bigram needs two', () => {
+    expect(segment('的')).toEqual(['的']);
+  });
+
+  it('Japanese kana runs become bigrams too', () => {
+    expect(segment('がくしゅう')).toEqual(['がく', 'くし', 'しゅ', 'ゅう']);
+  });
+
+  it('Korean Hangul runs become bigrams', () => {
+    expect(segment('심층학습')).toEqual(['심층', '층학', '학습']);
+  });
+
+  it('splits a mixed run at the script change', () => {
+    // `LSTM模型` must not produce `stm模`. The boundary is the script, and
+    // that is what lets an English keyword find a Chinese page.
+    expect(segment('LSTM模型')).toEqual(['lstm', '模型']);
+  });
+
+  it('drops punctuation and separators', () => {
+    expect(segment('a, b; c — d')).toEqual(['a', 'b', 'c', 'd']);
+  });
+});
+
+describe('buildPageTerms / buildCorpusTerms', () => {
+  const mk = (title: string, summary: string, text: string, aliases: string[] = []) =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('counts term frequency per field and reports field length', () => {
+    const p = mk('Deep Learning', 'Deep learning uses neural nets.', 'learning learning learning');
+    expect(p.fields.title.tf.get('deep')).toBe(1);
+    expect(p.fields.summary.tf.get('learning')).toBe(1);
+    expect(p.fields.text.tf.get('learning')).toBe(3);
+    expect(p.fields.text.length).toBe(3);
+  });
+
+  it('builds the document-frequency table across pages', () => {
+    const corpus = buildCorpusTerms([
+      mk('Deep learning', 'neural nets', 'x'),
+      mk('Reinforcement learning', 'reward models', 'y'),
+      mk('Amino acids', 'proteins', 'z'),
+    ]);
+    expect(corpus.docCount).toBe(3);
+    expect(corpus.docFreq.get('learning')).toBe(2);
+    expect(corpus.docFreq.get('amino')).toBe(1);
+    expect(corpus.docFreq.get('missing')).toBeUndefined();
+  });
+
+  it('averages field lengths for normalisation', () => {
+    const corpus = buildCorpusTerms([
+      mk('one two', 'a b c d', ''),
+      mk('three', 'e', ''),
+    ]);
+    expect(corpus.avgFieldLength.title).toBeCloseTo(1.5);
+    expect(corpus.avgFieldLength.summary).toBeCloseTo(2.5);
+  });
+});
+
+describe('bm25fScore — the properties the hand-tuned scorer lacked', () => {
+  const mk = (title: string, summary: string, text: string, aliases: string[] = []) =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('a stop word shared by every page carries little weight', () => {
+    // This is the anomaly the linear scorer could not express: `the` scored
+    // like any other word because there was no IDF.
+    const pages = [
+      mk('The model', 'the the the', 'the model runs'),
+      mk('The system', 'the the', 'the system runs'),
+      mk('The method', 'the the the the', 'the method runs'),
+      mk('The approach', 'the', 'the approach runs'),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    const stopWord = bm25fScore(['the'], pages[0], corpus);
+    const rareWord = bm25fScore(['model'], pages[0], corpus);
+    expect(rareWord).toBeGreaterThan(stopWord);
+  });
+
+  it('length normalisation keeps a long document from winning on volume alone', () => {
+    const short = mk('Graph', 'graph', 'graph');
+    const long = mk('Graph', 'graph', Array(40).fill('graph').join(' '));
+    const corpus = buildCorpusTerms([short, long]);
+    const s = bm25fScore(['graph'], short, corpus);
+    const l = bm25fScore(['graph'], long, corpus);
+    // The long page may not lose, but it must not win by 40x.
+    expect(l).toBeLessThan(s * 3);
+    expect(l).toBeGreaterThan(0);
+  });
+
+  it('a title match outranks a body match at equal length', () => {
+    const inTitle = mk('AMPK', 'unrelated words here', 'different text entirely');
+    const inBody = mk('Something else', 'unrelated words here', 'AMPK appears in the body');
+    const corpus = buildCorpusTerms([inTitle, inBody]);
+    expect(bm25fScore(['ampk'], inTitle, corpus))
+      .toBeGreaterThan(bm25fScore(['ampk'], inBody, corpus));
+  });
+
+  it('repeating a term helps, with diminishing returns', () => {
+    const one = mk('X', 'alpha', 'alpha');
+    const three = mk('X', 'alpha', 'alpha alpha alpha');
+    const corpus = buildCorpusTerms([one, three]);
+    const a = bm25fScore(['alpha'], one, corpus);
+    const b = bm25fScore(['alpha'], three, corpus);
+    expect(b).toBeGreaterThan(a);
+    expect(b).toBeLessThan(a * 3);
+  });
+
+  it('a term absent from the page contributes nothing', () => {
+    const p = mk('Deep learning', 'neural nets', 'gradient descent');
+    const corpus = buildCorpusTerms([p]);
+    expect(bm25fScore(['transformer'], p, corpus)).toBe(0);
+  });
+
+  it('a query term in no document contributes nothing', () => {
+    const p = mk('Deep learning', 'neural nets', 'x');
+    const corpus = buildCorpusTerms([p]);
+    expect(bm25fScore(['zzznotpresent'], p, corpus)).toBe(0);
+  });
+
+  it('is deterministic — the same input always gives the same score', () => {
+    const p = mk('Deep learning', 'neural nets', 'gradient descent');
+    const corpus = buildCorpusTerms([p]);
+    const a = bm25fScore(['deep', 'learning'], p, corpus);
+    const b = bm25fScore(['deep', 'learning'], p, corpus);
+    expect(a).toBe(b);
+  });
+
+  it('is symmetric in query order', () => {
+    const p = mk('Deep learning', 'neural nets', 'gradient descent');
+    const corpus = buildCorpusTerms([p]);
+    expect(bm25fScore(['deep', 'learning'], p, corpus))
+      .toBe(bm25fScore(['learning', 'deep'], p, corpus));
+  });
+
+  it('a repeated query term is counted once — the query is a set of terms', () => {
+    const p = mk('Deep learning', 'neural nets', 'x');
+    const corpus = buildCorpusTerms([p]);
+    expect(bm25fScore(['deep', 'deep'], p, corpus)).toBe(bm25fScore(['deep'], p, corpus));
+  });
+});
+
+describe('cross-lingual — the fixture the plan requires', () => {
+  const mk = (title: string, summary: string, text: string, aliases: string[] = []) =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('an English keyword finds a Chinese page that carries the Latin term', () => {
+    // The real configuration this project runs: English sources, Chinese wiki.
+    const page = mk('LSTM模型', 'LSTM 模型的训练方法', '我们提出 LSTM 模型架构');
+    const corpus = buildCorpusTerms([page]);
+    expect(bm25fScore(['lstm'], page, corpus)).toBeGreaterThan(0);
+  });
+
+  it('a Chinese query finds a Chinese page — segmentation, not whole clauses', () => {
+    const page = mk('深度学习', '深度学习的训练方法', '深度学习模型');
+    const corpus = buildCorpusTerms([page]);
+    const wholeClause = bm25fScore(['深度学习的训练方法'], page, corpus);
+    const segmented = bm25fScore(segment('深度学习'), page, corpus);
+    // Segmenting the query is what makes Chinese retrieval work at all.
+    expect(segmented).toBeGreaterThan(wholeClause);
+    expect(segmented).toBeGreaterThan(0);
+  });
+});
+
+describe('the rejected options stay rejected', () => {
+  const mk = (title: string, summary: string, text: string, aliases: string[] = []) =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('a single-keyword query is not starved — no "≥ 2 needles" floor exists', () => {
+    // Rejected: a two-needle floor starves `AMPK`. BM25F has no such rule.
+    const page = mk('AMPK', 'AMPK 的作用', 'AMPK 信号通路');
+    const corpus = buildCorpusTerms([page]);
+    expect(bm25fScore(['ampk'], page, corpus)).toBeGreaterThan(0);
+  });
+
+  it('a mid-frequency term can still fill in — no absolute evidence threshold', () => {
+    // Rejected: `sum(w) >= 1` is equivalent to `df <= 1`, which would exclude
+    // `deepseek` at w=0.56 on the real vault. BM25F has no absolute floor.
+    const pages = [
+      mk('A', 'deepseek', 'deepseek'),
+      mk('B', 'deepseek', 'deepseek'),
+      mk('C', 'deepseek', 'deepseek'),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    expect(bm25fScore(['deepseek'], pages[0], corpus)).toBeGreaterThan(0);
+  });
+
+  it('the default field weights keep the title on top and the body at full weight', () => {
+    // The harness moves these. What must not happen is losing the title's
+    // dominance silently on the way to BM25F. B-1 (#819) measured the body at
+    // 0.15 / 0.3 / 0.6 / 1.0 on two vaults: the bridge curve is monotonic and
+    // self-resolution is 1.000 throughout, so the body carries weight 1.
+    expect(DEFAULT_FIELD_WEIGHTS).toEqual({ title: 3, alias: 2, summary: 1, text: 1 });
+    const inTitle = mk('AMPK', 'x', 'y');
+    const inSummary = mk('Z', 'AMPK', 'y');
+    const corpus = buildCorpusTerms([inTitle, inSummary]);
+    expect(bm25fScore(['ampk'], inTitle, corpus))
+      .toBeGreaterThan(bm25fScore(['ampk'], inSummary, corpus));
+  });
+});
+
+describe('document frequency counts a document once, not once per field', () => {
+  // Regression. Counting per field let one page push `df` past `docCount`,
+  // which made `N - df + 0.5` negative and every score negative with it. The
+  // bug read as "BM25F is broken"; it was the IDF table, not the ranker.
+  it('a term in title AND text of one page has df 1, not 2', () => {
+    const page = buildPageTerms({ title: 'alpha', aliases: [], summary: 'alpha', text: 'alpha' });
+    const corpus = buildCorpusTerms([page]);
+    expect(corpus.docCount).toBe(1);
+    expect(corpus.docFreq.get('alpha')).toBe(1);
+  });
+
+  it('a term in every document keeps df at most docCount, so scores stay positive', () => {
+    const pages = ['a', 'b', 'c'].map(x => buildPageTerms({
+      title: x, aliases: [], summary: x, text: x,
+    }));
+    const corpus = buildCorpusTerms(pages);
+    for (const [, df] of corpus.docFreq) {
+      expect(df).toBeLessThanOrEqual(corpus.docCount);
+    }
+    expect(bm25fScore(['a'], pages[0], corpus)).toBeGreaterThan(0);
+  });
+});
+
+describe('nameTierCoverage — the unitless replacement for the absolute-scale gate', () => {
+  const mk = (title: string, aliases: string[] = [], summary = '', text = '') =>
+    buildPageTerms({ title, aliases, summary, text });
+
+  it('is 0 when nothing in the name tier matches', () => {
+    const page = mk('Something else', ['other'], 'unrelated text');
+    const corpus = buildCorpusTerms([page, mk('deepseek'), mk('ampk')]);
+    expect(nameTierCoverage(['deepseek'], page, corpus)).toBe(0);
+  });
+
+  it('is 1 when the name tier covers the whole query', () => {
+    const page = mk('Deepseek ampk');
+    const corpus = buildCorpusTerms([page, mk('other'), mk('another')]);
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus)).toBe(1);
+  });
+
+  it('stays inside [0, 1] — a ratio has no scale to drift against', () => {
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b'), mk('c')]);
+    for (const q of [['deepseek'], ['deepseek', 'ampk'], ['deepseek', 'ampk', 'a']]) {
+      const c = nameTierCoverage(q, page, corpus);
+      expect(c).toBeGreaterThanOrEqual(0);
+      expect(c).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('a matched rare term moves it more than a matched stop word', () => {
+    // The discrimination the old count could not express: two pages matching
+    // one needle each were equal even when one needle was `deepseek` and the
+    // other was `the`.
+    const common = mk('the');
+    const rare = mk('deepseek');
+    const corpus = buildCorpusTerms([
+      common, rare, mk('the x'), mk('the y'), mk('the z'), mk('other'),
+    ]);
+    const fromRare = nameTierCoverage(['deepseek', 'the'], rare, corpus);
+    const fromCommon = nameTierCoverage(['deepseek', 'the'], common, corpus);
+    expect(fromRare).toBeGreaterThan(fromCommon);
+  });
+
+  it('ignores a summary-only hit — the name tier is title and aliases', () => {
+    const page = mk('Nothing', [], 'deepseek appears only in the summary');
+    const corpus = buildCorpusTerms([page, mk('deepseek'), mk('other')]);
+    expect(nameTierCoverage(['deepseek'], page, corpus)).toBe(0);
+  });
+
+  it('a term absent from the corpus does not drag the ratio down', () => {
+    // A typo in the query must not make every page look like a non-match.
+    const page = mk('Deepseek');
+    const corpus = buildCorpusTerms([page, mk('other')]);
+    expect(nameTierCoverage(['deepseek', 'zzztypo'], page, corpus)).toBe(1);
+  });
+
+  it('an empty query is 0, not NaN', () => {
+    const page = mk('Deepseek');
+    const corpus = buildCorpusTerms([page]);
+    expect(nameTierCoverage([], page, corpus)).toBe(0);
+    expect(nameTierCoverage(['zzznotpresent'], page, corpus)).toBe(0);
+  });
+
+  it('does not depend on field weights — nothing to recalibrate when they move', () => {
+    // The old gate read `lexTopScore >= 5`, and 5 meant "title 3 plus alias 2".
+    // Move the weights and the number silently changes meaning. This one has
+    // no weights to move.
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b')]);
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus))
+      .toBe(nameTierCoverage(['deepseek', 'ampk'], page, corpus));
+    expect(nameTierCoverage(['deepseek', 'ampk'], page, corpus)).toBe(1);
+  });
+
+  it('is deterministic', () => {
+    const page = mk('Deepseek', ['ampk']);
+    const corpus = buildCorpusTerms([page, mk('a'), mk('b')]);
+    const a = nameTierCoverage(['deepseek', 'ampk', 'a'], page, corpus);
+    const b = nameTierCoverage(['deepseek', 'ampk', 'a'], page, corpus);
+    expect(a).toBe(b);
+  });
+});
+
+describe('avgFieldLength averages over the pages that HAVE the field (#819 review, fix C)', () => {
+  const mkp = (title: string, aliases: string[], summary: string) =>
+    buildPageTerms({ title, aliases, summary, text: '' });
+
+  it('does not let pages without aliases drag the alias average to near zero', () => {
+    // One page has one alias, four have none. Dividing by all pages gives 0.2,
+    // which makes an alias hit worth a fraction of a title hit. Dividing by the
+    // pages that have aliases gives 1.
+    const pages = [
+      mkp('Target Alpha', ['nick'], ''),
+      mkp('Beta Gamma', [], ''),
+      mkp('Delta Epsilon', [], ''),
+      mkp('Zeta Eta', [], ''),
+      mkp('Theta Iota', [], ''),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    expect(corpus.avgFieldLength.alias).toBeCloseTo(1, 6);
+  });
+
+  it('scores an alias hit close to a title hit, where the design intent is 2:3', () => {
+    const pages = [
+      mkp('Target Alpha', ['nick'], ''),
+      mkp('Beta Gamma', [], ''),
+      mkp('Delta Epsilon', [], ''),
+      mkp('Zeta Eta', [], ''),
+      mkp('Theta Iota', [], ''),
+    ];
+    const corpus = buildCorpusTerms(pages);
+    const byTitle = bm25fScore(['target'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const byAlias = bm25fScore(['nick'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    // Alias weight is 2, title weight is 3, and both fields are one term long.
+    // The ratio must land near 2:3, not the 14-41% the all-pages average gave.
+    const ratio = byAlias / byTitle;
+    expect(ratio).toBeGreaterThan(0.6);
+    expect(ratio).toBeLessThanOrEqual(1.0);
+  });
+
+  it('leaves the title average untouched — every page has a title', () => {
+    const pages = [mkp('A B', [], ''), mkp('C D', [], ''), mkp('E F', [], '')];
+    const corpus = buildCorpusTerms(pages);
+    // Titles are two terms each and every page has one, so the two definitions
+    // agree here. A regression would show up as a different number.
+    expect(corpus.avgFieldLength.title).toBeCloseTo(2, 6);
+  });
+
+  it('keeps a field with no holders at 0 and lets the scorer fall back to 1', () => {
+    const pages = [mkp('A B', [], ''), mkp('C D', [], '')];
+    const corpus = buildCorpusTerms(pages);
+    expect(corpus.avgFieldLength.alias).toBe(0);
+  });
+});
+
+describe('unseen-word fallback to character trigrams (#819 review, fix D)', () => {
+  const page = (title: string, summary = '') =>
+    buildPageTerms({ title, aliases: [], summary, text: '' });
+
+  const ranks = (query: string, pages: readonly ReturnType<typeof page>[], target: number) => {
+    const corpus = buildCorpusTerms(pages);
+    const terms = query.normalize('NFKC').toLowerCase().split(/\s+/).filter(Boolean);
+    const scored = pages.map((p, i) => ({
+      i,
+      score: bm25fScore(terms, p, corpus, DEFAULT_FIELD_WEIGHTS),
+    }));
+    scored.sort((a, b) => b.score - a.score || a.i - b.i);
+    return { rank: scored.findIndex(s => s.i === target), score: scored.find(s => s.i === target)!.score };
+  };
+
+  /**
+   * Assert the target page is first AND carries a real score. Ranking alone is
+   * not enough: when every page scores 0 the stable sort still puts index 0
+   * first, so a rank-only assertion passes without the fix and proves nothing.
+   */
+  const beats = (query: string, pages: readonly ReturnType<typeof page>[], target: number) => {
+    const r = ranks(query, pages, target);
+    expect(r.score).toBeGreaterThan(0);
+    expect(r.rank).toBe(0);
+    return r;
+  };
+
+  it('wordGrams returns character trigrams for a bounded-word term', () => {
+    expect(wordGrams('neural')).toEqual(['neu', 'eur', 'ura', 'ral']);
+  });
+
+  it('wordGrams returns nothing for a boundaryless run — it is already bigrammed', () => {
+    expect(wordGrams('模型')).toEqual([]);
+  });
+
+  it('wordGrams returns nothing for a term shorter than the gram width', () => {
+    expect(wordGrams('ai')).toEqual([]);
+  });
+
+  it('matches an English plural from its singular query — networks on Neural network', () => {
+    // The query word must be ONLY the inflected one. Querying `neural network`
+    // would match `neural` exactly and never reach the fallback.
+    const pages = [page('Neural network'), page('Gradient descent'), page('Adam optimiser')];
+    beats('networks', pages, 0);
+  });
+
+  it('matches German compounding — Funktion der Mitochondrien on Mitochondrienfunktion', () => {
+    const pages = [page('Mitochondrienfunktion'), page('Zellatmung'), page('ATP-Synthase')];
+    beats('Funktion der Mitochondrien', pages, 0);
+  });
+
+  it('matches Russian inflection — нейронные сети on Нейронная сеть', () => {
+    const pages = [page('Нейронная сеть'), page('Градиентный спуск')];
+    beats('нейронные сети', pages, 0);
+  });
+
+  it('folds diacritics only on the fallback — cafe resume on Café et résumé', () => {
+    const pages = [page('Café et résumé'), page('Pain au chocolat')];
+    beats('cafe resume', pages, 0);
+  });
+
+  it('exact matches always outrank fallback matches — insulin beats insuline', () => {
+    // `insulin` exists in the corpus, so the exact path runs and the fallback
+    // never fires. The page holding the exact term wins and the page holding
+    // only a near-miss gets nothing. That IS the precedence property.
+    const pages = [page('Insulin'), page('Insuline therapy')];
+    const corpus = buildCorpusTerms(pages);
+    const exact = bm25fScore(['insulin'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const other = bm25fScore(['insulin'], pages[1], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(exact).toBeGreaterThan(0);
+    expect(exact).toBeGreaterThan(other);
+  });
+
+  it('a full gram overlap is worth one term — it neither beats nor loses to exact', () => {
+    // The fallback averages over the grams it contributes, so a complete overlap
+    // lands at roughly the same value as the exact term. The property to protect
+    // is that it does not EXCEED the exact match.
+    const pages = [page('Neural networks')];
+    const corpus = buildCorpusTerms(pages);
+    const exact = bm25fScore(['neural'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const unseen = bm25fScore(['neuralx'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(unseen).toBeGreaterThan(0);
+    expect(unseen).toBeLessThanOrEqual(exact * 1.05);
+  });
+
+  it('a partial gram overlap scores below a full one', () => {
+    const pages = [page('Mitochondrienfunktion')];
+    const corpus = buildCorpusTerms(pages);
+    const full = bm25fScore(['mitochondrien'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    const partial = bm25fScore(['chondrienx'], pages[0], corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(full).toBeGreaterThan(0);
+    expect(partial).toBeGreaterThan(0);
+    expect(partial).toBeLessThan(full);
+  });
+});
+
+describe('per-field tf saturation (#819 P0-1) — repetition is weak evidence', () => {
+  /**
+   * A keyword-stuffed distractor must not beat a title hit. This is the defect
+   * the adversarial fixtures caught: with a LINEAR tf inside the field sum,
+   * `1 x 3` in summary exactly cancels `3 x 1` in title and the two tie. The
+   * legacy scorer never had it, because it awards a fixed weight on first match
+   * and ignores repetitions entirely.
+   */
+  const page = (title: string, summary: string) =>
+    buildPageTerms({ title, aliases: [], summary, text: '' });
+
+  it('a query word repeated three times in a summary does not tie one mention in a title', () => {
+    const target = page('Café et résumé', 'Lieu de rencontre.');
+    const stuffed = page('Bistro Notes', 'résumé résumé résumé en français.');
+    const corpus = buildCorpusTerms([target, stuffed]);
+    const q = segment('résumé');
+    const a = bm25fScore(q, target, corpus, DEFAULT_FIELD_WEIGHTS);
+    const b = bm25fScore(q, stuffed, corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(a).toBeGreaterThan(b);
+  });
+
+  it('the margin survives heavier stuffing — six repeats still lose to one title mention', () => {
+    const target = page('Café et résumé', 'Lieu de rencontre.');
+    const stuffed = page('Bistro Notes', 'résumé résumé résumé résumé résumé résumé.');
+    const corpus = buildCorpusTerms([target, stuffed]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, target, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, stuffed, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+
+  it('repetition still COUNTS — a second mention is worth more than the first', () => {
+    // Saturation is diminishing return, not a cap. If this fails the change
+    // over-corrected and turned into "first match only", which is the legacy
+    // scorer's other behaviour.
+    const one = page('Alpha', 'résumé here.');
+    const two = page('Beta', 'résumé here résumé there.');
+    const corpus = buildCorpusTerms([one, two]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, two, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, one, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+
+  it('the same word in two fields still beats one field alone', () => {
+    const both = page('résumé', 'Un résumé ici.');
+    const single = page('résumé', '');
+    const corpus = buildCorpusTerms([both, single]);
+    const q = segment('résumé');
+    expect(bm25fScore(q, both, corpus, DEFAULT_FIELD_WEIGHTS)).toBeGreaterThan(
+      bm25fScore(q, single, corpus, DEFAULT_FIELD_WEIGHTS),
+    );
+  });
+});
+
+// B-1 (#819). The body is the only lexical lever that crosses a real vocabulary
+// gap. Measured on the strict set — pairs where A and B share under a third of
+// their terms — the lex channel scores 0.000 with `text: ''` and 0.415 with the
+// body indexed, on test8. The query path passed `text: ''` before this change,
+// so the field was dark in production and the only reason the eval tool saw the
+// gain was that it built its own index.
+describe('body field weight (#819 B-1) — the vocabulary-gap lever', () => {
+  it('carries the body at full weight — the curve is monotonic and self stays 1.000', () => {
+    // B-1 (#819). Measured across 0.15 / 0.3 / 0.6 / 1.0 on test8 and test10 the
+    // bridge curve is MONOTONIC (0.221 / 0.334 / 0.385 on test8) and
+    // self-resolution is 1.000 at every value, up to 2.0. There is no trade to
+    // make, so there is no reason to discount the body below the summary.
+    //
+    // A 0.3 value was tried and reverted: it came from an external calibration
+    // reporting a 0.3-0.6 plateau on a different corpus, and on ours that
+    // plateau does not exist in that range.
+    expect(DEFAULT_FIELD_WEIGHTS.text).toBe(1);
+  });
+
+  it('lets a term that appears only in the body make the page findable', () => {
+    // The behaviour the weight exists for: a question phrased in one page's
+    // words, answered by a page that uses different words in its title and
+    // summary but carries the query terms in its body.
+    const target = buildPageTerms({
+      title: 'Neural network',
+      aliases: [],
+      summary: 'A model built from layers.',
+      text: 'Backpropagation adjusts the weights after each epoch.',
+    });
+    const other = buildPageTerms({
+      title: 'Gradient descent',
+      aliases: [],
+      summary: 'An optimisation method.',
+      text: 'The learning rate controls step size.',
+    });
+    const corpus = buildCorpusTerms([target, other]);
+    const query = ['backpropagation'];
+    const score = bm25fScore(query, target, corpus, DEFAULT_FIELD_WEIGHTS);
+    const scoreOther = bm25fScore(query, other, corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeGreaterThan(scoreOther);
+  });
+
+  it('does not let the body swamp the title tier', () => {
+    // A page whose title is the exact query must outrank a page that merely
+    // repeats the term in its body. The body carries weight 1 against the
+    // title's 3, and the per-field tf saturation caps repetition — measured,
+    // self-resolution is 1.000 at every body weight from 0.15 to 2.0.
+    const byTitle = buildPageTerms({ title: 'Transformer', aliases: [], summary: '', text: 'irrelevant filler words here' });
+    const byBody = buildPageTerms({ title: 'Attention mechanism', aliases: [], summary: '', text: 'transformer transformer transformer transformer' });
+    const corpus = buildCorpusTerms([byTitle, byBody]);
+    const query = ['transformer'];
+    expect(bm25fScore(query, byTitle, corpus, DEFAULT_FIELD_WEIGHTS))
+      .toBeGreaterThan(bm25fScore(query, byBody, corpus, DEFAULT_FIELD_WEIGHTS));
+  });
+});
