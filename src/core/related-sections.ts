@@ -1,3 +1,5 @@
+import { isSelfReplacement } from './dead-link-detector';
+
 // The Related sections are written from the shaped lists, not transcribed
 // by the model.
 //
@@ -27,6 +29,15 @@ export interface RelatedRenderOpts {
   keepFrom?: string;
   /** Which Related section the page's schema puts first — decides where a missing one is inserted. */
   firstSection?: Folder;
+  /**
+   * The page being rendered, as a vault path. A name that RESOLVES to this page
+   * is dropped: #676. `related-shaping.ts` already excludes the page's own name
+   * key, but that runs before resolution, so an alias or a differently-spelled
+   * title slipped past it and the renderer wrote a self-link one stage later.
+   * The renderer is the last place that knows both sides, so the guard lives
+   * here rather than in the shaper.
+   */
+  selfPath?: string;
 }
 
 export type Folder = 'entities' | 'concepts';
@@ -130,6 +141,11 @@ export function renderRelatedSections(
       const name = raw.trim();
       if (!name) continue;
       const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
+      // #676: a name that resolves to the page being written must not become a
+      // self-link. The shaper excludes the page's own name key before this, but
+      // an alias or a differently-spelled title gets past that and only the
+      // resolver knows where the name actually points.
+      if (opts.selfPath && isSelfReplacement(opts.selfPath, rel)) continue;
       add(rel, name, folderOf(rel, folder));
     }
   }

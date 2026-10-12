@@ -28,7 +28,7 @@ export async function applyRelatedLinks(
   content: string,
   lists: RelatedLists,
   labels: RelatedLabels,
-  opts: { pageType: 'entity' | 'concept'; keepFrom?: string },
+  opts: { pageType: 'entity' | 'concept'; keepFrom?: string; selfPath?: string },
 ): Promise<string> {
   const firstSection: Folder = opts.pageType === 'concept' ? 'concepts' : 'entities';
   const vaultIndex = { wikiFolder: ctx.settings.wikiFolder, pages: await ctx.getExistingWikiPages() };
@@ -46,6 +46,6 @@ export async function applyRelatedLinks(
     lists.related_concepts,
     labels.related_entities,
     labels.related_concepts,
-    { preserveCase: ctx.settings.slugCase === 'preserve', resolve: buildVaultResolver(vaultIndex), keepFrom: opts.keepFrom, firstSection },
+    { preserveCase: ctx.settings.slugCase === 'preserve', resolve: buildVaultResolver(vaultIndex), keepFrom: opts.keepFrom, firstSection, ...(opts.selfPath !== undefined ? { selfPath: opts.selfPath } : {}) },
   );
 }

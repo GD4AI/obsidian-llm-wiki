@@ -9,6 +9,7 @@ import { slugify } from '../../core/slug';
 import { resolveModelForTask } from '../../core/model-resolver';
 import {
   findDeadLinkTarget,
+  isSelfReplacement,
   buildDeadLinkReplacement,
   replaceDeadLink,
 } from '../../core/dead-link-detector';
@@ -172,9 +173,16 @@ export async function fixDeadLink(
     ? targetName.split('/').pop()!
     : targetName;
 
-  const preMatch = findDeadLinkTarget(existingPages, targetBasename);
+  const preMatch = findDeadLinkTarget(existingPages, targetBasename, sourcePath);
 
   if (preMatch) {
+    // #676 second line of defence: even a resolver that hands back the
+    // containing page must not produce a rewrite. A dead link that becomes a
+    // self-link is worse than a dead link — the dead link was evidence that a
+    // concept had no page, and the self-link hides it.
+    if (isSelfReplacement(sourcePath, preMatch.path)) {
+      return 'left as dead link (only match is the source page)';
+    }
     const newLink = buildDeadLinkReplacement(preMatch, ctx.settings.wikiFolder);
     const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
     await ctx.createOrUpdateFile(sourcePath, updatedContent);
@@ -191,7 +199,7 @@ export async function fixDeadLink(
   const pool = existingPages.filter(p => {
     const bn = p.title || '';
     const hasPollutedBasename = /^(entities|concepts|sources)([^\s\-_a-zA-Z0-9])/.test(bn);
-    return !hasPollutedBasename;
+    return !hasPollutedBasename && !isSelfReplacement(sourcePath, p.path);
   });
   const linkContext = contextAround(sourceContent, [`[[${targetName}`, targetBasename], DEAD_LINK_CONTEXT_RADIUS);
   const pagesList = selectCandidateWindow({ name: targetBasename, context: linkContext }, pool, CANDIDATE_WINDOW_TOP_K)

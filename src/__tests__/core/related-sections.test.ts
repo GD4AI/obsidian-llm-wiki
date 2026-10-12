@@ -71,4 +71,28 @@ describe('renderRelatedSections', () => {
     const out = renderRelatedSections(en, ['Metformin'], [], E, C, opts);
     expect(out).toBe(`# X\n\n## ${E}\n\n- [[entities/Metformin|Metformin]]\n\n## ${C}\n\n`);
   });
+
+  it('drops a name that resolves to the page being written (#676)', () => {
+    // The shaper excludes the page's own NAME KEY before this stage, but an
+    // alias or a differently-spelled title gets past that check and only the
+    // resolver knows where the name points. Without this guard the renderer
+    // wrote a self-link one stage later, which turns a known gap into a false
+    // "resolved" state.
+    const selfResolve = (n: string) => (n === 'Templater' ? 'entities/tp-obsidian-templater' : opts.resolve(n));
+    const out = renderRelatedSections(page, ['Templater', 'Metformin'], [], E, C, {
+      ...opts,
+      resolve: selfResolve,
+      selfPath: 'wiki/entities/tp-obsidian-templater.md',
+    });
+    expect(out).not.toContain('tp-obsidian-templater');
+    expect(out).toContain('[[entities/Metformin|Metformin]]');
+  });
+
+  it('writes the same name when selfPath is not given', () => {
+    // The guard is opt-in. Callers that do not know the page path keep their
+    // behaviour; nothing silently changes shape.
+    const selfResolve = (n: string) => (n === 'Templater' ? 'entities/tp-obsidian-templater' : opts.resolve(n));
+    const out = renderRelatedSections(page, ['Templater'], [], E, C, { ...opts, resolve: selfResolve });
+    expect(out).toContain('[[entities/tp-obsidian-templater|Templater]]');
+  });
 });
