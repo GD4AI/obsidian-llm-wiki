@@ -189,7 +189,7 @@ sleep 10 && cat /tmp/ghauth.log   # → one-time code + https://github.com/login
 The device flow needs the human; the code expires in ~15 min. Once authorised, `gh auth status` shows the added scope and the merge can proceed.
 
 **A workflow-file merge reports branch policy, not the scope problem.** Merging a PR that touches `.github/workflows/*` fails with the message `the base branch policy prohibits the merge`. That message is not a missing requirement. Add `--admin`, or use the REST `PUT /pulls/<N>/merge` endpoint, to see the real cause: `refusing to allow an OAuth App to create or update workflow ... without 'workflow' scope`, HTTP 403.
-The ruleset has no bypass actors (`rulesets/16884813`, "Protect main branch", active), so `--admin` does **not** bypass it. It only stops masking it.
+The ruleset has no bypass actors (`rulesets/16884813`, "Protect main branch", active), so `--admin` does **not** bypass it. It only stops masking it. **The cause is that admin bypass needs a bypass actor to exist.** Adding a temporary one for your own user id makes `--admin` effective again, which is the own-PR merge path documented in [MEMORY.md §"PR self-approve & maintainer passby"](./MEMORY.md#pr-self-approve--maintainer-passby); it must then be restored, with `bypass_actors` re-read as the only accepted proof.
 
 The variable is **whether the token carried `workflow` at that moment**. The shape of the change does not matter. #693 added a step and merged. #639 changed a step and sat on the wall. #698 added a trigger and sat on the wall. The two that failed were merged nine seconds apart, six hours after the one that did not. That is the signature of one unblocking event. So the error is the only reliable signal. Do not report a PR as merge-ready until one of the two paths has returned a merge commit.
 
@@ -497,9 +497,9 @@ A docs change that only adds lines says why the addition cannot be an edit to te
 
 | File | Ceiling | Now (2026-10-07) | Over the ceiling |
 |---|---|---|---|
-| `MEMORY.md` | **1500 lines** | 1091 | the pruning pass is part of the next change, not a follow-up |
+| `MEMORY.md` | **1500 lines** | 1096 | the pruning pass is part of the next change, not a follow-up |
 | `AGENTS.md` | **600 lines** | 516 | same |
-| `ROADMAP.md` | **500 lines** | 409 | same — and shipped sections move to CHANGELOG, not stay |
+| `ROADMAP.md` | **500 lines** | 417 | same — and shipped sections move to CHANGELOG, not stay |
 | `CONTRIBUTING.md` | **450 lines** | 363 | same |
 | `CHANGELOG.md` | **no ceiling** | 1159 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
 | 11 READMEs | 13 H2 each, in step across locales | 13/13 ✓ | structural drift between locales is a defect, not a translation choice |
