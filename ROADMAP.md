@@ -114,6 +114,14 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **The decision this batch cannot make for itself.** #825 asks whether `collectResolvingReferences` (`link-retarget.ts:198`) should read `frontmatterLinks`. #386 excluded them on purpose and #590 records that. Widening it changes the write behaviour of every merge, so it is a decision, not a fix. The recommendation is to ship the `stale > 0` half first and treat the frontmatter scope separately.
 
+**The dependency decisions in the same window.** Three, and each now has an outcome.
+
+`@typescript-eslint`: PR **#821** took only the parser to 8.71.1 — dependabot's normal one-dependency shape — which left the parser and the plugin, both direct devDependencies, from different versions. **Resolved by #834**, which moves the pair together. Measured while doing it: **the pair bump does not remove the second copy of `@typescript-eslint/types`**, because `eslint-plugin-obsidianmd@0.4.2` pins its own `typescript-eslint` chain at 8.59.1 and the meta-package pins its sub-packages exactly. `pnpm dedupe` does not collapse them and was reverted: it converged nothing on that set while moving `picomatch`, `fdir`, `tinyglobby` and `ignore`. Collapsing the two belongs to the release-time Bot-alignment step, which already raises `eslint-plugin-obsidianmd` to its latest for this reason.
+
+`ai` (**#831**) and `@ai-sdk/openai` (**#830**): both production dependencies, both **held**, and they must be taken together. **#828 exists because of `ai@7.0.x`'s types** — `finalStep` is present at runtime and absent from the declared type, which is why `origin/main` stopped compiling at `f41a39d0` and twelve call sites failed at once. An `ai` patch bump inside the same minor can move that type, so the pair needs `tsc --noEmit` and Gate 1 re-run after it lands, plus a wire-shape check on the OpenAI request body. Merging either one first would leave #828's fix unverified against the version actually installed.
+
+**#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
+
 ### #729 — the three directions
 
 **Chosen 2026-10-05: A.** M0 proceeds, with one measurement in front of it. #781 stays held until that measurement lands. B and C stay in the table, because their cost is
