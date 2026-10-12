@@ -451,7 +451,7 @@ export const FR_TEXTS = {
     startupCheckSourcesCleaned: '{files} fichier(s), {entries} entrée(s) nettoyée(s)',
     startupCheckIncompleteClean: 'pages incomplètes : aucune',
     startupCheckIncompleteArchived: 'pages incomplètes : {count} archivée(s) (récupérable depuis .trash)',
-    startupCheckDisableHint: 'Pour désactiver : Paramètres → Maintenance automatique → Exécuter les corrections rapides au démarrage',
+    startupCheckDisableHint: 'Pour désactiver : Paramètres → Maintenance automatique → Afficher le résultat des correctifs rapides',
     lintWikiStart: 'Démarrage de la vérification du wiki...',
     lintWikiComplete: 'Vérification du wiki terminée',
     lintWikiFailed: 'Échec de la vérification du wiki',

@@ -255,18 +255,29 @@ export async function runDeadLinkFixes(
       checkCancelled(signal);
       const batch = unique.slice(i, i + concurrency);
       const batchStart = i;
-      const batchResults = await Promise.allSettled(batch.map(async (dl, idx) => {
-        const batchIdx = batchStart + idx;
-        fixNotice.setMessage(t.lintFixProgress.replace('{current}', String(batchIdx + 1)).replace('{total}', String(unique.length)).replace('{target}', dl.target));
-        console.debug(`lintFix: dead link ${batchIdx + 1}/${unique.length}: ${dl.source} -> ${dl.target}`);
-        const sourcePath = `${ctx.settings.wikiFolder}/${dl.source}.md`;
-        const result = await ctx.wikiEngine.fixDeadLink(sourcePath, dl.target);
-        console.debug(`Dead link fix: ${dl.source} -> ${dl.target}: ${result}`);
-        if (!result.includes(t.lintFixNoAction) && !result.startsWith('left as dead link')) {
-          return { source: dl.source, target: dl.target, result };
-        }
-        return null;
+      // Each fix reads and writes the whole page. Wait for its previous writer,
+      // including failed fixes, while independent pages still run concurrently.
+      const pendingBySource = new Map<string, Promise<unknown>>();
+      const batchResults = await Promise.allSettled(batch.map((dl, idx) => {
+        const pending = (pendingBySource.get(dl.source) ?? Promise.resolve())
+          .catch(() => undefined)
+          .then(async () => {
+            checkCancelled(signal);
+            const batchIdx = batchStart + idx;
+            fixNotice.setMessage(t.lintFixProgress.replace('{current}', String(batchIdx + 1)).replace('{total}', String(unique.length)).replace('{target}', dl.target));
+            console.debug(`lintFix: dead link ${batchIdx + 1}/${unique.length}: ${dl.source} -> ${dl.target}`);
+            const sourcePath = `${ctx.settings.wikiFolder}/${dl.source}.md`;
+            const result = await ctx.wikiEngine.fixDeadLink(sourcePath, dl.target);
+            console.debug(`Dead link fix: ${dl.source} -> ${dl.target}: ${result}`);
+            if (!result.includes(t.lintFixNoAction) && !result.startsWith('no action taken') && !result.startsWith('left as dead link')) {
+              return { source: dl.source, target: dl.target, result };
+            }
+            return null;
+          });
+        pendingBySource.set(dl.source, pending);
+        return pending;
       }));
+      checkCancelled(signal);
       for (let j = 0; j < batchResults.length; j++) {
         const r = batchResults[j];
         if (r.status === 'fulfilled' && r.value) {

@@ -56,6 +56,7 @@ function makeGenerateTextResult(text: string): Awaited<ReturnType<typeof generat
     content: [],
     reasoning: [],
     reasoningText: undefined,
+    finalStep: { reasoning: [], reasoningText: undefined },
     files: [],
     sources: [],
     toolCalls: [],
@@ -406,6 +407,10 @@ describe('OpenAISdkClient', () => {
         })(),
         text: chunks.join(''),
         reasoning: Promise.resolve(reasoningText),
+        finalStep: Promise.resolve({
+          reasoning: reasoningText ? [{ text: reasoningText }] : [],
+          reasoningText: reasoningText || undefined,
+        }),
         usage: Promise.resolve({ inputTokens: 10, outputTokens: 20, totalTokens: 30 }),
         finishReason: Promise.resolve('stop'),
         response: Promise.resolve({

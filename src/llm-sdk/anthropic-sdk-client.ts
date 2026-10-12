@@ -28,7 +28,7 @@ import {
   resolveBaseUrlWithFallback,
   isUrlError,
 } from '../core/url-fallback';
-import { reportFinish, extractReasoningText } from './finish-reason';
+import { extractResultReasoning, reportFinish } from './finish-reason';
 import { buildSamplingArgs } from './sampling-args';
 import { wrapReasoningContent } from '../core/markdown';
 
@@ -328,7 +328,7 @@ export class AnthropicSdkClient implements LLMClient {
       // from the post-stream Promise. Mirrors the OpenAI SDK pattern.
       let reasoningContent = '';
       try {
-        reasoningContent = extractReasoningText(await result.reasoning);
+        reasoningContent = await extractResultReasoning(result);
       } catch {
         // No reasoning for this model — ignore.
       }
@@ -367,7 +367,7 @@ export class AnthropicSdkClient implements LLMClient {
         }
         let reasoningContent = '';
         try {
-          reasoningContent = extractReasoningText(await result.reasoning);
+          reasoningContent = await extractResultReasoning(result);
         } catch { /* no reasoning */ }
         if (reasoningContent) {
           fullText = wrapReasoningContent(reasoningContent, fullText);

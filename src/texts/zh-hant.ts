@@ -448,7 +448,7 @@ export const ZH_HANT_TEXTS = {
     startupCheckSourcesCleaned: '清理了 {files} 個檔案，{entries} 處條目',
     startupCheckIncompleteClean: '未完成頁面：無',
     startupCheckIncompleteArchived: '未完成頁面：歸檔了 {count} 個（可從 .trash 恢復）',
-    startupCheckDisableHint: '如需關閉，前往 設定 → 自動維護 → 啟動時執行快速修復',
+    startupCheckDisableHint: '如需關閉，前往 設定 → 自動維護 → 顯示快速修復結果',
     lintWikiStart: '開始維護 wiki...',
     lintWikiComplete: '維護完成',
     lintWikiFailed: '維護失敗',

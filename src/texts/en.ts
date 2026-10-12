@@ -468,7 +468,7 @@ export const EN_TEXTS = {
     startupCheckSourcesCleaned: 'cleaned {files} file(s), {entries} entry(ies)',
     startupCheckIncompleteClean: 'incomplete pages: none',
     startupCheckIncompleteArchived: 'incomplete pages: archived {count} (recoverable from .trash)',
-    startupCheckDisableHint: 'To disable, go to Settings → Auto Maintenance → Run quick fixes on startup',
+    startupCheckDisableHint: 'To disable, go to Settings → Auto Maintenance → Show quick fixes result',
     autoIngestRunning: 'Auto-ingesting {count} changed file(s)...',
     autoIngestComplete: 'Auto-ingest complete: {success} succeeded, {fail} failed',
     scheduledLintRunning: 'Running scheduled wiki lint...',
