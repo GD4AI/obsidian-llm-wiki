@@ -44,13 +44,32 @@ function slugKey(text: string | undefined): string {
  */
 export function findDeadLinkTarget(
   pages: PageRef[],
-  targetName: string
+  targetName: string,
+  excludePath?: string
 ): PageRef | undefined {
   const targetBasename = targetName.includes('/')
     ? targetName.split('/').pop()!
     : targetName;
   const lowerTarget = targetBasename.toLowerCase();
 
+  // #676: the page that CONTAINS the dead link must not be its own repair. The
+  // pre-check is deterministic and fires before any model call, so a page that
+  // carried the dead name as one of its own aliases rewrote itself into a
+  // self-link and the known gap read as "resolved". Exclusion is preferred, not
+  // absolute — when the only match is the containing page it is returned and the
+  // caller decides, because deleting the answer is not the fix.
+  const preferred = excludePath === undefined
+    ? pages
+    : pages.filter(p => !isSelfReplacement(excludePath, p.path));
+  const match = findFirstMatch(preferred, lowerTarget, targetBasename);
+  return match ?? findFirstMatch(pages, lowerTarget, targetBasename);
+}
+
+function findFirstMatch(
+  pages: PageRef[],
+  lowerTarget: string,
+  targetBasename: string
+): PageRef | undefined {
   // First: exact title match (case-insensitive)
   let match = pages.find(p => p.title.toLowerCase() === lowerTarget);
 
@@ -77,6 +96,35 @@ export function findDeadLinkTarget(
   }
 
   return match;
+}
+
+/**
+ * Does this repair point the link back at the page that contains it?
+ *
+ * #676. A dead link is EVIDENCE that a concept had no page. A self-link is not a
+ * repair — it destroys that evidence and adds a reference that carries no
+ * information. Any caller that rewrites a link in place must check this before
+ * writing, because a resolver may legitimately hand back the containing page
+ * when it is the only match.
+ *
+ * Compares wiki paths in ANY of the shapes the plugin uses: the full form
+ * (`wiki/entities/x.md`), the link form (`entities/x`) and the bare name. The
+ * resolver hands back link forms while callers hold file paths, so an exact
+ * string compare would miss every real case.
+ */
+export function isSelfReplacement(sourcePath: string, targetPath: string): boolean {
+  if (!sourcePath || !targetPath) return false;
+  const a = normalizePathKey(sourcePath);
+  const b = normalizePathKey(targetPath);
+  if (a === b) return true;
+  // Suffix match: `wiki/entities/x` vs `entities/x` vs `x`. The wiki root
+  // folder is a setting, not a constant, so comparing tails is the only shape
+  // that works without threading it through every caller.
+  return a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+function normalizePathKey(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\.md$/i, '').replace(/^\.\//, '').replace(/\/$/, '').toLowerCase();
 }
 
 /**

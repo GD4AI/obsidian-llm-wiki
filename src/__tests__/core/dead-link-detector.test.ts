@@ -3,6 +3,7 @@ import {
   findDeadLinkTarget,
   buildDeadLinkReplacement,
   replaceDeadLink,
+  isSelfReplacement,
   type PageRef,
 } from '../../core/dead-link-detector';
 
@@ -294,5 +295,53 @@ describe('Dead Link Detector — Pure Functions', () => {
       const result = replaceDeadLink(linkWithSpace, '思维链', '[[entities/cot|Chain of Thought]]');
       expect(result).toContain('[[entities/cot|Chain of Thought]]');
     });
+  });
+});
+
+// #676 — "Fix Dead Links" could resolve a dead link to the page that CONTAINS
+// it. That turns a known gap into a false "resolved" state: the wiki loses the
+// evidence that a concept was missing and gains a self-reference that carries
+// no information. Reproduced on 1.28.0 in a plain user run on 2026-10-11.
+describe('self-reference guard (#676)', () => {
+  const pages: PageRef[] = [
+    {
+      path: 'wiki/entities/tp-obsidian-templater.md',
+      title: 'tp.obsidian - Templater',
+      aliases: ['Templater', 'tp.obsidian'],
+    },
+    { path: 'wiki/entities/other.md', title: 'Other', aliases: ['Templater'] },
+  ];
+
+  it('never resolves a dead link to the page that contains it', () => {
+    // The pre-check matches the dead name against every page's title and aliases
+    // and writes on the first hit. The containing page carries that alias too,
+    // so without an exclusion it resolves to itself — no model call, no LLM
+    // branch, just a deterministic rewrite to a self-link.
+    const hit = findDeadLinkTarget(pages, 'Templater', 'wiki/entities/tp-obsidian-templater.md');
+    expect(hit?.path).toBe('wiki/entities/other.md');
+  });
+
+  it('still resolves to the containing page when no other page matches', () => {
+    // Excluding self must not delete the answer. When the only match is the
+    // containing page the correct behaviour is to return it and let the caller
+    // decide — the guard is against SILENT self-resolution, not against ever
+    // naming the page.
+    const solo: PageRef[] = [pages[0]];
+    const hit = findDeadLinkTarget(solo, 'Templater', 'wiki/entities/tp-obsidian-templater.md');
+    expect(hit?.path).toBe('wiki/entities/tp-obsidian-templater.md');
+  });
+
+  it('behaves as before when no exclusion is given', () => {
+    // The parameter is optional. Every existing caller keeps its behaviour.
+    expect(findDeadLinkTarget(pages, 'Templater')?.path).toBe('wiki/entities/tp-obsidian-templater.md');
+  });
+
+  it('treats a replacement that points at the source as no action', () => {
+    // The second line of defence. Even if a resolver hands back the containing
+    // page, the rewrite must not happen: a dead link that becomes a self-link is
+    // worse than a dead link, because the dead link was evidence.
+    expect(isSelfReplacement('wiki/entities/tp-obsidian-templater.md', 'wiki/entities/tp-obsidian-templater.md')).toBe(true);
+    expect(isSelfReplacement('wiki/entities/a.md', 'wiki/entities/b.md')).toBe(false);
+    expect(isSelfReplacement('wiki/entities/a.md', 'wiki/entities/a.md')).toBe(true);
   });
 });
