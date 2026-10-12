@@ -105,12 +105,21 @@ type ReasoningStep = {
  * AI SDK v7 deprecates top-level `result.reasoning`. Read `finalStep`
  * instead. generateText exposes it synchronously; streamText as a
  * PromiseLike. `reasoningText` is the concatenated form when present.
+ *
+ * The parameter is `unknown` on purpose. AI SDK v7's `StreamTextResult` and
+ * `GenerateTextResult` carry `finalStep` at runtime but NOT in their type, so a
+ * structural parameter of `{ finalStep?: ... }` triggers TypeScript's weak-type
+ * check at every call site — "no properties in common" — and the twelve call
+ * sites across four clients all failed after the v7 upgrade (#816). Narrowing
+ * here keeps the runtime behaviour and clears the twelve failures at one place
+ * instead of asserting at each caller.
  */
-export async function extractResultReasoning(result: {
-  finalStep?: ReasoningStep | PromiseLike<ReasoningStep>;
-}): Promise<string> {
-  if (result.finalStep === undefined) return '';
-  const step = await result.finalStep;
+export async function extractResultReasoning(result: unknown): Promise<string> {
+  if (typeof result !== 'object' || result === null) return '';
+  const raw = (result as { finalStep?: unknown }).finalStep;
+  if (raw === undefined || raw === null) return '';
+  const step = await Promise.resolve(raw) as ReasoningStep | undefined;
+  if (!step || typeof step !== 'object') return '';
   if (typeof step.reasoningText === 'string' && step.reasoningText.length > 0) {
     return step.reasoningText;
   }
