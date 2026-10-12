@@ -36,8 +36,8 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "16.18.126",
-    "@typescript-eslint/eslint-plugin": "8.59.1",
-    "@typescript-eslint/parser": "8.59.1",
+    "@typescript-eslint/eslint-plugin": "8.71.1",
+    "@typescript-eslint/parser": "8.71.1",
     "ajv": "^8.20.0",
     "esbuild": "0.28.1",
     "eslint": "10.10.0",
