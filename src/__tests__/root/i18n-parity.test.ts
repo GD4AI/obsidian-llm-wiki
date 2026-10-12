@@ -288,3 +288,10 @@ describe('Toast keys preserve EN placeholders across all locales (B2.5 follow-up
   });
 });
 
+describe('startupCheckDisableHint names the notice level setting in every locale', () => {
+  it.each(LOCALES)('locale "%s" names the Auto Maintenance notice setting', (locale) => {
+    const t = TEXTS[locale] as unknown as Record<string, string>;
+    expect(t.startupCheckDisableHint).toContain(t.autoMaintainSection);
+    expect(t.startupCheckDisableHint).toContain(t.startupCheckNoticeLevelName);
+  });
+});

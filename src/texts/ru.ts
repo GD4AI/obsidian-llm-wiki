@@ -471,7 +471,7 @@ export const RU_TEXTS = {
     startupCheckSourcesCleaned: 'очищено {files} файл(ов), {entries} записей',
     startupCheckIncompleteClean: 'неполные страницы: нет',
     startupCheckIncompleteArchived: 'неполные страницы: архивировано {count} (восстановимо из .trash)',
-    startupCheckDisableHint: 'Чтобы отключить, перейдите в Настройки → Автоматическое обслуживание → Запускать быстрые исправления при старте',
+    startupCheckDisableHint: 'Чтобы отключить, перейдите в Настройки → Автоматическое обслуживание → Показывать результат быстрых исправлений',
     autoIngestRunning: 'Авто-импорт {count} изменённых файл(ов)...',
     autoIngestComplete: 'Авто-импорт завершён: {success} успешно, {fail} не удалось',
     scheduledLintRunning: 'Запуск запланированного lint Wiki...',
