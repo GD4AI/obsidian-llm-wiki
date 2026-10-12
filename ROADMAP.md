@@ -2,14 +2,15 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-05
+**Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-12
 **Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was v1.28.0's named head, and **v1.28.0 shipped without it**. On 2026-10-05 the ordering
 was **decided: direction A** — one measurement pass comes first, then M0. The measurement's definition, and the defect it also has to fix, are in §"#729 — the three
 directions" below. The milestone moved to `v1.29.0 MINOR` on 2026-10-04, so a released milestone carries no unstarted work. Only the release number changed. The four
 capabilities that shipped in v1.28.0 are in CHANGELOG §1.28.0.
 
-**Milestone move (2026-10-04).** `v1.28.0 MINOR`'s 12 open items moved to the new `v1.29.0 MINOR`: #787 #764 #756 #752 #729 #677 #668 #664. The four
-open PRs are #786 #781 #755 #701. `v1.28.0 MINOR` is now empty and closes with the release.
+**Milestone move (2026-10-04).** `v1.28.0 MINOR`'s 12 open items moved to the new `v1.29.0 MINOR`: #787 #764 #756 #752 #729 #677 #668 #664. `v1.28.0 MINOR` is now empty and closes with the release.
+
+**Of the four PRs that paragraph named as open, two have landed or closed:** #786 shipped as `f41a39d0` (AI SDK v7), and #701 was closed with the analysis that its premise does not hold.
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -56,8 +57,8 @@ carries only the planning decisions.
 | **Cross-source relations** (feature) | **#729** — Related sections are intra-source by construction; reserved budget + co-citation projection + local ranker, with multi-hop query decomposition as companion | MINOR-sized and changes default behaviour, so not PATCH-shaped. **Decided 2026-10-05 (direction A)**: @DocTpoint's objection of 2026-09-18 is accepted — it corrects four of the underlying measurements and names a defect in the mechanism itself. The measurement pass runs first, then M0 in a corrected shape |
 | **Write-path hardening** (architecture) | **#603** ✅ closed with **#750** · **#662** ✅ closed with **#757** | Both landed 2026-09-20. The gate is split into `rawWrite` / `pageGuard` / `notify` with a defaultless `WriteIntent`, and the page index is held per file. **This was the gate on #729 Phase 1 and it is open** |
 | **Read-path behaviour** (architecture) | **#664** (Related lists grow ~2 entries per source and are never pruned), **#677** (a classification move makes untouched notes read as edited), **#668** (settings tab: three tabs over nine sections that already exist) | Behaviour/UX changes rather than defects |
-| **Deferred features** | **#701** (source-note `wiki-ingested:` marker — contradicts the `README.md:114` promise in all eleven locales), **#741** (`opencode.ai` fails the CORS preflight, so streamed answers arrive buffered), PR **#728** (`@ai-sdk/openai-compatible` 2→3 MAJOR, request-body shape) | Each needs a decision, or carries a measured caveat this pass did not settle |
-| **Community** | **#608** + PR **#687** ✅ **shipped 2026-09-21** (local Markdown image embeds) · **#752** (the settings tab also jumps back to the top — the sibling of #668, and fixing the scroll before #668's restructure means doing it twice) | #687 landed; #752 is still on the milestone |
+| **Deferred features** | ~~#701~~ closed (premise does not hold) · ~~#741~~ ✅ shipped in v1.28.0 · ~~PR #728~~ closed with #786 | **All three are closed.** The row is kept as a pointer; the reasons are in MEMORY Appendix A §"Design record — #701's premise does not hold" and CHANGELOG §1.28.0 |
+| **Community** | **#608** + PR **#687** ✅ **shipped 2026-09-21** (local Markdown image embeds) · **#752** ✅ closed by #794 (the settings tab also jumped back to the top) | Both landed. #752 was fixed by #794 in the order this row predicted: the scroll first, then #668's restructure |
 
 ### ⛔ Open decisions — the queue awaiting the maintainer (2026-10-04)
 
@@ -65,13 +66,15 @@ This is the first section to read after a compact. Each row is a decision, not a
 The work is done or scoped, and the missing piece is a call. Everything here now sits on
 `v1.29.0 MINOR` or `v1.28.x PATCH`; nothing here blocks v1.28.0, which shipped 2026-10-04.
 
-**Milestone map (restructured 2026-10-04, when v1.28.0 shipped).** Three windows are open. Together they hold every open issue and PR — nothing is unassigned:
+**Milestone map (restructured 2026-10-04; counts re-derived 2026-10-12).** Three windows are open. Every open issue and PR is assigned: the 2026-10-12 triage assigned the 13 items that had drifted in unassigned, and the two dependabot PRs that arrived during it.
 
 | Milestone | Open | What belongs in it |
 |---|---|---|
-| `v1.28.x PATCH` | 12 | Bug fixes, docs and engineering hygiene. No new features |
-| `v1.29.0 MINOR` | 16 | New capabilities, and the #729 design track's head |
+| `v1.28.x PATCH` | 14 | Bug fixes, docs and engineering hygiene. No new features |
+| `v1.29.0 MINOR` | 11 | New capabilities, and the #729 design track's head |
 | `v1.27.0+ research` | 16 | Ideas with no committed version — experimental, or awaiting a design conversation |
+
+The 2026-10-12 counts are `open_issues` read back from the API, not carried forward. The previous table read 12 / 16 / 16 and its `v1.29.0 MINOR` figure was five items high — the move of #729's work into PRs (#781, #819) and the closure of #764 #752 #608 #687 by release had not been subtracted.
 
 The restructure replaced two milestones that had outlived their names. **`v1.27.x PATCH`** still held 11 items under a title naming a window that closed with v1.27.2 on
 2026-09-15. Its 10 PATCH-scale items moved to `v1.28.x PATCH`. #568 (an `enhancement`, not a fix) moved to `v1.29.0 MINOR`. **`v1.27.0 MINOR`** was empty and
@@ -81,30 +84,35 @@ before its own release.
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
 | **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The milestone moved to `v1.29.0` on 2026-10-04 and it is now the head of that queue. The three directions are set out in §"#729 — the three directions" below | **A — chosen 2026-10-05** |
-| **#786** | AI SDK v7 upgrade, `Closes #764`, 29 files `+345/-439`, CI green | Four MAJOR dependencies plus wire behaviour — **not** obviously safe, so it was not merged with the rest | Review the wire snapshots, then merge; **#770/#771/#772 become superseded** |
 | **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled | Do not merge until #729 concludes |
 | **#755** | Extraction focus and content-requirement settings, from @weqoocu | Two new prompt-level settings — a content-generation behaviour, so it needs the Settings-panel scope call and a decision on whether the prompt should carry them at all | Review the scope first; the settings belong in the bottom Advanced panel either way |
 | **#701** | Stamp a `wiki-ingested` marker on sources, from @weqoocu | Its premise **does not hold**: the marker it proposes to write is what the plugin already reads | Close it with the analysis, or re-scope it to the real need |
 | **#785** | "Full Reindex" request | It touches **incremental accumulation**, a core design premise | Defer to research |
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note | Accept into the next window |
 
-**Not waiting on a decision, just unstarted:** **#703** (ingest hangs — diagnosis first), **#468**, **#567**, **#676**, **#756**, **#668**, **#664**, **#677**.
+**Not waiting on a decision, just unstarted:** **#703** (ingest hangs — diagnosis first), **#468**, **#567**, **#756**, **#668**, **#664**, **#677**.
 
 **Waiting on someone else, not on a decision:** **#792** — the label that misled the reporter is in #810. The reporter was asked to confirm on the next patch. **#793**
 — the `good first issue` label came off on 2026-10-04, and the work remains documentation. The ten translated READMEs quote English command names, and the command name
 is stored twice per locale. A verification pass on 2026-10-04 corrected its own table. `README_RU.md` and `README_ZH-Hant.md` are already clean, so the count is 7 files
 rather than 10. `README_RU.md` is the better reference, because it already quotes translated names.
-**Resolved since this queue was written (2026-10-03):**
+**Shipped, and where that record lives:** [CHANGELOG.md](./CHANGELOG.md). A "resolved since this queue was written" list used to sit here. It was removed on 2026-10-12: it had been frozen at 2026-10-03, and a frozen resolve list reads as current state long after it stops being true. The per-version composition record is canonical in CHANGELOG, and a second copy here is a second place to be wrong.
 
-- **#791** ✅ fixed by #799
-- **#751** ✅ shipped in v1.28.0
-- **#753** closed as superseded by #751
-- **#467** ✅ closed by #775, whose four review findings are fixed and mutation-checked
-- **#758** ✅ closed by #760
-- **#752** ✅ closed by #794, which merged after two conflict resolutions in `CHANGELOG.md` alone
-- **#783** closed in favour of #760, with @newdeme credited as co-author on the fix
-- **#806** ✅ merged as `4b616c0c`, and its CHANGELOG entry as `0cdbbf4a`
-- **#808** filed for the two hand-written templates that #806 left out
+### ROI order — the lint-fix correctness family (2026-10-12)
+
+Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, plus #676, which the same family produced. Every claim was read against the source before acceptance; none was taken from the report alone. They share one subsystem — the lint fix path — so they are ordered as one batch, not by issue number. `ROI = (impact × certainty) / effort`, per [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived).
+
+| Rank | # | The defect | Impact | Certainty | Effort | Verdict |
+|---|---|---|---|---|---|---|
+| 1 | **#826** | Dedup can pair a page with itself, and the merge path has no `target !== source` guard — so it writes the page and then deletes the same path | High — silent data loss | High — two guards, and one already exists one layer down (`link-retarget.ts:142`) | Low | Fix first |
+| 2 | **#823** | Same-page fixes race at `pageGenerationConcurrency`; the log reports corrections that never landed | High — the same dead links are "fixed" on every run, forever | High — `Promise.allSettled` over whole-file writes, and `createOrUpdateFile` discards `writeFileWithIntent`'s `boolean` | Low-medium | Group by source page; one writer per page per run |
+| 3 | **#824** | `linkOrphanPage` appends an LLM-guessed target it never resolves, and can duplicate the link text on one line | Medium-high — orphans stay orphaned and the dead-link pool grows | High — `validateOrphanLinkTarget` is a substring check | Low-medium | Resolve against the page index before the write |
+| 4 | **#827** | Fabricated placeholder stubs from doc-example identifiers (`myfile`, `name`, `unknown-entity`) become permanent lint items | Medium — the user cannot "fix" a page titled `Name` | Medium — needs a rule set, not a word list | Medium | Three rules: generic word, code identifier, inline-code-or-quote-only |
+| 5 | **#825** | A merge reports retargets it skipped as stale, never rewrites frontmatter refs, then deletes the source | High — the merge is a net producer of dead links | Medium — the stale half is a defect; the frontmatter half reopens #386's deliberate scope | Medium | **Split.** Fix the delete-despite-stale half; take the frontmatter scope as its own decision |
+
+**#676 is the same family and shipped 2026-10-12** as `b09ab3d7` (PR #829): the repair path could resolve a dead link to the page that contains it, which destroys the evidence that a page was ever missing. Reported at 24 pages / 27 list items on a ~2,300-page vault.
+
+**The decision this batch cannot make for itself.** #825 asks whether `collectResolvingReferences` (`link-retarget.ts:198`) should read `frontmatterLinks`. #386 excluded them on purpose and #590 records that. Widening it changes the write behaviour of every merge, so it is a decision, not a fix. The recommendation is to ship the `stale > 0` half first and treat the frontmatter scope separately.
 
 ### #729 — the three directions
 
