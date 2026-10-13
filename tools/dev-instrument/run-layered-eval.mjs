@@ -193,6 +193,30 @@ async function main() {
   };
   const ppr = pprWith({ damping: 0.30, maxSteps: 10 });
 
+  // E2 — REVERSE channel. `graph.edges` are OUT-edges (A -> B means A links to
+  // B). Reverse the graph so the walk follows IN-edges: "who links to X".
+  // A query is ambiguous between "what does X reference" and "what references
+  // X", and one direction answers only one of them. Measuring graph direction
+  // showed undirected gains +0.07 on reverse questions and loses -0.06 on
+  // forward ones — a 1:1 trade. So the reverse walk is its OWN channel and is
+  // NOT merged into the graph: `maxFuse` picks per page, so a page reachable
+  // only backwards keeps its score instead of diluting the forward walk.
+  const revEdges = new Map(pages.map(p => [p.key, []]));
+  for (const [src, tgts] of graph.edges) {
+    for (const t of tgts) {
+      if (!revEdges.has(t)) continue;
+      revEdges.get(t).push(src);
+    }
+  }
+  const revGraph = { nodes: graph.nodes, edges: revEdges };
+  const pprRevWith = (opts) => (q) => {
+    const g = q.withoutEdge ? graphWithoutTruthEdge(revGraph, q.from, q.truth) : revGraph;
+    const pprPages = pages.map(p => ({ path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0 }));
+    const m = pprCascade(q.queryTerms.join(' '), pprPages, { graph: g, topN: 200, pprOptions: opts });
+    return m.map(x => ({ item: { key: x.page.path, sourceSlug: byName.get(x.page.path)?.sourceSlug }, score: x.score }));
+  };
+  const pprRev = pprRevWith({ damping: 0.30, maxSteps: 10 });
+
   const fuseMax = (channels) => {
     const lists = channels.map((f, ci) => ({ channel: `c${ci}`, candidates: f.map((c, i) => ({ item: c.item, rank: i + 1 })) }));
     return maxFuse(lists).map(f => ({ item: f.item, score: f.score }));
@@ -210,6 +234,9 @@ async function main() {
     { name: 'maxFuse lex+ppr', run: (q) => fuseMax([lex(q), ppr(q)]) },
     { name: 'maxFuse body+ppr', run: (q) => fuseMax([lexBody(q), ppr(q)]) },
     { name: 'maxFuse body only', run: (q) => fuseMax([lexBody(q)]) },
+    { name: 'ppr rev 0.30/10', run: (q) => fuseMax([pprRev(q)]) },
+    { name: 'maxFuse body+ppr+rev', run: (q) => fuseMax([lexBody(q), ppr(q), pprRev(q)]) },
+    { name: 'maxFuse ppr+rev', run: (q) => fuseMax([ppr(q), pprRev(q)]) },
   ];
 
   const pick = (q, arm) => {

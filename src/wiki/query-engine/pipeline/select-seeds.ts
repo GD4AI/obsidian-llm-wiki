@@ -50,7 +50,7 @@ import type { Graph } from '../../../core/build-graph';
 import { selectSeedsWithLLM, type SeedLLMClient, type SeedSelectorSettings } from './seed-selector';
 import { generateQueryKeywords } from './query-keywords';
 import {
-  DEFAULT_QUERY_TOP_N_PAGES,
+  RETRIEVAL_BUDGET,
   LEX_MATCH_MIN_COUNT,
   LEX_FALLBACK_TOP_K,
   QUERY_SEED_LLM_MAX_CANDIDATES,
@@ -98,7 +98,7 @@ export async function selectPprSeeds(
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
-  const effectiveTopN = Math.max(1, Math.min(DEFAULT_QUERY_TOP_N_PAGES, pageRefs.length));
+  const effectiveTopN = Math.max(1, Math.min(RETRIEVAL_BUDGET, pageRefs.length));
 
   // === Stage 1: lex match against title + aliases (NO summary) ===
   // One corpus table per query, shared by the lex scoring and the coverage

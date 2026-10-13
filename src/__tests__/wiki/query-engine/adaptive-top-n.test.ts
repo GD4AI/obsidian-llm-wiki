@@ -4,7 +4,7 @@
  * Replaces the hardcoded `topN: 5` from v1.24.0 with a formula that
  * adapts to vault size while capping token cost:
  *
- *   effective = max(1, min(DEFAULT_QUERY_TOP_N_PAGES, totalPages, MAX_QUERY_TOP_N_PAGES))
+ *   effective = max(1, min(RETRIEVAL_BUDGET, totalPages, MAX_QUERY_TOP_N_PAGES))
  *
  * - Small vaults (< DEFAULT): return all pages so the user gets the
  *   full set even when the vault only has 12 entities.
@@ -14,7 +14,7 @@
  *   the model's prompt window — auto-shrink + retry).
  */
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_QUERY_TOP_N_PAGES, MAX_QUERY_TOP_N_PAGES } from '../../../constants';
+import { RETRIEVAL_BUDGET, MAX_QUERY_TOP_N_PAGES } from '../../../constants';
 
 /**
  * Mirror of the production formula in src/wiki/query-engine/pipeline/select-seeds.ts.
@@ -24,7 +24,7 @@ import { DEFAULT_QUERY_TOP_N_PAGES, MAX_QUERY_TOP_N_PAGES } from '../../../const
  * MAX_QUERY_TOP_N_PAGES is a future cap (dormant when DEFAULT < MAX).
  */
 function computeEffectiveTopN(totalPages: number): number {
-  return Math.max(1, Math.min(DEFAULT_QUERY_TOP_N_PAGES, totalPages));
+  return Math.max(1, Math.min(RETRIEVAL_BUDGET, totalPages));
 }
 
 describe('adaptive PPR top-N (Phase 5.5.0)', () => {
@@ -34,24 +34,22 @@ describe('adaptive PPR top-N (Phase 5.5.0)', () => {
     expect(computeEffectiveTopN(10)).toBe(10);
   });
 
-  it('returns DEFAULT when vault is medium-sized', () => {
-    expect(computeEffectiveTopN(11)).toBe(DEFAULT_QUERY_TOP_N_PAGES);
-    expect(computeEffectiveTopN(50)).toBe(DEFAULT_QUERY_TOP_N_PAGES);
-    expect(computeEffectiveTopN(500)).toBe(DEFAULT_QUERY_TOP_N_PAGES);
-    expect(computeEffectiveTopN(2137)).toBe(DEFAULT_QUERY_TOP_N_PAGES);
+  it('returns the budget when vault is medium-sized', () => {
+    expect(computeEffectiveTopN(11)).toBe(11);
+    expect(computeEffectiveTopN(50)).toBe(RETRIEVAL_BUDGET);
+    expect(computeEffectiveTopN(500)).toBe(RETRIEVAL_BUDGET);
+    expect(computeEffectiveTopN(2137)).toBe(RETRIEVAL_BUDGET);
   });
 
   it('caps at MAX regardless of vault size', () => {
-    // The MAX cap is dormant when DEFAULT < MAX (the current setup,
-    // DEFAULT=10, MAX=20). It activates if/when DEFAULT is raised above
-    // MAX. We assert the invariant that the effective topN never
-    // exceeds MAX under the current formula.
+    // The budget is the calibrated 20 and MAX_QUERY_TOP_N_PAGES is the
+    // token-cost safety cap at 20, so the two are equal and the cap is live.
+    // If the budget is ever raised past MAX, MAX must win — that is what this
+    // asserts.
     expect(computeEffectiveTopN(MAX_QUERY_TOP_N_PAGES + 1)).toBeLessThanOrEqual(MAX_QUERY_TOP_N_PAGES);
     expect(computeEffectiveTopN(10000)).toBeLessThanOrEqual(MAX_QUERY_TOP_N_PAGES);
     expect(computeEffectiveTopN(100000)).toBeLessThanOrEqual(MAX_QUERY_TOP_N_PAGES);
-    // Under today's DEFAULT=10, the cap is dormant: even with 100000
-    // pages, effective = min(10, 100000) = 10.
-    expect(computeEffectiveTopN(10000)).toBe(DEFAULT_QUERY_TOP_N_PAGES);
+    expect(computeEffectiveTopN(10000)).toBe(RETRIEVAL_BUDGET);
   });
 
   it('returns at least 1 even for an empty vault', () => {
@@ -62,12 +60,12 @@ describe('adaptive PPR top-N (Phase 5.5.0)', () => {
   it('default value is 10 (raised from 5)', () => {
     // Regression net: if DEFAULT_QUERY_TOP_N_PAGES ever drifts back
     // toward 5, this fails and forces the explicit decision.
-    expect(DEFAULT_QUERY_TOP_N_PAGES).toBe(10);
+    expect(RETRIEVAL_BUDGET).toBe(20);
   });
 
   it('max cap is 20 (token-cost safety)', () => {
     expect(MAX_QUERY_TOP_N_PAGES).toBe(20);
-    expect(MAX_QUERY_TOP_N_PAGES).toBeGreaterThan(DEFAULT_QUERY_TOP_N_PAGES);
+    expect(MAX_QUERY_TOP_N_PAGES).toBeGreaterThanOrEqual(RETRIEVAL_BUDGET);
   });
 
   it('is monotonic: effective topN never decreases as vault grows', () => {
@@ -87,7 +85,7 @@ describe('adaptive PPR top-N (Phase 5.5.0)', () => {
     // prompt-overflow fallback can shrink them rather than drop them.
     // If DEFAULT drops below 10 the overflow math changes.
     for (const size of [11, 50, 2137, 10000]) {
-      expect(computeEffectiveTopN(size)).toBeGreaterThanOrEqual(DEFAULT_QUERY_TOP_N_PAGES);
+      expect(computeEffectiveTopN(size)).toBeGreaterThanOrEqual(Math.min(RETRIEVAL_BUDGET, size));
     }
   });
 });

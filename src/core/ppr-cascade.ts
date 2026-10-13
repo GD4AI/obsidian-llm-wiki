@@ -410,6 +410,12 @@ function lexMatch(query: string, pages: PageRef[]): PageRef[] {
     const titleLower = page.title.toLowerCase();
     const aliasLowers = page.aliases.map(a => a.toLowerCase());
     const summaryLower = (page.summary ?? '').toLowerCase();
+    // BODY. B-1 (#819) measured the only lexical lever that crosses a real
+    // vocabulary gap: on pairs sharing under a third of their terms the answer
+    // path scores 0.000 without it and 0.415 with it. Optional because the wiki
+    // index does not carry bodies and the graph cache is what holds them; a
+    // caller that cannot supply one loses the lever, not the whole ranking.
+    const textLower = (page.text ?? '').toLowerCase();
 
     let score = 0;
     let tokensFound = 0;
@@ -417,6 +423,9 @@ function lexMatch(query: string, pages: PageRef[]): PageRef[] {
       if (needleHits(titleLower, kw)) { score += 3; tokensFound++; }
       else if (aliasLowers.some(a => needleHits(a, kw))) { score += 2; tokensFound++; }
       else if (needleHits(summaryLower, kw)) { score += 1; tokensFound++; }
+      // Body last: the page's own prose is weaker evidence than its name or its
+      // summary line, so a title hit still wins (weight table: text 1).
+      else if (needleHits(textLower, kw)) { score += 1; tokensFound++; }
     }
     if (tokensFound === tokens.length && tokens.length > 1) score += 2;
     if (score > 0) scored.push({ page, score });
@@ -549,7 +558,7 @@ export function pprCascade(
       const validSeeds = explicitSeeds.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
         const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
-        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
+        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr', validSeeds);
       }
     }
     if (graph && lex.length > 0) {
@@ -558,7 +567,7 @@ export function pprCascade(
       const validSeeds = seedPaths.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
         const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
-        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
+        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr', validSeeds);
       }
     }
     // No usable graph seeds AND no lex matches → return what lex has,
@@ -605,7 +614,7 @@ export function pprCascade(
     return [];
   }
   const pprScores = pprFromSeeds(graph, seedList, options.pprOptions, options.rng, query);
-  return mergeWithPPR(lex, pprScores, pages, topN, 'graph-first-ppr');
+  return mergeWithPPR(lex, pprScores, pages, topN, 'graph-first-ppr', seedList);
 }
 
 function lexScoreOf(page: PageRef, ranked: PageRef[]): number {
@@ -621,6 +630,7 @@ function mergeWithPPR(
   pages: PageRef[],
   topN: number,
   arm: 'lex-seeded-ppr' | 'graph-first-ppr',
+  seedPaths: readonly string[] = [],
 ): PageMatch[] {
   // Build a path → PageRef index for O(1) lookup.
   const byPath = new Map<string, PageRef>();
@@ -643,11 +653,23 @@ function mergeWithPPR(
   interface AssemblablePage extends Tiered {
     readonly page: PageRef;
   }
-  // Tier 0 is everything PPR reached — the seeds the LLM stage paid for and
-  // their neighbourhood. Tier 1 is a lex-only hit. The band is a promise, not
-  // a weight: an unreached keyword hit cannot displace a seed regardless of
-  // score. Without it RRF puts a lex rank-1 and a PPR rank-1 at the same
-  // 1/(60+1), and the seeds vanish.
+  // Tier 0 is the seeds THIS QUERY paid for — the LLM stage's picks, or the
+  // lex-derived seeds the arm used. The band is a promise to the caller that a
+  // paid seed is served.
+  //
+  // It used to say that while doing something else: every page PPR REACHED went
+  // into tier 0. On a 2,829-page vault the walks reach 1,925 pages per query,
+  // so with a budget of 10 the lex-only tier was served 0.00 times (DocTpoint,
+  // #837, 2026-10-13). The band separated pages the graph can reach from pages
+  // it cannot, and a page it cannot reach was never returned however well it
+  // matched — orphans, new pages and stubs, exactly the pages a reader needs
+  // surfaced.
+  //
+  // Tier 1 is everything else: the PPR neighbourhood AND lex-only hits compete
+  // on score. A lexical match PPR cannot reach is no longer locked out. The
+  // original motivation stands — without a band at all a lex rank-1 and a PPR
+  // rank-1 tie at 1/(60+1) and the paid seed vanishes.
+  const seedSet = new Set(seedPaths);
   const wrap = (page: PageRef, tier: number): AssemblablePage => ({
     key: page.path,
     tier,
@@ -655,16 +677,15 @@ function mergeWithPPR(
     ...(page.sourceSlug !== undefined ? { sourceSlug: page.sourceSlug } : {}),
   });
 
-  const reachedPaths = new Set([...pprScores.keys()].filter(p => pprScores.get(p)! > 0));
   const lexList: RankedCandidate<AssemblablePage>[] = lex.map((page, i) => ({
-    item: wrap(page, reachedPaths.has(page.path) ? 0 : 1), rank: i + 1,
+    item: wrap(page, seedSet.has(page.path) ? 0 : 1), rank: i + 1,
   }));
   const pprList: RankedCandidate<AssemblablePage>[] = [...pprScores.entries()]
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
     .map(([path]) => byPath.get(path))
     .filter((p): p is PageRef => p !== undefined)
-    .map((page, i) => ({ item: wrap(page, 0), rank: i + 1 }));
+    .map((page, i) => ({ item: wrap(page, seedSet.has(page.path) ? 0 : 1), rank: i + 1 }));
 
   const fused = maxFuse<AssemblablePage>([
     { channel: 'lex', candidates: lexList },

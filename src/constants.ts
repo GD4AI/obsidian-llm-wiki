@@ -783,21 +783,18 @@ export const LINT_DEDUP_PROMPT_CHAR_BUDGET = 7000;
 // ============================================================================
 
 /**
- * Default number of pages PPR returns for Query Wiki context assembly.
- *
- * v1.24.1 PATCH Phase 5.5.0: raised from 5 → 10 per user direction. With
- * only 5 pages the `5 pages · PPR` chip loses meaning on large vaults
- * (2137 nodes easily surface >5 relevant pages via PPR graph walk).
- * 10 strikes a balance — fuller context without blowing the typical
- * model's prompt window. Token overflow is handled by Phase 5.4's
- * graceful overflow fallback (auto-shrink + retry).
- *
  * Adaptive top-N (select-seeds.ts) computes the effective top-N as:
- *   effective = min(DEFAULT_QUERY_TOP_N_PAGES, totalPageRefs)
- * then clamped by MAX_QUERY_TOP_N_PAGES below. A small wiki (e.g.
- * 12 pages) returns all 12; a large wiki (2137 pages) returns 10.
+ *   effective = min(RETRIEVAL_BUDGET, totalPageRefs)
+ * A small wiki (e.g. 12 pages) returns all 12; a large wiki (2137 pages)
+ * returns the budget.
+ *
+ * `DEFAULT_QUERY_TOP_N_PAGES` used to hold 10 here while `RETRIEVAL_BUDGET`
+ * held 20 and every recall measurement assumed 20 — the one production caller
+ * passed 10 explicitly and the budget curve never happened. One constant now,
+ * at the calibrated value. This doubles the pages a reader receives against the
+ * old behaviour: a deliberate token-for-recall trade (0.577 -> 0.819 on the
+ * measured budget curve), not a free improvement.
  */
-export const DEFAULT_QUERY_TOP_N_PAGES = 10;
 
 /**
  * Hard cap on top-N regardless of wiki size. Defends against runaway
