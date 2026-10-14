@@ -745,6 +745,8 @@ export const ZH_TEXTS = {
     reingestConfirmNo: '跳过',
     lintDedupIncludeSourcesName: '在去重中包含来源',
     lintDedupIncludeSourcesDesc: '默认开启。开启后，正文相同的来源在 lint 阶段会被标记为重复。若你的来源语料产生过多误报，可关闭此选项。',
+    legacyScorerName: '旧版查询打分器',
+    legacyScorerDesc: '默认关闭。开启后，查询排序使用旧的手调打分器，而非新版 BM25F。若更新后搜索结果变差，可开启此项。',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: '跳过来源仅提及的候选',
     skipMentionOnlyCandidatesDesc: '默认关闭。开启后，提取出的实体或概念若其名称未出现在笔记正文中（完全未出现，或仅出现在括号、枚举或简短列表项中），将不生成页面、不再调用模型，并从其他候选的相关列表中移除。适用于具有词边界配置的 Wiki 语言（德语已测量；英语、法语、西班牙语、葡萄牙语、荷兰语为估计）；其他语言在摄入时会提示一次无法应用。若你的库是术语表风格或笔记以要点为主、希望每个被点名的术语都成为页面，请保持关闭。',

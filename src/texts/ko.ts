@@ -537,6 +537,8 @@ export const KO_TEXTS = {
     reingestConfirmNo: '건너뛰기',
     lintDedupIncludeSourcesName: '중복 검사에 소스 포함',
     lintDedupIncludeSourcesDesc: '기본값은 켜짐. 켜져 있으면 본문이 동일한 소스가 lint에서 중복으로 표시됩니다. 소스 모음집에서 오탐이 많으면 끄세요.',
+    legacyScorerName: '이전 쿼리 점수기',
+    legacyScorerDesc: '기본값은 꺼짐. 켜져 있으면 쿼리 정렬에 새 BM25F 대신 이전 수동 조정 점수기를 사용합니다. 업데이트 후 검색 결과가 나빠졌으면 켜세요.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: '소스가 언급만 하는 후보 건너뛰기',
     skipMentionOnlyCandidatesDesc: '기본값은 꺼짐. 켜면 노트 본문에 이름이 나타나지 않는 추출 엔티티·개념(없거나 괄호·열거·짧은 목록 항목 안에만 있는 경우)은 페이지를 만들지 않고 추가 모델 호출도 하지 않으며, 다른 후보의 관련 목록에서도 제거됩니다. 단어 경계 프로필이 있는 위키 언어에서 동작합니다(독일어 측정됨; 영어·프랑스어·스페인어·포르투갈어·네덜란드어는 추정). 다른 언어에서는 적용할 수 없다고 수집 시 한 번 알립니다. 용어집형 볼트나 글머리 기호 위주의 노트에서 언급된 모든 용어를 페이지로 만들고 싶다면 꺼 두세요.',
