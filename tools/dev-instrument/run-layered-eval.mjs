@@ -27,8 +27,9 @@ import { writeFileSync } from 'node:fs';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment, DEFAULT_FIELD_WEIGHTS,
 } from '../../src/core/term-index.ts';
-import { pprCascade } from '../../src/core/ppr-cascade.ts';
+import { pprCascade, lexMatch } from '../../src/core/ppr-cascade.ts';
 import { maxFuse, assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
+import { RETRIEVAL_BUDGET } from '../../src/constants.ts';
 
 const BUDGET = 20;
 
@@ -185,10 +186,37 @@ async function main() {
   const lex = lexWith(noBody);
   const lexBody = lexWith(withBody);
 
+  // PRODUCTION PATH. DocTpoint (#837, 2026-10-13): this tool called
+  // `pprCascade` with NO seeds and a budget of 200. Production ALWAYS passes
+  // seeds (`select-seeds.ts` derives lex top-3 when the LLM stage is absent)
+  // and runs at `RETRIEVAL_BUDGET`. No-seeds is a branch `selectPprSeeds` never
+  // takes, so every number this tool printed was for a path the product does
+  // not run — the same class of error the tool exists to catch.
+  //
+  // Seeds are derived the way Stage 1 derives them: name-tier lex over
+  // title+aliases, top 3. This is the implicit-seed arm, which IS production
+  // when no LLM client is configured. Explicit LLM seeds would be a different
+  // arm and are not simulated here.
+  const productionSeeds = (q) => {
+    const scored = pages.map(p => ({
+      key: p.key,
+      score: q.queryTerms.reduce((acc, t) => {
+        const tl = (p.title ?? '').toLowerCase();
+        const al = (p.aliases ?? []).map(a => a.toLowerCase());
+        return acc + (tl.includes(t) ? 3 : al.some(a => a.includes(t)) ? 2 : 0);
+      }, 0),
+    })).filter(x => x.score > 0);
+    scored.sort((a, b) => (b.score - a.score) || (a.key < b.key ? -1 : 1));
+    return scored.slice(0, 3).map(x => x.key);
+  };
   const pprWith = (opts) => (q) => {
     const g = q.withoutEdge ? graphWithoutTruthEdge(graph, q.from, q.truth) : graph;
     const pprPages = pages.map(p => ({ path: p.key, title: p.title, aliases: [], summary: p.summary, score: 0 }));
-    const m = pprCascade(q.queryTerms.join(' '), pprPages, { graph: g, topN: 200, pprOptions: opts });
+    const seeds = productionSeeds(q);
+    const m = pprCascade(q.queryTerms.join(' '), pprPages, {
+      graph: g, topN: RETRIEVAL_BUDGET, pprOptions: opts,
+      ...(seeds.length > 0 ? { seeds } : {}),
+    });
     return m.map(x => ({ item: { key: x.page.path, sourceSlug: byName.get(x.page.path)?.sourceSlug }, score: x.score }));
   };
   const ppr = pprWith({ damping: 0.30, maxSteps: 10 });
@@ -226,13 +254,33 @@ async function main() {
     return rrfFuse(lists).map(f => ({ item: f.item, score: f.score }));
   };
 
+  // PRODUCTION LEX. `lexMatch` is the channel that produces the ANSWER in
+  // production — the substring scorer at title 3 / alias 2 / summary 1 / body 1.
+  // `lex + body` above is BM25F via `bm25fScore`, which is what Stage 1's seed
+  // ranking runs. They are DIFFERENT scorers and the tool printed only one of
+  // them while calling it "lex". Both are now named for what they are.
+  const lexProdWith = (idx) => (q) => {
+    const pprPages = pages.map((p, j) => ({
+      path: p.key, title: p.title, aliases: [], summary: p.summary,
+      ...(idx.withText && p.body ? { text: p.body } : {}),
+    }));
+    return lexMatch(q.queryTerms.join(' '), pprPages).map(x => ({
+      item: { key: x.path, sourceSlug: byName.get(x.path)?.sourceSlug }, score: 1,
+    }));
+  };
+  const lexProd = lexProdWith({ withText: true });
+  const lexProdNoBody = lexProdWith({ withText: false });
+
   const arms = [
     { name: 'lex', run: (q) => fuseMax([lex(q)]) },
-    { name: 'lex + body', run: (q) => fuseMax([lexBody(q)]) },
+    { name: 'BM25F + body', run: (q) => fuseMax([lexBody(q)]) },
     { name: 'ppr 0.30/10', run: (q) => fuseMax([ppr(q)]) },
     { name: 'rrf lex+ppr', run: (q) => fuseRrf([lex(q), ppr(q)]) },
     { name: 'maxFuse lex+ppr', run: (q) => fuseMax([lex(q), ppr(q)]) },
     { name: 'maxFuse body+ppr', run: (q) => fuseMax([lexBody(q), ppr(q)]) },
+    { name: 'lexMatch (prod)', run: (q) => fuseMax([lexProd(q)]) },
+    { name: 'lexMatch no body', run: (q) => fuseMax([lexProdNoBody(q)]) },
+    { name: 'maxFuse prodlex+ppr', run: (q) => fuseMax([lexProd(q), ppr(q)]) },
     { name: 'maxFuse body only', run: (q) => fuseMax([lexBody(q)]) },
     { name: 'ppr rev 0.30/10', run: (q) => fuseMax([pprRev(q)]) },
     { name: 'maxFuse body+ppr+rev', run: (q) => fuseMax([lexBody(q), ppr(q), pprRev(q)]) },
@@ -244,7 +292,19 @@ async function main() {
     const r = assembleWithCoverage(fused, BUDGET, {});
     return r.picked.map(x => x.item.key).indexOf(q.truth);
   };
-  const hit = (q, arm, k = 10) => { const i = pick(q, arm); return i >= 0 && i < k ? 1 : 0; };
+  // TWO RECALL NUMBERS, and they answer different questions.
+  //
+  // `r@budget` is "did retrieval return it": the reader receives
+  // RETRIEVAL_BUDGET pages and this asks whether the answer is among them. This
+  // is the number that moved with the budget curve (10 -> 0.577, 20 -> 0.819).
+  //
+  // `r@10` is "is it in the first ten": the same retrieval, a shorter read.
+  // It used to be the ONLY number printed while the budget was 20, which read
+  // as though retrieval had failed when the answer sat at rank 12 of 20.
+  //
+  // Print both. Never label either one "recall" without its k.
+  const hit = (q, arm, k) => { const i = pick(q, arm); return i >= 0 && i < k ? 1 : 0; };
+  const rate = (qs, arm, k) => qs.reduce((s, q) => s + hit(q, arm, k), 0) / Math.max(1, qs.length);
 
   const layers = [
     { name: 'ALL', qs: bridgeQs },
@@ -262,17 +322,21 @@ async function main() {
 
   for (const layer of layers) {
     lines.push(`── ${layer.name} (n=${layer.qs.length}) ──`);
-    lines.push('  arm                  with edge          no edge            self MRR');
+    lines.push(`  arm                  r@${BUDGET} no-edge       r@10 no-edge        self r@10  self MRR`);
     for (const arm of arms) {
-      const withEdge = layer.qs.map(q => ({ ...q, withoutEdge: false }));
       const noEdge = layer.qs.map(q => ({ ...q, withoutEdge: true }));
-      // Compute each question's hit ONCE, then resample the cached bits.
-      const hitsWith = withEdge.map(q => hit(q, arm, 10));
-      const hitsNo = noEdge.map(q => hit(q, arm, 10));
-      const ciWith = clusterBootstrap(withEdge, hitsWith);
-      const ciNo = clusterBootstrap(noEdge, hitsNo);
+      // Compute each question's hit ONCE per k, then resample the cached bits.
+      // Two ks because they answer different questions: r@budget is "did
+      // retrieval return it", r@10 is "is it in the first ten". Printing only
+      // r@10 while the budget is 20 read as a retrieval failure when the answer
+      // sat at rank 12 of 20.
+      const hitsBudget = noEdge.map(q => hit(q, arm, BUDGET));
+      const hits10 = noEdge.map(q => hit(q, arm, 10));
+      const ciBudget = clusterBootstrap(noEdge, hitsBudget);
+      const ci10 = clusterBootstrap(noEdge, hits10);
+      const selfR10 = selfQs.reduce((a, q) => a + hit({ ...q, withoutEdge: true }, arm, 10), 0) / Math.max(1, selfQs.length);
       const selfMrr = selfQs.reduce((a, q) => { const i = pick({ ...q, withoutEdge: true }, arm); return a + (i >= 0 ? 1 / (i + 1) : 0); }, 0) / Math.max(1, selfQs.length);
-      lines.push(`  ${arm.name.padEnd(20)} ${ciWith.point.toFixed(3)} [${ciWith.lo.toFixed(3)},${ciWith.hi.toFixed(3)}] ${ciNo.point.toFixed(3)} [${ciNo.lo.toFixed(3)},${ciNo.hi.toFixed(3)}] ${selfMrr.toFixed(3)}`);
+      lines.push(`  ${arm.name.padEnd(20)} ${ciBudget.point.toFixed(3)} [${ciBudget.lo.toFixed(3)},${ciBudget.hi.toFixed(3)}] ${ci10.point.toFixed(3)} [${ci10.lo.toFixed(3)},${ci10.hi.toFixed(3)}] ${selfR10.toFixed(3)} ${selfMrr.toFixed(3)}`);
     }
     lines.push('');
   }

@@ -402,7 +402,7 @@ export function lexIsReliable(tokens: string[]): boolean {
  * Page-level bonus:
  * - all query tokens found in page text: +2 (strong relevance signal)
  */
-function lexMatch(query: string, pages: PageRef[]): PageRef[] {
+export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   const scored: { page: PageRef; score: number }[] = [];
