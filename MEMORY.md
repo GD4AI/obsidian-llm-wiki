@@ -29,6 +29,244 @@ is current state.
 
 ## Current state (2026-10-12)
 
+### Execution record — read this before continuing the #729 phases
+
+Written 2026-10-08 so the work resumes at the right place with the same
+judgements. Delete this block once the seven phases below have landed.
+
+**Where the work is.** Branch `feat/729-reader-recall-2026-10-07`, PR **#819**,
+head `7eb91722`, six commits (`9db53a84` docs · `06ddf667` P0 graph audit ·
+`e60f8c5f` P1 retrieval profile · `d5d8ad0b` P2a determinism · `f8e67fb3` P2b CJK
+floor · `6f370efb` measurements · `404921c5` architecture). **Nothing is merged.**
+Gate 1 green at `f8e67fb3`: 4447 tests / 320 files. The two later commits are
+docs only. **All eight phases shipped (2026-10-09). An external review then overturned three of my claims and changed the order.** Read §"Post-review plan" before continuing.
+
+**Post-review plan (2026-10-09) — read this before continuing.** All seven items closed 2026-10-10. See §"Where it stands" for the closing state.
+
+An external review of this branch was verified against production code; all eight claims hold. Full detail with measurements is on [#819 comment](https://github.com/GD4AI/obsidian-llm-wiki/pull/819#issuecomment-6078993662). **Do not merge the assembly layer before step 3.**
+
+| # | Work | Why this order |
+|---|---|---|
+| **1** | **Four small fixes** — morphology fallback (BM25F lost `needleHits`' word-prefix tolerance: `model` matched `models`), NFKC normalisation in `segment`, code-point slicing (`segment('𠮷野家')` yields an orphaned low surrogate), alias length normalisation (measured 41% against a 67% intent). Each gets a regression fixture | ✅ **DONE 2026-10-09** (`575c7626`, `2bea2f7a`, `6db885ac`). Three extra defects found while building: a shell-test anti-pattern in my own fixtures, `acc / matched` instead of `acc / grams.length`, and a precision regression from short-word fallback (fixed with a five-character floor). |
+| **2** | **Wire `PageRef.sourceSlug`** from frontmatter in `read-index.ts:41-45` | ✅ **DONE 2026-10-09** (`f66e1491`). Index line gains an optional `source: <slug>` marker. Compatible extension. |
+| **3** | **Harder fixtures + a relevance metric** — evidence-page recall@K | ✅ **DONE 2026-10-09** (`dacecbfe`). HARD_ENTRIES, acceptance asserted: **inverted scorer must lose**. Measured HARD DEFAULT 0.833 vs INVERTED 0.472. |
+| **4** | **Calibrate the coverage penalty strength** on the harness | ✅ **DONE 2026-10-09** (`b8c90df8`). `lambda` is explicit; default **changed 1 → 0.25**, measured on three real vaults via two proxies (co-citation set as the relevant set, same-source share as the concentration). Keeps 83-93% of the co-citation recall for 1-2% of the diversity. **Two caveats a reviewer should check: the co-citation proxy over-approximates relevance, and seed selection caps at 5 per source.** @DocTpoint asked to re-test. |
+| **5** | Graph-based attribution — **measure coverage before believing it** | ✅ **MEASURED 2026-10-09** (`e88f1c78`). **Hypothesis holds, payoff is small — DO NOT build it as a feature.** Source-page inlinks cover 11.5% of the unattributed in the old vault, body citations 6.9%, and they overlap. A single-source back-fill reaches **24.7% → 31.2%** and 68.8% stays unknown. 24.7% of the covered pages have inlinks from MORE THAN ONE source, which would invent a grouping — what the `sources:` marker refuses to do. If anything: a small lint back-fill accepting single-source evidence only. |
+| **6** | **Split the PR** — 46 commits, 6000+ lines, mixing read/write/tools/docs | ❌ TODO. **Now the only item left on this track.** Do it, then the track closes. |
+| **7** | **A user-visible switch** for the scorer | ✅ **DONE 2026-10-09** (`2164661d`, `a55d4b8b`). Bottom Advanced settings panel, all 11 locales. |
+
+**Three statements are retracted and must not be repeated:** (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale; (b) the A/B figure as production-representative — `sourceSlug` is never set in production; (c) "the assembly step is a no-op on old vaults" attributed solely to low attribution — unattributed pages are **never penalised**, which systematically favours them, and part of the 9.3→43.3 growth is the rule's doing.
+
+**`gh api -f key=@file` does NOT read the file — it sends the literal string `@file`.** Caught 2026-10-09: a PR comment body came out as the 18-character path `/tmp/pr819edit.md` instead of the 4458-character content. The working form builds a JSON payload and passes it with `--input`:
+
+```bash
+python3 -c "import json; json.dump({'body': open('/tmp/x.md').read()}, open('/tmp/p.json','w'))"
+gh api repos/OWNER/REPO/issues/comments/ID -X PATCH --input /tmp/p.json
+```
+
+Same trap for any `gh api -f` value that should come from a file. Always read the body back and check its length before moving on.
+
+**The metric lesson.** The rule optimises source count, and I measured source count. Any future claim needs a metric the rule does NOT directly optimise. Today that is evidence-page recall@K.
+
+**Where it stands (2026-10-10).** Branch `feat/729-reader-recall-2026-10-07`, 56 commits, PR #819. Gate 1: 4641 tests / 327 files. **Max fusion replaced the RRF sum** (`d3eb3c4d`): bridge recall 0.350→0.534 on test10, 0.576→0.638 on test8; self MRR down 0.054 and 0.007. `maxFuse` takes the LARGER of the two channels' normalised scores — zero parameters, zero thresholds. QUOTA 7+3 (top 7 lex, top 3 ppr) holds self MRR at 1.000 and gains less bridge; switch to it if self accuracy must not move. **The floor holds**: self-questions score MRR 1.000 against the legacy scorer's 0.973-0.997. **Default is `lambda 0`** — under production RRF scores any lambda above zero costs 25-55% of the co-citation recall.
+
+**What the vocabulary gap actually needs (measured on the strict set, 2026-10-11).** The layered tool `tools/dev-instrument/run-layered-eval.mjs` splits bridge pairs by shared source and reports the truth-edge-removed column as primary, with a clustered bootstrap over asking pages. On that set — pairs where A and B share under a third of their terms — the lex channel scores **0.000** without the body and **0.415** with it, on test8. The body field is the only lexical lever that crosses the gap, and it costs nothing in self MRR (1.000 either way). ppr reaches 0.454 with the edge removed, and 18% of its apparent gain is the edge it walks. maxFuse over body+ppr reaches 0.467.
+
+**Two reviewers, two vaults, and both say the same three things.** (1) `maxFuse` ties must go to the lexical channel, not to alphabetical key order — done, and it moved self MRR 0.854 -> 1.000 on the 2831-page German vault. (2) Seed merge must become a lex-weighted sum, not a max — +0.115 at five seeds. (3) The fusion rule itself is the most sensitive parameter and `maxFuse` is dominated by a score-normalised sum on their corpora. (2) is next; (3) is not settled and needs the layered tool on our vaults first.
+
+| lever | bridge | verdict |
+|---|---|---|
+| **index the page BODY as `text`** | lex **+33-57%** (0.294→0.462 test10, 0.471→0.627 test8), MAX **unchanged** | **floor lift, not ceiling**. Worth doing for a vault with no graph yet. The query path passes `text: ''` today. |
+| **co-citation projection (#781's design)** | **-34%** (0.537→0.356) | **REJECT.** Each source's pages form a clique, the edge count explodes and drowns the specific A→B edge. Only revisit with clique-size-decayed weights. |
+
+**Next work, in order — resume here after compaction:**
+
+1. **PPR walk parameters** (steps / damping). Zero new mechanism. The measured ceiling is ppr's link-graph reachability, so this is the direct lever.
+2. **Decide on wiring the body index.** Floor lift only; near-zero cost since the graph cache already reads every page. Helps a vault with no graph — first query, sparse, mobile.
+3. **Split the PR.** Three PRs: read-side core + tools (tightly coupled, DO NOT split), write-side (independent), docs. Verify Gate 1 per PR and that the file union equals the branch's file set.
+
+**Eight claims of mine are retracted and must not be repeated.** The first four were caught by my own re-measurement; the last four by two independent reviewers on PR #819. (a) "the coverage rule introduces no constant" — the constant is implicit in the score scale. (b) "the Chinese template terms dilute discriminative terms" — IDF at df=0.99 is 0.01. (c) "the budget should scale with corpus size" — wrong target, the bottleneck is attribution coverage. (d) "bottom line violated" as a headline — six fixtures is a property test, not a statistical baseline. (e) "indexing the body raises the floor and not the ceiling" — FALSE, and this is the important one: on the strict vocabulary-gap set (A and B share under a third of their terms) the lex channel scores **0.000** with `text: ''` and **0.415** with the body indexed, on test8. The body is the only lexical lever that crosses the gap. My measurement could not see it because the eval tool's MAX arm was not the production fusion. (f) "MAX fusion +53%, the fusion question is closed" — the gain was the truth edge. With the edge removed maxFuse beats rrf by 0.008, not 0.05. (g) "damping 0.30, maxSteps 10 move the ceiling 8-11%" — same cause. With the edge removed ppr goes 0.186 -> 0.190. The tuning fitted the edge, not bridging. (h) "the ~0.6 ceiling is ppr's link-graph reachability" — FALSE. A reviewer reached 0.66-0.76 with no new mechanism by changing the fusion rule, the seed merge and the body field. The ceiling was the fusion and seed machinery.
+
+**The measurement rule that produced all eight:** a number is only as trustworthy as the code path that produced it. The eval tool carried its own `maxFuse` copy that normalised raw scores while production consumes ranks, so everything measured "under MAX" was measured on ppr alone. The grid tool had the same bug and I fixed it there while leaving the eval tool untouched. Fix the class, not the instance.
+
+**Ninth retraction, same session, and the shape of it matters more than the number.** I set the body weight to 0.3 on the strength of an external calibration that reported a "0.3-0.6 plateau" on someone else's corpus. Measured on ours, 0.15 / 0.3 / 0.6 / 1.0 gives a MONOTONIC bridge curve (0.221 / 0.334 / 0.385 on test8) and self-resolution of 1.000 at every value up to 2.0 — there is no trade to make and no plateau in that range. The correct weight was the one the table already had. **An external number describes an external corpus.** Taking one without a local measurement is how a calibration turns into a guess, and it is worse than guessing because it carries borrowed authority. Reverted to 1 within the same session and the revert is in the commit message rather than hidden.
+
+**Tenth: the anchor-text hypothesis, tested and rejected — and it generalises.** Anchor text, the display text of links pointing at a page, looked like the vocabulary bridge BY DEFINITION: A writes `[[B|neural nets]]` while B's title is `Perceptron`, so the anchor is A's word for B. Extraction was correct — 2,620 entries, 1,699 resolved to pages, 173 of 177 pages carrying at least one — and the A/B was flat: 0.385 -> 0.384 on test8, 0.268 -> 0.269 on test10. The reason is in the sample: anchors are NAME VARIANTS of the target (`Editor API` for `editor-api`, `Vault.modify()` for `vault-modify`), not descriptions. In a generated wiki the link display is the target's own name, so the anchor adds no vocabulary the target's title does not already carry. The mechanism is right and the hypothesis is right; the CORPUS does not contain the writing style that would make it true. Reverted rather than kept at weight 0 — a dead field is a dead field. Re-add only if a corpus with descriptive link text ever appears.
+
+**What follows from the tenth, and it is the more useful half.** A generated wiki's link structure is NAME-LEVEL, not SEMANTIC-LEVEL. Aliases are name variants too. Co-citation is structural. Anchor text is a name variant. So "re-use the text already in the corpus to bridge the vocabulary gap" has now been tried in every cheap form and the corpus does not support any of them. A semantic signal needs a NEW mechanism that computes meaning rather than spelling. That is a design decision, not a tuning decision, and it does not belong inside the #729 branch.
+
+---
+
+## HANDOFF — resume here after compaction (2026-10-12)
+
+**Where the code is.** The 66-commit #729 branch is split into FOUR stacked PRs, each independently green, each built by `git checkout <source> -- <paths>` rather than cherry-picking so nothing was lost. Verified lossless: `git diff pr4/docs-recall-track feat/729-reader-recall-2026-10-07` is EMPTY and the cumulative file counts run 44 -> 55 -> 68 -> 71, matching the branch exactly.
+
+| PR | branch | base | files | Gate 1 |
+|---|---|---|---|---|
+| **#837** | `pr1/read-side-recall` | main | 44 | 4662 tests |
+| **#838** | `pr2/write-side-shaping` | pr1 | +11 | 4692 |
+| **#839** | `pr3/legacy-scorer-toggle` | pr2 | +13 | 4692 |
+| **#840** | `pr4/docs-recall-track` | pr3 | +3 | 4692 |
+
+**Merge in order.** #838 depends on #837 because `hub-link-ppr-hoist` reads `buildReverseAdjacency` from `monte-carlo-ppr`. #819 is CLOSED as superseded, with a comment pointing at the four; the branch and every comment stay. DocTpoint is invited to review on #837.
+
+**What the strict evaluation layer says, and it caps this track.** Pairs with under a third shared vocabulary, DIFFERENT sources, and the truth edge REMOVED leave only residual wording and two-hop graph paths. `tools/dev-instrument/run-layered-eval.mjs` is the tool that measures it: it splits bridge pairs by shared source, prints the no-edge column as PRIMARY, and bootstraps over ASKING PAGES rather than questions. Numbers on that layer: lex with the body 0.27-0.42 at self MRR 1.000; ppr 0.29-0.45 at self 0.86; maxFuse over both 0.30-0.46 at self 0.86-0.89. The fusion buys +0.03 to +0.04 bridge and costs 0.11-0.14 of self MRR — but `self recall@10` is **1.000 in every arm**, so that is a RANKING change inside the top 10, not a retrieval failure. **The fusion stays ON by maintainer decision** on 2026-10-12; the earlier "0.19-0.38 : 1, not worth it" framing overstated the cost by treating reordering as loss.
+
+**NEXT WORK, IN ORDER. Do these three, in this order:**
+
+**UPDATE 2026-10-14 — the three are done or superseded, and four things were
+learned on the way. All of it is on `pr1/read-side-recall` at `4c6845e6`, eight
+commits.**
+
+**What shipped.** (1) Tier band fixed: tier 0 is now the seeds the query paid
+for, not "every page PPR reached" — DocTpoint found the band was serving the
+lex-only tier 0.00 times at budget 10 on a 2,829-page vault, so orphans and new
+pages were never returned however well they matched. (2) Body wired end to end:
+`lexMatch` reads `PageRef.text`, the graph cache retains what it loads, and
+`withBodies` is a pure enricher. (3) One retrieval budget at 20 — the constant
+said 20 and the only caller passed 10. (4) `production-reachability.test.ts`
+enters through `selectPprSeeds` and pins all three.
+
+**What was learned. Four hypotheses, one variable at a time, on the strict set.**
+IDF contributes +0.031 and is not the cause. The all-tokens bonus contributes
+exactly 0. Substring against token-boundary matching contributes +0.006. The
+remaining gap was the FIFTH factor and I had not listed it: BM25F's length
+normaliser `1 - b + b*len/avg` damps the body, which is the only long field,
+and on the strict set 99 % of the bridging terms live in the body and nowhere
+else. Turning the normaliser off for `text` moves recall 0.385 -> 0.431 on
+test8 and 0.268 -> 0.326 on test10. That is the whole gap between the
+production substring scorer and BM25F. **A fluent reasoning chain can be wrong
+in every link; a factor left off the list is where the answer lives.**
+
+**What the LLM fallback is worth, measured.** On the strict subset that
+triggers it — 33 % of strict questions on test8, 24 % on test10 — it moves r@20
+from 0.875 to 1.000. It generates keywords and a local scan matches them: the
+model TRANSLATES the asker's phrasing into the target's name-tier words. Weighted
+over the whole strict layer that is about +0.03. Real, bounded, and it costs one
+LLM call per triggering query.
+
+**What remains.** (1) The layered evaluator is now aligned — seeds derived the
+way Stage 1 derives them, the budget constant, `lexMatch` given its own arms —
+but every number printed BEFORE `16c44778` came from a branch `selectPprSeeds`
+never takes. Re-derive anything you still want to cite. (2) The orphan-loss rate
+is unmeasured: the tier fix removes the lock-out structurally, `tier-band.test.ts`
+pins that, but how often a good lexical hit was lost is a number nobody has.
+(3) The term index is rebuilt per query — 4.4 s against 21 ms prebuilt on 2,864
+pages. Put it in the graph cache. (4) The PR descriptions still need updating.
+
+**Three recall depths, and never label one "recall" without its k.** `r@budget`
+is "did retrieval return it". `r@10` is "is it in the first ten". Printing only
+r@10 while the budget is 20 read as a retrieval failure when the answer sat at
+rank 12 of 20.
+
+**CAUTIONS. Read before touching anything.**
+
+- **Every number must be measured locally.** The ninth retraction is exactly this: I took an external "0.3-0.6 plateau" and shipped 0.3, when our curve is monotonic to 1.0. An external number describes an external corpus.
+- **A measurement tool must not re-implement the thing it measures.** The eval tool's `evaluateMax` normalised raw scores while production `maxFuse` consumes RANKS, so everything measured "under MAX" was measured on ppr alone. Five traps in total are recorded in the code; the rule covers all of them.
+- **`self recall@10` is the retrieval metric; `self MRR` is a ranking metric.** Do not report a ranking change as a retrieval failure again.
+- **The evaluation set's ceiling is 1.000 by construction** — "return A's own links" always wins because the truth IS the A->B edge. Always report against the random floor (10/N) and the truth-edge-removed column.
+- **Do not split tightly-coupled files.** `core/` and `tools/` went in one PR on purpose.
+- **`gh pr review --approve` on one's own PR is blocked.** Use `gh pr comment` for the audit trail.
+- **`gh api -f key=@file` does NOT read the file.** Build the JSON with `python3 -c "import json; json.dump(...)"` and pass `--input`.
+- **Closing keywords fire on prose.** "its fix #676" closes an issue. Scan every body and comment before posting.
+
+**Three measurement designs of mine were wrong and the corrections matter:** the lambda calibration fed raw BM25F scores while production serves RRF (15% vs 44%); `coCitRecall = sameSrcShare x K/|S|` is an algebraic identity so the "two proxies" were one degree of freedom; and `summaryOf` used `started = started || !started`, which never skipped the frontmatter, so every "summary" was the first frontmatter key and the bridge numbers sat BELOW the random baseline (@DocTpoint caught it on a 2831-page German vault).
+
+**The evaluation set's ceiling is 1.000 by construction** — "return A's own links" always wins because the truth is the A→B edge. Always report against the random floor (10/N) and the truth-edge-removed arm.
+
+**Eight claims of mine are retracted and must not be repeated.** See the list above — (a)-(d) caught by my own re-measurement, (e)-(h) by two independent reviewers on PR #819. The unifying rule: a number is only as trustworthy as the code path that produced it.
+
+**Two measurement designs of mine were wrong and the corrections matter:** the lambda calibration fed raw BM25F scores while production serves RRF scores (training-serving skew, 15% vs 44%), and `coCitRecall = sameSrcShare x K/|S|` is an algebraic identity, so the "two proxies" were one degree of freedom.
+
+**Reviewer offered to draft step 1's patch.** I review rather than author it — lowest risk, clearest boundary.
+
+**The seven phases, with their targets.**
+
+**Two decisions taken 2026-10-08, on the maintainer's instruction.**
+
+1. **The harness moves ahead of what it calibrates.** Phases 3 and 4 both need
+   calibrated constants — the BM25F field weights, and the `lexStrong` coverage
+   threshold. The harness that produces them was scheduled at phase 5. That
+   inversion was caught when `DEFAULT_FIELD_WEIGHTS = {title 3, alias 2,
+   summary 1, text 1}` turned out to be the old hand-tuned ratio wearing a new
+   name: the plan says field weights are calibrated on the harness and never
+   assumed, and the constant as written assumed them. Shipping it unlabelled
+   would have broken the plan's own rule. The cost of moving the harness up is
+   that phase 4's implementation arrives later; the cost of not moving it is
+   that phases 3 and 4 draw conclusions from numbers nobody measured and are
+   re-derived afterwards.
+2. **The lex stage keeps `scorer: 'legacy'` until phase 4.** Its documented
+   contract is the absolute score scale (title 3 / alias 2) and `lexStrong` is
+   calibrated on exactly that. Moving one without the other is the measured
+   silent failure. The cost is a known gap: Stage 1 seed ranking has no IDF
+   suppression until phase 4 closes it. Accepted rather than papered over.
+
+| Phase | Target |
+|---|---|
+| **1** ✅ 2026-10-08 | `src/wiki/engine-internals/index-generator.ts` `firstBodyLine` — the provenance blockquote went into the index entry, so every stub page listed the same sentence instead of the extraction summary. Fixed by the `stub: true` frontmatter flag through the **existing** `isStubPage` helper (`page-factory/stub-page.ts:91`, which accepts both `'true'` and `true`) rather than re-deriving the check or matching text. **Do not use a text prefix** — a page may legitimately open with a blockquote and must keep it. 4 tests, plus a read-only sweep of the 350-page generated corpus showing 0 non-stub summaries changed |
+| **2** ✅ 2026-10-08 landed | `src/core/term-index.ts` (new): `segment`, `buildPageTerms`, `buildCorpusTerms`, `bm25fScore`; wired into `scorePagesByNeedles` with `scorer: 'legacy'` behind a switch. Split is Unicode script property — **no language names in the module**. 30 tests. Two real bugs the tests caught: `df` counted a term once per field so it passed `docCount` and every IDF went negative; and the wiring edit split the function in two. Original targets: `src/core/ppr-cascade.ts:202` `tokenizeQuery`, `src/core/candidate-window.ts` `contextKeywords`, and `src/core/retrieval-profile.ts` `scoreProfile` which BM25F replaces. **One phase — segmentation and the ranker cannot be split**, because without segmentation a Chinese query is one token and the IDF table is built over whole clauses |
+| **3** ✅ 2026-10-08 | `src/core/recall-harness.ts` + `recall-fixtures.ts` + `tools/dev-instrument/run-recall-harness.mjs`. MRR 1.0 on the hand-written five-regime set | calibration now precedes what it calibrates |
+| **4** ✅ 2026-10-08 | `nameTierCoverage` (`src/core/term-index.ts`) — the name tier's share of the query's total IDF, unitless. The lex stage left `scorer: 'legacy'` in the same change | the silent failure was **measured**: 4 spurious LLM escalations where there must be 0 |
+| **5** ✅ 2026-10-08 | hub-link PPR hoisted 380 → 20 walks (result bit-identical, so pinned by a mock count); `buildReverseAdjacency` pre-built in `GraphCache`; the walk seed no longer mixes in graph size | orthogonal wins |
+| **6** ✅ 2026-10-09 | RRF fusion (`k = 60`) + source coverage in `src/core/assembly.ts`, wired through `mergeWithPPR`. `PageRef` gained optional `sourceSlug` | **+23 % sources on a fresh vault; 0 change on the maintainer's mixed-generation one** |
+| **7** ✅ 2026-10-09 | `contextKeywords` deferred to its own PR — it feeds a dedup WRITE, and this branch is read-side work | recorded so "not done" is not read as "forgotten" |
+| **8** ✅ 2026-10-09 | dead related entries stop being written (the name goes to `log.md` per DocTpoint); alias budget 3 + the note's own phrasing; `runHubLinkFixes` wires the detector into a fix | all three write-side items |
+
+**Rejected — do not re-propose.**
+
+| Option | Why rejected |
+|---|---|
+| "≥ 2 distinct needles" floor for the summary tier | starves single-keyword queries (`AMPK`) |
+| absolute evidence threshold `sum(w) ≥ 1` | `w = ln(N/df)/ln N ≥ 1` is equivalent to `df ≤ 1`, so `deepseek` at w=0.56 could never fill in |
+| reusing `CANDIDATE_WINDOW_DF_CAP = 0.5` for summaries | calibrated on long body text; on real summaries `the` measured 0.25 and the cap left 56 pages hitting |
+| bigram floor as the primary CJK rule | becomes a **true fallback** only: fires on exact miss, weight 1, proportional to coverage. Korean agglutination (`장애가`) is the reason it stays at all |
+| power iteration over the Monte Carlo walk | shelved; restart only if the ablation shows the graph arm carries weight, a comparison script matches the visit-count semantics, and lint timing is measured |
+| A/B arms with an embedding index | the plugin is zero-embedding |
+
+**Where the test material lives.**
+`/Users/greener/project/obsidian-llm-wiki-testdata/` — outside the repo, so it is
+not in git and not subject to the doc ceilings. It holds `generated/expA-main/`
+(166 pages, ingested from `main`) and `generated/expB-branch/` (174 pages, from
+this branch), both real LLM-wiki output in Chinese wiki language from the same
+five papers; `scripts/` with the three measurement scripts; and
+`audit/graph-audit-outputs.txt`. Its own README says which phase uses which
+part. The five source papers stay in the maintainer's vault under `AI学习资料/`.
+
+**How to re-derive the numbers.** `testdata/scripts/` holds the three
+measurements, all read-only over `**/*.md`: (a) graph shape —
+`node tools/dev-instrument/run-graph-audit.mjs <vault> <wikiFolder> [topK]`; (b)
+summary-tier document frequency — first non-heading body line after the
+frontmatter, cut at 100 chars, then `df(term) = pages containing term / pages`;
+(c) assembly — score pages on query tokens (title 3, body 1), take top-50 and
+top-10, read each page's `sources: [[sources/<slug>]]` refs, report distinct
+source count and the dominant source's share. Ingest experiments need a provider
+key which the maintainer supplies per session and which is **never** stored in
+the test data; the recorded run used `anthropic-compatible` / `MiniMax-M3` /
+`https://api.minimaxi.com/anthropic` through
+`tools/dev-instrument/run-instrument.mjs <vault> <source>`.
+
+**The matched pair is the useful artifact.** `expA-main` and `expB-branch` were
+ingested from the same five papers under two different commits. Their graph
+shapes agree (99.7 % intra-source on both) while their page counts differ
+(166 vs 174). That difference bounds the LLM sampling variance, and it is the
+number any A/B claim has to beat before it means anything. Use `expA-main` as
+the regression corpus for "this branch must not change ingest output".
+
+**Pending debt.** `ROADMAP.md` is 522 lines against a 500 ceiling. The prune
+deletes the superseded progress line (1608 bytes) and the five-arm paragraph
+block that phase 5 now carries — about 25 lines. It belongs in the same change
+as the next ROADMAP edit, not later.
+
+**Known false positives — do not "fix".** `shazam_verify` reports orphan `setup`
+at `tools/dev-instrument/run-instrument.mjs:54`,
+`tools/dev-instrument/run-graph-audit.mjs:41` and
+`tools/dev-instrument/run-recall-harness.mjs:42`; all three are esbuild plugin
+callback properties. It also reports `lexScore` at
+`tools/dev-instrument/run-recall-harness.mjs:136`, which is a local function
+passed by value into `formatRecallDiagnostic`. Hint-level unused vars in
+`scripts/update-fixture.mjs` and `src/core/hub-link-distinctiveness.ts:74` are
+pre-existing.
+
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
 **v1.28.0 shipped without its named head.** #729 Phase 1 was the plan of record; it did not go in.
@@ -346,6 +584,31 @@ own header says it is not a session log. The standing decisions stay above, in
 ---
 
 ## Lessons learned (from session memory)
+
+**Three rules from the #729 reader-recall work (2026-10-08), merged here rather than
+logged as a new dated block.**
+
+- **Never hand-tune what a standard probabilistic model already solves.** A
+  linear weight over text with no IDF keeps producing anomalies — stop words,
+  generic words, long documents, ties — and each anomaly invites another patch.
+  Eleven accumulated on one scoring function before this was seen. BM25F folds
+  seven of them into one function whose `k1`/`b` have literature defaults.
+  Field weights do **not**: moving the title weight from 3 to 1 moved MRR from
+  0.86 to 0.55. Calibrate fields on a harness; assume nothing about them.
+- **A test whose query language and document language differ cannot test the
+  document-side tier.** An English query against Chinese summaries gave
+  `the` DF ≈ 0 and zero rank inversions, which read as "the pollution never
+  fires" and was really "the tier never fires". Three conclusions were drawn
+  from that before the mismatch was named. Check the language pairing before
+  reading a null result as a null effect. The project is multilingual and
+  cross-lingual (English sources into a Chinese wiki is a real configuration),
+  so fixtures cover four segmentation regimes **plus** source ≠ wiki language.
+- **A constant calibrated on one score's absolute scale fails silently when the
+  scale changes.** `LEX_MATCH_MIN_COUNT = 3` and `LEX_MATCH_MIN_TOP_SCORE = 5`
+  were set on title-and-alias scores; adding a weaker tier made them pass more
+  often and nothing reported it. Replacing the scorer with BM25F would have
+  broken them the same way. Gate conditions that gate a decision need a
+  statistic that has no unit — a coverage ratio, not a count.
 
 Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private

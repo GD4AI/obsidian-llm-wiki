@@ -7,9 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Progress — #729 reader-recall phases
+
+Work in flight on `feat/729-reader-recall-2026-10-07`. The plan and the decisions live in ROADMAP §"#729"; this is what has landed and what it measured, kept here so the plan file stays a plan.
+
+- **Phase 1 — a stub page's index entry shows the extraction summary, not the provenance line.** A dissent stub's body is `# name`, then a provenance blockquote, then the summary the ingest already paid for, then a quote. `firstBodyLine` returned the blockquote, so every stub indexed the same sentence. The gate is the `stub: true` frontmatter flag, through the existing `isStubPage` helper — not a text prefix, because a page may legitimately open with a blockquote. `parseFrontmatter` returns the string `'true'` rather than the boolean, which is why the helper exists and why a hand-rolled check failed first. 4 tests; a read-only sweep of the 350-page generated corpus shows zero non-stub summaries changed.
+- **Phase 2 — segmentation, a term index, and BM25F replace the hand-tuned linear scorer.** The old weights (title 3 / alias 2 / summary 1 / text 1) could not say that a generic term is worth less than a specific one, and every anomaly that produced became another patch — eleven on one function. Segmentation splits by Unicode script property, with no language names in the module: bounded-word runs become whole terms, boundary-less runs (Han, Kana, Hangul, Thai) become character bigrams, and a mixed run splits at the script change so `LSTM模型` yields `lstm` and `模型`. 30 tests, including pins for the two rejected options so they cannot quietly return. Two real bugs the tests caught: document frequency counted a term once per field so it passed `docCount` and every IDF went negative; and the wiring edit split the function in two. **Measured on the 174-page generated corpus:** every score non-negative, the generic term `学习` at idf 0.026 against `deepseek` at 0.185, and top-score ties down from 5 of 6 queries to 1 of 4.
+- **Phase 2, the decision that came with it.** The lex stage keeps the legacy scorer for now. Its documented contract is the absolute score scale and `lexStrong` is calibrated on exactly that. With BM25F behind it the LLM escalation gate fired **4 times where it must fire 0**, because `LEX_MATCH_MIN_TOP_SCORE = 5` cannot hold against scores near 0.5. That is the silent failure the plan named, observed rather than predicted. Phase 4 moves the scorer and the gate together.
+- **Phase 3 (core) — the recall harness.** It measures recall@K and MRR over a fixture set, the cross-source share of what actually loads, a seeds-only ablation arm, and the candidate window's source count. It calibrates field weights by grid search and returns **the whole surface**, because the plan's own measurement says the title weight is the difference between MRR 0.86 and 0.55 and that is only visible if the surface comes back. 18 tests, with two design errors pinned: `poolSources` counts the candidate window rather than the vault, since counting the vault hides the single-window case the limit is about; and the unattributed count is a pool property, matching the measured 25 % of a mixed-generation wiki that carries a `sources:` ref against 97 % of a fresh one.
+- **Merged while this work was in flight:** PR #786, the coordinated AI SDK v7 upgrade (`ai` 6.0.230 to 7.
+
+### Progress — #729 post-review steps (2026-10-09)
+
+An external review of the branch produced eight claims, all verified against production code. Measurements, the retracted claims and the full review are on [#819](https://github.com/GD4AI/obsidian-llm-wiki/pull/819#issuecomment-6078993662); the A/B results are on [its follow-up](https://github.com/GD4AI/obsidian-llm-wiki/pull/819#issuecomment-6084717577). Gate 1 at the end of this block: **4624 tests / 327 files**.
+
+- **Four correctness fixes in `segment` and the term index.** NFKC normalisation (NFD Hangul, full-width Latin and half-width katakana now match their canonical forms), code-point slicing (`𠮷野家` no longer emits an orphaned low surrogate as an index term), alias length normalisation (an alias hit scored 41% of a title hit against a declared 2:3, now ≈67%), and an unseen-word fallback through character trigrams so `networks` can match `Neural network` and German compounding and Russian inflection resolve at all. The fallback fires only when a query term has `df === 0`, so the exact path is untouched.
+- **A precision regression found while building the fallback, and its structural fix.** Short words turned noise into hits — `man` matched `Kahneman`, `kann` matched `Pekannüsse`. A word under five characters cannot fall back at all, which is the same reasoning the boundary-less path already uses. Short words still match exactly when they exist in the corpus.
+- **`PageRef.sourceSlug` now reaches production.** The wiki index line carries an optional `source: <slug>` marker. The assembly layer was a no-op in production until this: `read-index.ts` never set the field, so the earlier A/B figures came from a dev tool parsing frontmatter by hand. An empty `sources:` key yields no marker — "unknown" is not "unattributed".
+- **An adversarial fixture set that can tell the field weights apart.** The easy set let an inverted scorer score MRR 1.000, exactly like the default. HARD_ENTRIES are built so the target wins on title while a distractor wins on summary, and the acceptance criterion is asserted: the inverted scorer must lose. Measured **DEFAULT 0.833 vs INVERTED 0.472**, discriminating on 4 of 6 entries.
+- **The scorer has a switch back.** `legacyScorer`, a toggle on the bottom Advanced settings panel (not LLM Advanced — that section holds LLM sampling and provider overrides only), all 11 locales.
+- **A/B on `test10`, a 358-page vault at 95.5% attribution.** Distinct sources in the top-10 **5.33 → 8.50**, dominant share among attributed pages **37% → 14%**. Four corpora now show the assembly effect tracks attribution AND pool diversity together: `expB` 3.67→4.50, `test8` 3.00→3.50, `test10` 5.33→8.50, early `wiki/` 0.67→0.67.
+- **Budget sensitivity across four corpora.** At budget 5/10/20/50 — `expB` 4.33/4.50/4.50/4.50, `test8` 3.50/3.50/3.50/3.50, `test10` 5.00/**8.50**/9.67/10.17, `wiki/` 0.17/0.67/2.17/6.67. Small corpora saturate because the pool holds few matching sources in total. **The budget should not be lowered.**
+- **Still open:** calibrating the coverage penalty strength (`/(1+taken)` has no visible constant but its strength is set implicitly by the score scale — RRF compresses ranks 1-50 to 1.8x while the penalty is 2x), graph-based attribution with coverage measured first, and splitting the PR. The assembly layer does not merge before the penalty is calibrated.0.116), which completed tracking issue #764. Dependabot PRs #771 and #772 were closed as superseded by it.
 ### Changed
 
 - **Coordinated AI SDK v7 / provider-spec v4 upgrade (Issue #764).** `ai` 6.0.230 → 7.0.116 with matching `@ai-sdk/anthropic` 4.0.65, `@ai-sdk/openai` 4.0.78, and `@ai-sdk/openai-compatible` 3.0.57. The four packages move together so `LanguageModelV4` is assignable. Force-disable thinking still puts `reasoning_effort: 'none'` on the openai-compat wire. The plain-tier structured-output body still ships `additionalProperties: false` (v7's zod adapter now emits `{}`; the production path restores the closed contract). The plugin remains a CJS bundle; the package is not converted to ESM.
+
 
 ### Fixed
 
@@ -1164,3 +1187,72 @@ MINOR. Anchored at [#358](https://github.com/GD4AI/obsidian-llm-wiki/issues/358)
 ## [0.2.0–0.2.2] - Earlier Beta
 
 - Initial plugin development and concept validation.
+
+---
+
+## Historical records moved from ROADMAP (2026-10-12)
+
+ROADMAP holds unreleased plans and the decision queue; this file holds what has
+shipped. These three blocks describe work that completed and were sitting in the
+plan file past their time. Moved verbatim so nothing is lost and the plan file
+stays a plan.
+
+### Phase schedule (2026-09-16, status 2026-10-04)
+
+Dependency-ordered, not priority-ordered. **Phases 1 and 4 have shipped.** Phase 2 is now the head of the queue. It is the only thing standing between this track and a release.
+
+| Phase | Items | Status |
+|---|---|---|
+| **1 — decouple, take the cheap wins** | #669 zod 4 · #723 custom headers, OpenCode preset, Responses variant (also closed #735) · #603 + #662 design pass | ✅ **shipped in v1.28.0** |
+| **2 — #729 itself** | the six sub-phases in MEMORY §"Implementation plan". Sub-phase 0 (centralise the ceilings) ✅ done 2026-09-17, behaviour-identical. **Sub-phase 1 is the head of the queue.** | **not started — the direction is chosen (A); the measurement pass comes before any code** |
+| **3 — behaviour layer** | #664 together with #729's allocation · #677 (unblocked when #603 closed) · #668 after #729's toggle has a home | blocked by phase 2 |
+| **4 — independent features** | #608 + PR #687 ✅ shipped · #701 (needs its design decision first) · #755, #786 | ✅ shipped, except the three noted |
+
+**Two couplings found during the 2026-09-16 planning pass, still binding:**
+
+- **#729 ↔ #664.** #729 *adds* Related entries. #664 says those lists already grow ~2 per source
+  and are never pruned. Designed separately, one raises the ceiling while the other leaves the
+  floor open. The measurement that would catch it is Related length over a rebuild. That is exactly
+  the one each would blame the other for. **They ship together.**
+- **#729 ↔ #668.** #729 introduces a settings toggle that defaults on. #668 restructures the
+  settings tab. Land the toggle *after* #668's structure is settled, or it gets re-homed twice.
+  Per the Settings-panel scope rule it is bottom-Advanced-panel either way: content-generation
+  behaviour, not LLM sampling.
+
+**Open decisions for phase 2**: three, not four. Whether the projection runs at **write time** or **query time**. **Reserved vs additive** cross-source allocation, and where the toggle lands.
+The direction call was **decided on 2026-10-05 as A**. All are in #729's thread and in MEMORY §"Design record — cross-source relations".
+
+---
+
+### Community waves 1–3 — 2026-08-21/23 — ALL MERGED
+
+18 PRs from community and architect contributors, reviewed, approved and squash-merged across three waves. Their per-PR records are in [CHANGELOG §1.27.0](./CHANGELOG.md#1270---2026-08-27).
+The three tables that used to sit here were removed on 2026-10-04, for the same reason as the wave A–F tables above.
+**Two follow-ups from those review threads are still open**, and they are why this stub remains rather than disappearing. The **alias-floor unification** (#537 × #532): route
+`enforceFrontmatterConstraints` through `resolveMinAliasLength`, so every alias writer agrees on the floor. The **zh/ja candidate-gate measurement** (#521's debt): the `de`
+profile is the only one measured, and the zh/ja thresholds are unmeasured and need a Chinese vault.
+**Deferred at the time and still deferred:** **#503** (`userIgnoreFilters`). The decision is recorded as `vault.getConfig` behind a narrow typed interface.
+It is blocked on pinning Obsidian's ignore-matching semantics. It sits on the research milestone.
+
+---
+
+## v1.27.x PATCH cycle — SHIPPED 2026-09-06 as v1.27.1, and 2026-09-15 as v1.27.2
+
+**Triggered by:** v1.27.0 MINOR shipped 2026-08-27 (`3464cce`). PATCH backlog is the union of three sources: (a) v1.27.0 ship-day bugs from architect-level triage.
+(b) deferred items from v1.27.0 review threads. (c) post-MINOR new Issues filed by @DocTpoint, from 2026-08-28 onwards: the #567 / #568 / #605–#620 series.
+**Milestone note (2026-09-04, superseded 2026-10-04):** the `v1.27.0 MINOR` GitHub milestone is CLOSED (released 2026-08-27) and must not carry new work. Open
+PATCH/feature items used to live under `v1.27.x PATCH`. That milestone was closed on 2026-10-04, for the same reason: its window ended with v1.27.2. Its items moved to
+`v1.28.x PATCH` / `v1.29.0 MINOR`. See the milestone map above the decision queue.
+
+### Shipped into v1.27.x PATCH — waves A–F (2026-08-27 → 09-15)
+
+Six waves shipped across two PATCH releases, v1.27.1 (2026-09-06) and v1.27.2 (2026-09-15). **Their per-PR composition records live in [CHANGELOG §1.27.1](./CHANGELOG.md#1271---2026-09-06)
+and [§1.27.2](./CHANGELOG.md#1272---2026-09-15).** The six wave tables are gone. They held 17 PRs in wave E alone, the whole community-wave inventory, and the Tier-0
+merge order. They were fully shipped, and they were removed on 2026-10-04 rather than carried forward. A shipped backlog is not a plan. This file keeps only what still
+changes a planning decision.
+
+**Two facts from those waves are still binding**, and neither is in the CHANGELOG:
+
+- **#703 does not block a release.** No fix PR exists to wait for. No destructive effect is known, and excluding the file works around it. It ships as a Release Notes Known Issue.
+- **Process debt, unfixed:** a push-triggered CI failure on `main` has no PR page to carry a red mark. So a regression can sit red for commits nobody reads. #698 bought
+the coverage, not the visibility. Candidate fix: a CI-failure notification path, or a per-session `gh run list --branch main` check.
