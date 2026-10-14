@@ -42,6 +42,7 @@ import { SuggestSaveModal } from './SuggestSaveModal-class';
 import { InternalView } from './state';
 
 import { readWikiIndex, withBodies } from './pipeline/read-index';
+import { TermIndexCache } from '../../core/term-index-cache';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
@@ -91,6 +92,14 @@ export class QueryView extends ItemView {
   private _sectionLabels: ReturnType<typeof getSectionLabels> | null = null;
   /** Last PPR cascade result — for displaying retrieval source in the response UI. */
   private _lastRetrieval: RetrievalLabelData | null = null;
+  /**
+   * Term tables keyed on the wiki index file. Building them per query was 4.4 s
+   * against 21 ms to score from a prebuilt one on 2,864 pages — the scoring was
+   * never slow, rebuilding the same table once per question was. Lives here
+   * because QueryView is what reads the index on every query and can see when
+   * it has not changed.
+   */
+  private readonly termIndexCache = new TermIndexCache();
   private _turnIndicator: HTMLElement | null = null;
   private _turnObserver: IntersectionObserver | null = null;
   /**
@@ -1128,6 +1137,10 @@ export class QueryView extends ItemView {
 
       // Phase 2: PPR cascade + optional LLM seed augmentation.
       // delegate returns { matches, armLabel, llmAugmented }
+      //
+      // `termIndex` carries a cache keyed on the index file. Building the term
+      // table per query was 4.4 s against 21 ms to score from a prebuilt one on
+      // 2,864 pages; a session that reads the same index now builds once.
       const seedResult = await selectPprSeeds(
         userMessage,
         retrievalRefs,
@@ -1136,6 +1149,7 @@ export class QueryView extends ItemView {
         this.plugin.settings,
         texts as unknown as Record<string, string>,
         onProgress,
+        { cache: this.termIndexCache, indexContent: indexResult.indexContent },
       );
 
       // Write back _lastRetrieval for retrieval label UI
