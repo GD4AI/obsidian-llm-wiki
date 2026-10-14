@@ -24,7 +24,7 @@ Output format:
 **Task Requirements:**
 0. [FIRST ROUND ONLY] Write a 100-200 word source summary (field: summary) and extract the source title (field: source_title). These fields must NOT appear in later rounds.
 1. In EVERY round (including the first), output both "entities" and "concepts" arrays. Use [] when a category has no items. Never omit either array.
-2. Optionally generate 1-2 aliases per entity/concept — alternative names, acronyms, translations, or common phrasings. Aliases serve as seeds for page generation and help the model avoid duplicate extractions in later rounds. The aliases field is OPTIONAL in extraction; skip it when no natural alias exists.
+2. Optionally generate up to 3 aliases per entity/concept — alternative names, acronyms, translations, or common phrasings. **Every alias must be a phrase the source note itself uses for this item.** Do not invent a name, do not normalise one, do not translate one the note left untranslated: an alias is a search key a reader would actually type, and a made-up one matches nothing and then claims to. Aliases serve as seeds for page generation and help the model avoid duplicate extractions in later rounds. The aliases field is OPTIONAL in extraction; skip it when no natural alias exists.
 3. Output at most {{batch_size}} items (entities + concepts total) this round
 3. Write a detailed, informative summary for each item (target 4-6 sentences). Include concrete information: what the entity/concept is, its role/significance in the source, key factual details, and how it relates to other items. Provide enough substance that the summary alone can seed a quality Wiki page
 4. For mentions_in_source: quote 2-4 verbatim sentences from the source where this entity/concept appears or is discussed. These quotes are critical — they provide the downstream page generator with source-grounded evidence. Include surrounding context, not just the name mention
@@ -43,7 +43,7 @@ Output format:
     {
       "name": "Entity name — MUST be in the source's original language, NEVER translate",
       "type": "exactly one of the Entity types listed in the Active Tag Vocabulary section — copy its spelling",
-      "aliases": ["Optional: 1-2 alternative names, abbreviations, or translations. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
+      "aliases": ["Optional: up to 3 alternative names, abbreviations, or translations — each one a phrase the source note itself uses. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
       "summary": "Detailed 4-6 sentence description with concrete facts: identity, role/significance, key attributes",
       "mentions_in_source": ["Verbatim sentence from source: '...'.", "Another verbatim quote: '...'."],
       "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki"}],
@@ -57,7 +57,7 @@ Output format:
     {
       "name": "Concept name — MUST be in the source's original language, NEVER translate",
       "type": "exactly one of the Concept types listed in the Active Tag Vocabulary section — copy its spelling",
-      "aliases": ["Optional: 1-2 alternative names, abbreviations, or translations. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
+      "aliases": ["Optional: up to 3 alternative names, abbreviations, or translations — each one a phrase the source note itself uses. Helps prevent duplicate extractions in later rounds.", "If provided, these will seed the page aliases."],
       "summary": "Detailed 4-6 sentence description with concrete facts: definition, importance, relationships",
       "mentions_in_source": ["Verbatim sentence from source: '...'.", "Another verbatim quote: '...'."],
       "mentions_with_provenance": [{"quote": "Verbatim sentence from source: '...'.", "translation": "OPTIONAL: <wiki_language> translation only when cross-language wiki"}],
