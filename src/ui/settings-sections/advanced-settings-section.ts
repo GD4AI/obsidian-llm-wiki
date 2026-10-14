@@ -134,6 +134,15 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
       .setValue(tempSettings.saveEmbeddedImageEvidence === true)
       .onChange((value) => { tempSettings.saveEmbeddedImageEvidence = value; }));
 
+  // Query scorer policy. Bottom panel because it is a retrieval-behaviour
+  // choice, not an LLM sampling parameter. #819 step 7.
+  new Setting(containerEl)
+    .setName(tab.getText('legacyScorerName'))
+    .setDesc(tab.getText('legacyScorerDesc'))
+    .addToggle(toggle => toggle
+      .setValue(tempSettings.legacyScorer === true)
+      .onChange((value) => { tempSettings.legacyScorer = value; }));
+
   // Slug Case (filename casing for generated wiki pages). Moved here from
   // Wiki Configuration in v1.26.0 — a one-time naming-policy choice.
   new Setting(containerEl)
