@@ -173,6 +173,17 @@ main (protected) ────► tag → release
 - **Mandatory pre-merge workflow:** (1) The user must say "merge it" / “合并” before `gh pr merge`, cherry-pick or PR-creation.
   (2) `/review` runs on the PR diff. It is the `pi-review` extension; `review` is the command it registers, and it carries the modes the old pair needed separately.
   (3) Report findings as `file:line + concrete issue + suggested fix`, and do NOT modify the PR. (5) Wait for approval before any destructive action.
+- **Bypass merges are for three cases only.** `rulesets/16884813` bypass is permitted when the PR is EXPLICITLY AUTHORISED by name, or the user has said "merge it" for that specific PR, or the change is DOCUMENTATION ONLY. Everything else — including work produced in the same session, including work the user asked to be BUILT — needs its own approval before it merges. Asking to build a thing is not asking to ship a thing. Caught 2026-10-14: a term-index cache the user asked for inside a "do P0/P1/P2" instruction was built and merged in one motion, and only the review afterwards found it went stale on body edits. Held for approval, the defect would have been caught before it reached main.
+- **Approval is not the last gate — it is the first.** After the user approves and before `gh pr merge`, the change must pass an audit in four dimensions. Any FAIL blocks the merge and goes back to the user.
+
+  | Gate | Question | Evidence |
+  |------|----------|----------|
+  | **1. Gate 1** | lint 0 / tsc 0 / build clean / tests all pass / css-lint 0 | the five-command run, build BEFORE test |
+  | **2. Side effects** | call-site audit, data flow, state mutation, error propagation | 3-5 sentences, per §Gate 2 |
+  | **3. Breaking changes** | API signature, settings schema, file format, default behaviour, command IDs, Obsidian API | "none detected" or a migration plan, per §Gate 3 |
+  | **4. Performance** | CPU / memory / IO / network / token | the Gate 4 table with measured numbers, per §Gate 4 |
+
+  A PR that passes Gate 1 alone is NOT mergeable. Gate 1 checks that the code compiles and its tests pass; it says nothing about whether a cache goes stale, whether a caller now receives the wrong table, or whether a hot path got slower. The 2026-10-14 case passed Gate 1 with 4707 tests and still shipped a stale-index defect that only a side-effect audit found.
 - **Anti-patterns:** "the PR is small, let me cherry-pick to local main first while we discuss" violates the workflow and creates commits ahead of approval.
   "Gate 1 passes, so I can `git push` + `gh pr create` immediately" skips the E2E handoff — see the #456 incident above.
 
