@@ -48,6 +48,7 @@ import {
 } from '../../../core/ppr-cascade';
 import type { Graph } from '../../../core/build-graph';
 import { selectSeedsWithLLM, type SeedLLMClient, type SeedSelectorSettings } from './seed-selector';
+import type { TermIndexCache } from '../../../core/term-index-cache';
 import { generateQueryKeywords } from './query-keywords';
 import {
   RETRIEVAL_BUDGET,
@@ -95,6 +96,7 @@ export async function selectPprSeeds(
   settings: SeedSelectorSettings,
   texts: Record<string, string>,
   onProgress?: (phase: string) => void,
+  termIndex?: { cache: TermIndexCache; indexContent: string },
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
@@ -103,10 +105,18 @@ export async function selectPprSeeds(
   // === Stage 1: lex match against title + aliases (NO summary) ===
   // One corpus table per query, shared by the lex scoring and the coverage
   // gate. Building it twice was the performance trap this layer has.
-  const nameTierTerms = pageRefs.map(p => buildPageTerms({
-    title: p.title, aliases: p.aliases, summary: '', text: '',
-  }));
-  const corpusTerms = buildCorpusTerms(nameTierTerms);
+  //
+  // Building it on every QUERY was the bigger one: 4.4 s per rebuild against
+  // 21 ms to score from a prebuilt index on 2,864 pages. `termIndex` carries a
+  // cache keyed on the wiki index file, so a session that reads the same index
+  // builds once. A caller that omits it keeps the old behaviour.
+  const nameTier = termIndex ? termIndex.cache.getNameTier(termIndex.indexContent, pageRefs) : null;
+  const nameTierTerms = nameTier
+    ? nameTier.pageTerms
+    : pageRefs.map(p => buildPageTerms({
+        title: p.title, aliases: p.aliases, summary: '', text: '',
+      }));
+  const corpusTerms = nameTier ? nameTier.corpus : buildCorpusTerms(nameTierTerms);
   const lexHits = lexMatchByTitleAndAliases(query, pageRefs, {
     corpus: corpusTerms,
     ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
