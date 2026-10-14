@@ -63,6 +63,11 @@ export class GraphCache {
    *  the #729 plan measures. Building it per caller was O(V*E) in the worst
    *  case and O(E) per call in the common one. */
   private _cachedReverse: Map<string, string[]> | null = null;
+  /** Page bodies from the last load, keyed by path. The answer path's lexical
+   *  channel reads `PageRef.text` and nothing else was holding the prose: the
+   *  index carries a summary line and `buildGraphFromContent` consumes the
+   *  content and discards it. Dropped on every `invalidate`. */
+  private _cachedBodies: Map<string, string> | null = null;
 
   constructor(opts: GraphCacheOptions) {
     this.wikiFolder = opts.wikiFolder;
@@ -90,7 +95,16 @@ export class GraphCache {
     this._cachedGraph = graph;
     this._cachedGraphAllPaths = new Set(allPaths);
     this._cachedReverse = buildReverseAdjacency(graph);
+    this._cachedBodies = new Map(loadedPages.map(p => [p.path, p.content]));
     return graph;
+  }
+
+  /**
+   * Page bodies from the last load, keyed by path. Empty before the first
+   * `getOrBuild`. The map is a fresh instance per build; callers may hold it.
+   */
+  getPageBodies(): ReadonlyMap<string, string> {
+    return this._cachedBodies ?? new Map();
   }
 
   /**
@@ -113,6 +127,7 @@ export class GraphCache {
     this._cachedGraph = null;
     this._cachedGraphAllPaths = null;
     this._cachedReverse = null;
+    this._cachedBodies = null;
     console.debug('[GraphCache] invalidated');
   }
 

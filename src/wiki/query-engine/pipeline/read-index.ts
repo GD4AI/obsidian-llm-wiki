@@ -48,3 +48,26 @@ export async function readWikiIndex(
   const allPaths = new Set(allPages.map(p => p.path));
   return { indexContent, pageRefs, allPaths };
 }
+
+/**
+ * Return NEW refs with `text` set from the cached bodies. Pure: the caller's
+ * refs are never mutated.
+ *
+ * Why this exists: the answer path's lexical channel reads `PageRef.text` and
+ * nothing was supplying it. The wiki index carries a summary line and no prose;
+ * the prose is loaded by the graph cache to build the graph and then discarded.
+ * A caller that skips this loses the body lever, not the ranking.
+ *
+ * Purity matters because the same ref array goes to `selectPprSeeds` AND to the
+ * page-summary hint, which expects one line per page. Mutating in place would
+ * leak full page bodies into that prompt.
+ */
+export function withBodies(
+  pageRefs: readonly PageRef[],
+  bodies: ReadonlyMap<string, string>,
+): PageRef[] {
+  return pageRefs.map(p => {
+    const text = bodies.get(p.path);
+    return text === undefined ? p : { ...p, text };
+  });
+}
