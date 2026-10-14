@@ -24,6 +24,7 @@
  */
 
 import { buildGraphFromContent, type Graph } from '../../core/build-graph';
+import { buildReverseAdjacency } from '../../core/monte-carlo-ppr';
 
 /** True iff two sets contain exactly the same strings (order-independent). */
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
@@ -57,6 +58,16 @@ export class GraphCache {
 
   private _cachedGraph: Graph | null = null;
   private _cachedGraphAllPaths: Set<string> | null = null;
+  /** Reverse adjacency, built once with the graph and shared by every pass
+   *  that needs to walk backwards — the maturity check, and the reverse walk
+   *  the #729 plan measures. Building it per caller was O(V*E) in the worst
+   *  case and O(E) per call in the common one. */
+  private _cachedReverse: Map<string, string[]> | null = null;
+  /** Page bodies from the last load, keyed by path. The answer path's lexical
+   *  channel reads `PageRef.text` and nothing else was holding the prose: the
+   *  index carries a summary line and `buildGraphFromContent` consumes the
+   *  content and discards it. Dropped on every `invalidate`. */
+  private _cachedBodies: Map<string, string> | null = null;
 
   constructor(opts: GraphCacheOptions) {
     this.wikiFolder = opts.wikiFolder;
@@ -83,7 +94,29 @@ export class GraphCache {
     const graph = buildGraphFromContent(loadedPages, allPaths, this.wikiFolder);
     this._cachedGraph = graph;
     this._cachedGraphAllPaths = new Set(allPaths);
+    this._cachedReverse = buildReverseAdjacency(graph);
+    this._cachedBodies = new Map(loadedPages.map(p => [p.path, p.content]));
     return graph;
+  }
+
+  /**
+   * Page bodies from the last load, keyed by path. Empty before the first
+   * `getOrBuild`. The map is a fresh instance per build; callers may hold it.
+   */
+  getPageBodies(): ReadonlyMap<string, string> {
+    return this._cachedBodies ?? new Map();
+  }
+
+  /**
+   * Reverse adjacency for the cached graph. Builds the graph if needed.
+   *
+   * Returns the SAME map instance across calls while the graph is unchanged, so
+   * a caller can hold it. That is the point of putting it here rather than
+   * building it where it is used.
+   */
+  async getReverseAdjacency(allPaths: Set<string>): Promise<ReadonlyMap<string, string[]>> {
+    await this.getOrBuild(allPaths);
+    return this._cachedReverse ?? new Map<string, string[]>();
   }
 
   /**
@@ -93,6 +126,8 @@ export class GraphCache {
   invalidate(): void {
     this._cachedGraph = null;
     this._cachedGraphAllPaths = null;
+    this._cachedReverse = null;
+    this._cachedBodies = null;
     console.debug('[GraphCache] invalidated');
   }
 

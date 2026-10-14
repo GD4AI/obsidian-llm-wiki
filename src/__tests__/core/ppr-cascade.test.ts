@@ -42,6 +42,30 @@ function graph(edges: Array<[string, string[]]>): Graph {
   };
 }
 
+describe('pprCascade — max fusion keeps a page one channel likes (#819)', () => {
+  it('a page ppr finds and lex misses survives the merge', () => {
+    // The defect the fusion change fixes. lex ranks the answer far down because
+    // it shares no vocabulary with the query. ppr walks to it from a seed. Under
+    // RRF the sum dragged it below pages both channels mildly liked.
+    const pages = [
+      page('seed', 'alpha beta'),
+      page('answer', 'ganz andere worte hier'),
+      page('noise1', 'alpha gamma'),
+      page('noise2', 'alpha delta'),
+    ];
+    const g = graph([
+      ['seed', ['answer']],
+      ['answer', []],
+      ['noise1', []],
+      ['noise2', []],
+    ]);
+    const result = pprCascade('alpha beta', pages, { graph: g, minPages: 2, rng: makeRng(1), topN: 3 });
+    const paths = result.map(m => m.page.path);
+    // The answer is reachable only through the graph. It must be in the result.
+    expect(paths).toContain('answer');
+  });
+});
+
 describe('pprCascade — empty / sparse graphs (lex arm)', () => {
   it('returns empty array for empty query', () => {
     expect(pprCascade('', [])).toEqual([]);

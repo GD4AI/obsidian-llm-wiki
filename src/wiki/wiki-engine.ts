@@ -575,6 +575,16 @@ export class WikiEngine {
   }
 
   /**
+   * Page bodies from the graph cache's last load, keyed by path. The answer
+   * path's lexical channel reads `PageRef.text`; the prose is loaded here to
+   * build the graph and would otherwise be discarded. Empty before the first
+   * `getOrBuildGraph`.
+   */
+  getPageBodies(): ReadonlyMap<string, string> {
+    return this.graphCache.getPageBodies();
+  }
+
+  /**
    * Pre-ingest requirements gate (#164). Hard rejects: empty/whitespace/
    * frontmatter-only body, and incompatible file type. Uniqueness: content-hash
    * duplicates (within the batch and already in the wiki). Returns the first

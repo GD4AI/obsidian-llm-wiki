@@ -41,7 +41,7 @@ import { renderRetrievalLabel } from './renderers/retrieval-label';
 import { SuggestSaveModal } from './SuggestSaveModal-class';
 import { InternalView } from './state';
 
-import { readWikiIndex } from './pipeline/read-index';
+import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
@@ -1116,11 +1116,21 @@ export class QueryView extends ItemView {
       // across QueryView leaves and invalidated on vault writes.
       const graph = await this.plugin.wikiEngine.getOrBuildGraph(indexResult.allPaths);
 
+      // B-1 second half: the answer path's lexical channel reads
+      // `PageRef.text`, and the prose lives in the graph cache — the index has a
+      // summary line and no body. Enrich for the retrieval call ONLY: the
+      // page-summary hint below wants one line per page and must not receive
+      // full bodies.
+      const retrievalRefs = withBodies(
+        indexResult.pageRefs,
+        this.plugin.wikiEngine.getPageBodies(),
+      );
+
       // Phase 2: PPR cascade + optional LLM seed augmentation.
       // delegate returns { matches, armLabel, llmAugmented }
       const seedResult = await selectPprSeeds(
         userMessage,
-        indexResult.pageRefs,
+        retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],
         this.plugin.settings,

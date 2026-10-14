@@ -783,21 +783,18 @@ export const LINT_DEDUP_PROMPT_CHAR_BUDGET = 7000;
 // ============================================================================
 
 /**
- * Default number of pages PPR returns for Query Wiki context assembly.
- *
- * v1.24.1 PATCH Phase 5.5.0: raised from 5 → 10 per user direction. With
- * only 5 pages the `5 pages · PPR` chip loses meaning on large vaults
- * (2137 nodes easily surface >5 relevant pages via PPR graph walk).
- * 10 strikes a balance — fuller context without blowing the typical
- * model's prompt window. Token overflow is handled by Phase 5.4's
- * graceful overflow fallback (auto-shrink + retry).
- *
  * Adaptive top-N (select-seeds.ts) computes the effective top-N as:
- *   effective = min(DEFAULT_QUERY_TOP_N_PAGES, totalPageRefs)
- * then clamped by MAX_QUERY_TOP_N_PAGES below. A small wiki (e.g.
- * 12 pages) returns all 12; a large wiki (2137 pages) returns 10.
+ *   effective = min(RETRIEVAL_BUDGET, totalPageRefs)
+ * A small wiki (e.g. 12 pages) returns all 12; a large wiki (2137 pages)
+ * returns the budget.
+ *
+ * `DEFAULT_QUERY_TOP_N_PAGES` used to hold 10 here while `RETRIEVAL_BUDGET`
+ * held 20 and every recall measurement assumed 20 — the one production caller
+ * passed 10 explicitly and the budget curve never happened. One constant now,
+ * at the calibrated value. This doubles the pages a reader receives against the
+ * old behaviour: a deliberate token-for-recall trade (0.577 -> 0.819 on the
+ * measured budget curve), not a free improvement.
  */
-export const DEFAULT_QUERY_TOP_N_PAGES = 10;
 
 /**
  * Hard cap on top-N regardless of wiki size. Defends against runaway
@@ -920,3 +917,53 @@ export const MIN_ALIAS_LENGTH_MAX = 6;
 // this is about what the resolver may infer, and a short alias a user did set
 // still resolves deterministically.
 export const MIN_DEDUP_NAME_LENGTH = 3;
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Retrieval hyper-parameters. Every knob that decides which pages a reader gets
+// for a query lives here, so a calibration touches one file instead of five.
+// Values marked MEASURED were set against the ground-truth evaluation set on two
+// vaults (test10, 358 pages; test8, 177 pages). Changing them requires
+// re-measuring on both — tuning on one vault alone overfits.
+// ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Assembly budget: how many pages the reader receives. MEASURED against bridge
+ * recall@K on test10 — 5 -> 0.311, 10 -> 0.577, 20 -> 0.819, 30 -> 0.890,
+ * 50 -> 0.950. Self recall stays 1.000 at every value.
+ *
+ * This is THE dominant lever on the recall side and it is a context-cost trade,
+ * not a ranking improvement: the answer is usually already in the ranked list,
+ * just below the cut. Raising this costs the reader tokens.
+ */
+export const RETRIEVAL_BUDGET = 20;
+
+/** Monte-Carlo walks per seed. MEASURED flat across 500 / 3000 / 10000. */
+export const PPR_NUM_WALKS = 3000;
+
+/**
+ * Steps per walk. MEASURED with damping on both vaults: bridge +8% (test10) and
+ * +11% (test8) at 10 steps versus the earlier 50. Self recall@10 stays 1.000;
+ * self MRR drops 0.045 and 0.102, which is a reordering not a failure.
+ */
+export const PPR_MAX_STEPS = 10;
+
+/**
+ * Teleport probability back to the seed. MEASURED with maxSteps: higher damping
+ * keeps the walk in the seed's own neighbourhood, which is what the bridge case
+ * needs. 0.30 over the earlier 0.05.
+ */
+export const PPR_DAMPING = 0.30;
+
+/**
+ * Diversity weight in the coverage step. Kept at 0. Under production RRF scores
+ * any value above zero cost 25-55% of the co-citation recall, and the proxy
+ * partly rewards 0 by construction so this is a conservative landing rather
+ * than a proven win. Re-calibrate through `rrfFuse` before any change.
+ */
+export const COVERAGE_LAMBDA = 0;
+
+/** Graph-maturity gate the PPR arms require before they run at all. */
+export const PPR_MIN_PAGES = 30;
+export const PPR_MIN_EDGES = 30;
+export const PPR_MIN_EDGE_DENSITY = 1.0;
+export const PPR_SEED_MIN_DEGREE = 1;

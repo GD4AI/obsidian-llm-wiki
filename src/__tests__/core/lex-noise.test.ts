@@ -138,26 +138,30 @@ describe('mergeWithPPR — PPR mass ranks, the lex hint only orders the rest', (
     return { pages, g };
   }
 
-  it('explicit seeds and their neighbourhood come before unreached lex hits', () => {
+  it('a paid seed comes first; the neighbourhood competes on score', () => {
     const { pages, g } = fixture();
     const result = pprCascade('alphafold', pages, {
       graph: g, seeds: ['R0'], rng: makeRng(1),
     });
     expect(result[0].page.path).toBe('R0');
     expect(result[0].arm).toBe('graph-first-ppr');
-    // The seed's out-neighbours carry PPR mass; the lex-only pages do not.
-    const ringFirst = result.findIndex(m => m.page.path.startsWith('N'));
-    const lastRing = result.map(m => m.page.path.startsWith('R')).lastIndexOf(true);
-    expect(ringFirst === -1 || ringFirst > lastRing).toBe(true);
   });
 
-  it('pages PPR never reached are still ordered by lex rank, below all reached pages', () => {
+  it('pages PPR never reached compete on score and keep their lex order', () => {
     const { pages, g } = fixture();
     const result = pprCascade('alphafold', pages, {
       graph: g, seeds: ['R0'], topN: 60, rng: makeRng(1),
     });
-    const scores = result.map(m => m.score);
-    for (let i = 1; i < scores.length; i++) expect(scores[i - 1]).toBeGreaterThanOrEqual(scores[i]);
+    // This used to assert that every PPR-reached page comes BEFORE every page
+    // PPR never reached. That was the bug DocTpoint found: the band put the
+    // whole neighbourhood in tier 0, and on a 2,829-page vault the walks reach
+       // 1,925 pages per query, so with a budget of 10 the lex-only tier was
+    // served 0.00 times. A lexical match PPR could not reach was never
+    // returned however well it matched — orphans, new pages, stubs.
+    //
+    // What must hold instead: the PAID SEED is served (covered by the test
+    // above), and unreached pages keep their lex order among themselves. They
+    // now compete with the neighbourhood on score rather than being locked out.
     const nPaths = result.filter(m => m.page.path.startsWith('N')).map(m => m.page.path);
     expect(nPaths.length).toBe(12);
     expect(nPaths[0]).toBe('N0');
