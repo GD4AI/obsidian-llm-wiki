@@ -160,9 +160,15 @@ export class QueryView extends ItemView {
    */
   public invalidateGraph(): void {
     this.plugin.wikiEngine.invalidateGraph();
+    // The term index is keyed on the wiki index FILE, but the full index also
+    // holds body terms and the bodies come from the graph cache. A vault write
+    // that changes a body without changing `index.md` would otherwise keep
+    // serving an index built from the old prose — retrieval would rank on words
+    // a page no longer has. Same lifecycle as the graph: drop both.
+    this.termIndexCache.invalidate();
     const self = this as unknown as InternalView;
     self._lastRetrieval = null;
-    console.debug('[QueryView] engine graph + last retrieval invalidated');
+    console.debug('[QueryView] engine graph + term index + last retrieval invalidated');
   }
 
   async onOpen() {

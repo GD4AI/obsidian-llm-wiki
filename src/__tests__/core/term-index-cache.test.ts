@@ -82,4 +82,34 @@ describe('term index cache — build once, score many', () => {
     cache.getNameTier('idx-v1', refs);
     expect(cache.getFull('idx-v1', refs)).toBe(cache.getFull('idx-v1', refs));
   });
+
+  it('a body change rebuilds — the key covers the bodies, not just the index file', () => {
+    // THE STALE-INDEX BUG. The cache is keyed on the wiki index file, but the
+    // full index also carries body terms and the bodies come from the graph
+    // cache, not from `index.md`. `QueryView.invalidateGraph` runs on lint, not
+    // on every vault write, so it cannot be the only guard: a prose edit that
+    // leaves `index.md` alone must still rebuild.
+    //
+    // The key is therefore a content signature over the index file AND the
+    // bodies. `invalidate()` still exists for callers that want to force a
+    // rebuild, but correctness does not depend on remembering to call it.
+    const cache = new TermIndexCache();
+
+    const before = cache.getFull('idx-v1', [ref('x', 'alpha')]);
+    const after = cache.getFull('idx-v1', [ref('x', 'omega')]);
+
+    expect(after).not.toBe(before);
+    expect(after.pageTerms[0].fields.text.tf.has('omega')).toBe(true);
+    expect(after.pageTerms[0].fields.text.tf.has('alpha')).toBe(false);
+  });
+
+  it('invalidate() still forces a rebuild on an unchanged signature', () => {
+    const cache = new TermIndexCache();
+    const refs = [ref('x', 'same body')];
+
+    const first = cache.getFull('idx-v1', refs);
+    cache.invalidate();
+
+    expect(cache.getFull('idx-v1', refs)).not.toBe(first);
+  });
 });
