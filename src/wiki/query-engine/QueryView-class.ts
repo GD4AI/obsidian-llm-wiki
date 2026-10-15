@@ -1250,7 +1250,13 @@ export class QueryView extends ItemView {
       // return 10/20 pages via the adaptive top-N. Show every match
       // so the log + UI reflect the same list.
       console.debug(`[Step 2]   paths:`, seedResult.matches.map(m => `${m.page.path} (${m.arm}, score=${m.score.toFixed(3)})`));
-      console.debug(`[Step 2]   query tokens:`, userMessage.toLowerCase().split(/\s+/).filter(k => k.length > 0));
+      // Print the query the RETRIEVAL actually scores, not the message the
+      // user typed. The two differ whenever the conversation is in play: a
+      // follow-up like "为什么？" is one string to the user and a much longer
+      // one to the scorer. Printing the typed message made a working fix look
+      // broken — the user saw one token where the scorer saw the whole turn.
+      console.debug(`[Step 2]   query tokens:`, retrievalQuery.toLowerCase().split(/\s+/).filter(k => k.length > 0));
+      console.debug(`[Step 2]   history turns in query: ${this.history.messages.filter(m => m.role === 'user').length}`);
       console.debug(`[Step 2]   graph state: ${graph ? `${graph.nodes.length} nodes / ${graph.edges.size} edges` : 'none'}`);
       console.debug(`[Step 2]   LLM augmentation: ${seedResult.llmAugmented ? 'triggered' : 'skipped (fast path sufficient)'}`);
 
