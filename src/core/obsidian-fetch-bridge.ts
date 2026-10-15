@@ -255,9 +255,40 @@ export async function streamingObsidianFetch(
  * means a host that later starts answering preflights is picked up again after
  * a reload, with no list to maintain.
  *
- * Session-scoped: cleared on reload, and by `__resetCorsMemory()` in tests.
+ * Persisted across reloads in `localStorage`, so the CORS error is paid once
+ * per origin rather than once per session. Measured 2026-10-15 against a
+ * MiniMax custom-Anthropic endpoint: the browser printed the same preflight
+ * rejection at every query while the answer arrived normally through the
+ * fallback below. A line that reads as a failure and appears forever is noise
+ * the user cannot act on.
+ *
+ * Session-scoped in tests: cleared by `__resetCorsMemory()`.
  */
 const corsBlockedOrigins = new Set<string>();
+
+const CORS_MEMORY_KEY = 'karpathywiki.corsBlockedOrigins';
+
+function loadCorsMemory(): void {
+  try {
+    const raw = window.localStorage?.getItem(CORS_MEMORY_KEY);
+    if (!raw) return;
+    for (const o of JSON.parse(raw) as unknown[]) {
+      if (typeof o === 'string') corsBlockedOrigins.add(o);
+    }
+  } catch {
+    // No storage, or unreadable: the first call pays the CORS error again.
+  }
+}
+
+function saveCorsMemory(): void {
+  try {
+    window.localStorage?.setItem(CORS_MEMORY_KEY, JSON.stringify([...corsBlockedOrigins]));
+  } catch {
+    // Quota or unavailable: memory stays session-scoped.
+  }
+}
+
+loadCorsMemory();
 
 /**
  * Origins where the desktop `node:https` transport has already failed this
@@ -297,6 +328,11 @@ function originOf(url: string): string {
 export function __resetCorsMemory(): void {
   corsBlockedOrigins.clear();
   nodeTransportBlockedOrigins.clear();
+  try {
+    window.localStorage?.removeItem(CORS_MEMORY_KEY);
+  } catch {
+    // No storage: nothing to forget.
+  }
 }
 
 /**
@@ -360,9 +396,15 @@ export async function streamWithFallback(
     if (err instanceof TypeError) {
       const firstTime = !corsBlockedOrigins.has(origin);
       corsBlockedOrigins.add(origin);
+      if (firstTime) saveCorsMemory();
       if (firstTime) {
+        // Kept on `console.warn`: `console.debug` is stripped from shipped
+        // builds (esbuild.config.mjs), so this is the only line that explains
+        // the browser's own CORS error to a user. The noise problem is solved
+        // upstream — the record is persisted, so the gamble is paid once per
+        // origin, not once per session.
         console.warn(
-          `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; falling back for the rest of this session.`
+          `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; using the desktop transport from now on.`
         );
       }
       return viaFallbackTransport(url, init, origin);

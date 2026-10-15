@@ -15,7 +15,7 @@
 //   - CORS / network error → throws TypeError (caller falls back)
 //   - isLocalBaseURL: localhost / 127. / RFC 1918 private IPs
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { requestUrl } from 'obsidian';
 import {
   obsidianFetchBridge,
@@ -720,5 +720,41 @@ describe('streamWithFallback (CORS memory — #741)', () => {
     await streamWithFallback('not-a-url', { method: 'POST' });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+describe('CORS memory survives a reload', () => {
+  const URL = 'https://opencode.ai/zen/go/v1/chat/completions';
+  const KEY = 'karpathywiki.corsBlockedOrigins';
+  let store: Record<string, string>;
+
+  beforeEach(() => {
+    store = {};
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      removeItem: (k: string) => { delete store[k]; },
+    });
+    __resetCorsMemory();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('writes the blocked origin so the next session skips the gamble', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await streamWithFallback(URL, { method: 'POST' });
+    expect(store[KEY]).toBeTruthy();
+    expect(JSON.parse(store[KEY])).toContain('https://opencode.ai');
+  });
+
+  it('restores the memory on load so a fresh session does not repeat the CORS error', async () => {
+    store[KEY] = JSON.stringify(['https://opencode.ai']);
+    vi.resetModules();
+    const mod = await import('../../core/obsidian-fetch-bridge');
+    const fetchSpy = vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    await mod.streamWithFallback(URL, { method: 'POST' });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
