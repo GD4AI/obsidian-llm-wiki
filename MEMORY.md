@@ -27,7 +27,19 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state (2026-10-12)
+## Current state (2026-10-14)
+
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). Nothing since is released; the merges below are unreleased work on `main`.
+
+**The #729 read-side track merged on 2026-10-14**, one day, six PRs. #837 read-side core + tools, #841 write-side shaping + hub-link distinctiveness, #842 the `legacyScorer` switch in 11 locales, #840 the docs, #843 a term-index cache, #844 its staleness fix. Gate 1 across the merge: 4709 tests / 334 files. What the merge bought, on the strict layer (pairs sharing under a third of their terms, different sources, truth edge removed): 0.45-0.48 at r@10 on test8 and 0.32-0.36 on test10, up from 0.000 for a lexical channel without the body. `self recall@10` is 1.000 in every arm on both vaults.
+
+**The write-side track is what remains.** The read side consumes signals the corpus carries; where two pages share no link and no wording it has nothing to work with. That is unchanged by the merge and it is a write-side problem.
+
+**Three numbers worth keeping beside the code.** The body is the only lexical lever that crosses a real vocabulary gap — `lexMatch` scores 0.021 at r@20 without one and 0.667 with one on test8. BM25F's length normaliser was damping it: turning that off for `text` moved recall 0.385 -> 0.456 and 0.271 -> 0.356, and with the fix BM25F now matches or beats the production substring scorer. And the LLM seed stage is worth about +0.03 weighted over the strict layer — measured +0.125 at r@20 on the 24-33 % of strict questions that trigger it — by translating the asker's phrasing into the target's name-tier words.
+
+**A process rule changed on the same day, because the same day proved it.** Bypass merges are for three cases only — explicitly authorised by name, "merge it" for that specific PR, or documentation only — and approval is the FIRST gate, not the last: Gate 1, side effects, breaking changes and performance must all pass before `gh pr merge`. A term-index cache passed Gate 1 with 4707 tests and shipped stale on body edits; only the side-effect audit found it. See AGENTS §Git Safety Protocol.
+
+**Older state below, kept for the reasoning it carries rather than for currency.**
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 
