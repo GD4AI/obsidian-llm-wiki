@@ -29,6 +29,7 @@ import type { CodexAuthManager } from '../llm-sdk/openai-codex/auth-manager';
 import { applyCodexModelPolicy } from '../core/openai-codex-model-policy';
 import { resolveModelForTask } from '../core/model-resolver';
 import { TOKENS_QUERY_MODEL_DETECT, NOTICE_ERROR } from '../constants';
+import { getCachedUrl } from '../core/url-fallback';
 
 /**
  * Host interface: fields/methods these commands need from the Plugin
@@ -177,9 +178,19 @@ export const connectionCommands = {
         ? `${providerName} (${probePlan[0].model})`
         : `${providerName} (ingest=${probePlan[0].model}, lint=${probePlan[1].model}, query=${probePlan[2].model})`;
 
+      // URL auto-adapt: when the entered Base URL was not the one that worked,
+      // say so. A user who typed `.../anthropic` and is told the connection is
+      // fine, then sees a query fail, has been told the wrong thing. The
+      // resolved form is the only honest answer.
+      const enteredUrl = this.settings.baseUrl ?? '';
+      const resolvedUrl = enteredUrl ? getCachedUrl(enteredUrl) : undefined;
+      const urlNote = resolvedUrl && resolvedUrl !== enteredUrl
+        ? ` · Base URL → ${resolvedUrl}`
+        : '';
+
       return {
         success: true,
-        message: `✅ ${t.testConnectionSuccessful || 'Connection successful'}: ${probeSummary}`
+        message: `✅ ${t.testConnectionSuccessful || 'Connection successful'}: ${probeSummary}${urlNote}`
       };
     } catch (error) {
       console.error('Connection test failed:', error);
