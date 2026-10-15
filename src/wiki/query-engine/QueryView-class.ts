@@ -44,6 +44,7 @@ import { InternalView } from './state';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { selectPprSeeds } from './pipeline/select-seeds';
+import { buildRetrievalQuery } from '../../core/retrieval-query';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -1175,8 +1176,21 @@ export class QueryView extends ItemView {
       // `termIndex` carries a cache keyed on the index file. Building the term
       // table per query was 4.4 s against 21 ms to score from a prebuilt one on
       // 2,864 pages; a session that reads the same index now builds once.
-      const seedResult = await selectPprSeeds(
+      //
+      // The retrieval sees the conversation. A follow-up question carries no
+      // content words — "为什么？" scores nothing on its own — and the answer
+      // generator then gets the right context with the wrong pages. Measured
+      // 2026-10-15 on both vaults over 1,000 follow-up cases: 0.015-0.047 r@10
+      // with the follow-up alone, 0.49-0.67 with the recent turns. The round
+      // count is `maxConversationHistory`, the same window the answer sees, so
+      // a provider's prefix cache stays stable across turns.
+      const retrievalQuery = buildRetrievalQuery(
         userMessage,
+        this.history.messages,
+        this.plugin.settings.maxConversationHistory ?? 0,
+      );
+      const seedResult = await selectPprSeeds(
+        retrievalQuery,
         retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],

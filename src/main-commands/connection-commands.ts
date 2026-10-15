@@ -179,13 +179,25 @@ export const connectionCommands = {
         : `${providerName} (ingest=${probePlan[0].model}, lint=${probePlan[1].model}, query=${probePlan[2].model})`;
 
       // URL auto-adapt: when the entered Base URL was not the one that worked,
-      // say so. A user who typed `.../anthropic` and is told the connection is
-      // fine, then sees a query fail, has been told the wrong thing. The
-      // resolved form is the only honest answer.
+      // WRITE THE WORKING FORM BACK and say so. A user who typed
+      // `.../anthropic` and is told the connection is fine, then sees a query
+      // fail, has been told the wrong thing — and if the resolved form is not
+      // persisted, every reload pays the 404 and the fallback again. Measured
+      // 2026-10-15 on a MiniMax custom-Anthropic endpoint: the session that
+      // found `/anthropic/v1` worked, the next reload forgot it.
+      //
+      // The user can always edit the field back. What must not happen is the
+      // plugin knowing a URL works and not saying so in the one place the user
+      // will look next.
       const enteredUrl = this.settings.baseUrl ?? '';
       const resolvedUrl = enteredUrl ? getCachedUrl(enteredUrl) : undefined;
-      const urlNote = resolvedUrl && resolvedUrl !== enteredUrl
-        ? ` · Base URL → ${resolvedUrl}`
+      const urlChanged = Boolean(resolvedUrl && resolvedUrl !== enteredUrl);
+      if (urlChanged && resolvedUrl) {
+        this.settings.baseUrl = resolvedUrl;
+        await this.saveSettings();
+      }
+      const urlNote = urlChanged
+        ? ` · Base URL 已更新为 ${resolvedUrl}`
         : '';
 
       return {

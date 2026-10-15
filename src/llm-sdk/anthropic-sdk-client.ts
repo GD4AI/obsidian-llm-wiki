@@ -143,6 +143,14 @@ export class AnthropicSdkClient implements LLMClient {
     // v1.23.0 P1.5: baseURLOverride lets the fallback retry path pass a
     // corrected URL (e.g., `/v1` appended for Kimi Coding Plan) without
     // mutating this.baseURL. Cached resolved URLs flow through this.
+    //
+    // The user's URL is forwarded UNCHANGED when nothing has been resolved.
+    // It must be: DeepSeek and MiniMax.chat serve their Anthropic skin at
+    // `/anthropic/messages` with no `/v1`, while z.ai and OpenRouter require
+    // `/v1` in the base the user types. A rule that guesses would break one
+    // family to help the other. What makes the difference is the URL fallback,
+    // and `isUrlError` is the gate it depends on — hardened 2026-10-15 to
+    // recognise a 404 that arrives without `instanceof Error` passing.
     const effectiveBaseURL = baseURLOverride ?? getCachedUrl(this.baseURL ?? '') ?? this.baseURL;
     const provider = createAnthropic({
       apiKey: this.apiKey,
