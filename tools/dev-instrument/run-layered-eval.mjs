@@ -135,7 +135,7 @@ async function main() {
   const vaultDir = args.find(a => !a.startsWith('--'));
   const outIdx = args.indexOf('--out');
   const outFile = outIdx >= 0 ? args[outIdx + 1] : null;
-  if (!vaultDir) { console.error('usage: run-layered-eval.mjs <vaultDir> [--out file]'); process.exit(1); }
+  if (!vaultDir) { console.error('usage: run-layered-eval.mjs <vaultDir> [--out file] [--exclude-asker]'); process.exit(1); }
 
   const pages = await loadVault(vaultDir);
   const byName = new Map();
@@ -197,6 +197,14 @@ async function main() {
   // title+aliases, top 3. This is the implicit-seed arm, which IS production
   // when no LLM client is configured. Explicit LLM seeds would be a different
   // arm and are not simulated here.
+  //
+  // `--exclude-asker` drops the asking page from the seed list. The questions
+  // are built from `a -> b` links and the query is `a`'s own summary terms, so
+  // `a` lands at the top of the lexical ranking and PPR walks `a`'s edge
+  // straight to `b`. Measured 2026-10-15: the strict layer reads 0.800 for PPR
+  // with the asker in and 0.400 with it out. Half the number was the question
+  // answering itself. Pass the flag whenever a figure is going to be quoted.
+  const EXCLUDE_ASKER = process.argv.includes('--exclude-asker');
   const productionSeeds = (q) => {
     const scored = pages.map(p => ({
       key: p.key,
@@ -205,7 +213,7 @@ async function main() {
         const al = (p.aliases ?? []).map(a => a.toLowerCase());
         return acc + (tl.includes(t) ? 3 : al.some(a => a.includes(t)) ? 2 : 0);
       }, 0),
-    })).filter(x => x.score > 0);
+    })).filter(x => x.score > 0 && (!EXCLUDE_ASKER || x.key !== q.from));
     scored.sort((a, b) => (b.score - a.score) || (a.key < b.key ? -1 : 1));
     return scored.slice(0, 3).map(x => x.key);
   };
