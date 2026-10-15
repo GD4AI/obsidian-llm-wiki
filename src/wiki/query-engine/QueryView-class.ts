@@ -23,7 +23,7 @@ import { parseJsonResponse } from '../../core/json';
 import { renderTemplate } from '../../core/template-renderer';
 import { formatPageRefSummary } from '../../core/ppr-cascade';
 import { buildTurnIndicator, observeVisibleTurn, updateActiveDot } from '../turn-indicator';
-import { TOKENS_QUERY_ANSWER, TOKENS_QUERY_SAVE_DEDUP, NOTICE_BRIEF, NOTICE_SHORT, NOTICE_NORMAL, NOTICE_ERROR, CUSTOM_QUERY_INSTRUCTIONS_MAX_CHARS } from '../../constants';
+import { TOKENS_QUERY_ANSWER, TOKENS_QUERY_SAVE_DEDUP, NOTICE_BRIEF, NOTICE_SHORT, NOTICE_NORMAL, NOTICE_ERROR, CUSTOM_QUERY_INSTRUCTIONS_MAX_CHARS, RETRIEVAL_HISTORY_ROUNDS } from '../../constants';
 import { capMaxTokens } from '../../core/token-cap';
 import { getSectionLabels } from '../system-prompts';
 
@@ -1184,10 +1184,15 @@ export class QueryView extends ItemView {
       // with the follow-up alone, 0.49-0.67 with the recent turns. The round
       // count is `maxConversationHistory`, the same window the answer sees, so
       // a provider's prefix cache stays stable across turns.
+      // Sliding window of 5 user turns, not `maxConversationHistory`. The two
+      // want different sizes: the answer wants the widest window a provider's
+      // prefix cache will hold, the retrieval wants only the turns that say
+      // what the user is looking for. Hand pass with the full conversation in
+      // the query produced noise; see `RETRIEVAL_HISTORY_ROUNDS` in constants.
       const retrievalQuery = buildRetrievalQuery(
         userMessage,
         this.history.messages,
-        this.plugin.settings.maxConversationHistory ?? 0,
+        RETRIEVAL_HISTORY_ROUNDS,
       );
       const seedResult = await selectPprSeeds(
         retrievalQuery,
