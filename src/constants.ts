@@ -452,6 +452,23 @@ export const TOKENS_QUERY_PAGE_SELECT = 2000;
 export const TOKENS_QUERY_ANSWER = 16000;
 
 /**
+ * How many recent user turns the RETRIEVAL query carries.
+ *
+ * Separate from `maxConversationHistory`, which bounds what the ANSWER
+ * generator sees. Those two want different sizes. The answer wants the widest
+ * window a provider's prefix cache will hold; the retrieval wants only the
+ * turns that say what the user is looking for.
+ *
+ * Measured 2026-10-15 on 1,000 follow-up cases across both vaults: scoring the
+ * follow-up alone is 0.015-0.047 r@10 and scoring it with the recent turns is
+ * 0.49-0.67. The gain saturates fast and every turn past the useful ones adds
+ * vocabulary the query does not want — a hand pass with the full conversation
+ * in the query produced noise. 5 is the sliding window that keeps the topic
+ * without the transcript.
+ */
+export const RETRIEVAL_HISTORY_ROUNDS = 5;
+
+/**
  * Token budget for query suggest-save dedup check.
  *
  * v1.24.1 PATCH Phase 5.5.0: raised 300 → 2000. Same rationale.
