@@ -191,6 +191,28 @@ measurement comes first.
 - it must carry a positive control that can find a name known to be absent, and
 - it must sample by hand the class it attributes to the extractor's prior.
 
+### Query-side track — the plan as of 2026-10-15
+
+Four levers are measured and three of them are in `main` or waiting to be. The whole track stays inside the corpus: no embedding, no external knowledge, no model call on the retrieval path.
+
+| Lever | Gain | Cost | Status |
+|-------|------|------|--------|
+| Body text in the scoring | 29-90x r@20 | one index build | `main` |
+| `text` not length-normalised | +0.04 / +0.08 r@10 | zero | `main` |
+| Conversation in the retrieval query | 16-33x r@10 on follow-ups | zero | `fix/retrieval-sees-history`, awaiting approval |
+| Two-stage Rocchio expansion | +0.04 / +0.05 r@10 | two lexical passes | #855, blocked on review fixes |
+
+**#855 must not merge until three things are fixed.** @DocTpoint's review at `9102c478` stands on all five points. The blocking three: the expanded query is passed to the LLM stages as if it were the user's question; `expandQueryForRetrieval` rebuilds page terms and a corpus table on every query, which is the 4.4 s per query #843 removed; and no tool in the repo calls `twoStageExpand`, so the +0.040 / +0.051 cannot be reproduced from the repo. The fix order is original query to the LLM stages, `TermIndexCache` reuse, then move the measurement into the repo and re-run it through the production path.
+
+**Next measurements, in order.**
+
+1. `maxFuse` of lexical and PPR scores WORSE than PPR alone on both vaults (0.850 vs 0.923 test8, 0.826 vs 0.926 test10). The fusion is diluting the graph channel and it deserves its own pass before any more weight goes on the lexical side. Note that the eval set builds its questions from `a -> b` links and PPR walks those links, so this number needs `--exclude-asker` before it means anything (#854).
+2. The full layered-eval re-run on 390 / 994 questions for the two-stage expansion, through the production path, after the review fixes land.
+
+**Query surface polish, recorded on #756.** Inline citation links are too loud (smaller than body, quieter than the final reference list, underline kept). 清空历史 empties the view and leaves `data.json` alone — the button says "forget" and does "hide". The composer should default to three lines and grow with the content.
+
+**What is NOT on this track and why.** Embeddings: the encoder's notion of similarity is the training corpus's, so it pulls a vault that deliberately goes beyond consensus back toward it. M2 (model-proposed edges): same reason, and the resolver checks that a page exists, not that a relation holds. Corpus-local co-occurrence expansion, anchor text, reverse links, co-citation projection: each measured and flat or negative on the strict layer. LLM query expansion for the cross-source gap: 0 % rescue measured over 1,180 questions. LLM reranking of the top-10: identical to baseline.
+
 ### Backlog carried out of those cycles — six items still open
 
 The 2026-09-12 ROI board and the wider priority table that used to sit here are gone. 18 of their rows shipped, and the rest are enumerated below. **Every other

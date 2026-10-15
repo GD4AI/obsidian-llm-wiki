@@ -27,7 +27,19 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state (2026-10-14)
+## Current state (2026-10-15)
+
+**What the query path looks like now.** Four levers, three of them measured on the production path and one of them waiting on a review. Body text in the scoring (29-90x), `text` not length-normalised (+0.04 / +0.08), the conversation in the retrieval query (16-33x on follow-ups), and two-stage Rocchio query expansion (+0.04 / +0.05, module shipped, wiring under review). Every one of them stays inside the corpus: no embedding, no external knowledge, no model call on the retrieval path.
+
+**Follow-up questions were a silent total failure and are now fixed.** `maxConversationHistory` wired the conversation into the ANSWER generator and the retrieval never saw it. A user asking "K3 与 DeepSeek 的架构异同" and then "为什么？" got the right context with the wrong pages. Measured over 1,000 follow-up cases built from the layered-eval questions: scoring the follow-up alone is 0.015-0.047 r@10, scoring it with the recent turns is 0.49-0.67. The fix is a string. The round count is `RETRIEVAL_HISTORY_ROUNDS = 5` in `constants.ts`, NOT `maxConversationHistory`: the answer wants the widest window a prefix cache will hold, the retrieval wants only the turns that say what the user is looking for. A hand pass with the full transcript in the query produced noise.
+
+**#855 (two-stage Rocchio) has a CHANGES_REQUESTED review from @DocTpoint at `9102c478` and all five points stand.** Three are blocking. The expanded query is passed to the LLM stages as if it were the user's question (`query-keywords.ts:97`, `selectSeedsWithLLM`), so up to 20 words the user did not write reach the model. `expandQueryForRetrieval` rebuilds page terms and a corpus table on EVERY query, `twoStageExpand` builds them again, and `distinctive()` segments every page twice — that is the 4.4 s per query #843 removed, and Gate 4 counted only the scoring. And no tool in the repo calls `twoStageExpand`, so the +0.040 / +0.051 is not reproducible from the repo; `run-layered-eval.mjs` still seeds with the old title 3 / alias 2 scorer. That last one is this project's own rule broken — the path that is measured is the path that ships. Fix order: original query to the LLM stages, `TermIndexCache` reuse, then move the measurement into the repo.
+
+**Also open on the query surface (#756).** Inline citation links read as body text with a highlight; the fix is a smaller size than the body and a lower saturation than the final reference list, underline kept. "清空历史" empties the view and leaves `data.json` alone, so the button says "forget" and does "hide". The composer is the same height for three characters and three paragraphs; it wants three lines by default and to grow with the content.
+
+**Still awaiting the maintainer.** #855 (blocked on the review fixes) and `fix/retrieval-sees-history` (history into the retrieval query, URL fallback hardening, L1 writes the resolved Base URL back). Both build clean at 4725 tests / 336 files.
+
+---
 
 **Retrieval experiments — 2026-10-15, seven arms against `lex+PPR`.** All on the production path (`bm25fScore` + `pprCascade` + `maxFuse`), both vaults, all questions and the cross-source strict layer. The question was whether query expansion and the graph channel overlap or compound.
 
