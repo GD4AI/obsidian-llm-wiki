@@ -29,6 +29,20 @@ is current state.
 
 ## Current state (2026-10-14)
 
+**Number provenance — read before quoting any figure from @DocTpoint's work.** His measurements come from two different builds and the mail mixed them. "Stock" means unmodified upstream `main`. "Local stack" means his patched build: deterministic Related sections with a cap of five, a picker that sets ingest order, and a local micro-embedding for dedup. A figure from the local stack does NOT describe `main`.
+
+| Figure | Build | Describes `main`? |
+|--------|-------|------------------|
+| Star shape: ~95 % of edges intra-source, 9 in 10 pages without a cross-source incoming link | stock (July) AND local stack | **yes** — load-bearing |
+| Arm C lost 3 of 5 at the lexical seed stage | stock, query path | **yes** — load-bearing |
+| M0: 79 % of chosen entries rest on one shared target; 95 % of top-3 cuts fall inside a tie | local stack, M0 computed as specified | mechanism yes, numbers approximately |
+| **"676 dead related entries on 870 pages"** | **stock control run, 136 notes, alphabetical** | **this is NOT the rebuild** |
+| The rebuild's own dead-related count: 374 on 2,135 pages (5 %) | local stack only | **no** — not a `main` baseline |
+| Related cap of five, zero violations | local stack only | **no** — `main` has no cap at all |
+| Micro-embedding dedup window 56 % / 34 % → 99.5 % / 95 % | local build, opt-in | n/a — not upstream |
+
+**The single sentence that matters:** the star shape and the lexical-seed bottleneck survive the regime change and hold on `main`; the dead-related counts and the Related cap do not.
+
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). Nothing since is released; the merges below are unreleased work on `main`.
 
 **The #729 read-side track merged on 2026-10-14**, one day, six PRs. #837 read-side core + tools, #841 write-side shaping + hub-link distinctiveness, #842 the `legacyScorer` switch in 11 locales, #840 the docs, #843 a term-index cache, #844 its staleness fix. Gate 1 across the merge: 4709 tests / 334 files. What the merge bought, on the strict layer (pairs sharing under a third of their terms, different sources, truth edge removed): 0.45-0.48 at r@10 on test8 and 0.32-0.36 on test10, up from 0.000 for a lexical channel without the body. `self recall@10` is 1.000 in every arm on both vaults.
