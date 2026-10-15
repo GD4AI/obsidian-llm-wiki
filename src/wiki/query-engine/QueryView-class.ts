@@ -101,6 +101,22 @@ export class QueryView extends ItemView {
    */
   private readonly termIndexCache = new TermIndexCache();
   private _turnIndicator: HTMLElement | null = null;
+  /** Issue #850: set when the stream ran out of output budget. Rendered at the
+   *  end of the answer so the user sees why it stopped, next to the thinking
+   *  trace that consumed the budget. */
+  private truncationHint: string | null = null;
+
+  /** Render the token-overflow hint below the answer. The thinking trace stays
+   *  above — it is the evidence of what consumed the budget. */
+  private appendTruncationHint(container: HTMLElement): void {
+    const hint = this.truncationHint;
+    this.truncationHint = null;
+    if (!hint) return;
+    container.createEl('blockquote', {
+      text: hint,
+      cls: 'llm-wiki-query-truncation-hint',
+    });
+  }
   private _turnObserver: IntersectionObserver | null = null;
   /**
    * v1.23.0 P2: Persistence health fix — when the user explicitly clears
@@ -567,6 +583,16 @@ export class QueryView extends ItemView {
             onFinish: (meta) => {
               if (meta.finishReason === 'length') {
                 console.warn('[QueryView] streaming answer truncated (finish_reason=length) at max_tokens=', capMaxTokens(TOKENS_QUERY_ANSWER, this.plugin.settings));
+                // Issue #850: a reasoning model bills its chain of thought
+                // against the same budget as the answer, so a long thought can
+                // leave the answer pane empty while the trace looks complete.
+                // Say so instead of leaving the user to guess. The thinking
+                // trace stays where it is — hiding it would lose the only
+                // evidence of what happened.
+                const budget = capMaxTokens(TOKENS_QUERY_ANSWER, this.plugin.settings);
+                const hint = `答案在 max_tokens=${budget} 处被截断。思考过程占用了大量预算。若不需要推理，请在设置中关闭 thinking，或提高 maxTokensPerCall。`;
+                new Notice(hint, NOTICE_ERROR);
+                this.truncationHint = hint;
               }
             },
             system: appendCustomQueryInstructions(wikiContext, this.plugin.settings.customQueryInstructions),
@@ -623,6 +649,7 @@ export class QueryView extends ItemView {
               // v1.23.0 P2: Streaming never started — remove the preview div.
               streamTextDiv.remove();
               this.renderMarkdownContent(fullResponse, contentDiv);
+              this.appendTruncationHint(contentDiv);
               this.scrollToBottom();
             } catch (fallbackErr) {
               console.error('Non-streaming fallback also failed:', fallbackErr);
@@ -664,6 +691,7 @@ export class QueryView extends ItemView {
         if (fullResponse !== undefined && fullResponse !== null) {
           streamTextDiv.remove();
           this.renderMarkdownContent(fullResponse, contentDiv);
+          this.appendTruncationHint(contentDiv);
           this.scrollToBottom();
         }
 

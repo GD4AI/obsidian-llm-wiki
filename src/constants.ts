@@ -440,8 +440,16 @@ export const TOKENS_QUERY_PAGE_SELECT = 2000;
  * page-selection step. On reasoning models the chain of thought is billed
  * against the same budget and routinely consumes a third to a half of it, so
  * the visible answer was cut mid-sentence.
+ *
+ * Raised from 8000 to 16000 on 2026-10-15 after a hand test against
+ * `MiniMax-M3.1-flash-preview`: the run spent the whole 8000 on thinking,
+ * `finish_reason=length`, and the answer pane came back empty (Issue #850).
+ * 16000 doubles the room for the answer while staying inside the output limit
+ * of every mainstream model we target. A model that cannot use the budget
+ * simply stops earlier; the ceiling exists to bound the request, not to
+ * constrain the answer.
  */
-export const TOKENS_QUERY_ANSWER = 8000;
+export const TOKENS_QUERY_ANSWER = 16000;
 
 /**
  * Token budget for query suggest-save dedup check.
