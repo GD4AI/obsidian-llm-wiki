@@ -350,6 +350,11 @@ export async function streamWithFallback(
 
   // Otherwise: try streaming first.
   try {
+    {
+      const h = (init?.headers ?? {}) as Record<string, unknown>;
+      const bodyLen = typeof init?.body === 'string' ? init.body.length : -1;
+      console.debug(`[${STREAM_FETCH_LOG}] DIAG win-req ${init?.method ?? 'GET'} headers=[${Object.keys(h).join(',')}] bodyLen=${bodyLen}`);
+    }
     console.debug(`[${STREAM_FETCH_LOG}] try streamingObsidianFetch (window.fetch): ${url}`);
     const res = await streamingObsidianFetch(url, init);
     console.debug(`[${STREAM_FETCH_LOG}] streamingObsidianFetch succeeded, body=${typeof res.body}, status=${res.status}`);
@@ -360,6 +365,7 @@ export async function streamWithFallback(
     if (err instanceof TypeError) {
       const firstTime = !corsBlockedOrigins.has(origin);
       corsBlockedOrigins.add(origin);
+      console.warn(`[${STREAM_FETCH_LOG}] DIAG window.fetch TypeError: msg=${err.message}`);
       if (firstTime) {
         console.warn(
           `[${STREAM_FETCH_LOG}] ${origin} refused the cross-origin request; falling back for the rest of this session.`
@@ -391,9 +397,18 @@ async function viaFallbackTransport(
   // that failed tells the user something they did not already know.
   if (Platform.isDesktopApp && !nodeTransportBlockedOrigins.has(origin)) {
     try {
+      {
+        const h = (init?.headers ?? {}) as Record<string, unknown>;
+        const names = Object.keys(h);
+        const bodyLen = typeof init?.body === 'string' ? init.body.length : -1;
+        console.debug(`[${STREAM_FETCH_LOG}] DIAG req ${init?.method ?? 'GET'} ${url} headers=[${names.join(',')}] bodyLen=${bodyLen}`);
+      }
       console.debug(`[${STREAM_FETCH_LOG}] trying node:https transport for ${origin}`);
-      return await nodeHttpsFetch(url, init);
+      const res = await nodeHttpsFetch(url, init);
+      console.debug(`[${STREAM_FETCH_LOG}] DIAG node:https -> status=${res.status} ok=${res.ok} ctype=${res.headers.get('content-type')} hasBody=${res.body != null}`);
+      return res;
     } catch (err) {
+      console.warn(`[${STREAM_FETCH_LOG}] DIAG node:https threw: name=${(err as Error)?.name} msg=${(err as Error)?.message} ctor=${(err as Error)?.constructor?.name}`);
       if (!(err instanceof TypeError)) throw err;
       nodeTransportBlockedOrigins.add(origin);
       console.warn(

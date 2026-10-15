@@ -337,6 +337,19 @@ export class AnthropicSdkClient implements LLMClient {
       }
       return fullText;
     } catch (err) {
+      {
+        const e = err as Record<string, unknown>;
+        console.warn('[anthropic-sdk] DIAG stream error:', JSON.stringify({
+          ctor: (err as Error)?.constructor?.name,
+          name: (err as Error)?.name,
+          message: (err as Error)?.message,
+          statusCode: e?.statusCode,
+          url: e?.url,
+          responseBody: typeof e?.responseBody === 'string' ? String(e.responseBody).slice(0, 500) : e?.responseBody,
+          responseHeaders: e?.responseHeaders,
+          cause: (e?.cause as Error)?.message,
+        }));
+      }
       // URL fallback for streaming — same logic as createMessage.
       if (isUrlError(err) && this.baseURL) {
         const mappedErr = mapAiSdkError(err);
