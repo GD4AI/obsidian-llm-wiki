@@ -76,7 +76,7 @@ export function generateUrlCandidates(userUrl: string): string[] {
  * Check if URL contains `/v1` as a path segment (not part of a longer
  * segment like `/v123` or `/v1beta`).
  */
-function hasV1Segment(url: string): boolean {
+export function hasV1Segment(url: string): boolean {
   // Strip query string + fragment before checking
   const pathOnly = url.split('?')[0].split('#')[0];
   return /\/v1(\/|$)/.test(pathOnly) || pathOnly.endsWith('/v1');
@@ -126,10 +126,19 @@ export function invalidateCache(userUrl?: string): void {
  * for unmapped errors.
  */
 export function isUrlError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
+  // Duck-typed, not `instanceof Error`. The AI SDK's APICallError is bundled
+  // into `main.js` and can arrive across a realm boundary where `instanceof`
+  // answers false for an object that is an Error in every other respect. A
+  // 404 that this gate fails to recognise never reaches the URL fallback, and
+  // the user sees "404 page not found" with no recovery — measured 2026-10-15
+  // on a MiniMax custom-Anthropic endpoint where fetch-models passed and the
+  // wiki query then failed.
+  if (error === null || typeof error !== 'object') return false;
 
   const err = error as Error & { statusCode?: number; responseBody?: string };
-  if (isModelNotFound404(err)) {
+  const message = typeof err.message === 'string' ? err.message : '';
+  const responseBody = typeof err.responseBody === 'string' ? err.responseBody : '';
+  if (isModelNotFound404({ message, responseBody })) {
     return false;
   }
   if (typeof err.statusCode === 'number') {
@@ -137,12 +146,13 @@ export function isUrlError(error: unknown): boolean {
   }
 
   // Fallback: parse "status 404: ..." pattern from error.message
-  // (set by mapAiSdkError for APICallError thrown from AI-SDK).
-  return /status\s+404\b/.test(error.message);
+  // (set by mapAiSdkError for APICallError thrown from AI-SDK), and the raw
+  // "404" form some gateways put straight into the message.
+  return /status\s+404\b/.test(message) || /\b404\b/.test(message);
 }
 
-function isModelNotFound404(error: Error & { responseBody?: string }): boolean {
-  return /no endpoints found for\b/i.test(error.message)
+function isModelNotFound404(error: { message?: string; responseBody?: string }): boolean {
+  return /no endpoints found for\b/i.test(error.message ?? '')
     || /no endpoints found for\b/i.test(error.responseBody ?? '');
 }
 
