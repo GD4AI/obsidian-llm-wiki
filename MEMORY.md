@@ -29,6 +29,29 @@ is current state.
 
 ## Current state (2026-10-14)
 
+**Retrieval experiments — 2026-10-15, seven arms against `lex+PPR`.** All on the production path (`bm25fScore` + `pprCascade` + `maxFuse`), both vaults, all questions and the cross-source strict layer. The question was whether query expansion and the graph channel overlap or compound.
+
+| Arm | mechanism | test8 ALL | test8 CROSS | test10 ALL | test10 CROSS |
+|-----|-----------|-----------|-------------|------------|--------------|
+| A0 | baseline `lex+PPR` | 0.850 | 0.760 | 0.826 | 0.641 |
+| A1 | one-shot expansion from the LEXICAL top-5 | 0.880 | **0.720** | 0.885 | 0.667 |
+| A2 | one-shot expansion from the PPR top-5 | 0.893 | 0.760 | 0.872 | 0.641 |
+| A3 | one-shot from both sources | 0.893 | 0.760 | 0.878 | 0.667 |
+| **A4** | **two-stage: expand, re-rank, expand from the NEW top-5** | **0.885** | **0.800** | **0.892** | **0.692** |
+| A5 | A1 plus negative feedback | 0.880 | 0.720 | 0.885 | 0.667 |
+| A6 | A1 only when coverage < 0.5 | 0.850 | 0.760 | 0.826 | 0.641 |
+| A7 | A1 with PPR seeded from the reranked list | 0.880 | 0.720 | 0.885 | 0.667 |
+
+Sweep for A4: `k1=5 m1=10 k2=5 m2=10` is the best setting on both vaults. Average r@10 gain **+0.048**, positive in all four cells, and 2.5x the one-shot form.
+
+**What the matrix says.** The gain is in ITERATING the expansion, not in mixing channels. A7 — the arm built to make the two channels compound — is identical to A1, so seeding PPR from a reranked list changes nothing: the graph is fixed, and moving the walk's starting points does not change which pages it can reach. A2 beats A1 on one vault and loses on the other, so "expand from the graph" is not a rule. A5 and A6 are noise. **A4 is the only arm that wins in all four cells.**
+
+**Why iteration compounds.** The first expansion adds the topic's words. The re-rank pulls the query toward that topic. The second expansion then pulls words out of the topic's own interior, and those are the words that bridge to a page sharing none of the asker's vocabulary. One-shot expansion can only reach the topic's rim.
+
+**What the matrix does NOT say.** PPR is not redundant. Against pure lexical scoring (no graph) the strict layer sits at 0.320 / 0.256; `lex+PPR` lifts it to 0.760 / 0.641. A4 adds +0.048 on top of that. The graph channel is the larger half; A4 is a refinement of the query, and it refines what the graph then walks from.
+
+**Also falsified this round, for the record.** Corpus-local co-occurrence expansion (raw counts and PMI): flat on the strict layer at every parameter — the strict layer is defined by vocabulary disjointness, so the words the query would need to reach are exactly the words it excludes. LLM query expansion (MiniMax, 1,180 questions): r@10 +0.023 weighted, and the decomposition shows **0 % rescue on the cross-source layer** — it fixes same-source ranking, not the vocabulary gap. LLM reranking of the top-10: identical to baseline. The earlier 40-question figure of +0.050 / +0.125 was a sample artefact and is withdrawn.
+
 **Number provenance — read before quoting any figure from @DocTpoint's work.** His measurements come from two different builds and the mail mixed them. "Stock" means unmodified upstream `main`. "Local stack" means his patched build: deterministic Related sections with a cap of five, a picker that sets ingest order, and a local micro-embedding for dedup. A figure from the local stack does NOT describe `main`.
 
 | Figure | Build | Describes `main`? |
