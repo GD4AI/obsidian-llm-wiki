@@ -136,6 +136,10 @@ export async function selectPprSeeds(
         title: p.title, aliases: p.aliases, summary: '', text: '',
       }));
   const corpusTerms = nameTier ? nameTier.corpus : buildCorpusTerms(nameTierTerms);
+  // The answer path reads title + aliases + summary + BODY, so its tables are
+  // the full tier, not the name tier Stage 1 uses. Built once per index file by
+  // the same cache, keyed on the bodies so a prose edit invalidates them.
+  const fullTier = termIndex ? termIndex.cache.getFull(termIndex.indexContent, pageRefs) : null;
   const lexHits = lexMatchByTitleAndAliases(query, pageRefs, {
     corpus: corpusTerms,
     ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
@@ -277,6 +281,11 @@ export async function selectPprSeeds(
         graph: graph ?? undefined,
         topN: effectiveTopN,
         seeds,
+        // #855 fix 5. Carry the answer path's BM25F tables into the cascade so
+        // its lexical channel stops falling back to the weight table. Sourced
+        // from the same prebuilt cache Stage 1 reads, so this is not a second
+        // build per query.
+        ...(fullTier ? { tables: { terms: fullTier.pageTerms, corpus: fullTier.corpus } } : {}),
       });
 
   const relevantPages = finalMatches.map(m => m.page.path);
