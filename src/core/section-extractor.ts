@@ -180,3 +180,58 @@ export function extractSummaryFromPage(body: string, options: SectionExtractOpti
   // Step 5: truncate at sentence boundary (or hard-truncate with …).
   return truncateAtSentenceBoundary(cleaned, maxChars);
 }
+/**
+ * The paragraphs a query matched, outside the summary section.
+ *
+ * Why. The retrieval scores the full body and the display shows only the
+ * Description/Definition section for entity and concept pages. A page can be
+ * retrieved because of its third paragraph and the model cannot see why. This
+ * returns those paragraphs so they can ride along with the summary.
+ *
+ * The summary section is excluded by default: it is already in the context,
+ * and repeating it spends the budget twice. `summarySectionLabels` names the
+ * headings whose sections count as "already shown".
+ */
+export function extractMatchedParagraphs(
+  body: string,
+  queryTerms: readonly string[],
+  budgetChars: number,
+  options: { summarySectionLabels?: readonly string[] } = {},
+): string {
+  if (!body || queryTerms.length === 0 || budgetChars <= 0) return '';
+
+  const terms = queryTerms.map(t => t.toLowerCase()).filter(Boolean);
+  if (terms.length === 0) return '';
+
+  const stripped = stripFrontmatter(body);
+  const summaryLabels = (options.summarySectionLabels ?? [])
+    .map(l => l.toLowerCase());
+
+  // Walk the body tracking which section each paragraph sits in. A paragraph
+  // inside a summary section is skipped; anywhere else is fair game.
+  const paragraphs = stripped.split(/\n\s*\n/);
+  let currentHeading = '';
+  const matched: string[] = [];
+  let used = 0;
+
+  for (const p of paragraphs) {
+    const headingMatch = p.match(/^#{1,6}\s+(.+)$/m);
+    if (headingMatch) currentHeading = headingMatch[1].trim().toLowerCase();
+
+    const isSummarySection = summaryLabels.some(l => currentHeading.includes(l));
+    if (isSummarySection) continue;
+
+    const lower = p.toLowerCase();
+    if (!terms.some(t => lower.includes(t))) continue;
+
+    if (used + p.length > budgetChars) {
+      const remaining = budgetChars - used;
+      if (remaining > 20) matched.push(p.slice(0, remaining));
+      break;
+    }
+    matched.push(p);
+    used += p.length + 2;
+  }
+
+  return matched.join('\n\n');
+}
