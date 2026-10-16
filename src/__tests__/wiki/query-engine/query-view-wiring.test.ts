@@ -51,24 +51,26 @@ function call(source: string, name: string): string {
 }
 
 describe('production wiring — QueryView', () => {
-  it('derives all three query strings from one call, not three separate ones', () => {
+  it('builds the query plan through the one shared composition', () => {
     // Three independently built strings is how the LLM ended up holding the
-    // history: each call site chose its own input and one chose wrong.
-    const prep = call(src, 'prepareRetrievalInputs');
-    expect(src).toMatch(/const\s*\{[^}]*\bretrievalQuery\b[^}]*\bllmQuery\b[^}]*\bgateQuery\b[^}]*\}\s*=\s*prepareRetrievalInputs\([\s\S]*?\);/);
-    expect(prep).toContain('userMessage');
-    expect(prep).toContain('RETRIEVAL_HISTORY_ROUNDS');
+    // history and the gate ended up holding the expansion. The composition now
+    // lives in `pipeline/retrieval-plan.ts` and every measurement tool calls
+    // the same function, so there is no second copy to drift.
+    const plan = call(src, 'planRetrieval');
+    expect(plan).toContain('userMessage');
+    expect(plan).toContain('RETRIEVAL_HISTORY_ROUNDS');
+    expect(plan).toContain('this.expansionCache');
   });
 
   it('hands the LLM stages the question, not the history', () => {
     // #855 point 2. `query-keywords.ts` labels this "User question:".
-    expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*llmQuery,\s*\n/);
+    expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*plan\.llmQuery,\s*\n/);
   });
 
   it('hands the escalation gate the un-expanded query', () => {
     // #855 point 3. The expansion's words sit in no name tier and can only
     // lower `nameTierCoverage`.
-    expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*gateQuery,\s*\n/);
+    expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*plan\.gateQuery,\s*\n/);
   });
 
   it('passes queryTerms to loadRelevantPagesForQuery at BOTH call sites', () => {
@@ -81,10 +83,10 @@ describe('production wiring — QueryView', () => {
     }
   });
 
-  it('gives the expansion segmented terms', () => {
+  it('gives the escalation the expansion, not the bare query', () => {
     // A Chinese run handed unsegmented matches nothing and the expansion
-    // returns its input verbatim.
-    expect(call(src, 'twoStageExpand')).toMatch(/\n\s*expansionQueryTerms,\s*\n/);
+    // returns its input verbatim — the bug that voided every number on it.
+    expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*plan\.expandedQuery,\s*\n/);
   });
 
   it('passes the BM25F tables into the answer path', () => {
