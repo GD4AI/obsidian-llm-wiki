@@ -32,6 +32,7 @@ import {
   bm25fScore,
   DEFAULT_FIELD_WEIGHTS,
   FIELD_ORDER,
+  type PageTerms,
   type CorpusTerms,
   type FieldWeights,
 } from './term-index';
@@ -402,9 +403,45 @@ export function lexIsReliable(tokens: string[]): boolean {
  * Page-level bonus:
  * - all query tokens found in page text: +2 (strong relevance signal)
  */
-export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
+export function lexMatch(
+  query: string,
+  pages: PageRef[],
+  /** The scorer's tables. When given, BM25F decides; the legacy hand-tuned
+   *  weight table is the fallback for callers that have no bodies to build
+   *  tables from (the wiki index path). Measured 2026-10-15 on four vaults,
+   *  BM25F+text beats the legacy scorer by +0.065 to +0.105 r@10. */
+  tables?: { terms: readonly PageTerms[]; corpus: CorpusTerms },
+): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
+  // The BM25F branch, when the caller has bodies to build tables from.
+  //
+  // Its tie-break is the same shape as the legacy branch below: score, then
+  // breadth of match, then a stable path. #878 established that rule on the
+  // legacy branch because a score-only sort left the order to whatever the
+  // index happened to be read in; this branch was written before that fix
+  // landed and sorted on score + path alone, which is deterministic but makes
+  // the alphabet decide every tie. Breadth is the meaningful second key: a
+  // page matching "cache" and "invalidation" is a better answer than one
+  // matching "cache" twice as strongly in one field. `tokensFound` is that
+  // count, and `bm25fScore` does not expose it, so it is counted here.
+  if (tables) {
+    const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
+    for (let i = 0; i < pages.length; i += 1) {
+      const score = bm25fScore(tokens, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
+      if (score <= 0) continue;
+      const page = pages[i];
+      const haystack = `${page.title} ${page.aliases.join(' ')} ${page.summary ?? ''} ${page.text ?? ''}`.toLowerCase();
+      let tokensFound = 0;
+      for (const kw of tokens) if (haystack.includes(kw)) tokensFound += 1;
+      scored.push({ page, score, tokensFound });
+    }
+    return scored
+      .sort((a, b) => b.score - a.score
+        || b.tokensFound - a.tokensFound
+        || (a.page.path < b.page.path ? -1 : a.page.path > b.page.path ? 1 : 0))
+      .map(s => s.page);
+  }
   const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
   for (const page of pages) {
     const titleLower = page.title.toLowerCase();
