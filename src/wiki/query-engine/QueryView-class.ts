@@ -45,9 +45,9 @@ import { hashConversation } from '../../core/conversation-hash';
 import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../../core/citation-format';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
-import { twoStageExpand, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
+import { ExpansionTermsCache } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
-import { prepareRetrievalInputs, retrievalQueryTerms } from '../../core/retrieval-query';
+import { planRetrieval } from './pipeline/retrieval-plan';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -1230,60 +1230,21 @@ export class QueryView extends ItemView {
       // prefix cache will hold, the retrieval wants only the turns that say
       // what the user is looking for. Hand pass with the full conversation in
       // the query produced noise; see `RETRIEVAL_HISTORY_ROUNDS` in constants.
-      // Three query strings, three policies. `prepareRetrievalInputs` owns the
-      // distinction so it cannot be re-introduced at a call site: the LLM gets
-      // the question as typed, the gate gets history + question with no
-      // expansion, and the scorer and the walk get everything.
-      // @DocTpoint's second review found the LLM was being handed the history
-      // and the gate was being handed the expansion. See the function.
-      const { retrievalQuery, expansionTerms: expansionQueryTerms, llmQuery, gateQuery } = prepareRetrievalInputs(
-        userMessage,
-        this.history.messages,
-        RETRIEVAL_HISTORY_ROUNDS,
-      );
-      // Two-stage Rocchio expansion (#855). The query's own words and the
-      // answer page's words are disjoint on the strict layer, so scoring the
-      // query as written cannot find the page. The neighbourhood the ranking
-      // already found knows the topic's vocabulary; read it twice, with a
-      // re-rank between, and the query walks across. Every added word comes
-      // from the user's notes.
-      //
-      // Terms are cached per index file (#855 review point 4). Rebuilding
-      // them per query is the 4.4 s cost #843 removed from the seed scorer.
-      const expansionPages = retrievalRefs.map(r => ({
-        key: r.path,
-        title: r.title,
-        // The summary is the first slice of the body, NOT the first alias.
-        // #855 review: the tool that measured this built `summary` as
-        // `body.slice(0, 200)` while the production path used
-        // `r.aliases[0] ?? ''`, which is empty on most pages. Measurement
-        // must describe the code that ships. Both now use the body slice.
-        summary: (r.text ?? '').slice(0, 200),
-        text: r.text ?? '',
-      }));
-      const { terms: expansionTerms, corpus: expansionCorpus, index: expansionIndex } = this.expansionCache.get(
-        indexResult.indexContent,
-        expansionPages,
-      );
-      // The inverted index is the same one the cache built. It cuts the
-      // scorer's work from "every page" to "the pages that carry a query
-      // term" without changing the ranking; `expansion-inverted-index.test.ts`
-      // pins the two together.
-      //
-      // The terms arrive SEGMENTED. `tokenizeQuery` keeps a Chinese run as one
-      // token and `bm25fScore` looks terms up in a table built by `segment`, so
-      // an uncut run matches nothing and the expansion returns its input
-      // verbatim — a no-op on exactly the vaults this feature was measured on.
-      const expandedQuery = twoStageExpand(
-        expansionQueryTerms,
-        expansionPages,
-        expansionCorpus,
-        DEFAULT_EXPANSION,
-        expansionTerms,
-        expansionIndex,
-      ).join(' ');
+      // The whole composition — three query strings, the expansion, the term
+      // mapping — is ONE function, and every measurement tool calls the same
+      // one. Six numbers in this cycle described a path the product does not
+      // run, five of them because a tool reimplemented this block. See
+      // `pipeline/retrieval-plan.ts` for the list.
+      const plan = planRetrieval({
+        current: userMessage,
+        history: this.history.messages,
+        historyRounds: RETRIEVAL_HISTORY_ROUNDS,
+        retrievalRefs,
+        indexContent: indexResult.indexContent,
+        expansionCache: this.expansionCache,
+      });
       const seedResult = await selectPprSeeds(
-        expandedQuery,
+        plan.expandedQuery,
         retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],
@@ -1295,12 +1256,12 @@ export class QueryView extends ItemView {
         // turn — not the expansion's, and not the history. The prompt labels
         // this "User question:", and from the second turn on `retrievalQuery`
         // is a transcript, not the question.
-        llmQuery,
+        plan.llmQuery,
         // #855 review point 3: the gate reads the query as written plus the
         // history, with no expansion. Expansion words come from page bodies and
         // the gate measures the name tier's share of the query's IDF, so they
         // could only ever push a matching query into the paid stage.
-        gateQuery,
+        plan.gateQuery,
       );
 
       // Write back _lastRetrieval for retrieval label UI
@@ -1308,7 +1269,7 @@ export class QueryView extends ItemView {
       // The terms that produced this ranking, segmented. `loadRelevantPages`
       // is called later without a query and needs them to surface the matched
       // paragraphs. #855 fix 6.
-      this._lastRetrievalTerms = retrievalQueryTerms(expandedQuery);
+      this._lastRetrievalTerms = plan.matchTerms;
       this._lastRetrieval = {
         arm: seedResult.armLabel || 'none',
         count: relevantPages.length,
@@ -1330,7 +1291,7 @@ export class QueryView extends ItemView {
       // follow-up like "为什么？" is one string to the user and a much longer
       // one to the scorer. Printing the typed message made a working fix look
       // broken — the user saw one token where the scorer saw the whole turn.
-      console.debug(`[Step 2]   query tokens:`, retrievalQuery.toLowerCase().split(/\s+/).filter(k => k.length > 0));
+      console.debug(`[Step 2]   query tokens:`, plan.retrievalQuery.toLowerCase().split(/\s+/).filter(k => k.length > 0));
       console.debug(`[Step 2]   history turns in query: ${this.history.messages.filter(m => m.role === 'user').length}`);
       console.debug(`[Step 2]   graph state: ${graph ? `${graph.nodes.length} nodes / ${graph.edges.size} edges` : 'none'}`);
       console.debug(`[Step 2]   LLM augmentation: ${seedResult.llmAugmented ? 'triggered' : 'skipped (fast path sufficient)'}`);
