@@ -32,6 +32,7 @@ import {
   bm25fScore,
   DEFAULT_FIELD_WEIGHTS,
   FIELD_ORDER,
+  type PageTerms,
   type CorpusTerms,
   type FieldWeights,
 } from './term-index';
@@ -402,9 +403,25 @@ export function lexIsReliable(tokens: string[]): boolean {
  * Page-level bonus:
  * - all query tokens found in page text: +2 (strong relevance signal)
  */
-export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
+export function lexMatch(
+  query: string,
+  pages: PageRef[],
+  /** The scorer's tables. When given, BM25F decides; the legacy hand-tuned
+   *  weight table is the fallback for callers that have no bodies to build
+   *  tables from (the wiki index path). Measured 2026-10-15 on four vaults,
+   *  BM25F+text beats the legacy scorer by +0.065 to +0.105 r@10. */
+  tables?: { terms: readonly PageTerms[]; corpus: CorpusTerms },
+): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
+  if (tables) {
+    const scored: { page: PageRef; score: number }[] = [];
+    for (let i = 0; i < pages.length; i += 1) {
+      const score = bm25fScore(tokens, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
+      if (score > 0) scored.push({ page: pages[i], score });
+    }
+    return scored.sort((a, b) => b.score - a.score || (a.page.path < b.page.path ? -1 : 1)).map(s => s.page);
+  }
   const scored: { page: PageRef; score: number }[] = [];
   for (const page of pages) {
     const titleLower = page.title.toLowerCase();
