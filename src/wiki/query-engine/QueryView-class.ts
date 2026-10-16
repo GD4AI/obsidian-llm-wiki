@@ -45,7 +45,7 @@ import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { twoStageExpand, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
-import { retrievalQueryTerms, buildRetrievalQuery } from '../../core/retrieval-query';
+import { prepareRetrievalInputs } from '../../core/retrieval-query';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -1191,7 +1191,13 @@ export class QueryView extends ItemView {
       // prefix cache will hold, the retrieval wants only the turns that say
       // what the user is looking for. Hand pass with the full conversation in
       // the query produced noise; see `RETRIEVAL_HISTORY_ROUNDS` in constants.
-      const retrievalQuery = buildRetrievalQuery(
+      // Three query strings, three policies. `prepareRetrievalInputs` owns the
+      // distinction so it cannot be re-introduced at a call site: the LLM gets
+      // the question as typed, the gate gets history + question with no
+      // expansion, and the scorer and the walk get everything.
+      // @DocTpoint's second review found the LLM was being handed the history
+      // and the gate was being handed the expansion. See the function.
+      const { retrievalQuery, expansionTerms: expansionQueryTerms, llmQuery, gateQuery } = prepareRetrievalInputs(
         userMessage,
         this.history.messages,
         RETRIEVAL_HISTORY_ROUNDS,
@@ -1205,32 +1211,33 @@ export class QueryView extends ItemView {
       //
       // Terms are cached per index file (#855 review point 4). Rebuilding
       // them per query is the 4.4 s cost #843 removed from the seed scorer.
-      const { terms: expansionTerms, corpus: expansionCorpus, index: expansionIndex } = this.expansionCache.get(
-        indexResult.indexContent,
+      const expansionPages = retrievalRefs.map(r => ({
+        key: r.path,
+        title: r.title,
         // The summary is the first slice of the body, NOT the first alias.
         // #855 review: the tool that measured this built `summary` as
         // `body.slice(0, 200)` while the production path used
         // `r.aliases[0] ?? ''`, which is empty on most pages. Measurement
         // must describe the code that ships. Both now use the body slice.
-        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: (r.text ?? '').slice(0, 200), text: r.text ?? '' })),
+        summary: (r.text ?? '').slice(0, 200),
+        text: r.text ?? '',
+      }));
+      const { terms: expansionTerms, corpus: expansionCorpus, index: expansionIndex } = this.expansionCache.get(
+        indexResult.indexContent,
+        expansionPages,
       );
       // The inverted index is the same one the cache built. It cuts the
       // scorer's work from "every page" to "the pages that carry a query
       // term" without changing the ranking; `expansion-inverted-index.test.ts`
       // pins the two together.
+      //
+      // The terms arrive SEGMENTED. `tokenizeQuery` keeps a Chinese run as one
+      // token and `bm25fScore` looks terms up in a table built by `segment`, so
+      // an uncut run matches nothing and the expansion returns its input
+      // verbatim — a no-op on exactly the vaults this feature was measured on.
       const expandedQuery = twoStageExpand(
-        // SEGMENTED, not just tokenized. `tokenizeQuery` keeps a Chinese run
-        // as one token and `bm25fScore` looks terms up in a table built by
-        // `segment`, so an uncut run matches nothing and the expansion returns
-        // its input verbatim — a no-op on exactly the vaults this feature was
-        // measured on. See `retrievalQueryTerms` and its test.
-        retrievalQueryTerms(retrievalQuery),
-        // The summary is the first slice of the body, NOT the first alias.
-        // #855 review: the tool that measured this built `summary` as
-        // `body.slice(0, 200)` while the production path used
-        // `r.aliases[0] ?? ''`, which is empty on most pages. Measurement
-        // must describe the code that ships. Both now use the body slice.
-        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: (r.text ?? '').slice(0, 200), text: r.text ?? '' })),
+        expansionQueryTerms,
+        expansionPages,
         expansionCorpus,
         DEFAULT_EXPANSION,
         expansionTerms,
@@ -1245,10 +1252,16 @@ export class QueryView extends ItemView {
         texts as unknown as Record<string, string>,
         onProgress,
         { cache: this.termIndexCache, indexContent: indexResult.indexContent },
-        // #855 review point 2: the model sees the words the user wrote, not
-        // the expansion's. The expanded form is for the lexical scorer and
-        // the PPR seed derivation only.
-        retrievalQuery,
+        // #855 review point 2: the model sees the words the user wrote this
+        // turn — not the expansion's, and not the history. The prompt labels
+        // this "User question:", and from the second turn on `retrievalQuery`
+        // is a transcript, not the question.
+        llmQuery,
+        // #855 review point 3: the gate reads the query as written plus the
+        // history, with no expansion. Expansion words come from page bodies and
+        // the gate measures the name tier's share of the query's IDF, so they
+        // could only ever push a matching query into the paid stage.
+        gateQuery,
       );
 
       // Write back _lastRetrieval for retrieval label UI

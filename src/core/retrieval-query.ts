@@ -53,6 +53,69 @@ export function retrievalQueryTerms(query: string): string[] {
   return tokenizeQuery(query).flatMap(t => segment(t));
 }
 
+/**
+ * Which string feeds which stage. Exported because the values are load-bearing
+ * and a reviewer should be able to assert on them rather than trust a comment.
+ *
+ * @DocTpoint's second review (#855, 2026-10-16) found two of the three wired to
+ * the wrong string. Point 2 was the LLM; point 3 was the escalation gate.
+ */
+export const RETRIEVAL_QUERY_POLICY = {
+  /** The LLM stages. What the user wrote, this turn, and nothing else. */
+  llm: 'current-question',
+  /** The escalation gate. History + question, un-expanded. */
+  gate: 'retrieval-query-unexpanded',
+  /** The lexical scorer and the PPR seed derivation. */
+  retrieval: 'retrieval-query',
+} as const;
+
+export interface RetrievalInputs {
+  /** History + question, joined. The lexical scorer and PPR read this. */
+  retrievalQuery: string;
+  /** Segmented, for the expansion's scorers. */
+  expansionTerms: string[];
+  /** The words the LLM stages see. */
+  llmQuery: string;
+  /** The words the escalation gate reads. */
+  gateQuery: string;
+}
+
+/**
+ * Build the three query strings at once, so the policies that separate them
+ * live in one place instead of three call sites.
+ *
+ * Why three and not one. Each stage answers a different question:
+ *
+ *   - The LLM is asked "what is the user asking for?". The honest answer is the
+ *     sentence they typed. Handing it a transcript makes it extract keywords
+ *     from someone else's words, which is what point 2 was.
+ *   - The gate asks "did the user's own words already name a page?". That is a
+ *     question about the query as written. The expansion adds words harvested
+ *     from page bodies; the gate measures the NAME tier's share of the query's
+ *     IDF, so body-words can only lower it, and a query that matched a title
+ *     cleanly starts escalating to a paid stage. That is what point 3 was.
+ *   - The scorer and the walk want every word that can reach the answer,
+ *     including the expansion's.
+ *
+ * Why the gate keeps the history. A follow-up ("那 MoE 呢？") carries no content
+ * words, so gating on the question alone escalates every follow-up to the LLM.
+ * The gate therefore reads `retrievalQuery`, which is exactly what it read before
+ * the expansion existed — the input it was calibrated against.
+ */
+export function prepareRetrievalInputs(
+  current: string,
+  history: ReadonlyArray<{ role: string; content: string }>,
+  maxRounds: number,
+): RetrievalInputs {
+  const retrievalQuery = buildRetrievalQuery(current, history, maxRounds);
+  return {
+    retrievalQuery,
+    expansionTerms: retrievalQueryTerms(retrievalQuery),
+    llmQuery: current,
+    gateQuery: retrievalQuery,
+  };
+}
+
 export function buildRetrievalQuery(
   current: string,
   history: ReadonlyArray<{ role: string; content: string }>,
