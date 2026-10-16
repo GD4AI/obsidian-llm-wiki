@@ -362,6 +362,31 @@ Positive on four vaults of four, including both Chinese vaults the earlier void 
 
 **CROSS is `n/a` on all four, not `0.000`.** No index carries a `` `source:` `` marker, so the cross-source layer has no questions here. **And that is a stale index, not a missing capability** — I said otherwise in the PR first and it was wrong. `index-generator.ts` writes the marker (`sourceStr` from `parseSourceSlug`, which reads `[[sources/<slug>]]` out of frontmatter) and all 129 of test8's concept pages carry that frontmatter across 10 distinct sources. Its `index.md` was generated before that wiring. So the cross-source gap this expansion targets is **measurable today by regenerating an index**, and until it is measured the ALL-layer gain above carries a real risk: a cross-source regression could sit hidden inside a positive overall number.
 
+### The cross-source layer, measured 2026-10-16 — the risk is excluded, and the gain is skewed
+
+`tools/dev-instrument/run-regenerate-index.mjs` rebuilds a vault's `index.md` through the **production** `IndexGenerator`, with a `TFile` shim that supplies only the two fields the class reads (`path`, `basename`) and an intercepted `writeFile` so measuring a corpus cannot mutate it. It reports the marker coverage, because a regenerated index with no `source:` line would leave the layer empty again and every figure against it meaningless.
+
+| Vault | Pages | Pages with a slug | Distinct slugs | CROSS questions |
+|---|---|---|---|---|
+| `test8` | 172 | 147 (85.5 %) | 10 | 253 |
+| `expA-main/wiki` | 161 | 156 (96.9 %) | 5 | 274 |
+| `expB-branch/wiki` | 171 | 166 (97.1 %) | 5 | 276 |
+| `sample-50page` | 53 | 0 | 0 | 0 |
+
+`sample-50page` stays empty and that is correct: it is a synthetic fixture whose pages carry no `sources:` frontmatter, so the cross-source concept does not exist there. The tool says so instead of scoring the empty layer.
+
+r@10, budget 20, `--exclude-asker`, both arms through `planRetrieval` and `selectPprSeeds`:
+
+| Vault | ALL no-exp | ALL exp | delta ALL | CROSS no-exp | CROSS exp | delta CROSS |
+|---|---|---|---|---|---|---|
+| `test8` | 0.645 | 0.734 | +0.089 | 0.743 | 0.759 | **+0.016** |
+| `expA-main/wiki` | 0.572 | 0.650 | +0.078 | 0.723 | 0.759 | **+0.036** |
+| `expB-branch/wiki` | 0.535 | 0.620 | +0.085 | 0.707 | 0.757 | **+0.051** |
+
+**The expansion does not damage the cross-source layer, so the risk is excluded — and the gain is skewed toward same-source pairs.** All three CROSS deltas are positive, +0.016 to +0.051, against +0.078 to +0.089 on ALL. The mechanism reads the neighbourhood the ranking already found; where the asker and the answer share a source, that neighbourhood is the answer's own vocabulary and the bridge is short. Across sources the bridge is longer and Rocchio crosses less of it. **The honest claim is: this helps, it helps less on the layer it was designed for, and it does not hurt there.**
+
+One observation worth keeping: the CROSS baseline is HIGHER than the ALL baseline on every vault (test8 0.743 vs 0.645). Cross-source pairs are easier on this question set, which is the opposite of what the PR's framing assumed. The strict-layer difficulty that motivated the expansion lives in the ALL layer's same-source pairs too, not only across sources.
+
 **The context has no total budget, and this pass only bounded its growth.** The summary cap is `MAX_PAGE_CONTENT_CHARS / 3` per page, so 20 pages carry 85,320 characters of summaries before anything is added; the new `MATCHED_PARAGRAPHS_TOTAL_CHARS` takes the addition from 85,320 down to 12,800, for 98,120 characters total. Against `TOKENS_QUERY_ANSWER` of 16,000 that is roughly 1.5x at 4 chars/token and 3.6x at 1.7. **No constant governs the assembled context at all** — `TOKENS_QUERY_ANSWER` is the answer's budget. Bounding the whole is a change to the assembly layer, larger than this PR, and it is filed as its own item rather than claimed here.
 
 **The expansion ships.** It earns a full Rocchio pass per query at +0.078 to +0.130 on the corpora available. What is not established is whether it helps on the cross-source gap it was designed for, and that needs a corpus whose index carries source markers before the claim can be made.

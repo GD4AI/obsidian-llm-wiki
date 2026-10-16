@@ -36,7 +36,6 @@ const RETRIEVAL_TOOLS = [
   'run-answer-path-ab.mjs',
   'run-retrieval-ab.mjs',
 ];
-
 const read = (name: string) => readFileSync(TOOLS_DIR + name, 'utf8');
 
 describe('tool/product drift — a measurement tool enters the product, it does not copy it', () => {
@@ -111,6 +110,42 @@ describe('tool/product drift — a measurement tool enters the product, it does 
     const src = read('run-expansion-eval.mjs');
     expect(src, 'no no-op self-check').toMatch(/addedTerms/);
     expect(src, 'no no-op report').toMatch(/added nothing/);
+  });
+
+  it('the index regeneration calls the production generator', () => {
+    // The whole reason #855's cross-source layer read `n=0` for weeks is that
+    // the committed indexes predate the `source:` marker, not that the marker
+    // could not be written. Rebuilding an index by hand — assembling
+    // `- [[path|name]] \`source: ...\`` lines here — would be the same drift
+    // in a new place, and would silently disagree with the generator the moment
+    // it changes.
+    const src = read('run-regenerate-index.mjs');
+    expect(src, 'does not use the production IndexGenerator').toMatch(/\bIndexGenerator\b/);
+    expect(src, 'builds index lines itself').not.toContain('- [[${');
+    expect(src, 'does not warn when it produces no source markers')
+      .toMatch(/no source markers|WARNING/);
+  });
+
+  it('the index regeneration never writes to the vault', () => {
+    // Measuring a corpus must not mutate it.
+    const src = read('run-regenerate-index.mjs');
+    expect(src).toMatch(/writeFile:\s*async/);
+    expect(src, 'the vault path reaches writeFileSync')
+      .not.toMatch(/writeFileSync\(join\(vaultDir/);
+  });
+
+  it('a tool that needs `obsidian` uses a shim scoped to tool runs', () => {
+    // `index-generator.ts` imports `normalizePath` at runtime. The shim supplies
+    // that one value; `typecheck:tools` still checks tool code against the real
+    // API because the runtime config is a separate file.
+    const shim = readFileSync(`${TOOLS_DIR}stubs/obsidian.ts`, 'utf8');
+    expect(shim).toMatch(/export function normalizePath/);
+    const runConfig = JSON.parse(readFileSync(`${TOOLS_DIR}tsconfig.tools-run.json`, 'utf8'));
+    expect(runConfig.compilerOptions.paths.obsidian[0]).toBe('tools/dev-instrument/stubs/obsidian.ts');
+    // The checked config must NOT carry the mapping, or a tool's `obsidian`
+    // usage would be type-checked against three lines of stub.
+    const checked = JSON.parse(readFileSync(`${TOOLS_DIR}tsconfig.json`, 'utf8'));
+    expect(checked.compilerOptions?.paths?.obsidian).toBeUndefined();
   });
 
   it('a tool that reports layers marks an empty one instead of scoring it', () => {
