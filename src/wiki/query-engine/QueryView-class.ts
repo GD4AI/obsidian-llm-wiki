@@ -45,6 +45,8 @@ import { hashConversation } from '../../core/conversation-hash';
 import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../../core/citation-format';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
+import { twoStageExpand, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
+import { tokenizeQuery } from '../../core/ppr-cascade';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { buildRetrievalQuery } from '../../core/retrieval-query';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
@@ -103,6 +105,7 @@ export class QueryView extends ItemView {
    * it has not changed.
    */
   private readonly termIndexCache = new TermIndexCache();
+  private readonly expansionCache = new ExpansionTermsCache();
   private _turnIndicator: HTMLElement | null = null;
   /** Issue #850: set when the stream ran out of output budget. Rendered at the
    *  end of the answer so the user sees why it stopped, next to the thinking
@@ -1226,8 +1229,28 @@ export class QueryView extends ItemView {
         this.history.messages,
         RETRIEVAL_HISTORY_ROUNDS,
       );
+      // Two-stage Rocchio expansion (#855). The query's own words and the
+      // answer page's words are disjoint on the strict layer, so scoring the
+      // query as written cannot find the page. The neighbourhood the ranking
+      // already found knows the topic's vocabulary; read it twice, with a
+      // re-rank between, and the query walks across. Every added word comes
+      // from the user's notes.
+      //
+      // Terms are cached per index file (#855 review point 4). Rebuilding
+      // them per query is the 4.4 s cost #843 removed from the seed scorer.
+      const { terms: expansionTerms, corpus: expansionCorpus } = this.expansionCache.get(
+        indexResult.indexContent,
+        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
+      );
+      const expandedQuery = twoStageExpand(
+        tokenizeQuery(retrievalQuery),
+        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
+        expansionCorpus,
+        DEFAULT_EXPANSION,
+        expansionTerms,
+      ).join(' ');
       const seedResult = await selectPprSeeds(
-        retrievalQuery,
+        expandedQuery,
         retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],
@@ -1235,6 +1258,10 @@ export class QueryView extends ItemView {
         texts as unknown as Record<string, string>,
         onProgress,
         { cache: this.termIndexCache, indexContent: indexResult.indexContent },
+        // #855 review point 2: the model sees the words the user wrote, not
+        // the expansion's. The expanded form is for the lexical scorer and
+        // the PPR seed derivation only.
+        retrievalQuery,
       );
 
       // Write back _lastRetrieval for retrieval label UI

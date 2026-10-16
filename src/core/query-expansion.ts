@@ -19,7 +19,8 @@
 // 2,000 pages that is well under a millisecond each; the graph walk it feeds
 // is orders of magnitude more expensive.
 
-import { segment, buildPageTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms } from './term-index';
+import { segment, buildPageTerms, buildCorpusTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms } from './term-index';
+import { tokenizeQuery } from './ppr-cascade';
 
 export interface ExpansionPage {
   key: string;
@@ -55,14 +56,16 @@ export function twoStageExpand(
   pages: readonly ExpansionPage[],
   corpus: CorpusTerms,
   opts: ExpansionOptions = DEFAULT_EXPANSION,
+  /**
+   * Terms built once per index file and reused across queries. #855 review
+   * point 4: `buildPageTerms` over every page with a body is the 4.4 s per
+   * query that #843 measured and removed. A caller that rebuilds them here
+   * on every keystroke reintroduces that cost.
+   */
+  prebuilt?: readonly PageTerms[],
 ): string[] {
   if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
-  const pts: PageTerms[] = pages.map(p => buildPageTerms({
-    title: p.title,
-    aliases: [],
-    summary: p.summary,
-    text: p.text,
-  }));
+  const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
   const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1), queryTerms, opts.m1)];
   if (opts.k2 <= 0 || opts.m2 <= 0) return first;
@@ -70,6 +73,68 @@ export function twoStageExpand(
   const reranked = scoredIndices(first, pts, corpus, opts.k2);
   const second = [...first, ...distinctive(pages, reranked, first, opts.m2)];
   return second;
+}
+
+/**
+ * Build the per-page term tables `twoStageExpand` scores against. Cache the
+ * result keyed on the index file: the terms change only when the pages change,
+ * and rebuilding them per query is the cost #855 review point 4 is about.
+ */
+export function buildExpansionTerms(pages: readonly ExpansionPage[]): PageTerms[] {
+  return pages.map(p => buildPageTerms({
+    title: p.title,
+    aliases: [],
+    summary: p.summary,
+    text: p.text,
+  }));
+}
+
+/**
+ * Per-session cache of the expansion tables. Keyed on the same signature the
+ * term-index cache uses, so a session that reads one index file builds once
+ * and every query after that scores against the prebuilt tables.
+ *
+ * #855 review point 4: `buildPageTerms` over every page with a body is 4.4 s
+ * per query on 2,864 pages. #843 removed that cost from the seed scorer. The
+ * expansion must not reintroduce it.
+ */
+export class ExpansionTermsCache {
+  private key = '';
+  private terms: PageTerms[] = [];
+  private corpus: CorpusTerms | null = null;
+  private _buildCount = 0;
+
+  /** Build once per key. A repeat call with the same key returns the cached tables. */
+  get(key: string, pages: readonly ExpansionPage[]): { terms: PageTerms[]; corpus: CorpusTerms } {
+    if (this.key !== key || this.terms.length === 0) {
+      this.terms = buildExpansionTerms(pages);
+      this.corpus = buildCorpusTerms(this.terms);
+      this.key = key;
+      this._buildCount += 1;
+    }
+    return { terms: this.terms, corpus: this.corpus as CorpusTerms };
+  }
+
+  /** Exposed for tests that want to prove a rebuild happened. */
+  get buildCount(): number {
+    return this._buildCount;
+  }
+}
+
+/**
+ * The one-call entry point. Tokenizes the query, expands it twice, and joins
+ * the result. The original terms come first and in order, so a scorer that
+ * weights the head of the list still reads the user's intent.
+ */
+export function expandQueryForRetrieval(
+  query: string,
+  pages: readonly ExpansionPage[],
+  corpus: CorpusTerms,
+  opts: ExpansionOptions = DEFAULT_EXPANSION,
+  prebuilt?: readonly PageTerms[],
+): string {
+  const terms = tokenizeQuery(query);
+  return twoStageExpand(terms, pages, corpus, opts, prebuilt).join(' ');
 }
 
 /** Indices whose score is above zero, in rank order. A page that scores zero
