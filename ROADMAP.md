@@ -286,27 +286,29 @@ Positive on four vaults of four, including both Chinese vaults the earlier void 
 | `test10` | 354 | 342 (96.6 %) | 12 | 386 | 200 |
 | `expA-main/wiki` | 161 | 156 (96.9 %) | 5 | 184 | 90 |
 | `expB-branch/wiki` | 171 | 166 (97.1 %) | 5 | 187 | 89 |
-| `wiki/` (production) | 2,141 | 537 (25.1 %) | 36 | 2,967 | see below |
+| `wiki/` (production) | 2,141 | 537 **(25.1 %)** | 36 | 2,967 | 15 in a 400 sample |
 | `sample-50page` | 53 | 0 | 0 | — | 0 |
-
-**The CROSS count fell by about 70 % when I fixed my own definition, and the fix changed the conclusion.** The tool called a pair cross-source when `a.sourceSlug !== b.sourceSlug`. Where one side carries no marker its slug is `undefined`, and `undefined !== 'some-source'` is TRUE — so the loose rule counted "has a marker" against "has none" as cross-source. On the production vault that mistake covers 2,967 pairs. `cross` now requires **both** sides to be marked and the two to differ, and the tool reports how many pairs it excluded.
 
 r@10, budget 20, `--exclude-asker`, both arms through `planRetrieval` and `selectPprSeeds`:
 
 | Vault | ALL n | ALL no-exp | ALL exp | delta ALL | CROSS n | CROSS no-exp | CROSS exp | delta CROSS |
 |---|---|---|---|---|---|---|---|---|
-| `test8` | 688 | 0.645 | 0.734 | +0.089 | 73 | 0.548 | 0.603 | **+0.055** |
-| `test10` | 1,572 | 0.504 | 0.619 | **+0.115** | 200 | 0.390 | 0.460 | **+0.070** |
+| `sample-50page` | 154 | 0.526 | 0.656 | +0.130 | 0 | n/a | n/a | n/a |
 | `expA-main/wiki` | 748 | 0.572 | 0.650 | +0.078 | 90 | 0.356 | 0.456 | **+0.100** |
 | `expB-branch/wiki` | 819 | 0.535 | 0.620 | +0.085 | 89 | 0.360 | 0.506 | **+0.146** |
+| `test8` | 688 | 0.645 | 0.734 | +0.089 | 73 | 0.548 | 0.603 | **+0.055** |
+| `test10` | 1,572 | 0.504 | 0.619 | **+0.115** | 200 | 0.390 | 0.460 | **+0.070** |
+| **`wiki/` (production)** | 400 sampled | **0.152** | **0.182** | **+0.030** | 15 | 0.000 | 0.000 | not measurable |
 
-**The expansion helps on the cross-source layer, on every vault: +0.055 to +0.146. It does not damage it.**
+**The production vault is the one that matters and it reads nothing like the test vaults.** Its baseline r@10 is **0.152** against 0.504-0.645 on the test corpora — three to four times lower — and the expansion's gain there is **+0.030**, a third of the test-vault range. The test vaults are 53 to 354 pages; production is 2,141. Every relative comparison above survives, and every absolute figure should be read as a property of a small generated vault rather than of the plugin in use.
 
-**The cross-source layer IS harder, so the PR's original premise holds.** The CROSS baseline sits below the ALL baseline on all four vaults (test8 0.548 vs 0.645, test10 0.390 vs 0.504, expA 0.356 vs 0.572, expB 0.360 vs 0.535). The strict definition restored what the contaminated one had hidden — under the loose rule the marked/unmarked pairs pulled the CROSS baseline UP, and I briefly concluded from that the premise was wrong. It was the measurement that was wrong.
+**The cross-source layer is barely measurable on the production vault at all.** Only 537 of its 2,141 pages carry a `source:` marker (25.1 %), and a true cross-source pair needs both sides marked, so a 400-question even sample yields **15** such pairs. That is not a zero — it is no data. The source-diversity signal in `assembleWithCoverage` is therefore mostly inert on the corpus the plugin is actually used on, which is a finding about the write side, not about this expansion.
 
-**And "the gain is skewed toward same-source pairs" is withdrawn — the direction flips by corpus.** CROSS gains less than ALL on test8 (+0.055 vs +0.089) and test10 (+0.070 vs +0.115), and MORE on expA (+0.100 vs +0.078) and expB (+0.146 vs +0.085). Two vaults each way is not a finding, it is a coin. It was also built on the contaminated set, which is why it looked so one-sided.
+**`--limit` sampled the FIRST n questions in page order, and that produced a 20x error.** The first run against the production vault read `ALL no-expansion = 0.007` — at random for 2,141 pages. Its first pages are entities whose index summary is a type label (`- 类型: 产品`), so the first 400 questions were built from summaries with no topical content: measured on a sample, the queries were literally `"类型 产品"`. Even sampling by stride gives 0.152 for the same vault and the same 400 questions. The trap has caught this project once before, on the +0.182-against-+0.011 reading, and I walked into it again.
 
-**`test10` was missing from the first three runs and it is the most informative vault.** It carries 12 distinct sources, the most of any corpus, and it returns the largest ALL gain of the four, +0.115. Its absence was an unstated omission on my part, not a decision.
+**The cross-source rule counted unmarked pages as a different source.** `a.sourceSlug !== b.sourceSlug` treats `undefined !== 'some-source'` as true, so a pair with one marked side was cross-source under the loose rule — 2,967 pairs on the production vault alone. Under the strict rule (both marked, both different) the CROSS baseline sits BELOW the ALL baseline on all four test vaults, which restores the premise the PR was opened on. I briefly concluded from the loose rule that the premise was wrong; the measurement was wrong instead. And "the gain is skewed toward same-source pairs" is withdrawn: CROSS gains less than ALL on test8 and test10 and more on expA and expB.
+
+**`test10` was missing from the first cross-source runs.** It carries 12 distinct sources, the most of any corpus, and returns the largest ALL gain of the four (+0.115). That was an unstated omission.
 
 `sample-50page` stays CROSS-empty and that is correct: it is a synthetic fixture whose pages carry no `sources:` frontmatter. The tool says so instead of scoring the empty layer.
 
