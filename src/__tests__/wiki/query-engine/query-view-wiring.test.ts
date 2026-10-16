@@ -86,6 +86,16 @@ describe('production wiring — QueryView', () => {
     // returns its input verbatim.
     expect(call(src, 'twoStageExpand')).toMatch(/\n\s*expansionQueryTerms,\s*\n/);
   });
+
+  it('passes the BM25F tables into the answer path', () => {
+    // #855 fix 5. `pprCascade` called `lexMatch(query, pages)` with no tables,
+    // so the BM25F branch had no production caller and the hand-tuned weight
+    // table scored every answer.
+    expect(seeds).toMatch(/pprCascade\([\s\S]*?tables:/);
+    // And the tables must be the FULL tier, not the name tier: the answer path
+    // is the one that reads the body.
+    expect(seeds).toMatch(/getFull\(/);
+  });
 });
 
 describe('KNOWN GAPS — asserted as failing until each one is wired', () => {

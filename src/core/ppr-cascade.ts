@@ -282,6 +282,22 @@ export interface PPRCascadeOptions {
   seeds?: string[];
   /** Optional RNG (mulberry32 helper) for deterministic PPR sampling. */
   rng?: () => number;
+  /**
+   * The answer path's lexical tables, for `lexMatch` to score with BM25F
+   * instead of the hand-tuned weight table.
+   *
+   * #855 fix 5. The BM25F branch existed and had seven tests and no production
+   * caller, because `PPRCascadeOptions` had nowhere to carry the tables and
+   * this function called `lexMatch(query, pages)`. The hand-tuned table is
+   * title 3 / alias 2 / summary 1 / text 1 — eleven patches went into it, one
+   * anomaly at a time. Build them from `TermIndexCache.getFull`, which covers
+   * title + aliases + summary + body, and is keyed on the index and the bodies
+   * so a prose edit rebuilds them.
+   *
+   * A caller that passes none keeps the weight table, which is why this is
+   * optional rather than required.
+   */
+  tables?: { terms: readonly PageTerms[]; corpus: CorpusTerms };
 }
 
 import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE } from '../constants';
@@ -581,7 +597,9 @@ export function pprCascade(
   options: PPRCascadeOptions = {},
 ): PageMatch[] {
   const topN = options.topN ?? DEFAULT_TOP_N;
-  const lex = lexMatch(query, pages);
+  const lex = options.tables
+    ? lexMatch(query, pages, options.tables)
+    : lexMatch(query, pages);
   const graph = options.graph;
   // Explicit seeds (from LLM) take precedence over implicit lex seeds.
   // Filter to graph nodes upfront — invalid seeds silently dropped.
