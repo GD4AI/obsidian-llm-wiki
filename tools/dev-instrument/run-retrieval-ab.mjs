@@ -152,7 +152,7 @@ function buildQuestions(pages, graph) {
         queryTerms,
         truthPath,
         askerPath,
-        cross: a.sourceSlug !== b.sourceSlug,
+        cross: a.sourceSlug !== undefined && b.sourceSlug !== undefined && a.sourceSlug !== b.sourceSlug,
       });
     }
   }
