@@ -29,6 +29,8 @@
  * reads the conversation first and the ask now second, which is the order the
  * user thinks in.
  */
+import { segment } from './term-index';
+
 export function buildRetrievalQuery(
   current: string,
   history: ReadonlyArray<{ role: string; content: string }>,
@@ -43,4 +45,39 @@ export function buildRetrievalQuery(
   }
   const recent = turns.slice(-Math.max(0, maxRounds));
   return [...recent, current].join(' ');
+}
+
+/**
+ * The weighted form. The current question's words weigh 1 and the history's
+ * weigh `historyWeight`.
+ *
+ * Why not just concatenate. Measured on the topic-switch case — the current
+ * question plus four UNRELATED history turns — concatenation drops
+ * self-retrieval MRR from 1.000 to 0.38-0.44, because four turns of history
+ * outvote the question the user actually asked. Weighting the history at 0.3
+ * holds the topic-switch case at 0.93-0.99 while the follow-up case stays at
+ * 1.000: the history still carries a follow-up's missing words, it just stops
+ * outvoting the present.
+ *
+ * The segmentation happens here rather than in the scorer so the two parts
+ * stay distinguishable. The scorer sees one weighted list and does not know
+ * which words came from where.
+ */
+export function buildWeightedRetrievalQuery(
+  current: string,
+  history: ReadonlyArray<{ role: string; content: string }>,
+  maxRounds: number,
+  historyWeight = 0.3,
+): Array<{ term: string; weight: number }> {
+  const currentTerms = segment(current).map(term => ({ term, weight: 1 }));
+  if (maxRounds <= 0 || history.length === 0) return currentTerms;
+  const turns: string[] = [];
+  for (const m of history) {
+    if (m.role !== 'user') continue;
+    const t = (m.content ?? '').trim();
+    if (t) turns.push(t);
+  }
+  const recent = turns.slice(-Math.max(0, maxRounds));
+  const historyTerms = segment(recent.join(' ')).map(term => ({ term, weight: historyWeight }));
+  return [...currentTerms, ...historyTerms];
 }

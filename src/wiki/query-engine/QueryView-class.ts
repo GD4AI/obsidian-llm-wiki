@@ -1208,7 +1208,12 @@ export class QueryView extends ItemView {
       // them per query is the 4.4 s cost #843 removed from the seed scorer.
       const { terms: expansionTerms, corpus: expansionCorpus, index: expansionIndex } = this.expansionCache.get(
         indexResult.indexContent,
-        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
+        // The summary is the first slice of the body, NOT the first alias.
+        // #855 review: the tool that measured this built `summary` as
+        // `body.slice(0, 200)` while the production path used
+        // `r.aliases[0] ?? ''`, which is empty on most pages. Measurement
+        // must describe the code that ships. Both now use the body slice.
+        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: (r.text ?? '').slice(0, 200), text: r.text ?? '' })),
       );
       // The inverted index is the same one the cache built. It cuts the
       // scorer's work from "every page" to "the pages that carry a query
@@ -1216,7 +1221,12 @@ export class QueryView extends ItemView {
       // pins the two together.
       const expandedQuery = twoStageExpand(
         tokenizeQuery(retrievalQuery),
-        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
+        // The summary is the first slice of the body, NOT the first alias.
+        // #855 review: the tool that measured this built `summary` as
+        // `body.slice(0, 200)` while the production path used
+        // `r.aliases[0] ?? ''`, which is empty on most pages. Measurement
+        // must describe the code that ships. Both now use the body slice.
+        retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: (r.text ?? '').slice(0, 200), text: r.text ?? '' })),
         expansionCorpus,
         DEFAULT_EXPANSION,
         expansionTerms,

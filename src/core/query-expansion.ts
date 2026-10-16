@@ -80,11 +80,11 @@ export function twoStageExpand(
   if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
   const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
-  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1, pts)];
+  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1, pts, corpus.docFreq)];
   if (opts.k2 <= 0 || opts.m2 <= 0) return first;
 
   const reranked = scoredIndices(first, pts, corpus, opts.k2, index, prefilterN);
-  const second = [...first, ...distinctive(pages, reranked, first, opts.m2, pts)];
+  const second = [...first, ...distinctive(pages, reranked, first, opts.m2, pts, corpus.docFreq)];
   return second;
 }
 
@@ -236,6 +236,8 @@ function distinctive(
    *  terms from them instead of re-segmenting every page — that was 2,148
    *  `segment()` calls per query on a 358-page corpus. */
   pts?: readonly PageTerms[],
+  /** The corpus's own document-frequency table. Preferred over rebuilding it. */
+  corpusDocFreq?: ReadonlyMap<string, number>,
 ): string[] {
   if (topM <= 0 || indices.length === 0) return [];
   const said = new Set(queryTerms);
@@ -253,12 +255,17 @@ function distinctive(
     const p = pages[j];
     return new Set([...segment(p.title), ...segment(p.summary), ...segment(p.text)]);
   };
-  const df = new Map<string, number>();
-  for (let j = 0; j < pages.length; j += 1) {
-    for (const w of wordsOf(j)) {
-      df.set(w, (df.get(w) ?? 0) + 1);
+  // The corpus already carries `docFreq`. Rebuilding it here by iterating
+  // every page's words is O(pages x words) per call, twice per query — the
+  // reviewer's measurement on 2,864 pages put this step at 3.3 s of the 3.4 s
+  // `twoStageExpand` was taking. Reading the table is O(1).
+  const df: ReadonlyMap<string, number> = corpusDocFreq ?? (() => {
+    const m = new Map<string, number>();
+    for (let j = 0; j < pages.length; j += 1) {
+      for (const w of wordsOf(j)) m.set(w, (m.get(w) ?? 0) + 1);
     }
-  }
+    return m;
+  })();
   const N = pages.length || 1;
   const scores = new Map<string, number>();
   for (const j of indices) {
