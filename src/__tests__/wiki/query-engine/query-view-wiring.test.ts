@@ -25,13 +25,13 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { prepareRetrievalInputs } from '../../../core/retrieval-query';
 
 /** Repo-relative source path -> absolute. Anchored on this file, not cwd. */
 const srcPath = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
 
 const QUERY_VIEW = srcPath('../../../wiki/query-engine/QueryView-class.ts');
 const SELECT_SEEDS = srcPath('../../../wiki/query-engine/pipeline/select-seeds.ts');
-const QUERY_EXPANSION = srcPath('../../../core/query-expansion.ts');
 const src = readFileSync(QUERY_VIEW, 'utf8');
 const seeds = readFileSync(SELECT_SEEDS, 'utf8');
 
@@ -95,17 +95,5 @@ describe('production wiring — QueryView', () => {
     // And the tables must be the FULL tier, not the name tier: the answer path
     // is the one that reads the body.
     expect(seeds).toMatch(/getFull\(/);
-  });
-});
-
-describe('KNOWN GAPS — asserted as failing until each one is wired', () => {
-  // Each of these is a real fix from the previous review round that no user
-  // path reaches today. They live here, visibly red, rather than in a comment
-  // nobody re-reads. This file gains the `it` form for each as it lands.
-  it.skip('buildWeightedRetrievalQuery has a production caller', () => {
-    const usedSomewhere = src.includes('buildWeightedRetrievalQuery')
-      || seeds.includes('buildWeightedRetrievalQuery')
-      || readFileSync(QUERY_EXPANSION, 'utf8').includes('buildWeightedRetrievalQuery');
-    expect(usedSomewhere, 'buildWeightedRetrievalQuery is exported and tested but never called').toBe(true);
   });
 });

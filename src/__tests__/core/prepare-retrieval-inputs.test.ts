@@ -58,9 +58,23 @@ describe('prepareRetrievalInputs — three strings, three policies', () => {
   it('segments the expansion terms so a Chinese query is not one token', () => {
     const out = prepareRetrievalInputs('深度学习的训练方法', [], 5);
 
-    expect(out.expansionTerms).toEqual([...segment('深度学习的训练方法')]);
+    expect(out.expansionTerms.map(t => t.term)).toEqual([...segment('深度学习的训练方法')]);
     expect(out.expansionTerms.length).toBeGreaterThan(1);
-    expect(out.expansionTerms).not.toContain('深度学习的训练方法');
+    expect(out.expansionTerms.map(t => t.term)).not.toContain('深度学习的训练方法');
+  });
+
+  it('weights the history below the question in the expansion terms', () => {
+    const out = prepareRetrievalInputs('为什么？', history, 2);
+    const weights = out.expansionTerms.map(t => t.weight);
+    const pastWeights = weights.filter(w => w !== 1);
+
+    // #855 fix 3. Concatenating four unrelated turns at full weight let the
+    // history outvote the present: topic-switch MRR 1.000 -> 0.38-0.44.
+    expect(weights.length).toBeGreaterThan(0);
+    expect(pastWeights.length).toBeGreaterThan(0);
+    expect(Math.max(...pastWeights)).toBeLessThan(1);
+    // The question's own words stay at full weight.
+    expect(Math.max(...weights)).toBe(1);
   });
 
   it('collapses to the question alone on the first turn', () => {
