@@ -58,23 +58,17 @@ describe('the composer grows with the content (#756)', () => {
 
 describe('the inline citation links are quieter than the prose (#756)', () => {
   it('the answer body\'s inline links are smaller than the body', () => {
-    const rule = composerRule('.llm-wiki-answer-modal a.internal-link');
+    const rule = composerRule('.llm-wiki-query-message-body .internal-link');
     expect(rule).toMatch(/font-size:\s*0\.\d+em/);
   });
 
-  it('they carry a lower saturation than the reference list at the bottom', () => {
-    // Two rules, two saturations. The inline marks are metadata about the
-    // sentence; the bottom list is the full-strength link colour. The two
-    // must not compete.
-    const inline = composerRule('.llm-wiki-answer-modal a.internal-link');
-    const list = composerRule('.llm-wiki-answer-references a');
-    expect(inline).toMatch(/opacity:\s*0\.\d+/);
-    // The reference list does not carry the same opacity.
-    if (list) expect(list).not.toMatch(/opacity:\s*0\.\d+/);
+  it('keeps the accent colour at full strength (the earlier opacity faded it into the prose)', () => {
+    const inline = composerRule('.llm-wiki-query-message-body .internal-link');
+    expect(inline).not.toMatch(/opacity:/);
   });
 
   it('keeps the underline (the accessibility affordance)', () => {
-    const rule = composerRule('.llm-wiki-answer-modal a.internal-link');
+    const rule = composerRule('.llm-wiki-query-message-body .internal-link');
     expect(rule).toMatch(/text-decoration:\s*(underline|auto)/);
   });
 });
