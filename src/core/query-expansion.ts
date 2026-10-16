@@ -19,7 +19,7 @@
 // 2,000 pages that is well under a millisecond each; the graph walk it feeds
 // is orders of magnitude more expensive.
 
-import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex } from './term-index';
+import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, FIELD_ORDER, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex } from './term-index';
 import { tokenizeQuery } from './ppr-cascade';
 
 export interface ExpansionPage {
@@ -69,14 +69,21 @@ export function twoStageExpand(
    * zero — and the ranking is identical. Without one, every page is visited.
    */
   index?: InvertedIndex,
+  /**
+   * Cheap pre-filter budget. The scorer visits at most this many pages,
+   * chosen by how many query terms they carry. 0 or less disables it.
+   * `expansion-prefilter.test.ts` pins that a generous budget produces the
+   * full-scan result.
+   */
+  prefilterN?: number,
 ): string[] {
   if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
   const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
-  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index), queryTerms, opts.m1)];
+  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1)];
   if (opts.k2 <= 0 || opts.m2 <= 0) return first;
 
-  const reranked = scoredIndices(first, pts, corpus, opts.k2, index);
+  const reranked = scoredIndices(first, pts, corpus, opts.k2, index, prefilterN);
   const second = [...first, ...distinctive(pages, reranked, first, opts.m2)];
   return second;
 }
@@ -148,14 +155,45 @@ export function expandQueryForRetrieval(
 /** Indices whose score is above zero, in rank order. A page that scores zero
  *  shares no term with the query, so its vocabulary is not this query's
  *  vocabulary and reading it would add noise. */
-function scoredIndices(terms: string[], pts: PageTerms[], corpus: CorpusTerms, k: number, index?: InvertedIndex): number[] {
-  const candidates = candidateIndices(terms, pts.length, index);
+function scoredIndices(terms: string[], pts: PageTerms[], corpus: CorpusTerms, k: number, index?: InvertedIndex, prefilterN?: number): number[] {
+  const candidates = prefilterN && prefilterN > 0
+    ? prefilterIndices(terms, pts, prefilterN)
+    : candidateIndices(terms, pts.length, index);
   return candidates
     .map(j => ({ j, score: bm25fScore(terms, pts[j], corpus, DEFAULT_FIELD_WEIGHTS) }))
     .filter(e => e.score > 0)
     .sort((a, b) => (b.score - a.score) || (a.j < b.j ? -1 : 1))
     .slice(0, k)
     .map(e => e.j);
+}
+
+/**
+ * The cheap pre-filter: keep the top `n` pages by how many query terms they
+ * carry. No IDF, no field weights, no length normalisation — just a count.
+ *
+ * Returns every page when `n <= 0` or `n >= pages.length`, so a caller that
+ * passes no budget gets the full scan. A page that matches nothing is dropped
+ * rather than filling the budget with pages that would score zero.
+ */
+export function prefilterIndices(terms: readonly string[], pts: readonly PageTerms[], n: number): number[] {
+  if (n <= 0 || n >= pts.length) return Array.from({ length: pts.length }, (_, i) => i);
+  const counts: Array<{ j: number; count: number }> = [];
+  for (let j = 0; j < pts.length; j += 1) {
+    let count = 0;
+    for (const t of terms) {
+      if (ptHasTerm(pts[j], t)) count += 1;
+    }
+    if (count > 0) counts.push({ j, count });
+  }
+  counts.sort((a, b) => (b.count - a.count) || (a.j < b.j ? -1 : 1));
+  return counts.slice(0, n).map(e => e.j);
+}
+
+function ptHasTerm(pt: PageTerms, term: string): boolean {
+  for (const field of FIELD_ORDER) {
+    if (pt.fields[field].tf.has(term)) return true;
+  }
+  return false;
 }
 
 /**

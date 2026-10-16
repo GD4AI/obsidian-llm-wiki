@@ -37,7 +37,7 @@ import { maxFuse } from '../../src/core/assembly.ts';
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
-  const valueFlags = new Set(['out', 'budget', 'k1', 'm1', 'k2', 'm2', 'layer', 'limit']);
+  const valueFlags = new Set(['out', 'budget', 'k1', 'm1', 'k2', 'm2', 'layer', 'limit', 'prefilter']);
   const USE_INDEX = argv.includes('--index');
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -138,7 +138,7 @@ function rank(terms, pts, corpus, budget, pprPages, graph, pageIndex) {
 function main() {
   const { vaultDir, flags } = parseArgs(process.argv.slice(2));
   if (!vaultDir) {
-    console.error('usage: run-expansion-eval.mjs <vaultDir> [--out f] [--exclude-asker] [--budget n] [--k1 n] [--m1 n] [--k2 n] [--m2 n] [--layer ALL|CROSS] [--limit n] [--index]');
+    console.error('usage: run-expansion-eval.mjs <vaultDir> [--out f] [--exclude-asker] [--budget n] [--k1 n] [--m1 n] [--k2 n] [--m2 n] [--layer ALL|CROSS] [--limit n] [--index] [--prefilter n]');
     process.exit(1);
   }
 
@@ -147,6 +147,7 @@ function main() {
   const LAYER = flags.layer ?? 'ALL';
   const LIMIT = flags.limit ? Number(flags.limit) : Infinity;
   const USE_INDEX = Boolean(flags.index);
+  const PREFILTER_N = flags.prefilter ? Number(flags.prefilter) : 0;
   const opts = {
     k1: flags.k1 ? Number(flags.k1) : DEFAULT_EXPANSION.k1,
     m1: flags.m1 ? Number(flags.m1) : DEFAULT_EXPANSION.m1,
@@ -193,7 +194,7 @@ function main() {
   for (const q of questions) {
     const baseTerms = q.queryTerms;
     const tExp = Date.now();
-    const expTerms = twoStageExpand(baseTerms, expansionPages, corpus, opts, terms, index);
+    const expTerms = twoStageExpand(baseTerms, expansionPages, corpus, opts, terms, index, PREFILTER_N);
     expScoringMs += Date.now() - tExp;
     for (const [arm, tt] of [['base', baseTerms], ['exp', expTerms]]) {
       let ranked = rank(tt, terms, corpus, BUDGET, pprPages, graph, pageIndex);
@@ -213,7 +214,7 @@ function main() {
   const r = (h, n) => (n === 0 ? 0 : h / n);
   const lines = [];
   lines.push(`vault=${basename(vaultDir)} pages=${pages.length} questions=${questions.length} budget=${BUDGET} excludeAsker=${EXCLUDE_ASKER} layer=${LAYER}`);
-  lines.push(`opts=${JSON.stringify(opts)} useIndex=${USE_INDEX} buildMs=${Date.now() - t0} expansionScoringMs=${expScoringMs}`);
+  lines.push(`opts=${JSON.stringify(opts)} useIndex=${USE_INDEX} prefilterN=${PREFILTER_N} buildMs=${Date.now() - t0} expansionScoringMs=${expScoringMs}`);
   lines.push('');
   lines.push('arm  layer  r@10    n');
   for (const arm of ['base', 'exp']) {
