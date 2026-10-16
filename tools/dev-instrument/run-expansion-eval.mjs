@@ -37,6 +37,13 @@
  *   --exclude-asker     drop the asking page (default ON; --no-exclude-asker to turn off)
  *   --limit <n>         cap the questions, for a quick pass
  *   --layer <ALL|CROSS> report one layer
+ *   --index <path>      use this index.md instead of the vault's own
+ *
+ * `--index` exists because a vault's committed `index.md` can be STALE —
+ * generated before a generator change landed. test8's is: it has no `source:`
+ * marker on any line, so `PageRef.sourceSlug` is `undefined` everywhere, the
+ * CROSS layer has zero questions, and every cross-source figure quoted for it is
+ * `n=0`. Regenerate with `run-regenerate-index.mjs` and pass the result here.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -65,10 +72,12 @@ const EXCLUDE_ASKER = !args.includes('--no-exclude-asker');
 const LIMIT = Number(flag('limit', '1000000'));
 const LAYER = flag('layer', 'ALL');
 const OUT = flag('out', null);
+const INDEX_OVERRIDE = flag('index', null);
 
 // Production loading. The wiki index carries the page list and a one-line
 // description per page; the bodies come from the files, as `withBodies` does.
-const indexContent = existsSync(join(dir, 'index.md')) ? readFileSync(join(dir, 'index.md'), 'utf8') : '';
+const indexPath = INDEX_OVERRIDE ?? join(dir, 'index.md');
+const indexContent = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
 const pageRefs = parseIndexForPages(indexContent);
 const allPaths = new Set(pageRefs.map(p => p.path));
 const bodies = new Map();
@@ -106,7 +115,15 @@ for (const [askerPath, targets] of graph.edges) {
 const questions = (LAYER === 'CROSS' ? all.filter(q => q.cross) : all).slice(0, LIMIT);
 
 const say = console.log;
-say(`vault=${basename(dir)} pages=${refs.length} nodes=${graph.nodes.length} questions=${questions.length} budget=${RETRIEVAL_BUDGET} excludeAsker=${EXCLUDE_ASKER} layer=${LAYER}`);
+say(`vault=${basename(dir)} pages=${refs.length} nodes=${graph.nodes.length} questions=${questions.length} budget=${RETRIEVAL_BUDGET} excludeAsker=${EXCLUDE_ASKER} layer=${LAYER} index=${INDEX_OVERRIDE ? basename(INDEX_OVERRIDE) : 'vault index.md'}`);
+// The CROSS layer is only populated by the `source:` marker on index lines. Say
+// so rather than reporting an empty layer as a score.
+const indexedSources = new Set(pageRefs.map(p => p.sourceSlug).filter(s => s !== undefined));
+if (indexedSources.size === 0) {
+  say(`NOTE: no page carries a sourceSlug (no \`source:\` marker on any index line), so CROSS is empty and any cross-source figure here is meaningless. Regenerate with run-regenerate-index.mjs and pass --index.`);
+} else {
+  say(`sourceSlugs: ${indexedSources.size} distinct across ${pageRefs.filter(p => p.sourceSlug !== undefined).length} of ${pageRefs.length} pages`);
+}
 if (questions.length === 0) {
   say('No questions: the graph carries no resolvable (asker -> truth) pair.');
   process.exit(0);

@@ -1,0 +1,14 @@
+{
+  "_comment": "Runtime-only config for dev tools that must call production modules importing `obsidian`. Used via `npx tsx --tsconfig tools/dev-instrument/tsconfig.tools-run.json`. NOT used by typecheck:tools, so obsidian usage in tool code is still checked against the real API.",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": "../..",
+    "paths": {
+      "obsidian": ["tools/dev-instrument/stubs/obsidian.ts"]
+    }
+  }
+}
