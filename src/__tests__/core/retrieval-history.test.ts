@@ -7,7 +7,8 @@
 // thirty-three times, for the cost of a string.
 
 import { describe, it, expect } from 'vitest';
-import { buildRetrievalQuery } from '../../core/retrieval-query';
+import { buildRetrievalQuery, buildWeightedRetrievalQuery } from '../../core/retrieval-query';
+import { buildPageTerms, buildCorpusTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS } from '../../core/term-index';
 import { RETRIEVAL_HISTORY_ROUNDS } from '../../constants';
 
 const history = [
@@ -65,5 +66,51 @@ describe('buildRetrievalQuery', () => {
 
   it('exposes the round count as a shared constant, not a magic number', () => {
     expect(RETRIEVAL_HISTORY_ROUNDS).toBeGreaterThan(0);
+  });
+});
+
+describe('the weighted query survives a topic switch (#855 review, P0-3)', () => {
+  // The shape the unweighted concatenation failed: the user's CURRENT
+  // question about one topic, plus four turns of history about something
+  // else. The unweighted form let the history outvote the present.
+  const unrelatedHistory = [
+    { role: 'user', content: 'alpha topic one' },
+    { role: 'user', content: 'alpha topic two' },
+    { role: 'user', content: 'alpha topic three' },
+    { role: 'user', content: 'alpha topic four' },
+  ];
+
+  it("the target page outranks the history topic after weighting", () => {
+    // The real question is not the total weight; it is whether the page the
+    // user is asking about comes out ahead of the pages the history was about.
+    // The history carries four turns of `alpha topic`; the current question is
+    // `beta target`. The distractor page is what the history was about.
+    const target = buildPageTerms({ title: 'beta target', aliases: [], summary: 'beta target', text: 'beta target content' });
+    const distractor = buildPageTerms({ title: 'alpha topic one two three four', aliases: [], summary: 'alpha topic one two three four', text: 'alpha topic one two three four content' });
+    const corpus = buildCorpusTerms([target, distractor]);
+
+    const weighted = buildWeightedRetrievalQuery('beta target', unrelatedHistory, 5, 0.3);
+    const targetScore = bm25fScore(weighted, target, corpus, DEFAULT_FIELD_WEIGHTS);
+    const distractorScore = bm25fScore(weighted, distractor, corpus, DEFAULT_FIELD_WEIGHTS);
+    expect(targetScore).toBeGreaterThan(distractorScore);
+  });
+
+  it('the history still reaches the scorer (a follow-up is not lost)', () => {
+    const weighted = buildWeightedRetrievalQuery('why', unrelatedHistory, 5, 0.3);
+    expect(weighted.some(w => w.term.includes('alpha'))).toBe(true);
+  });
+
+  it('history words weigh less than the current question\'s', () => {
+    const weighted = buildWeightedRetrievalQuery('beta target', unrelatedHistory, 5, 0.3);
+    const current = weighted.filter(w => w.weight === 1);
+    const history = weighted.filter(w => w.weight < 1);
+    expect(current.length).toBeGreaterThan(0);
+    expect(history.length).toBeGreaterThan(0);
+    for (const h of history) expect(h.weight).toBeLessThan(1);
+  });
+
+  it('no history, no weighted words below 1', () => {
+    const weighted = buildWeightedRetrievalQuery('beta target', [], 5, 0.3);
+    for (const w of weighted) expect(w.weight).toBe(1);
   });
 });
