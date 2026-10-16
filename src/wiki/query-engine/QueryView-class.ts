@@ -1206,16 +1206,21 @@ export class QueryView extends ItemView {
       //
       // Terms are cached per index file (#855 review point 4). Rebuilding
       // them per query is the 4.4 s cost #843 removed from the seed scorer.
-      const { terms: expansionTerms, corpus: expansionCorpus } = this.expansionCache.get(
+      const { terms: expansionTerms, corpus: expansionCorpus, index: expansionIndex } = this.expansionCache.get(
         indexResult.indexContent,
         retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
       );
+      // The inverted index is the same one the cache built. It cuts the
+      // scorer's work from "every page" to "the pages that carry a query
+      // term" without changing the ranking; `expansion-inverted-index.test.ts`
+      // pins the two together.
       const expandedQuery = twoStageExpand(
         tokenizeQuery(retrievalQuery),
         retrievalRefs.map(r => ({ key: r.path, title: r.title, summary: r.aliases[0] ?? '', text: r.text ?? '' })),
         expansionCorpus,
         DEFAULT_EXPANSION,
         expansionTerms,
+        expansionIndex,
       ).join(' ');
       const seedResult = await selectPprSeeds(
         expandedQuery,

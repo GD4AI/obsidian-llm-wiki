@@ -30,7 +30,7 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { twoStageExpand, buildExpansionTerms, DEFAULT_EXPANSION } from '../../src/core/query-expansion.ts';
-import { buildCorpusTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS, segment } from '../../src/core/term-index.ts';
+import { buildCorpusTerms, buildInvertedIndex, bm25fScore, DEFAULT_FIELD_WEIGHTS, segment } from '../../src/core/term-index.ts';
 import { tokenizeQuery, pprCascade } from '../../src/core/ppr-cascade.ts';
 import { maxFuse } from '../../src/core/assembly.ts';
 
@@ -38,6 +38,7 @@ function parseArgs(argv) {
   const positional = [];
   const flags = {};
   const valueFlags = new Set(['out', 'budget', 'k1', 'm1', 'k2', 'm2', 'layer', 'limit']);
+  const USE_INDEX = argv.includes('--index');
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {
@@ -137,7 +138,7 @@ function rank(terms, pts, corpus, budget, pprPages, graph, pageIndex) {
 function main() {
   const { vaultDir, flags } = parseArgs(process.argv.slice(2));
   if (!vaultDir) {
-    console.error('usage: run-expansion-eval.mjs <vaultDir> [--out f] [--exclude-asker] [--budget n] [--k1 n] [--m1 n] [--k2 n] [--m2 n] [--layer ALL|CROSS] [--limit n]');
+    console.error('usage: run-expansion-eval.mjs <vaultDir> [--out f] [--exclude-asker] [--budget n] [--k1 n] [--m1 n] [--k2 n] [--m2 n] [--layer ALL|CROSS] [--limit n] [--index]');
     process.exit(1);
   }
 
@@ -145,6 +146,7 @@ function main() {
   const EXCLUDE_ASKER = Boolean(flags['exclude-asker']);
   const LAYER = flags.layer ?? 'ALL';
   const LIMIT = flags.limit ? Number(flags.limit) : Infinity;
+  const USE_INDEX = Boolean(flags.index);
   const opts = {
     k1: flags.k1 ? Number(flags.k1) : DEFAULT_EXPANSION.k1,
     m1: flags.m1 ? Number(flags.m1) : DEFAULT_EXPANSION.m1,
@@ -153,6 +155,7 @@ function main() {
   };
 
   const t0 = Date.now();
+  let expScoringMs = 0;
   // #854: with `--exclude-asker`, the asker is dropped from the CANDIDATE set
   // for each question, not from the whole vault. The whole-vault filter was
   // wrong: almost every page has an outgoing link, so it emptied the vault.
@@ -179,7 +182,8 @@ function main() {
   const buildStart = Date.now();
   const terms = buildExpansionTerms(expansionPages);
   const corpus = buildCorpusTerms(terms);
-  console.log(`built page terms + corpus in ${Date.now() - buildStart} ms`);
+  const index = USE_INDEX ? buildInvertedIndex(terms) : undefined;
+  console.log(`built page terms + corpus${USE_INDEX ? ' + inverted index' : ''} in ${Date.now() - buildStart} ms`);
 
   const scores = {
     base: { ALL: [0, 0], CROSS: [0, 0] },
@@ -188,7 +192,9 @@ function main() {
 
   for (const q of questions) {
     const baseTerms = q.queryTerms;
-    const expTerms = twoStageExpand(baseTerms, expansionPages, corpus, opts, terms);
+    const tExp = Date.now();
+    const expTerms = twoStageExpand(baseTerms, expansionPages, corpus, opts, terms, index);
+    expScoringMs += Date.now() - tExp;
     for (const [arm, tt] of [['base', baseTerms], ['exp', expTerms]]) {
       let ranked = rank(tt, terms, corpus, BUDGET, pprPages, graph, pageIndex);
       if (EXCLUDE_ASKER) ranked = ranked.filter(i => i !== pageIndex.get(q.asker.path));
@@ -207,7 +213,7 @@ function main() {
   const r = (h, n) => (n === 0 ? 0 : h / n);
   const lines = [];
   lines.push(`vault=${basename(vaultDir)} pages=${pages.length} questions=${questions.length} budget=${BUDGET} excludeAsker=${EXCLUDE_ASKER} layer=${LAYER}`);
-  lines.push(`opts=${JSON.stringify(opts)} buildMs=${Date.now() - t0}`);
+  lines.push(`opts=${JSON.stringify(opts)} useIndex=${USE_INDEX} buildMs=${Date.now() - t0} expansionScoringMs=${expScoringMs}`);
   lines.push('');
   lines.push('arm  layer  r@10    n');
   for (const arm of ['base', 'exp']) {

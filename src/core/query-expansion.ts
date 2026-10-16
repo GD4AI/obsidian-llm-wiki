@@ -19,7 +19,7 @@
 // 2,000 pages that is well under a millisecond each; the graph walk it feeds
 // is orders of magnitude more expensive.
 
-import { segment, buildPageTerms, buildCorpusTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms } from './term-index';
+import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex } from './term-index';
 import { tokenizeQuery } from './ppr-cascade';
 
 export interface ExpansionPage {
@@ -63,14 +63,20 @@ export function twoStageExpand(
    * on every keystroke reintroduces that cost.
    */
   prebuilt?: readonly PageTerms[],
+  /**
+   * Inverted index over `pts`. When given, the scorer visits only pages that
+   * contain at least one query term — a page that contains none contributes
+   * zero — and the ranking is identical. Without one, every page is visited.
+   */
+  index?: InvertedIndex,
 ): string[] {
   if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
   const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
-  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1), queryTerms, opts.m1)];
+  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index), queryTerms, opts.m1)];
   if (opts.k2 <= 0 || opts.m2 <= 0) return first;
 
-  const reranked = scoredIndices(first, pts, corpus, opts.k2);
+  const reranked = scoredIndices(first, pts, corpus, opts.k2, index);
   const second = [...first, ...distinctive(pages, reranked, first, opts.m2)];
   return second;
 }
@@ -102,17 +108,19 @@ export class ExpansionTermsCache {
   private key = '';
   private terms: PageTerms[] = [];
   private corpus: CorpusTerms | null = null;
+  private index: InvertedIndex | null = null;
   private _buildCount = 0;
 
   /** Build once per key. A repeat call with the same key returns the cached tables. */
-  get(key: string, pages: readonly ExpansionPage[]): { terms: PageTerms[]; corpus: CorpusTerms } {
+  get(key: string, pages: readonly ExpansionPage[]): { terms: PageTerms[]; corpus: CorpusTerms; index: InvertedIndex } {
     if (this.key !== key || this.terms.length === 0) {
       this.terms = buildExpansionTerms(pages);
       this.corpus = buildCorpusTerms(this.terms);
+      this.index = buildInvertedIndex(this.terms);
       this.key = key;
       this._buildCount += 1;
     }
-    return { terms: this.terms, corpus: this.corpus as CorpusTerms };
+    return { terms: this.terms, corpus: this.corpus as CorpusTerms, index: this.index as InvertedIndex };
   }
 
   /** Exposed for tests that want to prove a rebuild happened. */
@@ -140,13 +148,39 @@ export function expandQueryForRetrieval(
 /** Indices whose score is above zero, in rank order. A page that scores zero
  *  shares no term with the query, so its vocabulary is not this query's
  *  vocabulary and reading it would add noise. */
-function scoredIndices(terms: string[], pts: PageTerms[], corpus: CorpusTerms, k: number): number[] {
-  return pts
-    .map((pt, j) => ({ j, score: bm25fScore(terms, pt, corpus, DEFAULT_FIELD_WEIGHTS) }))
+function scoredIndices(terms: string[], pts: PageTerms[], corpus: CorpusTerms, k: number, index?: InvertedIndex): number[] {
+  const candidates = candidateIndices(terms, pts.length, index);
+  return candidates
+    .map(j => ({ j, score: bm25fScore(terms, pts[j], corpus, DEFAULT_FIELD_WEIGHTS) }))
     .filter(e => e.score > 0)
     .sort((a, b) => (b.score - a.score) || (a.j < b.j ? -1 : 1))
     .slice(0, k)
     .map(e => e.j);
+}
+
+/**
+ * The page indices worth scoring. With an index, the union of the pages that
+ * contain at least one query term. Without one, every page.
+ */
+function candidateIndices(terms: readonly string[], pageCount: number, index?: InvertedIndex): number[] {
+  if (!index) return Array.from({ length: pageCount }, (_, i) => i);
+  const out = new Set<number>();
+  for (const t of terms) {
+    const direct = index.termToPages.get(t);
+    if (direct) for (const p of direct) out.add(p);
+    // The scorer falls back to character trigrams for a term the corpus has
+    // never seen (`bm25fScore`'s `df === 0` branch). The candidate set must
+    // follow the same rule or a page the scorer would match through its grams
+    // is skipped and the ranking changes. `wordGrams` is the scorer's own
+    // function, so the two cannot drift.
+    if (!direct || direct.length === 0) {
+      for (const g of wordGrams(t)) {
+        const pages = index.termToPages.get(g);
+        if (pages) for (const p of pages) out.add(p);
+      }
+    }
+  }
+  return [...out].sort((a, b) => a - b);
 }
 
 /**
