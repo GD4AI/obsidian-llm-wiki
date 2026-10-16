@@ -30,6 +30,28 @@
  * user thinks in.
  */
 import { segment } from './term-index';
+import { tokenizeQuery } from './ppr-cascade';
+
+/**
+ * The terms the retrieval scores, cut the way the scorer reads them.
+ *
+ * `tokenizeQuery` keeps a CJK run of three or more characters as ONE token,
+ * because that is right for substring matching against a title. It is wrong for
+ * a scorer that looks terms up in a `PageTerms` table: the table is built by
+ * `segment`, so its keys are bigrams, and an uncut run misses every page.
+ *
+ * Measured 2026-10-16 on a four-page fixture. `twoStageExpand` handed a single
+ * Chinese token added ONE word to the query — the query echoed back — against
+ * 23 to 28 added when the same query arrives segmented. The expansion was a
+ * no-op on any Chinese vault, and test8 and test10 are Chinese vaults.
+ *
+ * `scorePagesByNeedles` has had this step since #729
+ * (`needles.flatMap(n => segment(n))`). This is the same composition, named, so
+ * the two cannot drift.
+ */
+export function retrievalQueryTerms(query: string): string[] {
+  return tokenizeQuery(query).flatMap(t => segment(t));
+}
 
 export function buildRetrievalQuery(
   current: string,

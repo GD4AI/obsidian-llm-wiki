@@ -46,9 +46,8 @@ import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../.
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { twoStageExpand, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
-import { tokenizeQuery } from '../../core/ppr-cascade';
 import { selectPprSeeds } from './pipeline/select-seeds';
-import { buildRetrievalQuery } from '../../core/retrieval-query';
+import { retrievalQueryTerms, buildRetrievalQuery } from '../../core/retrieval-query';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -1252,7 +1251,12 @@ export class QueryView extends ItemView {
       // term" without changing the ranking; `expansion-inverted-index.test.ts`
       // pins the two together.
       const expandedQuery = twoStageExpand(
-        tokenizeQuery(retrievalQuery),
+        // SEGMENTED, not just tokenized. `tokenizeQuery` keeps a Chinese run
+        // as one token and `bm25fScore` looks terms up in a table built by
+        // `segment`, so an uncut run matches nothing and the expansion returns
+        // its input verbatim — a no-op on exactly the vaults this feature was
+        // measured on. See `retrievalQueryTerms` and its test.
+        retrievalQueryTerms(retrievalQuery),
         // The summary is the first slice of the body, NOT the first alias.
         // #855 review: the tool that measured this built `summary` as
         // `body.slice(0, 200)` while the production path used

@@ -426,14 +426,22 @@ export function lexMatch(
   // matching "cache" twice as strongly in one field. `tokensFound` is that
   // count, and `bm25fScore` does not expose it, so it is counted here.
   if (tables) {
+    // SEGMENTED, same reason and same shape as `scorePagesByNeedles` above.
+    // `bm25fScore` looks terms up in a `PageTerms` table built by `segment`, so
+    // feeding it `tokenizeQuery` output hands a Chinese run to a scorer that
+    // has never seen it and it matches nothing. Measured 2026-10-16: the BM25F
+    // path returned no page at all for 深度学习 where the legacy path returned
+    // the right one.
+    const queryTerms = tokens.flatMap(n => segment(n));
     const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
     for (let i = 0; i < pages.length; i += 1) {
-      const score = bm25fScore(tokens, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
+      const score = bm25fScore(queryTerms, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
       if (score <= 0) continue;
       const page = pages[i];
+      // Breadth, counted over the SAME segmented terms the scorer used.
       const haystack = `${page.title} ${page.aliases.join(' ')} ${page.summary ?? ''} ${page.text ?? ''}`.toLowerCase();
       let tokensFound = 0;
-      for (const kw of tokens) if (haystack.includes(kw)) tokensFound += 1;
+      for (const kw of queryTerms) if (haystack.includes(kw)) tokensFound += 1;
       scored.push({ page, score, tokensFound });
     }
     return scored
