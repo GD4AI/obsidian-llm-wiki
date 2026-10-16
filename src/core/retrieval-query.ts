@@ -29,7 +29,7 @@
  * reads the conversation first and the ask now second, which is the order the
  * user thinks in.
  */
-import { segment } from './term-index';
+import { segment, type WeightedTerm } from './term-index';
 import { tokenizeQuery } from './ppr-cascade';
 
 /**
@@ -72,8 +72,17 @@ export const RETRIEVAL_QUERY_POLICY = {
 export interface RetrievalInputs {
   /** History + question, joined. The lexical scorer and PPR read this. */
   retrievalQuery: string;
-  /** Segmented, for the expansion's scorers. */
-  expansionTerms: string[];
+  /**
+   * Segmented and WEIGHTED, for the expansion's scorers.
+   *
+   * The current question's words weigh 1 and the history's weigh
+   * `historyWeight`. Concatenating the history at full weight lets four
+   * unrelated turns outvote the question the user asked: measured on the
+   * topic-switch case, self-retrieval MRR falls from 1.000 to 0.38-0.44. At
+   * 0.3 the topic-switch case holds at 0.93-0.99 and a follow-up stays at
+   * 1.000. #855 fix 3 — the function existed with six tests and no caller.
+   */
+  expansionTerms: WeightedTerm[];
   /** The words the LLM stages see. */
   llmQuery: string;
   /** The words the escalation gate reads. */
@@ -110,7 +119,9 @@ export function prepareRetrievalInputs(
   const retrievalQuery = buildRetrievalQuery(current, history, maxRounds);
   return {
     retrievalQuery,
-    expansionTerms: retrievalQueryTerms(retrievalQuery),
+    // Weighted, not just segmented: `buildWeightedRetrievalQuery` segments on
+    // the way `segment` does, which is what the scorer's tables are keyed by.
+    expansionTerms: buildWeightedRetrievalQuery(current, history, maxRounds),
     llmQuery: current,
     gateQuery: retrievalQuery,
   };

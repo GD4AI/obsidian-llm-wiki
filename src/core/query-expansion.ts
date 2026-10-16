@@ -19,8 +19,12 @@
 // 2,000 pages that is well under a millisecond each; the graph walk it feeds
 // is orders of magnitude more expensive.
 
-import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, FIELD_ORDER, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex } from './term-index';
+import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, FIELD_ORDER, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex, type WeightedTerm } from './term-index';
 import { tokenizeQuery } from './ppr-cascade';
+
+/** The bare string of a query term, weighted or not. The inverted index, the
+ *  pre-filter and the "already said" set all count occurrences, not weights. */
+const termText = (t: string | WeightedTerm): string => (typeof t === 'string' ? t : t.term);
 
 export interface ExpansionPage {
   key: string;
@@ -52,7 +56,7 @@ export const DEFAULT_EXPANSION: ExpansionOptions = { k1: 5, m1: 10, k2: 5, m2: 1
  * empty corpus, a query matching nothing, or a `k2` of 0 for a one-shot call.
  */
 export function twoStageExpand(
-  queryTerms: string[],
+  queryTerms: readonly (string | WeightedTerm)[],
   pages: readonly ExpansionPage[],
   corpus: CorpusTerms,
   opts: ExpansionOptions = DEFAULT_EXPANSION,
@@ -77,15 +81,19 @@ export function twoStageExpand(
    */
   prefilterN?: number,
 ): string[] {
-  if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
+  if (queryTerms.length === 0 || pages.length === 0) return queryTerms.map(termText);
   const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
-  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1, pts, corpus.docFreq)];
-  if (opts.k2 <= 0 || opts.m2 <= 0) return first;
+  // The WEIGHTS score; they do not travel. What comes back is a term list, and
+  // `QueryView` joins it into the query string — a `WeightedTerm` reaching that
+  // join would serialise as "[object Object]". So the history is down-weighted
+  // for the scoring and flattened for the output.
+  const first: Array<string | WeightedTerm> = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1, pts, corpus.docFreq)];
+  if (opts.k2 <= 0 || opts.m2 <= 0) return first.map(termText);
 
   const reranked = scoredIndices(first, pts, corpus, opts.k2, index, prefilterN);
-  const second = [...first, ...distinctive(pages, reranked, first, opts.m2, pts, corpus.docFreq)];
-  return second;
+  const second: Array<string | WeightedTerm> = [...first, ...distinctive(pages, reranked, first, opts.m2, pts, corpus.docFreq)];
+  return second.map(termText);
 }
 
 /**
@@ -155,10 +163,13 @@ export function expandQueryForRetrieval(
 /** Indices whose score is above zero, in rank order. A page that scores zero
  *  shares no term with the query, so its vocabulary is not this query's
  *  vocabulary and reading it would add noise. */
-function scoredIndices(terms: string[], pts: PageTerms[], corpus: CorpusTerms, k: number, index?: InvertedIndex, prefilterN?: number): number[] {
+function scoredIndices(terms: readonly (string | WeightedTerm)[], pts: PageTerms[], corpus: CorpusTerms, k: number, index?: InvertedIndex, prefilterN?: number): number[] {
+  // The inverted index and the pre-filter count TERM OCCURRENCES, so they read
+  // the bare strings. Only `bm25fScore` understands a weight.
+  const plain = terms.map(termText);
   const candidates = prefilterN && prefilterN > 0
-    ? prefilterIndices(terms, pts, prefilterN)
-    : candidateIndices(terms, pts.length, index);
+    ? prefilterIndices(plain, pts, prefilterN)
+    : candidateIndices(plain, pts.length, index);
   return candidates
     .map(j => ({ j, score: bm25fScore(terms, pts[j], corpus, DEFAULT_FIELD_WEIGHTS) }))
     .filter(e => e.score > 0)
@@ -230,7 +241,7 @@ function candidateIndices(terms: readonly string[], pageCount: number, index?: I
 function distinctive(
   pages: readonly ExpansionPage[],
   indices: readonly number[],
-  queryTerms: readonly string[],
+  queryTerms: readonly (string | WeightedTerm)[],
   topM: number,
   /** The per-page term tables. When given, the function reads the segmented
    *  terms from them instead of re-segmenting every page — that was 2,148
@@ -240,7 +251,7 @@ function distinctive(
   corpusDocFreq?: ReadonlyMap<string, number>,
 ): string[] {
   if (topM <= 0 || indices.length === 0) return [];
-  const said = new Set(queryTerms);
+  const said = new Set(queryTerms.map(termText));
   // Words of one page, deduplicated. With `pts` this is the keys of the four
   // field tf maps; without it, the page is segmented on the spot (the old
   // behaviour, kept for callers that have no tables).
