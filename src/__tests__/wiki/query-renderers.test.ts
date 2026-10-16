@@ -192,7 +192,7 @@ describe('renderRetrievalLabel', () => {
       }, 'wiki');
       const label = parent.querySelector('.llm-wiki-query-retrieval-label');
       // "lex" arm should be "Lexical", not "index" (which is misleading)
-      expect(label?.textContent).toContain('Lexical');
+      expect(label?.textContent).toContain('BM25F');
       expect(label?.textContent).not.toContain('📇 index');
     });
 
@@ -232,7 +232,7 @@ describe('renderRetrievalLabel', () => {
       }, 'wiki');
       const label = parent.querySelector('.llm-wiki-query-retrieval-label');
       expect(label?.textContent).toContain('PPR');
-      expect(label?.textContent).toContain('Lexical');
+      expect(label?.textContent).toContain('BM25F');
       expect(label?.textContent).not.toContain('📇 index');
     });
 
@@ -264,7 +264,7 @@ describe('renderRetrievalLabel', () => {
       // "index" arm should be translated to "Index" (with a clear
       // glyph) — the raw "🔎 index" leakage confuses users into
       // thinking the wiki index file was searched.
-      expect(label?.textContent).toContain('Index');
+      expect(label?.textContent).toContain('BM25F');
       expect(label?.textContent).not.toBe('🔎 index');
     });
 
@@ -278,7 +278,7 @@ describe('renderRetrievalLabel', () => {
       }, 'wiki');
       const label = parent.querySelector('.llm-wiki-query-retrieval-label');
       expect(label?.textContent).toContain('PPR');
-      expect(label?.textContent).toContain('Index');
+      expect(label?.textContent).toContain('BM25F');
     });
   });
 });
