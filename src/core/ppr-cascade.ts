@@ -415,9 +415,16 @@ export function lexMatch(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   if (tables) {
+    // SEGMENTED, same reason and same shape as `scorePagesByNeedles` above.
+    // `bm25fScore` looks terms up in a `PageTerms` table built by `segment`, so
+    // feeding it `tokenizeQuery` output hands a Chinese run to a scorer that
+    // has never seen it and it matches nothing. Measured 2026-10-16: the BM25F
+    // path returned no page at all for 深度学习 where the legacy path returned
+    // the right one.
+    const queryTerms = tokens.flatMap(n => segment(n));
     const scored: { page: PageRef; score: number }[] = [];
     for (let i = 0; i < pages.length; i += 1) {
-      const score = bm25fScore(tokens, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
+      const score = bm25fScore(queryTerms, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
       if (score > 0) scored.push({ page: pages[i], score });
     }
     return scored.sort((a, b) => b.score - a.score || (a.page.path < b.page.path ? -1 : 1)).map(s => s.page);
