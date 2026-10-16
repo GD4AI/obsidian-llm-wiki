@@ -35,9 +35,19 @@
  * Options:
  *   --out <file>        also write the report to a file
  *   --exclude-asker     drop the asking page (default ON; --no-exclude-asker to turn off)
- *   --limit <n>         cap the questions, for a quick pass
+ *   --limit <n>         sample n questions EVENLY across the set (see below)
  *   --layer <ALL|CROSS> report one layer
  *   --index <path>      use this index.md instead of the vault's own
+ *
+ * `--limit` samples EVENLY, by stride, not the first n. Taking the first n in
+ * page order is order-biased and it is a trap this project has already been
+ * caught by twice: the +0.182 reading against +0.011 was a first-200 subsample,
+ * and I made the same mistake again on the 2,141-page production vault, where
+ * the first pages are entities whose index summary is a type label and the
+ * measured r@10 read 0.007 — the sampling's fault, not the retrieval's.
+ *
+ * The tool prints the stride it used, because a sample you cannot see the shape
+ * of is not a sample.
  *
  * `--index` exists because a vault's committed `index.md` can be STALE —
  * generated before a generator change landed. test8's is: it has no `source:`
@@ -59,8 +69,7 @@ import { segment } from '../../src/core/term-index.ts';
 import { RETRIEVAL_BUDGET } from '../../src/constants.ts';
 
 const args = process.argv.slice(2);
-const dir = args.find(a => !a.startsWith('--'));
-if (!dir) {
+const dir = args.find(a => !a.startsWith('--'));if (!dir) {
   console.error('usage: run-expansion-eval.mjs <vaultDir> [--out f] [--limit n] [--layer ALL|CROSS] [--no-exclude-asker]');
   process.exit(1);
 }
@@ -69,10 +78,10 @@ const flag = (name, dflt) => {
   return i >= 0 ? args[i + 1] : dflt;
 };
 const EXCLUDE_ASKER = !args.includes('--no-exclude-asker');
-const LIMIT = Number(flag('limit', '1000000'));
 const LAYER = flag('layer', 'ALL');
 const OUT = flag('out', null);
 const INDEX_OVERRIDE = flag('index', null);
+const LIMIT = Number(flag('limit', null)) || 0;
 
 // Production loading. The wiki index carries the page list and a one-line
 // description per page; the bodies come from the files, as `withBodies` does.
@@ -109,13 +118,48 @@ for (const [askerPath, targets] of graph.edges) {
     if ([...bTerms].filter(t => aTerms.has(t)).length / bTerms.size > 0.67) continue;
     const query = [...segment(a.summary ?? '')].filter(t => !bTerms.has(t)).join(' ');
     if (!query) continue;
-    all.push({ query, truthPath, askerPath, cross: a.sourceSlug !== b.sourceSlug });
+    all.push({
+      query,
+      truthPath,
+      askerPath,
+      // TRUE cross-source requires BOTH sides to carry a slug AND for the two to
+      // differ. `a.sourceSlug !== b.sourceSlug` alone is not enough: where one
+      // side is unmarked its slug is `undefined`, `undefined !== 'some-source'`
+      // is true, and the pair is counted as cross-source when what actually
+      // differs is "has a marker" against "has none".
+      //
+      // That is not a hypothetical. On the 2,141-page production vault only 537
+      // of 2,141 pages carry a marker (25 %), so the loose rule would have
+      // filled the CROSS layer with pairs that were never cross-source, and the
+      // expansion's cross-source delta would have been measuring marker
+      // presence. Measured before the fix, the three test vaults carried enough
+      // unmarked pages to contaminate their CROSS figures too.
+      cross: a.sourceSlug !== undefined && b.sourceSlug !== undefined && a.sourceSlug !== b.sourceSlug,
+      // Kept for the self-check: a pair the LOOSE rule would have called
+      // cross-source. `undefined !== 'slug'` is true, so one unmarked side is
+      // enough to inflate the layer.
+      crossLoose: a.sourceSlug !== b.sourceSlug,
+    });
   }
 }
-const questions = (LAYER === 'CROSS' ? all.filter(q => q.cross) : all).slice(0, LIMIT);
+// `[...all]` and not `all`: the sampling below truncates in place, and aliasing
+// would make the printed "available questions" count the SAMPLED count. A wrong
+// denominator is a number someone will quote.
+const questions = LAYER === 'CROSS' ? all.filter(q => q.cross) : [...all];
+const falseCross = all.filter(q => q.crossLoose && !q.cross).length;
+// EVENLY, not the first n. See the header: taking the head of the list in page
+// order is how a 0.007 was reported for a 2,141-page vault whose first pages are
+// type-label entities.
+const stride = LIMIT > 0 && LIMIT < questions.length ? Math.floor(questions.length / LIMIT) : 1;
+const sampled = stride > 1 ? questions.filter((_, i) => i % stride === 0).slice(0, LIMIT) : questions;
+questions.length = 0;
+questions.push(...sampled);
 
 const say = console.log;
 say(`vault=${basename(dir)} pages=${refs.length} nodes=${graph.nodes.length} questions=${questions.length} budget=${RETRIEVAL_BUDGET} excludeAsker=${EXCLUDE_ASKER} layer=${LAYER} index=${INDEX_OVERRIDE ? basename(INDEX_OVERRIDE) : 'vault index.md'}`);
+if (stride > 1) {
+  say(`sampled evenly from ${all.length} available questions, stride=${stride} (NOT the first ${LIMIT})`);
+}
 // The CROSS layer is only populated by the `source:` marker on index lines. Say
 // so rather than reporting an empty layer as a score.
 const indexedSources = new Set(pageRefs.map(p => p.sourceSlug).filter(s => s !== undefined));
@@ -127,6 +171,9 @@ if (indexedSources.size === 0) {
 if (questions.length === 0) {
   say('No questions: the graph carries no resolvable (asker -> truth) pair.');
   process.exit(0);
+}
+if (falseCross > 0) {
+  say(`false cross-source pairs excluded: ${falseCross} — one side carries no source marker, and undefined !== slug would have counted the pair as cross-source.`);
 }
 
 const termCache = new TermIndexCache();
@@ -141,8 +188,7 @@ const score = (t, q, ranked) => {
     if (hit) t.CROSS[0] += 1;
   }
 };
-const r10 = (t, layer) => (t[layer][1] === 0 ? 'n/a' : (t[layer][0] / t[layer][1]).toFixed(3));
-const row = (label, t) => `  ${label} r@10 ALL = ${r10(t, 'ALL')} (n=${t.ALL[1]})   CROSS = ${r10(t, 'CROSS')} (n=${t.CROSS[1]})`;
+const r10 = (t, layer) => (t[layer][1] === 0 ? 'n/a' : (t[layer][0] / t[layer][1]).toFixed(3));const row = (label, t) => `  ${label} r@10 ALL = ${r10(t, 'ALL')} (n=${t.ALL[1]})   CROSS = ${r10(t, 'CROSS')} (n=${t.CROSS[1]})`;
 
 const lines = [];
 const emit = line => { say(line); lines.push(line); };
