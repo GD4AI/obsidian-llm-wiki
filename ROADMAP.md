@@ -343,13 +343,26 @@ This had to be measured AFTER the segmentation fix, not before. @DocTpoint measu
 
 Small, and positive on both Chinese vaults — which is the claim the earlier numbers could not make.
 
-### The expansion's own verdict — running 2026-10-16
+### The expansion's own verdict — measured 2026-10-16
 
-**Nothing about the expansion has ever been validly measured.** The shipped path fed it an uncut Chinese run, so it returned its input verbatim; every figure attached to it in this PR described an input the plugin does not produce. After the segmentation fix it runs for the first time, and it costs a full Rocchio pass per query, so the question is whether it earns that.
+**This is the first valid measurement the expansion has ever had.** The shipped path fed it an uncut Chinese run, so it returned its input verbatim and every figure attached to it in this PR described an input the plugin does not produce. After the segmentation fix it runs for the first time.
 
-`run-expansion-eval.mjs` is rewritten around `planRetrieval`: arm A is `expand: false`, the product minus one step, arm B is the product, both then through `selectPprSeeds`. The tool self-checks and reports words added per query and the no-op rate, because a run where the expansion adds nothing measures the baseline twice and calls it a null result.
+`run-expansion-eval.mjs` runs both arms through `planRetrieval` and `selectPprSeeds`: arm A is `expand: false` — the product minus one step — and arm B is the product. r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges.
 
-**This result decides whether the expansion ships at all.** A flat or negative delta on the Chinese vaults means the feature is withdrawn from this PR and what remains is points 2 and 3, the three wirings, the budget constant and the locale key — a much smaller and more honest PR.
+| Vault | Pages | Questions | No expansion | Expansion | delta |
+|---|---|---|---|---|---|
+| `expA-main/wiki` | 161 | 748 | 0.572 | 0.650 | **+0.078** |
+| `expB-branch/wiki` | 171 | 819 | 0.535 | 0.620 | **+0.085** |
+| `test8` | 172 | 688 | 0.645 | 0.731 | **+0.086** |
+| `sample-50page` | 53 | 154 | 0.526 | 0.656 | **+0.130** |
+
+Positive on four vaults of four, including both Chinese vaults the earlier void figures came from. The tool self-checks and reports **20.0 words added per query, minimum 20.0, zero no-ops** — so this is the mechanism and not the baseline measured twice.
+
+**The deltas land near the old numbers, which is a coincidence and must not be read as confirmation.** The old +0.070 and +0.089 were on an input production never produces, and their baseline was 0.180 on test8 where this run's no-expansion arm reads 0.645 — the baseline moved because it is now `selectPprSeeds`'s real output instead of a hand-written ranking. Same magnitude, different quantity.
+
+**CROSS is `n/a` on all four, not `0.000`.** No index carries a `` `source:` `` marker, so the cross-source layer has no questions here. The cross-source gap this expansion targets is therefore **still unmeasured** — the gain above is on the ALL layer, which is dominated by same-source pairs.
+
+**The expansion ships.** It earns a full Rocchio pass per query at +0.078 to +0.130 on the corpora available. What is not established is whether it helps on the cross-source gap it was designed for, and that needs a corpus whose index carries source markers before the claim can be made.
 
 ### Still open
 
