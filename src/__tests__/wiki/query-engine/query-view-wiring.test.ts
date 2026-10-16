@@ -71,6 +71,16 @@ describe('production wiring — QueryView', () => {
     expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*gateQuery,\s*\n/);
   });
 
+  it('passes queryTerms to loadRelevantPagesForQuery at BOTH call sites', () => {
+    // #855 fix 6. `queryTerms` is optional; a call site that omits it gets
+    // `[]` back and the matched paragraphs silently become ''.
+    const calls = src.match(/loadRelevantPagesForQuery\([\s\S]*?\);/g) ?? [];
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    for (const c of calls) {
+      expect(c, 'a call site omits queryTerms').toMatch(/_lastRetrievalTerms/);
+    }
+  });
+
   it('gives the expansion segmented terms', () => {
     // A Chinese run handed unsegmented matches nothing and the expansion
     // returns its input verbatim.
@@ -82,18 +92,6 @@ describe('KNOWN GAPS — asserted as failing until each one is wired', () => {
   // Each of these is a real fix from the previous review round that no user
   // path reaches today. They live here, visibly red, rather than in a comment
   // nobody re-reads. This file gains the `it` form for each as it lands.
-  it.skip('passes queryTerms to loadRelevantPagesForQuery at BOTH call sites', () => {
-    const calls = src.match(/loadRelevantPagesForQuery\([\s\S]*?\);/g) ?? [];
-    expect(calls.length).toBeGreaterThanOrEqual(2);
-    for (const c of calls) {
-      expect(c, 'a call site omits queryTerms').toMatch(/queryTerms/);
-    }
-  });
-
-  it.skip('passes the BM25F tables into the answer path', () => {
-    expect(seeds).toMatch(/pprCascade[\s\S]*?lexMatch\(\s*query,\s*pages,\s*\{/);
-  });
-
   it.skip('buildWeightedRetrievalQuery has a production caller', () => {
     const usedSomewhere = src.includes('buildWeightedRetrievalQuery')
       || seeds.includes('buildWeightedRetrievalQuery')

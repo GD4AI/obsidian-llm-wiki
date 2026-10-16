@@ -5,7 +5,7 @@
 // raw markdown bodies (with Tier B summaries where applicable). No
 // mutation of `this._graph` / `_lastRetrieval` (QueryView's job).
 
-import { MAX_PAGE_CONTENT_CHARS } from '../../../constants';
+import { MAX_PAGE_CONTENT_CHARS, MATCHED_PARAGRAPHS_TOTAL_CHARS } from '../../../constants';
 import { extractSummaryFromPage, extractMatchedParagraphs } from '../../../core/section-extractor';
 
 export interface LoadedPagePayload {
@@ -47,6 +47,14 @@ export async function loadRelevantPagesForQuery(
 ): Promise<string[]> {
   const pages: string[] = [];
   const wikiPrefix = wikiFolder + '/';
+
+  // The matched-paragraph budget is shared across the whole retrieval. One page
+  // carrying `MAX_PAGE_CONTENT_CHARS / 3` of added prose times RETRIEVAL_BUDGET
+  // pages is more context than `TOKENS_QUERY_ANSWER` allows, so the addition
+  // gets its own total and every page takes a share of it.
+  const matchedPerPage = Math.floor(
+    MATCHED_PARAGRAPHS_TOTAL_CHARS / Math.max(1, pageTitles.length),
+  );
 
   for (const title of pageTitles) {
     // Strip wiki folder prefix if path has it (e.g. "wiki/entities/xxx" → "entities/xxx").
@@ -100,7 +108,7 @@ export async function loadRelevantPagesForQuery(
         const matched = extractMatchedParagraphs(
           content,
           queryTerms ?? [],
-          Math.floor(MAX_PAGE_CONTENT_CHARS / 3),
+          matchedPerPage,
           { summarySectionLabels: [sectionLabels.description, sectionLabels.definition] },
         );
         body = matched ? `${summary}
