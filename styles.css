@@ -8,7 +8,16 @@
 /* 查询模态框样式 */
 .llm-wiki-query-textarea {
   width: 100%;
-  min-height: 150px;
+  /* #756: the composer grows with the content. `field-sizing: content` is
+     Chromium 123+, Safari 26.2+, Baseline 2026 — Obsidian runs on Electron
+     (Chromium) so it is available. No JavaScript fallback: the plugin does
+     not run on Gecko, and the scrollHeight pattern costs a layout read on
+     every keystroke for a capability the browser has had since 2024.
+     `lh` is the line-height unit, so the three-line default tracks the
+     user's font rather than a pixel count that assumes one. */
+  field-sizing: content;
+  min-height: 3lh;
+  max-height: 20lh;
   padding: 8px;
   font-family: var(--font-text);
   font-size: 14px;
@@ -1297,4 +1306,17 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* #756: the inline citation links are quieter than the prose.
+   A dense answer looked uniformly underlined because the citation marks were
+   body-sized and full-saturation. Smaller than the body is the clearest
+   signal that this text is metadata about the sentence, not the sentence;
+   lower saturation than the bottom-of-answer reference list keeps the two
+   from competing. The underline stays — colour alone would not carry the
+   role. */
+.llm-wiki-answer-modal a.internal-link {
+  font-size: 0.85em;
+  opacity: 0.7;
+  text-decoration: underline;
 }

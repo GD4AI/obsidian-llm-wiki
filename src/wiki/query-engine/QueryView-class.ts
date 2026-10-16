@@ -41,6 +41,7 @@ import { renderRetrievalLabel } from './renderers/retrieval-label';
 import { SuggestSaveModal } from './SuggestSaveModal-class';
 import { InternalView } from './state';
 
+import { hashConversation } from '../../core/conversation-hash';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { selectPprSeeds } from './pipeline/select-seeds';
@@ -411,7 +412,10 @@ export class QueryView extends ItemView {
   }
 
   private computeConversationHash(): string {
-    return JSON.stringify(this.history.messages);
+    // A hash, not the transcript. #756: this field held the whole
+    // conversation (15 KB on a real vault) and "Clear history" did not
+    // empty it.
+    return hashConversation(this.history.messages);
   }
 
   private async evaluateWithLLM(): Promise<void> {
@@ -1071,6 +1075,10 @@ export class QueryView extends ItemView {
     this.historyContainer.empty();
 
     this.plugin.settings.queryHistory = [];
+    // #756: the conversation also lives in `lastOfferedQueryHash`.
+    // Clearing the view and leaving the record on disk is the bug the issue
+    // describes: the button said "forget" and did "hide".
+    this.plugin.settings.lastOfferedQueryHash = '';
     // v1.23.0 P2: Await the save so the empty state is guaranteed to hit
     // disk before this method returns. The previous `void this.plugin.saveSettings()`
     // was fire-and-forget — if the user closed Obsidian immediately after
