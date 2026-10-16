@@ -103,6 +103,19 @@ export async function selectPprSeeds(
    * `query`; the LLM stages read this. See #855 review point 2.
    */
   llmQuery?: string,
+  /**
+   * The words the ESCALATION GATE reads, when `query` carries the expansion.
+   * Defaults to `query`.
+   *
+   * The gate asks whether the query as written already names a page, and
+   * `nameTierCoverage` is the NAME tier's share of the query's total IDF. The
+   * expansion's words are harvested from page bodies, so they sit in no name
+   * tier and can only lower the ratio — which pushes a query whose own words
+   * matched a title into the paid LLM stage. Gate on the un-expanded text.
+   * #855 review point 3. The history stays in it: a follow-up carries no
+   * content words, so gating on the question alone would escalate every one.
+   */
+  gateQuery?: string,
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
@@ -127,9 +140,21 @@ export async function selectPprSeeds(
     corpus: corpusTerms,
     ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
   });
-  const lexCount = lexHits.length;
 
-  const tokens = tokenizeQuery(query);
+  // The gate gets its OWN lexical pass over the un-expanded text. Reusing
+  // `lexHits` would pair gate terms with the expansion's top hit, which is a
+  // comparison between two different questions. One extra scoring pass from the
+  // prebuilt name-tier tables, so this is a lookup and not a rebuild.
+  const gateSource = gateQuery ?? query;
+  const gateHits = gateSource === query
+    ? lexHits
+    : lexMatchByTitleAndAliases(gateSource, pageRefs, {
+        corpus: corpusTerms,
+        ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
+      });
+  const lexCount = gateHits.length;
+
+  const tokens = tokenizeQuery(gateSource);
   const reliable = lexIsReliable(tokens);
   // The gate is a ratio now, not a score. `lexTopScore >= 5` was calibrated on
   // the title 3 / alias 2 weight table and its meaning left with that table —
@@ -141,8 +166,8 @@ export async function selectPprSeeds(
   const queryTerms = tokens.flatMap(t => segment(t));
   const topPageTerms = lexCount > 0
     ? buildPageTerms({
-        title: lexHits[0].page.title,
-        aliases: lexHits[0].page.aliases,
+        title: gateHits[0].page.title,
+        aliases: gateHits[0].page.aliases,
         summary: '',
         text: '',
       })
