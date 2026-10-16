@@ -299,6 +299,66 @@ Four levers are measured and three of them are in `main` or waiting to be. The w
 
 **What is NOT on this track and why.** Embeddings: the encoder's notion of similarity is the training corpus's, so it pulls a vault that deliberately goes beyond consensus back toward it. M2 (model-proposed edges): same reason, and the resolver checks that a page exists, not that a relation holds. Corpus-local co-occurrence expansion, anchor text, reverse links, co-citation projection: each measured and flat or negative on the strict layer. LLM query expansion for the cross-source gap: 0 % rescue measured over 1,180 questions. LLM reranking of the top-10: identical to baseline.
 
+### Query view surface — shipped 2026-10-16, follow-ups open
+
+#857 merged five items from #756: the composer grows with the content (`field-sizing: content`, one line of CSS), inline citations in academic form (`[N]` at the point of use, `[N] Display - description` in the bibliography), the bibliography stays clickable, "clear history" clears `lastOfferedQueryHash` too, and the retrieval label names the pipeline that actually ran (`⚡ BM25F+PPR · 📚 N sources`).
+
+Three bugs on that path are recorded in MEMORY because each looked like a formatting issue and was a logic one. The rule they add: read the prompt before writing the matcher. The reference-list detection broke because it matched a fixed set of heading names and the model writes whatever the prompt asks in the language the answer is in.
+
+### Retrieval-channel measurements — measured 2026-10-16
+
+**Lexical channel: the `legacyScorer` setting, legacy vs BM25F.** This is a real production switch, not two functions a tool invented: `select-seeds.ts` passes `settings.legacyScorer` into `lexMatchByTitleAndAliases(query, pages, { scorer })`, which is the same setting a user flips in Advanced settings. `tools/dev-instrument/run-retrieval-ab.mjs` measures both arms twice — the Stage-1 ranking the seeds are cut from, and the whole pipeline end to end through `selectPprSeeds` — because a better Stage-1 ranking only counts if the walk carries it.
+
+r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges. **BM25F wins on five vaults out of five, at both stages.**
+
+| Vault | Pages | Questions | Stage 1 legacy | Stage 1 BM25F | End-to-end legacy | End-to-end BM25F |
+|---|---|---|---|---|---|---|
+| `sample-50page` | 53 | 154 | 0.032 | 0.325 | 0.468 | 0.578 |
+| `expA-main/wiki` | 161 | 748 | 0.008 | 0.330 | 0.433 | 0.578 |
+| `expB-branch/wiki` | 171 | 819 | 0.006 | 0.288 | 0.376 | 0.545 |
+| `test8` | 172 | 688 | 0.025 | 0.369 | 0.548 | 0.674 |
+| `test10` | 354 | 1,572 | 0.003 | 0.300 | 0.345 | 0.508 |
+
+**How to read the two columns, because the gap shrinks and that is the finding.** At Stage 1 the legacy scorer lands the truth in the top-5 seeds between 0.3 % and 3.2 % of the time — it almost never seeds the right page. End to end the gap is +0.110 to +0.169, not +0.28 to +0.34, because `pprCascade` derives its own implicit lexical seeds and can walk to the truth regardless of what Stage 1 handed it. So the setting matters, and it matters less than the Stage-1 number implies. The legacy arm is a degraded path, not a broken one.
+
+**The CROSS layer is empty on all five vaults, and that is a production fact, not a missing run.** `cross` compares source slugs, and a slug reaches `PageRef` only from an index line's `` `source:` `` marker. No `index.md` in any of these vaults carries one, so production sees `sourceSlug === undefined` on every page and `assembleWithCoverage`'s source-diversity signal has nothing to act on. The cross-source layer — the one the plugin exists to serve — is **not measurable on these corpora and not active in production on them.** Anything quoted as a CROSS figure for these vaults is `n=0`; the older expansion figures came from a loader that read `sources:` out of file frontmatter instead, which is not the path `read-index.ts` takes.
+
+**The previous run of this measurement is void and its numbers are withdrawn.** The tool called `lexMatch(query, pages, tables)`; `lexMatch` takes two parameters, so the corpus argument was discarded and both arms ran the same code. The four vaults agreed to three decimals, which read as a null result and was actually a broken tool. Same for the "fusion" arm: its PPR-alone baseline was a score the tool made up. The earlier claim of "+0.065 to +0.105 across four vaults" has no traceable provenance and is not repeated here.
+
+**Fusion: not a decision this project currently has.** `pprCascade` calls `maxFuse` on its lex and ppr channels and then `assembleWithCoverage`. No setting turns that off. "Is the lex channel earning its place inside `pprCascade`?" is a fair question, but answering it needs a seam in `pprCascade` plus its own test and review — not a flag, and not a fabricated baseline. Until that seam exists the tool reports the question rather than a number.
+
+### The answer-path scorer, measured through the pipeline — 2026-10-16
+
+`pprCascade` was calling `lexMatch(query, pages)` with no tables, so the BM25F branch behind that argument had no production caller and the hand-tuned weight table scored every answer. `PPRCascadeOptions.tables` carries them now, sourced from the same `TermIndexCache` Stage 1 already reads.
+
+This had to be measured AFTER the segmentation fix, not before. @DocTpoint measured the BM25F branch returning **no page at all** for 深度学习 while the weight table returned the right one — it was being handed `tokenizeQuery` output, which keeps a CJK run as one token. Wiring it earlier would have been a regression on exactly the vaults this plugin is used on.
+
+`tools/dev-instrument/run-answer-path-ab.mjs`, both arms through `selectPprSeeds`, r@20:
+
+| Vault | Pages | Questions | Weight table | BM25F | delta |
+|---|---|---|---|---|---|
+| `sample-50page` | 53 | 154 | 0.851 | 0.870 | +0.019 |
+| `expA-main/wiki` | 161 | 300 | 0.700 | 0.733 | +0.033 |
+| `test8` | 172 | 300 | 0.813 | 0.827 | +0.013 |
+
+Small, and positive on both Chinese vaults — which is the claim the earlier numbers could not make.
+
+### The expansion's own verdict — running 2026-10-16
+
+**Nothing about the expansion has ever been validly measured.** The shipped path fed it an uncut Chinese run, so it returned its input verbatim; every figure attached to it in this PR described an input the plugin does not produce. After the segmentation fix it runs for the first time, and it costs a full Rocchio pass per query, so the question is whether it earns that.
+
+`run-expansion-eval.mjs` is rewritten around `planRetrieval`: arm A is `expand: false`, the product minus one step, arm B is the product, both then through `selectPprSeeds`. The tool self-checks and reports words added per query and the no-op rate, because a run where the expansion adds nothing measures the baseline twice and calls it a null result.
+
+**This result decides whether the expansion ships at all.** A flat or negative delta on the Chinese vaults means the feature is withdrawn from this PR and what remains is points 2 and 3, the three wirings, the budget constant and the locale key — a much smaller and more honest PR.
+
+### Still open
+
+- #855 awaits a second review from @DocTpoint. The six fixes from the independent review are on the branch at `e3dc1c38`.
+- Five PRs to triage: #836, #831, #830, #781, #755.
+- `wiki/` vault PPR times out on 2,145 pages.
+- The E1 trigger gate fires 0% of the time in production (`coverage < 0.5` never holds).
+- The write-side re-plan after @DocTpoint's seven points.
+
 ### Backlog carried out of those cycles — six items still open
 
 The 2026-09-12 ROI board and the wider priority table that used to sit here are gone. 18 of their rows shipped, and the rest are enumerated below. **Every other
