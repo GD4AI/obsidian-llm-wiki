@@ -11,7 +11,6 @@ import { describe, it, expect } from 'vitest';
 import {
   twoStageExpand,
   buildExpansionTerms,
-  expandQueryForRetrieval,
   DEFAULT_EXPANSION,
 } from '../../core/query-expansion';
 import { buildCorpusTerms, type CorpusTerms } from '../../core/term-index';
@@ -76,22 +75,18 @@ describe('twoStageExpand — what the corpus supplies', () => {
   });
 });
 
-describe('expandQueryForRetrieval — the one-call entry point', () => {
-  it('joins the expansion back into a query string with the original words first', () => {
+describe('twoStageExpand — the join and the no-neighbourhood case', () => {
+  it('keeps the original words and adds at least one the query did not say', () => {
     const pages = pagesWithDistinctVocabularies;
     const terms = buildExpansionTerms(pages);
-    const out = expandQueryForRetrieval('alpha-one alpha-two', pages, corpusOf(terms), DEFAULT_EXPANSION, terms);
-    // `tokenizeQuery` reshapes terms (a hyphenated word becomes its parts
-    // plus the whole), so assert on what the expansion ADDS rather than on the
-    // exact prefix. The original query's words must all be present, and the
-    // expansion must have added at least one word the query did not say.
-    const outTerms = new Set(out.split(' '));
+    const out = twoStageExpand(['alpha-one', 'alpha-two'], pages, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    const outTerms = new Set(out);
     expect(outTerms.has('alpha-one')).toBe(true);
     expect(outTerms.has('alpha-two')).toBe(true);
     expect(outTerms.size).toBeGreaterThan(2);
   });
 
-  it('returns the query unchanged when there is no neighbourhood', () => {
-    expect(expandQueryForRetrieval('anything', [], emptyCorpus())).toBe('anything');
+  it('returns the input unchanged when there is no neighbourhood', () => {
+    expect(twoStageExpand(['anything'], [], emptyCorpus())).toEqual(['anything']);
   });
 });
