@@ -97,6 +97,12 @@ export async function selectPprSeeds(
   texts: Record<string, string>,
   onProgress?: (phase: string) => void,
   termIndex?: { cache: TermIndexCache; indexContent: string },
+  /**
+   * The words the USER wrote, when `query` has been expanded with words the
+   * user did not write. The lexical scorer and the PPR seed derivation read
+   * `query`; the LLM stages read this. See #855 review point 2.
+   */
+  llmQuery?: string,
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
@@ -161,7 +167,8 @@ export async function selectPprSeeds(
   // query-keywords.ts for prompt design).
   let keywords: string[] = [];
   if (needsLLM && llmClient) {
-    keywords = await generateQueryKeywords(query, llmClient, settings);
+    // The model sees the words the user wrote, not the expansion's. #855 r2.
+    keywords = await generateQueryKeywords(llmQuery ?? query, llmClient, settings);
     console.debug(`[Stage 1.5a] generated ${keywords.length} keywords: ${JSON.stringify(keywords)}`);
   }
 
@@ -197,7 +204,8 @@ export async function selectPprSeeds(
       .map(h => h.page);
     const candidates = lexTopForLLM.length > 0 ? lexTopForLLM : pageRefs;
     console.debug(`[Stage 1.5 legacy] LLM seed selector triggered (candidates=${candidates.length})`);
-    llmSeeds = await selectSeedsWithLLM(query, candidates, llmClient, settings);
+    // The model sees the words the user wrote, not the expansion's. #855 r2.
+    llmSeeds = await selectSeedsWithLLM(llmQuery ?? query, candidates, llmClient, settings);
     console.debug(`[Stage 1.5 legacy] LLM returned ${llmSeeds.length} seeds`);
   }
 

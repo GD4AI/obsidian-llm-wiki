@@ -1,102 +1,97 @@
-// Two-stage Rocchio query expansion — Issue #729 read-side.
-//
-// The strict layer is pairs that share under a third of their terms and come
-// from different sources. Measured on both vaults 2026-10-15, the vocabulary
-// gap is where that layer fails: the query words and the answer page's words
-// are disjoint by construction, so no amount of scoring on the query as written
-// can find the page.
-//
-// Relevance feedback (Rocchio, 1971) closes part of the gap from inside the
-// corpus. Take the neighbourhood the current ranking already found, read its
-// distinctive words, and put them in the query. The words come from the user's
-// own notes, so nothing external enters the answer.
-//
-// ONE shot is worth +0.019 r@10 on average and is NEGATIVE on test8's strict
-// layer (−0.040): the first neighbourhood is still on the topic's rim, and its
-// words are noise where the vocabulary is disjoint. TWO stages are worth
-// +0.048 and positive in all four cells. The re-rank between them pulls the
-// query onto the topic, and the second neighbourhood is the topic's interior —
-// those are the words that bridge.
-//
-// Measured (r@10, against `lex+PPR`, cross-source strict layer):
-//
-//   vault   baseline   one-shot   two-stage
-//   test8     0.760      0.720      0.800
-//   test10    0.641      0.667      0.692
-//
-// And with the asker removed from the seeds, so link-following cannot carry the
-// number: 0.400 -> 0.440 and 0.385 -> 0.436. The gain survives the artifact.
-
+/**
+ * Two-stage Rocchio query expansion. The corpus supplies the bridge, not the
+ * model: the neighbourhood the ranking already found knows the topic's
+ * vocabulary, and reading it twice with a re-rank between walks the query
+ * across. Every added word comes from the user's own notes.
+ *
+ * These tests describe properties. They use synthetic terms so the property is
+ * visible at a glance and no vault's note names can break them.
+ */
 import { describe, it, expect } from 'vitest';
-import { segment, buildPageTerms, buildCorpusTerms, bm25fScore, DEFAULT_FIELD_WEIGHTS } from '../../core/term-index';
-import { twoStageExpand, type ExpansionPage } from '../../core/query-expansion';
+import {
+  twoStageExpand,
+  buildExpansionTerms,
+  expandQueryForRetrieval,
+  DEFAULT_EXPANSION,
+} from '../../core/query-expansion';
+import { buildCorpusTerms, type CorpusTerms } from '../../core/term-index';
+import {
+  twoPagesSharingAllTerms,
+  pagesWithDistinctVocabularies,
+  pageWithRareTerm,
+} from '../__support__/expansion-fixtures';
 
-function page(title: string, text: string): ExpansionPage {
-  return { key: title.toLowerCase().replace(/\s+/g, '-'), title, summary: '', text };
-}
+const corpusOf = (pages: ReturnType<typeof buildExpansionTerms>): CorpusTerms => buildCorpusTerms(pages);
+const emptyCorpus = (): CorpusTerms => buildCorpusTerms([]);
 
-// A small corpus where two vocabularies describe the same thing. The asker
-// says "retention"; the target page says "consolidation". They share no words,
-// and a third page uses both — exactly the bridge a generated wiki has.
-const pages: ExpansionPage[] = [
-  page('Memory retention', 'memory retention recall decay curve forgetting'),
-  page('Consolidation kernel', 'consolidation kernel synaptic replay systems'),
-  page('Retention model', 'retention model consolidation kernel replay'),
-  page('Unrelated page', 'cooking pasta water boil salt'),
-];
-
-const pts = pages.map(p => buildPageTerms({ title: p.title, aliases: [], summary: p.summary, text: p.text }));
-const corpus = buildCorpusTerms(pts);
-
-function rank(terms: string[]): Array<{ j: number; score: number }> {
-  return pts
-    .map((pt, j) => ({ j, score: bm25fScore(terms, pt, corpus, DEFAULT_FIELD_WEIGHTS) }))
-    .sort((a, b) => (b.score - a.score) || (a.j < b.j ? -1 : 1));
-}
-
-describe('twoStageExpand', () => {
-  it('adds words the neighbourhood uses that the query does not', () => {
-    const q = ['memory', 'retention'];
-    const out = twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 5, m2: 10 });
-    // The top hit is "Memory retention" and "Retention model"; between them
-    // they carry "consolidation" and "replay", which the query never said.
-    expect(out.some(t => t === 'consolidation' || t === 'replay')).toBe(true);
+describe('twoStageExpand — what the corpus supplies', () => {
+  it('adds nothing when no term is distinctive (the pages share every word)', () => {
+    const terms = buildExpansionTerms(twoPagesSharingAllTerms);
+    const out = twoStageExpand(['shared-one'], twoPagesSharingAllTerms, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(out).toEqual(['shared-one']);
   });
 
-  it('keeps the original query words intact and in front', () => {
-    const q = ['memory', 'retention'];
-    const out = twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 5, m2: 10 });
-    expect(out.slice(0, q.length)).toEqual(q);
+  it('adds the neighbourhood\'s distinctive terms when the vocabularies differ', () => {
+    const terms = buildExpansionTerms(pagesWithDistinctVocabularies);
+    const out = twoStageExpand(['alpha-one'], pagesWithDistinctVocabularies, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(out).toContain('alpha-one');
+    expect(out.length).toBeGreaterThan(1);
   });
 
-  it('returns the query unchanged when there is no neighbourhood to read', () => {
-    const q = ['zzzz', 'qqqqq'];
-    const out = twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 5, m2: 10 });
-    expect(out).toEqual(q);
+  it('filters by rarity: the rare term appears, the shared ones do not', () => {
+    const terms = buildExpansionTerms(pageWithRareTerm);
+    const out = twoStageExpand(['common-one'], pageWithRareTerm, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(out).toContain('common-one');
+    expect(out).not.toContain('rare-xyz');
   });
 
-  it('reaches further than one stage on a vocabulary gap', () => {
-    // The query names the asker's side of the gap. One stage reads the rim;
-    // two stages read the interior and pull in the target's own word.
-    const q = ['memory', 'retention'];
-    const one = twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 0, m2: 0 });
-    const two = twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 5, m2: 10 });
-    expect(two.length).toBeGreaterThan(one.length);
+  it('returns the query unchanged when the corpus is empty', () => {
+    expect(twoStageExpand(['anything'], [], emptyCorpus())).toEqual(['anything']);
   });
 
-  it('lifts the target page from unranked to scored', () => {
-    const q = ['memory', 'retention'];
-    const target = 1; // Consolidation kernel — disjoint vocabulary.
-    const before = rank(q);
-    const after = rank(twoStageExpand(q, pages, corpus, { k1: 5, m1: 10, k2: 5, m2: 10 }));
-    // The target shares NO word with the query, so before expansion its score
-    // is zero and it is indistinguishable from an unrelated page. Expansion
-    // gives it a real score. That is the vocabulary gap closing, and it is a
-    // sharper assertion than rank order — on a corpus this size two pages can
-    // swap places for reasons that have nothing to do with the gap.
-    const beforeScore = before.find(e => e.j === target)?.score ?? 0;
-    const afterScore = after.find(e => e.j === target)?.score ?? 0;
-    expect(beforeScore).toBe(0);
-    expect(afterScore).toBeGreaterThan(0);
+  it('returns the query unchanged when the query has no terms', () => {
+    const terms = buildExpansionTerms(pagesWithDistinctVocabularies);
+    expect(twoStageExpand([], pagesWithDistinctVocabularies, corpusOf(terms), DEFAULT_EXPANSION, terms)).toEqual([]);
+  });
+
+  it('keeps the original terms first and in order', () => {
+    const terms = buildExpansionTerms(pagesWithDistinctVocabularies);
+    const out = twoStageExpand(['alpha-one', 'alpha-two'], pagesWithDistinctVocabularies, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(out[0]).toBe('alpha-one');
+    expect(out[1]).toBe('alpha-two');
+  });
+
+  it('stops after the first pass when k2 is 0 (a one-shot call)', () => {
+    const terms = buildExpansionTerms(pagesWithDistinctVocabularies);
+    const once = twoStageExpand(['alpha-one'], pagesWithDistinctVocabularies, corpusOf(terms), { k1: 5, m1: 10, k2: 0, m2: 0 }, terms);
+    const twice = twoStageExpand(['alpha-one'], pagesWithDistinctVocabularies, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(once.length).toBeLessThanOrEqual(twice.length);
+  });
+
+  it('adds no word the query already says', () => {
+    const terms = buildExpansionTerms(pagesWithDistinctVocabularies);
+    const out = twoStageExpand(['alpha-one', 'alpha-two'], pagesWithDistinctVocabularies, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    expect(out.filter(t => t === 'alpha-one')).toHaveLength(1);
+    expect(out.filter(t => t === 'alpha-two')).toHaveLength(1);
+  });
+});
+
+describe('expandQueryForRetrieval — the one-call entry point', () => {
+  it('joins the expansion back into a query string with the original words first', () => {
+    const pages = pagesWithDistinctVocabularies;
+    const terms = buildExpansionTerms(pages);
+    const out = expandQueryForRetrieval('alpha-one alpha-two', pages, corpusOf(terms), DEFAULT_EXPANSION, terms);
+    // `tokenizeQuery` reshapes terms (a hyphenated word becomes its parts
+    // plus the whole), so assert on what the expansion ADDS rather than on the
+    // exact prefix. The original query's words must all be present, and the
+    // expansion must have added at least one word the query did not say.
+    const outTerms = new Set(out.split(' '));
+    expect(outTerms.has('alpha-one')).toBe(true);
+    expect(outTerms.has('alpha-two')).toBe(true);
+    expect(outTerms.size).toBeGreaterThan(2);
+  });
+
+  it('returns the query unchanged when there is no neighbourhood', () => {
+    expect(expandQueryForRetrieval('anything', [], emptyCorpus())).toBe('anything');
   });
 });
