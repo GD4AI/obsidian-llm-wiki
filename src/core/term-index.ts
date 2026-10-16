@@ -221,6 +221,45 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
 }
 
 /**
+ * Inverted index: term to the indices of the pages that carry it.
+ *
+ * Why. `bm25fScore` contributes zero for a page that contains none of the
+ * query's terms, but a full scan visits every page anyway. The index lets the
+ * scorer visit only pages that can score. The result is identical; only the
+ * work is smaller.
+ *
+ * A term appears once per page even when the page repeats it across fields:
+ * the index answers "which pages contain this term", not "how often".
+ */
+export interface InvertedIndex {
+  readonly termToPages: ReadonlyMap<string, readonly number[]>;
+}
+
+export function buildInvertedIndex(pages: readonly PageTerms[]): InvertedIndex {
+  const termToPages = new Map<string, number[]>();
+  const add = (key: string, i: number, seen: Set<string>) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const list = termToPages.get(key);
+    if (list) list.push(i);
+    else termToPages.set(key, [i]);
+  };
+  for (let i = 0; i < pages.length; i += 1) {
+    const seen = new Set<string>();
+    for (const field of FIELD_ORDER) {
+      const f = pages[i].fields[field];
+      for (const term of f.tf.keys()) add(term, i, seen);
+      // The scorer falls back to character trigrams for a term the corpus has
+      // never seen (`bm25fScore`'s `df === 0` branch). The index must offer
+      // those grams as candidates too, or a page that the scorer would match
+      // through its grams is skipped and the ranking changes.
+      for (const gram of f.gramTf.keys()) add(gram, i, seen);
+    }
+  }
+  return { termToPages };
+}
+
+/**
  * BM25F. Returns the query-independent denominator pieces per term so callers
  * can also ask for a per-term explanation (the diagnostic command needs it).
  *
