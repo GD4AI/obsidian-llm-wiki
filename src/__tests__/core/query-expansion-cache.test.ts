@@ -88,6 +88,25 @@ describe('ExpansionTermsCache builds once per key (#855 point 4)', () => {
     expect(cache.buildCount).toBe(2);
   });
 
+  it('rebuilds when a BODY changes and the index key does not', () => {
+    // #855 review point 4, second half. The cache claimed to be "keyed on the
+    // same signature the term-index cache uses" and signed only the index. A
+    // prose edit leaves `index.md` untouched — that is the common edit — so the
+    // expansion tables stayed stale for the rest of the session while the
+    // name-tier tables beside them rebuilt correctly. `contentSignature` signs
+    // the bodies, and this is the assertion that it is applied here.
+    const cache = new ExpansionTermsCache();
+    cache.get('idx-1', PAGES);
+
+    const edited = PAGES.map((p, i) => (i === 0 ? { ...p, text: `${p.text} REWRITTEN` } : p));
+    const after = cache.get('idx-1', edited);
+
+    expect(cache.buildCount).toBe(2);
+    // And the table handed back carries the NEW prose, not the old one.
+    const tf = after.terms[0].fields.text.tf;
+    expect(tf.has('rewritten')).toBe(true);
+  });
+
   it('the cached corpus is the one the scorer reads', () => {
     const cache = new ExpansionTermsCache();
     const a = cache.get('idx-1', PAGES);

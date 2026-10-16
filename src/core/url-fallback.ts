@@ -145,10 +145,16 @@ export function isUrlError(error: unknown): boolean {
     return err.statusCode === 404;
   }
 
-  // Fallback: parse "status 404: ..." pattern from error.message
-  // (set by mapAiSdkError for APICallError thrown from AI-SDK), and the raw
-  // "404" form some gateways put straight into the message.
-  return /status\s+404\b/.test(message) || /\b404\b/.test(message);
+  // Fallback: parse "status 404: ..." from error.message (set by mapAiSdkError
+  // for an APICallError thrown from the AI SDK), and a message that IS the
+  // status, which is the other form some gateways produce.
+  //
+  // Anchored on purpose. A bare `/\b404\b/` anywhere in the message fires on any
+  // text that happens to contain the number — a model id like `gpt-404`, a
+  // request id, a body echoing one — and each false positive makes the plugin
+  // silently rewrite the user's Base URL and retry against a URL that was
+  // never wrong. @DocTpoint's second review (#855) named this.
+  return /status\s+404\b/.test(message) || /^\s*404\b/.test(message);
 }
 
 function isModelNotFound404(error: { message?: string; responseBody?: string }): boolean {

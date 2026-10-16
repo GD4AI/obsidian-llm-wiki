@@ -167,6 +167,7 @@ export const EN_TEXTS = {
 
     // Test Connection
     testConnectionSuccessful: 'Connection successful',
+    baseUrlUpdated: 'Base URL updated to {url}',
     testConnectionFailed: 'Connection failed',
     testConnectionProvider: 'Provider: ',
     codexAuthRequired: 'Sign in to ChatGPT Plan before testing the connection.',

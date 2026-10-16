@@ -196,8 +196,8 @@ export const connectionCommands = {
         this.settings.baseUrl = resolvedUrl;
         await this.saveSettings();
       }
-      const urlNote = urlChanged
-        ? ` · Base URL 已更新为 ${resolvedUrl}`
+      const urlNote = urlChanged && resolvedUrl
+        ? ` · ${(t.baseUrlUpdated ?? 'Base URL updated to {url}').replace('{url}', resolvedUrl)}`
         : '';
 
       return {
