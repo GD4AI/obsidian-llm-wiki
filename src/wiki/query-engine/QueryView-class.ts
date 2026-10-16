@@ -45,7 +45,7 @@ import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { twoStageExpand, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
-import { prepareRetrievalInputs } from '../../core/retrieval-query';
+import { prepareRetrievalInputs, retrievalQueryTerms } from '../../core/retrieval-query';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -94,6 +94,13 @@ export class QueryView extends ItemView {
   private _sectionLabels: ReturnType<typeof getSectionLabels> | null = null;
   /** Last PPR cascade result — for displaying retrieval source in the response UI. */
   private _lastRetrieval: RetrievalLabelData | null = null;
+
+  /**
+   * The terms of the last retrieval, segmented. `loadRelevantPages` takes page
+   * titles and no query, so the terms the retrieval ran on ride here to let the
+   * matched paragraphs reach the model's context. #855 fix 6.
+   */
+  private _lastRetrievalTerms: string[] = [];
   /**
    * Term tables keyed on the wiki index file. Building them per query was 4.4 s
    * against 21 ms to score from a prebuilt one on 2,864 pages — the scoring was
@@ -1266,6 +1273,10 @@ export class QueryView extends ItemView {
 
       // Write back _lastRetrieval for retrieval label UI
       const relevantPages = seedResult.matches.map(m => m.page.path);
+      // The terms that produced this ranking, segmented. `loadRelevantPages`
+      // is called later without a query and needs them to surface the matched
+      // paragraphs. #855 fix 6.
+      this._lastRetrievalTerms = retrievalQueryTerms(expandedQuery);
       this._lastRetrieval = {
         arm: seedResult.armLabel || 'none',
         count: relevantPages.length,
@@ -1312,6 +1323,11 @@ export class QueryView extends ItemView {
         wikiFolder,
         reader,
         sectionLabels,
+        // #855 fix 6. The retrieval scored the full body; the display shows one
+        // section. These are the terms that earned each page, so the paragraph
+        // that matched rides along with the summary the model reads. Omitting
+        // this argument left the extractor with `[]` and the fix unreachable.
+        this._lastRetrievalTerms,
       );
       console.debug('[Step 3] Pages loaded:', rawLoadedPages.length);
 
@@ -1367,6 +1383,11 @@ export class QueryView extends ItemView {
       this.plugin.settings.wikiFolder,
       this.plugin.wikiEngine,
       sectionLabels,
+      // The terms of the retrieval that produced these titles. This method
+      // takes no query of its own, so the terms ride on the instance — same
+      // lifetime as `_lastRetrieval`, and empty when nothing has been
+      // retrieved yet, which leaves the summary-only behaviour.
+      this._lastRetrievalTerms,
     );
   }
 

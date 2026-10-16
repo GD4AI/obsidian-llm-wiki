@@ -513,6 +513,29 @@ export const TOKENS_SCHEMA_SUGGESTION = 4096;
  */
 export const MAX_PAGE_CONTENT_CHARS = 12800;
 
+/**
+ * Total characters of MATCHED PARAGRAPHS across one retrieval, shared evenly
+ * across the retrieved pages.
+ *
+ * #855 fix 6. The retrieval scores the full body; the display shows one section
+ * (Description, else Definition). `extractMatchedParagraphs` closes that gap by
+ * appending the paragraphs the query actually matched. Each page's summary is
+ * already capped at `MAX_PAGE_CONTENT_CHARS / 3`, and the addition was capped
+ * the same way, so an entity page carried 8,532 characters instead of 4,266 —
+ * and with `RETRIEVAL_BUDGET` of 20 pages nothing bounded the total. Measured:
+ * 20 x 8,532 = 170,640 characters against `TOKENS_QUERY_ANSWER` of 16,000.
+ *
+ * This budget caps the ADDITION, not the page. The summary keeps the cap it has
+ * always had, so nothing that ships today gets smaller. At 20 pages it leaves
+ * 640 characters per page of matched prose, which is enough for the paragraph
+ * that earned the page and not enough for the whole body.
+ *
+ * Divided rather than spent in order: a page late in the ranked list is one of
+ * the pages the model needs, and a first-come budget starves exactly the
+ * lower-ranked results the retrieval worked to surface.
+ */
+export const MATCHED_PARAGRAPHS_TOTAL_CHARS = 12800;
+
 // ============================================================================
 // LLM Client Settings
 // ============================================================================
