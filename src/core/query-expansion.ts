@@ -20,7 +20,6 @@
 // is orders of magnitude more expensive.
 
 import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, FIELD_ORDER, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex, type WeightedTerm } from './term-index';
-import { tokenizeQuery } from './ppr-cascade';
 import { contentSignature } from './term-index-cache';
 
 /** The bare string of a query term, weighted or not. The inverted index, the
@@ -159,20 +158,20 @@ export class ExpansionTermsCache {
 }
 
 /**
- * The one-call entry point. Tokenizes the query, expands it twice, and joins
- * the result. The original terms come first and in order, so a scorer that
- * weights the head of the list still reads the user's intent.
+ * NOTE: `expandQueryForRetrieval` used to live here and called itself "the
+ * one-call entry point". It was removed rather than fixed.
+ *
+ * It had two problems. It was dead — zero production callers, and its own tests
+ * were its only consumer. And it called `tokenizeQuery(query)` and handed the
+ * result straight to `twoStageExpand`, which is the exact defect that voided
+ * every expansion number this project had: `tokenizeQuery` keeps a Chinese run
+ * as one token, the scorer's tables are keyed by `segment`, so the expansion
+ * returned its input verbatim on a Chinese query.
+ *
+ * A second entry point is a second thing to drift. The real one-call entry point
+ * is `planRetrieval` in `wiki/query-engine/pipeline/retrieval-plan.ts`, which
+ * every tool and `QueryView` share, and which segments.
  */
-export function expandQueryForRetrieval(
-  query: string,
-  pages: readonly ExpansionPage[],
-  corpus: CorpusTerms,
-  opts: ExpansionOptions = DEFAULT_EXPANSION,
-  prebuilt?: readonly PageTerms[],
-): string {
-  const terms = tokenizeQuery(query);
-  return twoStageExpand(terms, pages, corpus, opts, prebuilt).join(' ');
-}
 
 /** Indices whose score is above zero, in rank order. A page that scores zero
  *  shares no term with the query, so its vocabulary is not this query's

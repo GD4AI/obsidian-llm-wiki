@@ -8,7 +8,7 @@
  * would not change.
  */
 import { describe, it, expect } from 'vitest';
-import { twoStageExpand, buildExpansionTerms, expandQueryForRetrieval, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
+import { twoStageExpand, buildExpansionTerms, ExpansionTermsCache, DEFAULT_EXPANSION } from '../../core/query-expansion';
 import { buildCorpusTerms, type PageTerms } from '../../core/term-index';
 
 const PAGES = [
@@ -58,17 +58,16 @@ describe('the expansion reads prebuilt terms instead of rebuilding them (#855 po
     expect(fromReal.length).toBeGreaterThan(fromEmpty.length);
   });
 
-  it('expandQueryForRetrieval joins the expansion back into a query string', () => {
+  it('twoStageExpand puts the input terms first and keeps them', () => {
     const pts = buildExpansionTerms(PAGES);
     const corpus = buildCorpusTerms(pts);
-    const out = expandQueryForRetrieval('kimi 架构', PAGES, corpus, DEFAULT_EXPANSION, pts);
-    expect(out.startsWith('kimi 架构')).toBe(true);
-    expect(out.split(' ').length).toBeGreaterThanOrEqual(2);
+    const out = twoStageExpand(['kimi'], PAGES, corpus, DEFAULT_EXPANSION, pts);
+    expect(out[0]).toBe('kimi');
+    expect(out.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('returns the query unchanged when there is no neighbourhood', () => {
-    const corpus = buildCorpusTerms([]);
-    expect(expandQueryForRetrieval('kimi', [], corpus)).toBe('kimi');
+  it('returns the input unchanged when there is no neighbourhood', () => {
+    expect(twoStageExpand(['kimi'], [], buildCorpusTerms([]))).toEqual(['kimi']);
   });
 });
 
