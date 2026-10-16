@@ -21,6 +21,7 @@
 
 import { segment, buildPageTerms, buildCorpusTerms, buildInvertedIndex, bm25fScore, wordGrams, FIELD_ORDER, DEFAULT_FIELD_WEIGHTS, type PageTerms, type CorpusTerms, type InvertedIndex, type WeightedTerm } from './term-index';
 import { tokenizeQuery } from './ppr-cascade';
+import { contentSignature } from './term-index-cache';
 
 /** The bare string of a query term, weighted or not. The inverted index, the
  *  pre-filter and the "already said" set all count occurrences, not weights. */
@@ -111,9 +112,15 @@ export function buildExpansionTerms(pages: readonly ExpansionPage[]): PageTerms[
 }
 
 /**
- * Per-session cache of the expansion tables. Keyed on the same signature the
- * term-index cache uses, so a session that reads one index file builds once
- * and every query after that scores against the prebuilt tables.
+ * Per-session cache of the expansion tables.
+ *
+ * The key signs the bodies as well as the index file, and its comment used to
+ * claim it was "keyed on the same signature the term-index cache uses" while
+ * signing only the index. @DocTpoint's second review (#855) named the gap: a
+ * prose edit leaves `index.md` untouched — it happens on every prose edit — so
+ * the expansion tables stayed stale for the rest of the session while the
+ * name-tier tables beside them were rebuilt correctly. `contentSignature` is
+ * the same function `TermIndexCache` uses, so the two cannot drift again.
  *
  * #855 review point 4: `buildPageTerms` over every page with a body is 4.4 s
  * per query on 2,864 pages. #843 removed that cost from the seed scorer. The
@@ -126,13 +133,20 @@ export class ExpansionTermsCache {
   private index: InvertedIndex | null = null;
   private _buildCount = 0;
 
-  /** Build once per key. A repeat call with the same key returns the cached tables. */
+  /**
+   * Build once per key. A repeat call with the same key returns the cached
+   * tables.
+   *
+   * @param key the caller's own cache key. The bodies are signed on top of it,
+   * so a caller that passes the index content cannot serve stale tables.
+   */
   get(key: string, pages: readonly ExpansionPage[]): { terms: PageTerms[]; corpus: CorpusTerms; index: InvertedIndex } {
-    if (this.key !== key || this.terms.length === 0) {
+    const signed = `${key}:${contentSignature(key, pages)}`;
+    if (this.key !== signed || this.terms.length === 0) {
       this.terms = buildExpansionTerms(pages);
       this.corpus = buildCorpusTerms(this.terms);
       this.index = buildInvertedIndex(this.terms);
-      this.key = key;
+      this.key = signed;
       this._buildCount += 1;
     }
     return { terms: this.terms, corpus: this.corpus as CorpusTerms, index: this.index as InvertedIndex };
