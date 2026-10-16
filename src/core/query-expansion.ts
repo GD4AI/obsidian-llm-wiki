@@ -80,11 +80,11 @@ export function twoStageExpand(
   if (queryTerms.length === 0 || pages.length === 0) return queryTerms;
   const pts: PageTerms[] = prebuilt ? [...prebuilt] : buildExpansionTerms(pages);
 
-  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1)];
+  const first = [...queryTerms, ...distinctive(pages, scoredIndices(queryTerms, pts, corpus, opts.k1, index, prefilterN), queryTerms, opts.m1, pts)];
   if (opts.k2 <= 0 || opts.m2 <= 0) return first;
 
   const reranked = scoredIndices(first, pts, corpus, opts.k2, index, prefilterN);
-  const second = [...first, ...distinctive(pages, reranked, first, opts.m2)];
+  const second = [...first, ...distinctive(pages, reranked, first, opts.m2, pts)];
   return second;
 }
 
@@ -232,21 +232,38 @@ function distinctive(
   indices: readonly number[],
   queryTerms: readonly string[],
   topM: number,
+  /** The per-page term tables. When given, the function reads the segmented
+   *  terms from them instead of re-segmenting every page — that was 2,148
+   *  `segment()` calls per query on a 358-page corpus. */
+  pts?: readonly PageTerms[],
 ): string[] {
   if (topM <= 0 || indices.length === 0) return [];
   const said = new Set(queryTerms);
+  // Words of one page, deduplicated. With `pts` this is the keys of the four
+  // field tf maps; without it, the page is segmented on the spot (the old
+  // behaviour, kept for callers that have no tables).
+  const wordsOf = (j: number): Set<string> => {
+    if (pts && pts[j]) {
+      const out = new Set<string>();
+      for (const field of FIELD_ORDER) {
+        for (const w of pts[j].fields[field].tf.keys()) out.add(w);
+      }
+      return out;
+    }
+    const p = pages[j];
+    return new Set([...segment(p.title), ...segment(p.summary), ...segment(p.text)]);
+  };
   const df = new Map<string, number>();
-  for (const p of pages) {
-    for (const w of new Set([...segment(p.title), ...segment(p.summary), ...segment(p.text)])) {
+  for (let j = 0; j < pages.length; j += 1) {
+    for (const w of wordsOf(j)) {
       df.set(w, (df.get(w) ?? 0) + 1);
     }
   }
   const N = pages.length || 1;
   const scores = new Map<string, number>();
   for (const j of indices) {
-    const p = pages[j];
-    if (!p) continue;
-    const words = new Set([...segment(p.title), ...segment(p.summary), ...segment(p.text)]);
+    if (!pages[j]) continue;
+    const words = wordsOf(j);
     for (const w of words) {
       if (said.has(w)) continue;
       const idf = Math.log(N / ((df.get(w) ?? 0) + 1));
