@@ -38,6 +38,24 @@ updates:
     # don't fit dependency PRs. Default no-label is fine: the audit gate + CI
     # are the real signal.
     ignore:
+      # typescript 6 is a major that cannot pass Gate 1 yet, so a Dependabot PR
+      # for it can only ever fail. #770 (5.9.3 -> 6.0.3) was closed 2026-10-07
+      # for that reason, and closing a PR is not a durable signal to Dependabot
+      # — it retries on a cooldown, so without this entry the same PR returns.
+      # The failure is 31 errors across 14 files, read off run 35511539309 at
+      # 05825f49 rather than taken from the report: 25 TS2345, 4 TS2564, 1 TS2430,
+      # 1 TS2322. Six causes, not thirty-one sites — `LLMClient` no longer
+      # assignable to `LlmDispatchClient` (10), `App` no longer assignable to a
+      # structural `{ vault: VaultLike }` (5), `Setting.addDropdown`'s callback
+      # widened to `(value: string) => any` so narrow literals stop matching (5),
+      # four uninitialised plugin fields in `src/main.ts`, `CreatePageContext`
+      # extending `PathResolutionContext` (2), and `TransientRetryOptions<T>`
+      # losing assignability to `TransientRetryOptions<unknown>` (3).
+      # **Remove this entry when #816's acceptance criteria hold**: `pnpm
+      # typecheck` at 0 with typescript@6.0.3 in package.json and Gate 1 green.
+      # Minor and patch bumps stay enabled; only the major is held.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
       # eslint stays at the Bot-aligned major (10.x per eslint-plugin-obsidianmd
       # review pipeline); never auto-bump across major.
       - dependency-name: "eslint"
