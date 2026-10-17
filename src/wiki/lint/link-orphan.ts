@@ -14,6 +14,44 @@ import {
 } from '../../core/orphan-matcher';
 import { LinkOrphanSchema, type LinkOrphan } from '../../llm-sdk/output-schemas';
 
+/**
+ * Issue #824: does `link_target` name a page that exists?
+ *
+ * Resolution is deliberately narrow — each markdown file's vault path, its
+ * wiki-relative form, and its declared aliases. That is the "page index / alias
+ * map" the report asks for. It is not a re-implementation of Obsidian's link
+ * resolution, and where it is uncertain it resolves rather than refuses: skipping
+ * a legitimate link leaves the orphan orphaned, which is the defect being fixed.
+ */
+function makeOrphanLinkTargetResolver(
+  ctx: EngineContext
+): (linkTarget: string) => boolean {
+  const wikiFolder = ctx.settings.wikiFolder;
+  const known = new Set<string>();
+  for (const file of ctx.app.vault.getMarkdownFiles()) {
+    const rel = file.path.startsWith(`${wikiFolder}/`)
+      ? file.path.slice(wikiFolder.length + 1)
+      : file.path;
+    for (const form of [file.path, rel]) {
+      known.add(form);
+      known.add(form.replace(/\.md$/, ''));
+    }
+    const cache = ctx.app.metadataCache.getFileCache(file);
+    const frontmatter: Record<string, unknown> | undefined = cache?.frontmatter;
+    const aliases: unknown = frontmatter?.aliases;
+    if (Array.isArray(aliases)) {
+      for (const alias of aliases) {
+        if (typeof alias === 'string' && alias) known.add(alias);
+      }
+    }
+  }
+  return (linkTarget: string) => {
+    const match = linkTarget.match(/\[\[\s*([^\]|]+)(?:\|[^\]]*)?\]\]/);
+    const inner = (match ? match[1] : linkTarget).trim().replace(/\.md$/, '');
+    return inner.length > 0 && known.has(inner);
+  };
+}
+
 export async function linkOrphanPage(
   ctx: EngineContext,
   orphanPath: string
@@ -79,6 +117,7 @@ export async function linkOrphanPage(
 
   const linkedPages: string[] = [];
   const labels = getSectionLabels(ctx.settings);
+  const resolvesTarget = makeOrphanLinkTargetResolver(ctx);
 
   for (const related of result.related_pages) {
     // Defense: normalize any hardcoded "wiki/" prefix from LLM response
@@ -90,7 +129,7 @@ export async function linkOrphanPage(
     const relatedContent = await ctx.tryReadFile(fullPath);
     if (!relatedContent) continue;
 
-    if (!validateOrphanLinkTarget(relatedContent, related.link_target)) {
+    if (!validateOrphanLinkTarget(relatedContent, related.link_target, resolvesTarget)) {
       const updated = buildOrphanLinkUpdate(
         relatedContent,
         {
