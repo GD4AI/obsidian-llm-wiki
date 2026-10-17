@@ -139,7 +139,9 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The next-work order — 2026-10-16, re-ranked (ranks 1–2 closed 2026-10-17)
+### The next-work order — 2026-10-16, re-ranked
+
+**Status 2026-10-17: the whole routine block is closed.** #830 and #831 were superseded by #859, #816's claim was false so #860 added the entry, the CHANGELOG was backfilled by #862, and #861 took the milestone it was missing. #755 is the one routine item left, and it waits on its contributor rather than on this repo. The heading keeps its original text deliberately: the 2026-10-17 status was first written into it, and that broke the anchor MEMORY links to — twice in one day, because a second rename followed. **A heading that another document links to is an address; status belongs in the body.**
 
 A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
 
@@ -147,15 +149,17 @@ A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 mile
 |---|---|---|---|
 | ~~1~~ | ~~**#830 + #831**, `ai` and `@ai-sdk/openai`, **together**~~ | **Done 2026-10-17** — landed as #859 (`fded549f`) and both Dependabot branches closed as superseded. Neither was mergeable as it stood: both also downgraded `@typescript-eslint/*` from 8.71.1 to 8.59.1, a type-compatible revert of #834 that Gate 1 would not have caught | — |
 | ~~2~~ | ~~**#816** verify~~ | **Done 2026-10-17** — the claim was false, so PR #860 (`2ff5eb40`) adds the entry. #816 itself stays open: the entry stops the bot, the migration is still 31 errors across 14 files | — |
-| 1 | **Backfill CHANGELOG `[Unreleased]`** | `v1.28.0`'s release is 37 PRs behind and only 7 were recorded; #729's read side, the term-index cache, the URL fix and the answer budget were all missing. A release cannot be cut from this file as it stands, and the debt grows with every merge | One PR |
-| 2 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
-| 3 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
-| 4 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
-| 5 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
-| 6 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
-| 7 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+| ~~1~~ | ~~**Backfill CHANGELOG `[Unreleased]`**~~ | **Done 2026-10-17** — PR #862 (`8934c8f9`). Ten entries added, and the `#764` version line corrected in place. `v1.28.0`'s release was 37 PRs behind and the file is what release notes are cut from, so this was a Gate 5 blocker sitting behind a section that looked complete | — |
+| 1 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
+| 2 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
+| 3 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
+| 4 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
+| 5 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
+| 6 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
 
-**Two more of the "routine" items closed on 2026-10-17.** #861 (`4cc9e0d2`), a dev-only `vite` 8.2.1 → 8.3.4, was the only PR without a milestone and now has one. And #855's conflict — a single `MEMORY.md` block, both sides inserting a new "Current state" section at the same position — is resolved and pushed, so the branch is reviewable again.
+**The whole routine block the maintainer sequenced ahead of the lint batch is now closed.** #830 and #831 were superseded by #859 (`fded549f`), #816's claim was false so #860 (`2ff5eb40`) added the entry, the CHANGELOG was backfilled by #862 (`8934c8f9`), and #861 (`4cc9e0d2`) — a dev-only `vite` 8.2.1 → 8.3.4 — was the only PR without a milestone and now has one. #755 is the one routine item left and it waits on its contributor, not on this repo.
+
+**And #855's conflict is resolved** — twice in one day, both times a single `MEMORY.md` block where two sides insert a new "Current state" section at the same position. It is `MERGEABLE` again as of `7077f6a8`. The churn is worth naming: that branch conflicts whenever any docs PR merges, and it is blocked on a review rather than on its content, so if the review runs long it will need the resolution again. The cheap fix then is to land its documentation half separately so the code diff has nothing to conflict over.
 
 **The `listModels()` row and the eight Shazam "orphans" are not the same kind of finding, and the orphans must not be acted on.** A call-graph tool reports eight symbols with zero incoming references across the old `tools/dev-instrument/` scripts. All eight are live: three are `setup(build)` esbuild plugin methods, which esbuild calls through the plugin object and never by name; four are passed as first-class values (`evaluateMax('MAX', [rankBm25fWithText, rankPpr])`); and `lexScore` leaves through an object shorthand. Deleting them would remove working code from the dev tools. `listModels()` is different — `grep -rn '\.listModels(' src/` returns nothing outside tests, across four implementations.
 
