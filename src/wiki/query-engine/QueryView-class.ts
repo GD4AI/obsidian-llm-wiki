@@ -41,6 +41,8 @@ import { renderRetrievalLabel } from './renderers/retrieval-label';
 import { SuggestSaveModal } from './SuggestSaveModal-class';
 import { InternalView } from './state';
 
+import { hashConversation } from '../../core/conversation-hash';
+import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../../core/citation-format';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
 import { ExpansionTermsCache } from '../../core/query-expansion';
@@ -421,7 +423,10 @@ export class QueryView extends ItemView {
   }
 
   private computeConversationHash(): string {
-    return JSON.stringify(this.history.messages);
+    // A hash, not the transcript. #756: this field held the whole
+    // conversation (15 KB on a real vault) and "Clear history" did not
+    // empty it.
+    return hashConversation(this.history.messages);
   }
 
   private async evaluateWithLLM(): Promise<void> {
@@ -879,9 +884,32 @@ export class QueryView extends ItemView {
 
     const sourcePath = this.plugin.settings.wikiFolder;
 
+    // #756 follow-up: the answer carries two kinds of reference — the marks
+    // at the end of each paragraph and the bibliography at the bottom — and
+    // both were wiki-links. The inline marks are metadata about the
+    // sentence; the bibliography is the list. `citeAnswer` replaces each
+    // `[[link]]` with its number in order of first appearance and collects
+    // the bibliography, which is appended after the body.
+    const cited = citeAnswer(normalizedContent);
+    // The LLM often writes its own "参考文献" / "References" section. Adding a
+    // second one duplicates it (#756 follow-up). Only append when the answer
+    // does not already carry one.
+    // The model writes the heading in whatever form it likes: `## 参考文献`,
+    // `参考文献`, `**参考文献**`, `## References`, `References`, with or
+    // without a trailing colon. Missing any of these duplicates the list.
+    const hasOwnReferences = /^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(参考文献|references|bibliography)\s*(?:\*\*)?\s*[:：]?\s*$/im.test(cited.text);
+    // When the model writes its own reference list as `1. [N] — description`
+    // there are no wiki-links to capture, so `cited.references` is empty and
+    // the list carries numbers but no page names. Normalizing the section
+    // strips the ordered-list marker; the page name comes from the reference
+    // map when we have one and stays absent when we do not.
+    const toRender = cited.references.length > 0 && !hasOwnReferences
+      ? `${cited.text}\n\n---\n\n## References\n\n${renderReferenceList(cited.references)}`
+      : normalizeReferenceSection(cited.text, cited.references);
+
     void MarkdownRenderer.render(
       this.app,
-      normalizedContent,
+      toRender,
       container,
       sourcePath,
       this.activeRenderComponent
@@ -1081,6 +1109,10 @@ export class QueryView extends ItemView {
     this.historyContainer.empty();
 
     this.plugin.settings.queryHistory = [];
+    // #756: the conversation also lives in `lastOfferedQueryHash`.
+    // Clearing the view and leaving the record on disk is the bug the issue
+    // describes: the button said "forget" and did "hide".
+    this.plugin.settings.lastOfferedQueryHash = '';
     // v1.23.0 P2: Await the save so the empty state is guaranteed to hit
     // disk before this method returns. The previous `void this.plugin.saveSettings()`
     // was fire-and-forget — if the user closed Obsidian immediately after
