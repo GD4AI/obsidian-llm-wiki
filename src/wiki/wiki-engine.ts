@@ -199,6 +199,12 @@ export class WikiEngine {
   private indexGenerator!: IndexGenerator;
   // v1.25.1 Phase C-PR1: extracted to engine-internals/log-writer.ts.
   private logWriter!: LogWriter;
+  /** Related names the current ingest could not answer, staged for the log
+   *  entry that `updateLog` writes at the end of the run. Staged rather than
+   *  threaded because the shaping happens deep in the ingest block and the log
+   *  entry is written from a method that has no access to it. Cleared when it
+   *  is consumed so a later run cannot inherit a stale list. */
+  private pendingUnanswered: ReadonlyArray<{ on: string; name: string }> = [];
   private ctx: EngineContext;
   /** SubtleCrypto from `activeWindow.crypto.subtle`. Used by PDF cache. */
   private subtle: SubtleCrypto | undefined;
@@ -572,6 +578,16 @@ export class WikiEngine {
    */
   async getOrBuildGraph(allPaths: Set<string>): Promise<Graph> {
     return this.graphCache.getOrBuild(allPaths);
+  }
+
+  /**
+   * Page bodies from the graph cache's last load, keyed by path. The answer
+   * path's lexical channel reads `PageRef.text`; the prose is loaded here to
+   * build the graph and would otherwise be discarded. Empty before the first
+   * `getOrBuildGraph`.
+   */
+  getPageBodies(): ReadonlyMap<string, string> {
+    return this.graphCache.getPageBodies();
   }
 
   /**
@@ -1273,6 +1289,7 @@ export class WikiEngine {
         });
         analysis.entities = shaped.entities;
         analysis.concepts = shaped.concepts;
+        this.pendingUnanswered = shaped.unanswered;
         if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
           const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
           const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
@@ -2318,7 +2335,10 @@ export class WikiEngine {
     contradictions: ContradictionInfo[],
     metrics?: { durationSec?: number; model?: string; sourceBytes?: number },
   ) {
-    return this.logWriter.appendIngest(operation, analysis, contradictions, metrics);
+    // Consume, not read: a later run must not inherit a stale list.
+    const staged = this.pendingUnanswered;
+    this.pendingUnanswered = [];
+    return this.logWriter.appendIngest(operation, analysis, contradictions, metrics, staged);
   }
 
   /** Append a lint-fix entry to the operation log. */

@@ -86,6 +86,16 @@ export function scoreHubLinkDistinctiveness(
   // Step 1: For each target, run PPR to get its score from the hub.
   // (Used for fallback if the redundancy map is degenerate.)
   // Step 2: For each target t, compute mean PPR(t | seed=u) for u in others.
+  //
+  // The PPR walk from `u` depends only on `u`. It used to sit inside the `t`
+  // loop and was recomputed for every pair — n*(n-1) walks instead of n. On a
+  // hub with 20 related links that is 380 walks instead of 20. Hoisted. The
+  // algorithm is unchanged and so is every number it produces; only the number
+  // of walks changes.
+  const pprBySeed = new Map<string, ReadonlyMap<string, number>>();
+  for (const u of relatedTargets) {
+    pprBySeed.set(u, personalizedPageRank(graph, u, options));
+  }
   const redundancyByTarget = new Map<string, number>();
   for (const t of relatedTargets) {
     let total = 0;
@@ -93,8 +103,7 @@ export function scoreHubLinkDistinctiveness(
     for (const u of relatedTargets) {
       if (t === u) continue;
       // PPR from u: t's score reflects how "visible" t is from u.
-      const ppr = personalizedPageRank(graph, u, options);
-      total += ppr.get(t) ?? 0;
+      total += pprBySeed.get(u)?.get(t) ?? 0;
       count++;
     }
     const mean = count > 0 ? total / count : 0;
@@ -157,6 +166,49 @@ function parseRelatedTargets(content: string, wikiFolder: string): string[] {
     }
   }
   return targets;
+}
+
+/**
+ * Remove low-distinctiveness links from a page's Related section.
+ *
+ * Pure. No IO. Returns the new content and how many links were removed, so a
+ * fix runner can report what it did and a test can assert the mutation rather
+ * than just the count.
+ *
+ * The removal is by line, not by substring: a bullet that names the target
+ * goes, a bullet that names something else stays even if the two share a word.
+ * Prose outside the Related section is never touched — a name may be discussed
+ * in the body where it is content, and stripping it there would be editing the
+ * author's argument.
+ */
+export function stripLowDistinctivenessLinks(
+  content: string,
+  targets: readonly string[],
+  wikiFolder: string,
+): { content: string; removed: number } {
+  if (targets.length === 0) return { content, removed: 0 };
+  const strip = new Set(targets.map(t => t.trim()));
+  const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
+  const sections = content.split(/^(?=##\s+)/m);
+  let removed = 0;
+  const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
+  const rewritten = sections.map(sec => {
+    const headingEnd = sec.indexOf('\n');
+    const heading = (headingEnd === -1 ? sec : sec.slice(0, headingEnd))
+      .replace(/^##\s+/, '').trim().toLowerCase();
+    if (heading !== 'related' && heading !== 'see also' && heading !== 'related pages') return sec;
+    return sec.split('\n').filter(line => {
+      let m: RegExpExecArray | null;
+      linkRegex.lastIndex = 0;
+      while ((m = linkRegex.exec(line)) !== null) {
+        const raw = m[1].trim();
+        const target = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
+        if (strip.has(target)) { removed += 1; return false; }
+      }
+      return true;
+    }).join('\n');
+  });
+  return { content: rewritten.join(''), removed };
 }
 
 /**

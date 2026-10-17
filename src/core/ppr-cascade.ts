@@ -18,7 +18,33 @@
 // (query-engine caches the graph and rebuilds it on ingest). This
 // keeps the cascade testable without an Obsidian dependency.
 
-import { personalizedPageRank, type Graph, type PPROptions } from './monte-carlo-ppr';
+import { personalizedPageRank, seededRngFrom, buildReverseAdjacency, type Graph, type PPROptions } from './monte-carlo-ppr';
+import {
+  needleHits,
+  scoreProfile,
+  WORD_CHAR_CLASS,
+  BOUNDED_WORD_CHAR,
+} from './retrieval-profile';
+import {
+  segment,
+  buildPageTerms,
+  buildCorpusTerms,
+  bm25fScore,
+  DEFAULT_FIELD_WEIGHTS,
+  FIELD_ORDER,
+  type CorpusTerms,
+  type FieldWeights,
+} from './term-index';
+import {
+  maxFuse,
+  assembleWithCoverage,
+  type Tiered,
+  type RankedCandidate,
+} from './assembly';
+
+// `needleHits` moves to `retrieval-profile.ts`, which owns "how a query matches
+// a page", and is re-exported here so existing callers keep their import path.
+export { needleHits };
 
 export type { Graph, PPROptions };
 
@@ -27,6 +53,13 @@ export interface PageRef {
   title: string;
   aliases: string[];
   /**
+   * Source note slug this page was derived from, read from the `sources:`
+   * frontmatter ref. Optional because most pages do not carry one — 25 % of
+   * the measured mixed-generation vault does — and the assembly step treats an
+   * absent slug as "no coverage signal", never as "penalise".
+   */
+  sourceSlug?: string;
+  /**
    * Optional text representation of the page — typically the summary
    * line from the wiki index. When provided, lexMatch uses this in
    * addition to title/aliases. The full text makes matching robust
@@ -34,6 +67,15 @@ export interface PageRef {
    * match because the summary mentions the topic).
    */
   summary?: string;
+  /**
+   * Page BODY. B-1 (#819): the only lexical lever that crosses a real
+   * vocabulary gap. On the strict set — pairs where A and B share under a third
+   * of their terms — the lex channel scores 0.000 without it and 0.415 with it,
+   * on test8. Optional because the wiki index does not carry bodies and the
+   * graph cache is what holds them; a caller that cannot supply one loses the
+   * lever, not the whole ranking.
+   */
+  text?: string;
 }
 
 /**
@@ -51,101 +93,111 @@ export function formatPageRefSummary(p: PageRef): string {
 }
 
 /**
- * Score pages by per-needle overlap against title + aliases. Shared
- * primitive behind both Stage 1 (lex, needles = tokenized query) and
- * Stage 1.5b (LLM-generated keywords). Needles are expected
- * lowercased; each page's title + aliases are lowercased internally.
- *
- * Scoring per needle:
- *   - title hit: 3
- *   - alias hit: 2
- *
- * Returns pages with score > 0, sorted by score descending, with the
- * count of needles matched (`tokensFound`) so callers can apply a
+ * Score pages by per-needle overlap. Shared primitive behind Stage 1 (lex,
+ * needles = tokenized query) and Stage 1.5b (LLM-generated keywords). Needles
+ * are expected lowercased; each page's title + aliases are lowercased
+ * internally. Returns pages with score > 0, sorted by score descending, with
+ * the count of needles matched (`tokensFound`) so callers can apply a
  * multi-needle bonus. Pure function — no IO.
+ *
+ * #729 Phase 2: the default scorer is now BM25F over a term index built from
+ * title, aliases and summary. The hand-tuned linear scorer (`scoreProfile`,
+ * title 3 / alias 2 / summary 1 / text 1) is kept behind `scorer: 'legacy'`
+ * and is not the default. The project convention is a new feature on by
+ * default with a switch to turn it off, not the reverse.
+ *
+ * Why BM25F rather than another weight table: a linear weight over text with
+ * no IDF cannot say that a generic term is worth less than a specific one, and
+ * every anomaly that produced became another patch — eleven on one function.
+ * See `term-index.ts`.
+ *
+ * The corpus IDF table is built once per call unless the caller passes one.
+ * Callers that score many queries over the same page set should build it once
+ * and pass it; rebuilding it per query is the one performance trap in this
+ * layer.
  */
-/**
- * What a "word" is made of: letters, digits and combining marks (so a
- * decomposed umlaut — NFD, as macOS and iCloud hand files over — stays
- * inside its word). Shared by the tokenizer and the needle matcher so
- * both agree. Built with the RegExp constructor because a `\p{…}`
- * literal is what the ES6 tsconfig target rejects, not the runtime —
- * the same form candidate-gate.ts uses.
- */
-const WORD_CHAR_CLASS = '\\p{L}\\p{N}\\p{M}';
-/**
- * Scripts written without word spaces. A needle in one of them cannot
- * be asked to start a word — there is no boundary to find — so it keeps
- * substring semantics; a run of them is not a "word run" either, the
- * CJK block below cuts those. Matches the tokenizer's CJK/kana/Hangul
- * handling, plus Thai for the same reason.
- */
-const NO_BOUNDARY_SCRIPT = '\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\p{sc=Hangul}\\p{sc=Thai}';
-const BOUNDED_WORD_CHAR = `(?:(?![${NO_BOUNDARY_SCRIPT}])[${WORD_CHAR_CLASS}])`;
-const WORD_CHAR = new RegExp(`[${WORD_CHAR_CLASS}]`, 'u');
+export interface ScorePagesOptions {
+  /** `bm25f` (default) or `legacy` — the old linear scorer, kept for A/B. */
+  readonly scorer?: 'bm25f' | 'legacy';
+  /** A prebuilt IDF table over the same page set. Built from `pages` when absent. */
+  readonly corpus?: CorpusTerms;
+  /** Field weights. Defaults to the old ratio; the harness calibrates them. */
+  readonly weights?: FieldWeights;
+}
+
+export function scorePagesByNeedles(
+  pages: PageRef[],
+  needles: string[],
+  options: ScorePagesOptions = {},
+): Array<{ page: PageRef; score: number; tokensFound: number }> {
+  const useLegacy = options.scorer === 'legacy';
+  // BM25F needs one query term list, segmented the same way the index is.
+  // A needle is already a token; segmenting it turns a Chinese clause into
+  // bigrams, which is what makes a Chinese query match at all.
+  const queryTerms = useLegacy ? needles : needles.flatMap(n => segment(n));
+  const pageTerms = useLegacy ? [] : pages.map(p => buildPageTerms({
+    title: p.title,
+    aliases: p.aliases,
+    summary: p.summary ?? '',
+    // B-1 (#819): the page BODY. Passed empty before this, so the field was
+    // dark in production while the eval tool measured a 0.000 -> 0.415 gain
+    // from it on the strict vocabulary-gap set. Callers that hold a body pass
+    // it; callers that do not lose the lever and nothing else.
+    text: p.text ?? '',
+  }));
+  const corpus = useLegacy ? undefined : (options.corpus ?? buildCorpusTerms(pageTerms));
+  const weights = options.weights ?? DEFAULT_FIELD_WEIGHTS;
+
+  const scored: Array<{ page: PageRef; score: number; tokensFound: number }> = [];
+  for (let i = 0; i < pages.length; i += 1) {
+    const page = pages[i];
+    let score: number;
+    let tokensFound: number;
+    if (useLegacy) {
+      // Four tiers — title, alias, summary, prose — from one table. The summary
+      // tier is the fix for #729's measured loss; see `retrieval-profile.ts`.
+      const s = scoreProfile(
+        { title: page.title, aliases: page.aliases, summary: page.summary },
+        needles,
+      );
+      score = s.score;
+      tokensFound = s.tokensFound;
+    } else {
+      score = bm25fScore(queryTerms, pageTerms[i], corpus!, weights);
+      // Breadth still matters to callers that apply a multi-needle bonus, so
+      // count how many distinct needles landed rather than how many terms.
+      tokensFound = needles.filter(n => segment(n).some(t => {
+        for (const f of FIELD_ORDER) if (pageTerms[i].fields[f].tf.has(t)) return true;
+        return false;
+      })).length;
+    }
+    if (score > 0) {
+      scored.push({ page, score, tokensFound });
+    }
+  }
+  // Ties do not follow the array. Two pages with the same score separate on
+  // the breadth of the match — more distinct needles matched is a better page —
+  // and only then on a stable identity. Sorting by the caller's order made the
+  // cut a lottery; sorting by path alone would make it an alphabetical rule,
+  // which is the same defect in a different hat.
+  scored.sort(
+    (a, b) =>
+      b.score - a.score
+      || b.tokensFound - a.tokensFound
+      || (a.page.path < b.page.path ? -1 : a.page.path > b.page.path ? 1 : 0),
+  );
+  return scored;
+}
+
+// The character classes and the needle matcher live in `retrieval-profile.ts`.
+// The tokenizer keeps its two own regexes here because nothing else uses them.
 const WORD_RUN = new RegExp(`${BOUNDED_WORD_CHAR}{2,}`, 'gu');
-const BOUNDED_WORD_ONLY = new RegExp(`^${BOUNDED_WORD_CHAR}+$`, 'u');
 /**
  * Leading/trailing characters that are not part of any word — punctuation
  * for our purposes. Two alternatives so a token that is nothing but
  * punctuation collapses to the empty string.
  */
 const EDGE_PUNCTUATION = new RegExp(`^[^${WORD_CHAR_CLASS}]+|[^${WORD_CHAR_CLASS}]+$`, 'gu');
-
-/**
- * Does `kw` occur in `textLower`? A needle from a space-delimited script
- * must start a word; a needle from a script without word spaces (CJK,
- * Thai …) matches as a substring.
- *
- * Substring matching was dominated by accidents of spelling: in a
- * 3,000-page German vault "man" hit Kahneman and Karpman, "bei" hit
- * Salbei, "kann" hit Pekannüsse, and "creatin" hit Phosphocreatin — a
- * different substance that shares seven letters. A word start keeps
- * prefix compounds ("nierenfunktion" → Nierenfunktionsstörung) and
- * hyphenated ones ("kinase" → Creatin-Kinase); a tail compound
- * ("insuffizienz" in Niereninsuffizienz) is left to aliases, the LLM
- * keyword stage and the graph walk. Pure function.
- */
-export function needleHits(textLower: string, kw: string): boolean {
-  if (!BOUNDED_WORD_ONLY.test(kw)) {
-    return textLower.includes(kw);
-  }
-  let i = textLower.indexOf(kw);
-  while (i !== -1) {
-    if (i === 0 || !WORD_CHAR.test(textLower[i - 1])) return true;
-    i = textLower.indexOf(kw, i + 1);
-  }
-  return false;
-}
-
-export function scorePagesByNeedles(
-  pages: PageRef[],
-  needles: string[],
-): Array<{ page: PageRef; score: number; tokensFound: number }> {
-  const scored: Array<{ page: PageRef; score: number; tokensFound: number }> = [];
-  for (const page of pages) {
-    const titleLower = page.title.toLowerCase();
-    const aliasLowers = page.aliases.map(a => a.toLowerCase());
-
-    let score = 0;
-    let tokensFound = 0;
-    for (const kw of needles) {
-      if (kw.length === 0) continue;
-      if (needleHits(titleLower, kw)) {
-        score += 3;
-        tokensFound++;
-      } else if (aliasLowers.some(a => needleHits(a, kw))) {
-        score += 2;
-        tokensFound++;
-      }
-    }
-    if (score > 0) {
-      scored.push({ page, score, tokensFound });
-    }
-  }
-  scored.sort((a, b) => b.score - a.score);
-  return scored;
-}
 
 /**
  * v1.24.1 PATCH Phase 5.5.0: lex match against TITLE + ALIASES only
@@ -172,13 +224,34 @@ export function scorePagesByNeedles(
 export function lexMatchByTitleAndAliases(
   query: string,
   pages: PageRef[],
+  options: { corpus?: CorpusTerms; scorer?: 'bm25f' | 'legacy' } = {},
 ): Array<{ page: PageRef; score: number; arm: 'lex' }> {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
 
-  return scorePagesByNeedles(pages, tokens).map(s => {
+  // BM25F is the scorer here now, and the gate in select-seeds no longer reads
+  // this score — it reads `nameTierCoverage`, which has no scale to drift
+  // against. That pair moves together: the old gate was calibrated on this
+  // function's absolute score (title 3 / alias 2), and one without the other is
+  // the measured silent failure where the LLM escalation gate fired 4 times on
+  // a suite where it must fire 0.
+  //
+  // `scorer: 'legacy'` keeps the old absolute-scale contract reachable. Its
+  // tests document title 3 / alias 2, and that contract is real — it is just
+  // not what the default path runs any more.
+  const legacy = options.scorer === 'legacy';
+  const scored = scorePagesByNeedles(pages, tokens, {
+    corpus: options.corpus,
+    ...(legacy ? { scorer: 'legacy' as const } : {}),
+  });
+  return scored.map(s => {
+    // No additive breadth bonus on the BM25F path. BM25F already rewards
+    // breadth: a page that matches more query terms sums more term
+    // contributions. Adding a constant on top of a score with no absolute scale
+    // is the hand-rolled fusion this line of work removes. The legacy path keeps
+    // it, because its contract says so.
     let score = s.score;
-    if (s.tokensFound === tokens.length && tokens.length > 1) {
+    if (legacy && s.tokensFound === tokens.length && tokens.length > 1) {
       score += 2;
     }
     return { page: s.page, score, arm: 'lex' as const };
@@ -210,14 +283,17 @@ export interface PPRCascadeOptions {
   rng?: () => number;
 }
 
-const DEFAULT_MIN_PAGES = 30;
-const DEFAULT_MIN_EDGES = 30;
-const DEFAULT_MIN_EDGE_DENSITY = 1.0;
-const DEFAULT_SEED_MIN_DEGREE = 1;
-const DEFAULT_TOP_N = 10;
-/** Share of the top PPR mass the lex rank hint may add — see mergeWithPPR. */
-const LEX_HINT_WEIGHT = 0.1;
+import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE } from '../constants';
 
+// The assembly budget and the graph-maturity gate live in `src/constants.ts`
+// with every other retrieval knob. `DEFAULT_TOP_N` is kept as an alias because
+// the option is named `topN` at every call site and renaming the option would be
+// a breaking change for no gain.
+const DEFAULT_MIN_PAGES = PPR_MIN_PAGES;
+const DEFAULT_MIN_EDGES = PPR_MIN_EDGES;
+const DEFAULT_MIN_EDGE_DENSITY = PPR_MIN_EDGE_DENSITY;
+const DEFAULT_SEED_MIN_DEGREE = PPR_SEED_MIN_DEGREE;
+const DEFAULT_TOP_N = RETRIEVAL_BUDGET;
 /**
  * Tokenize a query into individual searchable terms. Language-aware:
  *
@@ -326,7 +402,7 @@ export function lexIsReliable(tokens: string[]): boolean {
  * Page-level bonus:
  * - all query tokens found in page text: +2 (strong relevance signal)
  */
-function lexMatch(query: string, pages: PageRef[]): PageRef[] {
+export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   const scored: { page: PageRef; score: number }[] = [];
@@ -334,6 +410,12 @@ function lexMatch(query: string, pages: PageRef[]): PageRef[] {
     const titleLower = page.title.toLowerCase();
     const aliasLowers = page.aliases.map(a => a.toLowerCase());
     const summaryLower = (page.summary ?? '').toLowerCase();
+    // BODY. B-1 (#819) measured the only lexical lever that crosses a real
+    // vocabulary gap: on pairs sharing under a third of their terms the answer
+    // path scores 0.000 without it and 0.415 with it. Optional because the wiki
+    // index does not carry bodies and the graph cache is what holds them; a
+    // caller that cannot supply one loses the lever, not the whole ranking.
+    const textLower = (page.text ?? '').toLowerCase();
 
     let score = 0;
     let tokensFound = 0;
@@ -341,6 +423,9 @@ function lexMatch(query: string, pages: PageRef[]): PageRef[] {
       if (needleHits(titleLower, kw)) { score += 3; tokensFound++; }
       else if (aliasLowers.some(a => needleHits(a, kw))) { score += 2; tokensFound++; }
       else if (needleHits(summaryLower, kw)) { score += 1; tokensFound++; }
+      // Body last: the page's own prose is weaker evidence than its name or its
+      // summary line, so a title hit still wins (weight table: text 1).
+      else if (needleHits(textLower, kw)) { score += 1; tokensFound++; }
     }
     if (tokensFound === tokens.length && tokens.length > 1) score += 2;
     if (score > 0) scored.push({ page, score });
@@ -367,11 +452,17 @@ function isGraphMature(graph: Graph, options: PPRCascadeOptions): boolean {
   // (We do a single BFS from the first node; if it reaches > 50%
   // of nodes, the graph is connected-enough.)
   if (graph.nodes.length === 0) return false;
+  // Reverse adjacency, built once. The loop below used to scan every entry of
+  // `graph.edges` for each dequeued node to find who points at it — O(V*E).
+  // On the measured 2143-node / 12840-edge vault that is 27 million
+  // comparisons for one maturity check. Lookup is O(1) after this.
+  const incoming = buildReverseAdjacency(graph);
   const firstNode = graph.nodes[0];
   const visited = new Set<string>([firstNode]);
   const queue: string[] = [firstNode];
-  while (queue.length > 0) {
-    const node = queue.shift()!;
+  let head = 0;
+  while (head < queue.length) {
+    const node = queue[head++];
     for (const next of graph.edges.get(node) ?? []) {
       if (!visited.has(next)) {
         visited.add(next);
@@ -380,8 +471,8 @@ function isGraphMature(graph: Graph, options: PPRCascadeOptions): boolean {
     }
     // Reverse edges: also follow incoming edges (treat as undirected
     // for connectivity).
-    for (const [from, targets] of graph.edges) {
-      if (targets.includes(node) && !visited.has(from)) {
+    for (const from of incoming.get(node) ?? []) {
+      if (!visited.has(from)) {
         visited.add(from);
         queue.push(from);
       }
@@ -399,11 +490,17 @@ function pprFromSeeds(
   seeds: string[],
   pprOptions: PPROptions | undefined,
   rng: (() => number) | undefined,
+  query: string,
 ): Map<string, number> {
+  // The walk is a function of its inputs. Without a seed the old
+  // `Math.random` default made two runs over one query differ, which is a
+  // lottery rather than a ranking: #729 cannot separate two arms under that
+  // variance, and a user who asks twice gets two answers.
+  const walkRng = rng ?? seededRngFrom(query, seeds);
   const merged = new Map<string, number>();
   for (const seed of seeds) {
     if (!graph.nodes.includes(seed)) continue;
-    const result = personalizedPageRank(graph, seed, { ...(pprOptions ?? {}), ...(rng ? { rng } : {}) });
+    const result = personalizedPageRank(graph, seed, { ...(pprOptions ?? {}), rng: walkRng });
     for (const [node, score] of result) {
       const existing = merged.get(node) ?? 0;
       if (score > existing) merged.set(node, score);
@@ -460,8 +557,8 @@ export function pprCascade(
       const seedMinDegree = options.seedMinDegree ?? DEFAULT_SEED_MIN_DEGREE;
       const validSeeds = explicitSeeds.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng);
-        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
+        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
+        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr', validSeeds);
       }
     }
     if (graph && lex.length > 0) {
@@ -469,8 +566,8 @@ export function pprCascade(
       const seedPaths = lex.slice(0, 3).map(p => p.path);
       const validSeeds = seedPaths.filter(s => (graph.edges.get(s)?.length ?? 0) >= seedMinDegree);
       if (validSeeds.length > 0) {
-        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng);
-        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr');
+        const pprScores = pprFromSeeds(graph, validSeeds, options.pprOptions, options.rng, query);
+        return mergeWithPPR(lex, pprScores, pages, topN, 'lex-seeded-ppr', validSeeds);
       }
     }
     // No usable graph seeds AND no lex matches → return what lex has,
@@ -516,8 +613,8 @@ export function pprCascade(
   } else {
     return [];
   }
-  const pprScores = pprFromSeeds(graph, seedList, options.pprOptions, options.rng);
-  return mergeWithPPR(lex, pprScores, pages, topN, 'graph-first-ppr');
+  const pprScores = pprFromSeeds(graph, seedList, options.pprOptions, options.rng, query);
+  return mergeWithPPR(lex, pprScores, pages, topN, 'graph-first-ppr', seedList);
 }
 
 function lexScoreOf(page: PageRef, ranked: PageRef[]): number {
@@ -533,52 +630,71 @@ function mergeWithPPR(
   pages: PageRef[],
   topN: number,
   arm: 'lex-seeded-ppr' | 'graph-first-ppr',
+  seedPaths: readonly string[] = [],
 ): PageMatch[] {
   // Build a path → PageRef index for O(1) lookup.
   const byPath = new Map<string, PageRef>();
   for (const p of pages) byPath.set(p.path, p);
 
-  // Merge: PPR mass is the ranker; the lex rank hint breaks ties among
-  // reached pages and orders the pages PPR never reached. The two live
-  // on different scales — lexScoreOf is a rank placeholder in (0, 1],
-  // PPR mass on a 3,000-node graph is ~0.05 for a seed — so the old
-  // `max(lex, ppr)` let any keyword hit outrank every PPR seed: with 76
-  // lex hits the top ten were all lex, and the seeds the LLM stage had
-  // just paid for were gone.
+  // #729 Phase 6. Two ranked lists fused by RRF, then a greedy pick with
+  // source coverage.
   //
-  // Reached pages: ppr + hint × LEX_HINT_WEIGHT × maxPpr — the hint can
-  // reorder pages within a tenth of the top mass (e.g. several seeds of
-  // equal mass), nothing further apart. Unreached pages: hint scaled
-  // strictly below the smallest mass, so one monotone key sorts both.
-  let minPpr = Infinity;
-  let maxPpr = 0;
-  for (const v of pprScores.values()) {
-    if (v <= 0) continue;
-    if (v < minPpr) minPpr = v;
-    if (v > maxPpr) maxPpr = v;
+  // This replaces `ppr + hint × maxPpr × a hand-picked weight`, which added a
+  // rank placeholder in (0, 1] to PPR mass around 0.05 through a coefficient
+  // chosen for a scale. The two never shared a unit. RRF adds 1/(k+rank) and
+  // reads no score at all, so there is no coefficient whose meaning depends on
+  // a scale.
+  //
+  // The cut is `assembleWithCoverage`, not `slice(0, topN)`. That is the
+  // issue's own symptom: top-50 held 9.3 sources and top-10 loaded 3.5, with
+  // one measured case loading 1 of 10. Pages with no `sourceSlug` are never
+  // penalised — 75 % of an old vault carries no ref, and pushing those down
+  // punishes the layer's blind spot rather than rewarding diversity.
+  interface AssemblablePage extends Tiered {
+    readonly page: PageRef;
   }
-  const reachedHintScale = maxPpr * LEX_HINT_WEIGHT;
-  const unreachedHintScale = Number.isFinite(minPpr) ? minPpr / 2 : 1;
+  // Tier 0 is the seeds THIS QUERY paid for — the LLM stage's picks, or the
+  // lex-derived seeds the arm used. The band is a promise to the caller that a
+  // paid seed is served.
+  //
+  // It used to say that while doing something else: every page PPR REACHED went
+  // into tier 0. On a 2,829-page vault the walks reach 1,925 pages per query,
+  // so with a budget of 10 the lex-only tier was served 0.00 times (DocTpoint,
+  // #837, 2026-10-13). The band separated pages the graph can reach from pages
+  // it cannot, and a page it cannot reach was never returned however well it
+  // matched — orphans, new pages and stubs, exactly the pages a reader needs
+  // surfaced.
+  //
+  // Tier 1 is everything else: the PPR neighbourhood AND lex-only hits compete
+  // on score. A lexical match PPR cannot reach is no longer locked out. The
+  // original motivation stands — without a band at all a lex rank-1 and a PPR
+  // rank-1 tie at 1/(60+1) and the paid seed vanishes.
+  const seedSet = new Set(seedPaths);
+  const wrap = (page: PageRef, tier: number): AssemblablePage => ({
+    key: page.path,
+    tier,
+    page,
+    ...(page.sourceSlug !== undefined ? { sourceSlug: page.sourceSlug } : {}),
+  });
 
-  const merged = new Map<string, { page: PageRef; score: number; arm: PageMatch['arm'] }>();
+  const lexList: RankedCandidate<AssemblablePage>[] = lex.map((page, i) => ({
+    item: wrap(page, seedSet.has(page.path) ? 0 : 1), rank: i + 1,
+  }));
+  const pprList: RankedCandidate<AssemblablePage>[] = [...pprScores.entries()]
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([path]) => byPath.get(path))
+    .filter((p): p is PageRef => p !== undefined)
+    .map((page, i) => ({ item: wrap(page, seedSet.has(page.path) ? 0 : 1), rank: i + 1 }));
 
-  for (const page of lex) {
-    const ppr = pprScores.get(page.path) ?? 0;
-    const hint = lexScoreOf(page, lex);
-    const score = ppr > 0
-      ? ppr + hint * reachedHintScale
-      : hint * unreachedHintScale;
-    merged.set(page.path, { page, score, arm });
-  }
-  for (const [path, ppr] of pprScores) {
-    if (merged.has(path)) continue;
-    const page = byPath.get(path);
-    if (!page) continue;
-    merged.set(path, { page, score: ppr, arm });
-  }
+  const fused = maxFuse<AssemblablePage>([
+    { channel: 'lex', candidates: lexList },
+    { channel: 'ppr', candidates: pprList },
+  ]);
 
-  return [...merged.values()]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN)
-    .map(({ page, score }) => ({ page, score, arm }));
+  const assembled = assembleWithCoverage(
+    fused.map(f => ({ item: f.item, score: f.score })),
+    topN,
+  );
+  return assembled.picked.map(p => ({ page: p.item.page, score: p.score, arm }));
 }

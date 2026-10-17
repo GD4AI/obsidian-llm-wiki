@@ -41,7 +41,10 @@ import { renderRetrievalLabel } from './renderers/retrieval-label';
 import { SuggestSaveModal } from './SuggestSaveModal-class';
 import { InternalView } from './state';
 
-import { readWikiIndex } from './pipeline/read-index';
+import { hashConversation } from '../../core/conversation-hash';
+import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../../core/citation-format';
+import { readWikiIndex, withBodies } from './pipeline/read-index';
+import { TermIndexCache } from '../../core/term-index-cache';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
@@ -91,7 +94,31 @@ export class QueryView extends ItemView {
   private _sectionLabels: ReturnType<typeof getSectionLabels> | null = null;
   /** Last PPR cascade result — for displaying retrieval source in the response UI. */
   private _lastRetrieval: RetrievalLabelData | null = null;
+  /**
+   * Term tables keyed on the wiki index file. Building them per query was 4.4 s
+   * against 21 ms to score from a prebuilt one on 2,864 pages — the scoring was
+   * never slow, rebuilding the same table once per question was. Lives here
+   * because QueryView is what reads the index on every query and can see when
+   * it has not changed.
+   */
+  private readonly termIndexCache = new TermIndexCache();
   private _turnIndicator: HTMLElement | null = null;
+  /** Issue #850: set when the stream ran out of output budget. Rendered at the
+   *  end of the answer so the user sees why it stopped, next to the thinking
+   *  trace that consumed the budget. */
+  private truncationHint: string | null = null;
+
+  /** Render the token-overflow hint below the answer. The thinking trace stays
+   *  above — it is the evidence of what consumed the budget. */
+  private appendTruncationHint(container: HTMLElement): void {
+    const hint = this.truncationHint;
+    this.truncationHint = null;
+    if (!hint) return;
+    container.createEl('blockquote', {
+      text: hint,
+      cls: 'llm-wiki-query-truncation-hint',
+    });
+  }
   private _turnObserver: IntersectionObserver | null = null;
   /**
    * v1.23.0 P2: Persistence health fix — when the user explicitly clears
@@ -151,9 +178,15 @@ export class QueryView extends ItemView {
    */
   public invalidateGraph(): void {
     this.plugin.wikiEngine.invalidateGraph();
+    // The term index is keyed on the wiki index FILE, but the full index also
+    // holds body terms and the bodies come from the graph cache. A vault write
+    // that changes a body without changing `index.md` would otherwise keep
+    // serving an index built from the old prose — retrieval would rank on words
+    // a page no longer has. Same lifecycle as the graph: drop both.
+    this.termIndexCache.invalidate();
     const self = this as unknown as InternalView;
     self._lastRetrieval = null;
-    console.debug('[QueryView] engine graph + last retrieval invalidated');
+    console.debug('[QueryView] engine graph + term index + last retrieval invalidated');
   }
 
   async onOpen() {
@@ -380,7 +413,10 @@ export class QueryView extends ItemView {
   }
 
   private computeConversationHash(): string {
-    return JSON.stringify(this.history.messages);
+    // A hash, not the transcript. #756: this field held the whole
+    // conversation (15 KB on a real vault) and "Clear history" did not
+    // empty it.
+    return hashConversation(this.history.messages);
   }
 
   private async evaluateWithLLM(): Promise<void> {
@@ -552,6 +588,16 @@ export class QueryView extends ItemView {
             onFinish: (meta) => {
               if (meta.finishReason === 'length') {
                 console.warn('[QueryView] streaming answer truncated (finish_reason=length) at max_tokens=', capMaxTokens(TOKENS_QUERY_ANSWER, this.plugin.settings));
+                // Issue #850: a reasoning model bills its chain of thought
+                // against the same budget as the answer, so a long thought can
+                // leave the answer pane empty while the trace looks complete.
+                // Say so instead of leaving the user to guess. The thinking
+                // trace stays where it is — hiding it would lose the only
+                // evidence of what happened.
+                const budget = capMaxTokens(TOKENS_QUERY_ANSWER, this.plugin.settings);
+                const hint = `答案在 max_tokens=${budget} 处被截断。思考过程占用了大量预算。若不需要推理，请在设置中关闭 thinking，或提高 maxTokensPerCall。`;
+                new Notice(hint, NOTICE_ERROR);
+                this.truncationHint = hint;
               }
             },
             system: appendCustomQueryInstructions(wikiContext, this.plugin.settings.customQueryInstructions),
@@ -608,6 +654,7 @@ export class QueryView extends ItemView {
               // v1.23.0 P2: Streaming never started — remove the preview div.
               streamTextDiv.remove();
               this.renderMarkdownContent(fullResponse, contentDiv);
+              this.appendTruncationHint(contentDiv);
               this.scrollToBottom();
             } catch (fallbackErr) {
               console.error('Non-streaming fallback also failed:', fallbackErr);
@@ -649,6 +696,7 @@ export class QueryView extends ItemView {
         if (fullResponse !== undefined && fullResponse !== null) {
           streamTextDiv.remove();
           this.renderMarkdownContent(fullResponse, contentDiv);
+          this.appendTruncationHint(contentDiv);
           this.scrollToBottom();
         }
 
@@ -826,9 +874,32 @@ export class QueryView extends ItemView {
 
     const sourcePath = this.plugin.settings.wikiFolder;
 
+    // #756 follow-up: the answer carries two kinds of reference — the marks
+    // at the end of each paragraph and the bibliography at the bottom — and
+    // both were wiki-links. The inline marks are metadata about the
+    // sentence; the bibliography is the list. `citeAnswer` replaces each
+    // `[[link]]` with its number in order of first appearance and collects
+    // the bibliography, which is appended after the body.
+    const cited = citeAnswer(normalizedContent);
+    // The LLM often writes its own "参考文献" / "References" section. Adding a
+    // second one duplicates it (#756 follow-up). Only append when the answer
+    // does not already carry one.
+    // The model writes the heading in whatever form it likes: `## 参考文献`,
+    // `参考文献`, `**参考文献**`, `## References`, `References`, with or
+    // without a trailing colon. Missing any of these duplicates the list.
+    const hasOwnReferences = /^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(参考文献|references|bibliography)\s*(?:\*\*)?\s*[:：]?\s*$/im.test(cited.text);
+    // When the model writes its own reference list as `1. [N] — description`
+    // there are no wiki-links to capture, so `cited.references` is empty and
+    // the list carries numbers but no page names. Normalizing the section
+    // strips the ordered-list marker; the page name comes from the reference
+    // map when we have one and stays absent when we do not.
+    const toRender = cited.references.length > 0 && !hasOwnReferences
+      ? `${cited.text}\n\n---\n\n## References\n\n${renderReferenceList(cited.references)}`
+      : normalizeReferenceSection(cited.text, cited.references);
+
     void MarkdownRenderer.render(
       this.app,
-      normalizedContent,
+      toRender,
       container,
       sourcePath,
       this.activeRenderComponent
@@ -1028,6 +1099,10 @@ export class QueryView extends ItemView {
     this.historyContainer.empty();
 
     this.plugin.settings.queryHistory = [];
+    // #756: the conversation also lives in `lastOfferedQueryHash`.
+    // Clearing the view and leaving the record on disk is the bug the issue
+    // describes: the button said "forget" and did "hide".
+    this.plugin.settings.lastOfferedQueryHash = '';
     // v1.23.0 P2: Await the save so the empty state is guaranteed to hit
     // disk before this method returns. The previous `void this.plugin.saveSettings()`
     // was fire-and-forget — if the user closed Obsidian immediately after
@@ -1116,16 +1191,31 @@ export class QueryView extends ItemView {
       // across QueryView leaves and invalidated on vault writes.
       const graph = await this.plugin.wikiEngine.getOrBuildGraph(indexResult.allPaths);
 
+      // B-1 second half: the answer path's lexical channel reads
+      // `PageRef.text`, and the prose lives in the graph cache — the index has a
+      // summary line and no body. Enrich for the retrieval call ONLY: the
+      // page-summary hint below wants one line per page and must not receive
+      // full bodies.
+      const retrievalRefs = withBodies(
+        indexResult.pageRefs,
+        this.plugin.wikiEngine.getPageBodies(),
+      );
+
       // Phase 2: PPR cascade + optional LLM seed augmentation.
       // delegate returns { matches, armLabel, llmAugmented }
+      //
+      // `termIndex` carries a cache keyed on the index file. Building the term
+      // table per query was 4.4 s against 21 ms to score from a prebuilt one on
+      // 2,864 pages; a session that reads the same index now builds once.
       const seedResult = await selectPprSeeds(
         userMessage,
-        indexResult.pageRefs,
+        retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],
         this.plugin.settings,
         texts as unknown as Record<string, string>,
         onProgress,
+        { cache: this.termIndexCache, indexContent: indexResult.indexContent },
       );
 
       // Write back _lastRetrieval for retrieval label UI

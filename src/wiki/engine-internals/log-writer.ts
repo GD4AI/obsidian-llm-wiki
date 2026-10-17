@@ -78,6 +78,11 @@ export class LogWriter {
     analysis: SourceAnalysis,
     contradictions: ContradictionInfo[],
     metrics?: IngestMetrics,
+    /** Related names this run could not answer. Durable, per #729: the name is
+     *  information and the link is the wrong carrier, so the relation is
+     *  recorded here rather than asserted on the page. DocTpoint's question was
+     *  where the name goes once the write stops. This is where. */
+    unanswered?: ReadonlyArray<{ on: string; name: string }>,
   ): Promise<void> {
     const logPath = `${this.wikiFolder}/log.md`;
     const { date, time } = this.timestamp();
@@ -86,6 +91,13 @@ export class LogWriter {
     const h2Suffix = metrics ? this.formatIngestMetricsSuffix(metrics) : '';
     let entry = `\n\n## [${date} ${time}] ${operation} | ${analysis.source_title}${h2Suffix}\n\n`;
     entry += `**${labels.createdPages}**：${this.pageLinks(analysis.created_pages)}\n\n`;
+    if (unanswered && unanswered.length > 0) {
+      // A counted fact and an actionable list. Not a link: the name has no
+      // page yet, and a guessed folder path would take a slot in a capped list
+      // and never become live when the page is later born elsewhere.
+      entry += `**Related names nothing answers yet**：${unanswered.length} — ` +
+        `${unanswered.map(u => `${u.name} (on ${u.on})`).join('; ')}\n\n`;
+    }
     entry += `**${labels.updatedPages}**：${this.pageLinks(analysis.updated_pages)}\n\n`;
     if (metrics?.embeddedImageAnalysis) {
       const image = metrics.embeddedImageAnalysis;

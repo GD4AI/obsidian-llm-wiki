@@ -32,7 +32,7 @@
 // helper below.)
 
 import { describe, it, expect } from 'vitest';
-import { personalizedPageRank, type Graph } from '../../core/monte-carlo-ppr';
+import { personalizedPageRank, DEFAULT_DAMPING, DEFAULT_MAX_STEPS, DEFAULT_NUM_WALKS, type Graph } from '../../core/monte-carlo-ppr';
 
 // Deterministic PRNG (mulberry32). Used for reproducible tests.
 function makeRng(seed: number): () => number {
@@ -182,5 +182,31 @@ describe('personalizedPageRank — options defaults', () => {
     expect(result.size).toBeGreaterThan(0);
     const sum = [...result.values()].reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 1);
+  });
+
+  it('walks with the calibrated defaults: damping 0.30, maxSteps 10, numWalks 3000', () => {
+    // These are not round numbers chosen for tidiness. They were measured on the
+    // ground-truth evaluation set across two vaults (test10, 358 pages; test8,
+    // 177 pages), sweeping damping x maxSteps against bridge recall@10 and self
+    // MRR. Bridge moved +8% and +11% over the previous 0.05 / 50, self recall@10
+    // stayed 1.000 on both vaults, and numWalks was flat across 500 / 3000 /
+    // 10000 so it is fixed at the shipped 3000.
+    //
+    // Re-tuning these changes the retrieval contract. Re-measure on both vaults
+    // before touching them, and never tune them on one vault alone.
+    expect(DEFAULT_DAMPING).toBe(0.30);
+    expect(DEFAULT_MAX_STEPS).toBe(10);
+    expect(DEFAULT_NUM_WALKS).toBe(3000);
+  });
+
+  it('stays concentrated near the seed under the calibrated defaults', () => {
+    // The behavioural half of the same calibration: high damping and few steps
+    // mean the walk rarely leaves the seed's own neighbourhood. A line graph
+    // makes the two ends easy to separate.
+    const g = graph([['S', ['A']], ['A', ['B']], ['B', ['C']], ['C', ['D']], ['D', ['E']]]);
+    const result = personalizedPageRank(g, 'S');
+    const near = (result.get('S') ?? 0) + (result.get('A') ?? 0);
+    const far = (result.get('D') ?? 0) + (result.get('E') ?? 0);
+    expect(near).toBeGreaterThan(far);
   });
 });

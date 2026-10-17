@@ -48,14 +48,21 @@ import {
 } from '../../../core/ppr-cascade';
 import type { Graph } from '../../../core/build-graph';
 import { selectSeedsWithLLM, type SeedLLMClient, type SeedSelectorSettings } from './seed-selector';
+import type { TermIndexCache } from '../../../core/term-index-cache';
 import { generateQueryKeywords } from './query-keywords';
 import {
-  DEFAULT_QUERY_TOP_N_PAGES,
+  RETRIEVAL_BUDGET,
   LEX_MATCH_MIN_COUNT,
-  LEX_MATCH_MIN_TOP_SCORE,
   LEX_FALLBACK_TOP_K,
   QUERY_SEED_LLM_MAX_CANDIDATES,
 } from '../../../constants';
+import {
+  segment,
+  buildPageTerms,
+  buildCorpusTerms,
+  nameTierCoverage,
+  LEX_COVERAGE_MIN,
+} from '../../../core/term-index';
 
 export interface SeedSelectionResult {
   matches: PageMatch[];
@@ -89,26 +96,60 @@ export async function selectPprSeeds(
   settings: SeedSelectorSettings,
   texts: Record<string, string>,
   onProgress?: (phase: string) => void,
+  termIndex?: { cache: TermIndexCache; indexContent: string },
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
-  const effectiveTopN = Math.max(1, Math.min(DEFAULT_QUERY_TOP_N_PAGES, pageRefs.length));
+  const effectiveTopN = Math.max(1, Math.min(RETRIEVAL_BUDGET, pageRefs.length));
 
   // === Stage 1: lex match against title + aliases (NO summary) ===
-  const lexHits = lexMatchByTitleAndAliases(query, pageRefs);
+  // One corpus table per query, shared by the lex scoring and the coverage
+  // gate. Building it twice was the performance trap this layer has.
+  //
+  // Building it on every QUERY was the bigger one: 4.4 s per rebuild against
+  // 21 ms to score from a prebuilt index on 2,864 pages. `termIndex` carries a
+  // cache keyed on the wiki index file, so a session that reads the same index
+  // builds once. A caller that omits it keeps the old behaviour.
+  const nameTier = termIndex ? termIndex.cache.getNameTier(termIndex.indexContent, pageRefs) : null;
+  const nameTierTerms = nameTier
+    ? nameTier.pageTerms
+    : pageRefs.map(p => buildPageTerms({
+        title: p.title, aliases: p.aliases, summary: '', text: '',
+      }));
+  const corpusTerms = nameTier ? nameTier.corpus : buildCorpusTerms(nameTierTerms);
+  const lexHits = lexMatchByTitleAndAliases(query, pageRefs, {
+    corpus: corpusTerms,
+    ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
+  });
   const lexCount = lexHits.length;
-  const lexTopScore = lexCount > 0 ? lexHits[0].score : 0;
-  console.debug(
-    `[Stage 1] lex match: count=${lexCount} top1_score=${lexTopScore} ` +
-    `threshold(top=${LEX_MATCH_MIN_TOP_SCORE}, count=${LEX_MATCH_MIN_COUNT})`,
-  );
 
   const tokens = tokenizeQuery(query);
   const reliable = lexIsReliable(tokens);
+  // The gate is a ratio now, not a score. `lexTopScore >= 5` was calibrated on
+  // the title 3 / alias 2 weight table and its meaning left with that table —
+  // measured, the LLM escalation gate fired 4 times where it must fire 0, and
+  // 100 % of queries escalated on a real 174-page vault. Nothing reported it.
+  // `nameTierCoverage` is the name tier's share of the query's total IDF: no
+  // scale to drift against, and a matched rare term moves it more than a
+  // matched stop word. See `term-index.ts`.
+  const queryTerms = tokens.flatMap(t => segment(t));
+  const topPageTerms = lexCount > 0
+    ? buildPageTerms({
+        title: lexHits[0].page.title,
+        aliases: lexHits[0].page.aliases,
+        summary: '',
+        text: '',
+      })
+    : null;
+  const coverage = topPageTerms ? nameTierCoverage(queryTerms, topPageTerms, corpusTerms) : 0;
+  console.debug(
+    `[Stage 1] lex match: count=${lexCount} coverage=${coverage.toFixed(3)} ` +
+    `threshold(coverage=${LEX_COVERAGE_MIN}, count=${LEX_MATCH_MIN_COUNT})`,
+  );
   // Lex is "strong" — no LLM escalation — only when structural + reliable
   // BOTH pass. See select-seeds.ts history (Phase 5.5.0 escalation bug
   // fix) for the conjunction rationale.
-  const lexStrong = lexTopScore >= LEX_MATCH_MIN_TOP_SCORE
+  const lexStrong = coverage >= LEX_COVERAGE_MIN
     && lexCount >= LEX_MATCH_MIN_COUNT
     && reliable;
   const needsLLM = !lexStrong;

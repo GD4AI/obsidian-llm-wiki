@@ -8,7 +8,16 @@
 /* 查询模态框样式 */
 .llm-wiki-query-textarea {
   width: 100%;
-  min-height: 150px;
+  /* #756: the composer grows with the content. `field-sizing: content` is
+     Chromium 123+, Safari 26.2+, Baseline 2026 — Obsidian runs on Electron
+     (Chromium) so it is available. No JavaScript fallback: the plugin does
+     not run on Gecko, and the scrollHeight pattern costs a layout read on
+     every keystroke for a capability the browser has had since 2024.
+     `lh` is the line-height unit, so the three-line default tracks the
+     user's font rather than a pixel count that assumes one. */
+  field-sizing: content;
+  min-height: 3lh;
+  max-height: 20lh;
   padding: 8px;
   font-family: var(--font-text);
   font-size: 14px;
@@ -1297,4 +1306,37 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* #756: the inline citation links are quieter than the prose.
+   A dense answer looked uniformly the same because the citation marks at the
+   end of each paragraph were body-sized and upright. Smaller is the clearest
+   signal that this text is metadata about the sentence, not the sentence.
+   Italic + bold keeps it readable at the smaller size and marks it as a
+   reference rather than prose. Lower opacity than the bottom-of-answer
+   reference list keeps the two from competing.
+   The container is `.llm-wiki-query-message-body` (renderers/history-message.ts),
+   not `.llm-wiki-answer-modal` — that selector was the bug. */
+.llm-wiki-query-message-body .internal-link,
+.llm-wiki-query-message-body a.internal-link,
+.llm-wiki-query-message-body a[href] {
+  font-size: 0.82em;
+  font-style: italic;
+  font-weight: 600;
+  /* The accent colour at full strength. The earlier  faded
+     the accent into the prose and made the citation hard to read; the
+     smaller size and the italic are what say "this is a reference". */
+  text-decoration: underline;
+}
+
+/* #756 follow-up: the two kinds of reference need different treatments.
+   The inline marks at the end of a paragraph are metadata about the
+   sentence: small, italic, bold, accent-coloured. The bibliography at the
+   bottom is the list: body size, no italic, no bold — it is a list, not
+   prose. */
+.llm-wiki-citation {
+  font-size: 0.85em;
+  font-style: italic;
+  font-weight: 600;
+  vertical-align: baseline;
 }

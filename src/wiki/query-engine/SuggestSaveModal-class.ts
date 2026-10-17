@@ -9,6 +9,7 @@ import { App, Modal, Notice } from 'obsidian';
 import { TEXTS } from '../../texts';
 import { NOTICE_NORMAL, NOTICE_ERROR } from '../../constants';
 import type LLMWikiPlugin from '../../main';
+import { hashConversation } from '../../core/conversation-hash';
 
 export type QueryHistory = {
   messages: Array<{
@@ -75,7 +76,8 @@ export class SuggestSaveModal extends Modal {
 
     try {
       const report = await this.plugin.wikiEngine.ingestConversation(this.history);
-      this.plugin.settings.lastOfferedQueryHash = JSON.stringify(this.history.messages);
+      // #756: a hash, not the transcript.
+      this.plugin.settings.lastOfferedQueryHash = hashConversation(this.history.messages);
       void this.plugin.saveSettings();
       const summary = texts.saveSummary
         .replace('{entities}', String(report.entitiesCreated))

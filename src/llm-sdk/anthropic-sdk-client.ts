@@ -159,9 +159,16 @@ export class AnthropicSdkClient implements LLMClient {
    * treats 404 as "wrong URL" (return false), all other errors as
    * "auth/server error" (throw to propagate).
    */
-  private async probeBaseURL(baseURL: string): Promise<boolean> {
+  private async probeBaseURL(baseURL: string, probeModel?: string): Promise<boolean> {
     try {
-      const languageModel = this.getProvider('claude-haiku-4-5', this.fetchImpl, baseURL);
+      // Probe with the CALLER's model. A hardcoded Anthropic id (this used to
+      // be `claude-haiku-4-5`) cannot confirm a URL on a gateway that does not
+      // carry it — MiniMax answers "model not found" on every path, so every
+      // candidate is rejected and the first 404 is what surfaces. Measured
+      // 2026-10-15 on a MiniMax custom-Anthropic endpoint: fetch models and
+      // test connection passed, a wiki query failed with 404 on
+      // `/anthropic/messages`, and the URL fallback never resolved.
+      const languageModel = this.getProvider(probeModel ?? 'claude-haiku-4-5', this.fetchImpl, baseURL);
       const { generateText } = await import('ai');
       await generateText({
         model: languageModel,
@@ -215,7 +222,7 @@ export class AnthropicSdkClient implements LLMClient {
         const mappedErr = mapAiSdkError(err);
         const resolved = await resolveBaseUrlWithFallback({
           baseUrl: this.baseURL,
-          testFn: (url) => this.probeBaseURL(url),
+          testFn: (url) => this.probeBaseURL(url, model),
           originalError: mappedErr,
         });
         // Retry with the resolved URL — separate try block so the
@@ -342,7 +349,7 @@ export class AnthropicSdkClient implements LLMClient {
         const mappedErr = mapAiSdkError(err);
         const resolved = await resolveBaseUrlWithFallback({
           baseUrl: this.baseURL,
-          testFn: (url) => this.probeBaseURL(url),
+          testFn: (url) => this.probeBaseURL(url, model),
           originalError: mappedErr,
         });
         const retryLanguageModel = this.getProvider(model, this.streamFetchImpl, resolved);

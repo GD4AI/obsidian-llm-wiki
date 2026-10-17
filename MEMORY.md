@@ -39,7 +39,70 @@ Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to 
 
 **`listModels()` has zero production callers**, so the "empty array false pass" on the defect list cannot fire: the settings panel uses `fetchModelsWithFallback`, which already rejects an empty list, and Codex uses `fetchCodexModelCatalog`. Four implementations satisfying an optional interface member, dead. Queued for deletion.
 
-## Current state (2026-10-12)
+## Current state (2026-10-15)
+
+**What the query path looks like now.** Four levers, three of them measured on the production path and one of them waiting on a review. Body text in the scoring (29-90x), `text` not length-normalised (+0.04 / +0.08), the conversation in the retrieval query (16-33x on follow-ups), and two-stage Rocchio query expansion (+0.04 / +0.05, module shipped, wiring under review). Every one of them stays inside the corpus: no embedding, no external knowledge, no model call on the retrieval path.
+
+**Follow-up questions were a silent total failure and are now fixed.** `maxConversationHistory` wired the conversation into the ANSWER generator and the retrieval never saw it. A user asking "K3 与 DeepSeek 的架构异同" and then "为什么？" got the right context with the wrong pages. Measured over 1,000 follow-up cases built from the layered-eval questions: scoring the follow-up alone is 0.015-0.047 r@10, scoring it with the recent turns is 0.49-0.67. The fix is a string. The round count is `RETRIEVAL_HISTORY_ROUNDS = 5` in `constants.ts`, NOT `maxConversationHistory`: the answer wants the widest window a prefix cache will hold, the retrieval wants only the turns that say what the user is looking for. A hand pass with the full transcript in the query produced noise.
+
+**#855 (two-stage Rocchio) has a CHANGES_REQUESTED review from @DocTpoint at `9102c478` and all five points stand.** Three are blocking. The expanded query is passed to the LLM stages as if it were the user's question (`query-keywords.ts:97`, `selectSeedsWithLLM`), so up to 20 words the user did not write reach the model. `expandQueryForRetrieval` rebuilds page terms and a corpus table on EVERY query, `twoStageExpand` builds them again, and `distinctive()` segments every page twice — that is the 4.4 s per query #843 removed, and Gate 4 counted only the scoring. And no tool in the repo calls `twoStageExpand`, so the +0.040 / +0.051 is not reproducible from the repo; `run-layered-eval.mjs` still seeds with the old title 3 / alias 2 scorer. That last one is this project's own rule broken — the path that is measured is the path that ships. Fix order: original query to the LLM stages, `TermIndexCache` reuse, then move the measurement into the repo.
+
+**Also open on the query surface (#756).** Inline citation links read as body text with a highlight; the fix is a smaller size than the body and a lower saturation than the final reference list, underline kept. "清空历史" empties the view and leaves `data.json` alone, so the button says "forget" and does "hide". The composer is the same height for three characters and three paragraphs; it wants three lines by default and to grow with the content.
+
+**Still awaiting the maintainer.** #855 (blocked on the review fixes) and `fix/retrieval-sees-history` (history into the retrieval query, URL fallback hardening, L1 writes the resolved Base URL back). Both build clean at 4725 tests / 336 files.
+
+---
+
+**Retrieval experiments — 2026-10-15, seven arms against `lex+PPR`.** All on the production path (`bm25fScore` + `pprCascade` + `maxFuse`), both vaults, all questions and the cross-source strict layer. The question was whether query expansion and the graph channel overlap or compound.
+
+| Arm | mechanism | test8 ALL | test8 CROSS | test10 ALL | test10 CROSS |
+|-----|-----------|-----------|-------------|------------|--------------|
+| A0 | baseline `lex+PPR` | 0.850 | 0.760 | 0.826 | 0.641 |
+| A1 | one-shot expansion from the LEXICAL top-5 | 0.880 | **0.720** | 0.885 | 0.667 |
+| A2 | one-shot expansion from the PPR top-5 | 0.893 | 0.760 | 0.872 | 0.641 |
+| A3 | one-shot from both sources | 0.893 | 0.760 | 0.878 | 0.667 |
+| **A4** | **two-stage: expand, re-rank, expand from the NEW top-5** | **0.885** | **0.800** | **0.892** | **0.692** |
+| A5 | A1 plus negative feedback | 0.880 | 0.720 | 0.885 | 0.667 |
+| A6 | A1 only when coverage < 0.5 | 0.850 | 0.760 | 0.826 | 0.641 |
+| A7 | A1 with PPR seeded from the reranked list | 0.880 | 0.720 | 0.885 | 0.667 |
+
+Sweep for A4: `k1=5 m1=10 k2=5 m2=10` is the best setting on both vaults. Average r@10 gain **+0.048**, positive in all four cells, and 2.5x the one-shot form.
+
+**What the matrix says.** The gain is in ITERATING the expansion, not in mixing channels. A7 — the arm built to make the two channels compound — is identical to A1, so seeding PPR from a reranked list changes nothing: the graph is fixed, and moving the walk's starting points does not change which pages it can reach. A2 beats A1 on one vault and loses on the other, so "expand from the graph" is not a rule. A5 and A6 are noise. **A4 is the only arm that wins in all four cells.**
+
+**Why iteration compounds.** The first expansion adds the topic's words. The re-rank pulls the query toward that topic. The second expansion then pulls words out of the topic's own interior, and those are the words that bridge to a page sharing none of the asker's vocabulary. One-shot expansion can only reach the topic's rim.
+
+**MEASUREMENT ARTIFACT — the sixth trap, and the worst one.** The evaluation questions are built from `a -> b` links: the query is `a`'s summary terms minus `b`'s terms, and the truth is `b`. PPR's seeds are the lexical top-3, and since the query terms come from `a`'s own summary, `a` is almost always a seed. **PPR then walks `a`'s edges and lands on `b` — that is link-following, not retrieval.** Measured on both vaults: with the asker left in, the strict layer reads 0.800 / 0.795; with the asker excluded from the seeds it reads **0.400 / 0.385**. Half the number was the question answering itself. Any figure quoted for PPR on this evaluation set must state which one it is.
+
+**What the matrix does NOT say.** PPR is not redundant — but its honest contribution is the lower number. Pure lexical sits at 0.320 / 0.256 on the strict layer; PPR with the asker excluded lifts it to 0.400 / 0.385; two-stage expansion takes it to 0.440 / 0.436. The gain from A4 survives the artifact check: +0.040 and +0.051 with the asker already removed, so the expansion is not leaning on the link it is being asked to find. Note also that `maxFuse` of lexical and PPR scores WORSE than PPR alone on both vaults — the fusion is diluting the graph channel, and that is worth its own pass before any more weight is added to the lexical side.
+
+**Also falsified this round, for the record.** Corpus-local co-occurrence expansion (raw counts and PMI): flat on the strict layer at every parameter — the strict layer is defined by vocabulary disjointness, so the words the query would need to reach are exactly the words it excludes. LLM query expansion (MiniMax, 1,180 questions): r@10 +0.023 weighted, and the decomposition shows **0 % rescue on the cross-source layer** — it fixes same-source ranking, not the vocabulary gap. LLM reranking of the top-10: identical to baseline. The earlier 40-question figure of +0.050 / +0.125 was a sample artefact and is withdrawn.
+
+**Number provenance — read before quoting any figure from @DocTpoint's work.** His measurements come from two different builds and the mail mixed them. "Stock" means unmodified upstream `main`. "Local stack" means his patched build: deterministic Related sections with a cap of five, a picker that sets ingest order, and a local micro-embedding for dedup. A figure from the local stack does NOT describe `main`.
+
+| Figure | Build | Describes `main`? |
+|--------|-------|------------------|
+| Star shape: ~95 % of edges intra-source, 9 in 10 pages without a cross-source incoming link | stock (July) AND local stack | **yes** — load-bearing |
+| Arm C lost 3 of 5 at the lexical seed stage | stock, query path | **yes** — load-bearing |
+| M0: 79 % of chosen entries rest on one shared target; 95 % of top-3 cuts fall inside a tie | local stack, M0 computed as specified | mechanism yes, numbers approximately |
+| **"676 dead related entries on 870 pages"** | **stock control run, 136 notes, alphabetical** | **this is NOT the rebuild** |
+| The rebuild's own dead-related count: 374 on 2,135 pages (5 %) | local stack only | **no** — not a `main` baseline |
+| Related cap of five, zero violations | local stack only | **no** — `main` has no cap at all |
+| Micro-embedding dedup window 56 % / 34 % → 99.5 % / 95 % | local build, opt-in | n/a — not upstream |
+
+**The single sentence that matters:** the star shape and the lexical-seed bottleneck survive the regime change and hold on `main`; the dead-related counts and the Related cap do not.
+
+**Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). Nothing since is released; the merges below are unreleased work on `main`.
+
+**The #729 read-side track merged on 2026-10-14**, one day, six PRs. #837 read-side core + tools, #841 write-side shaping + hub-link distinctiveness, #842 the `legacyScorer` switch in 11 locales, #840 the docs, #843 a term-index cache, #844 its staleness fix. Gate 1 across the merge: 4709 tests / 334 files. What the merge bought, on the strict layer (pairs sharing under a third of their terms, different sources, truth edge removed): 0.45-0.48 at r@10 on test8 and 0.32-0.36 on test10, up from 0.000 for a lexical channel without the body. `self recall@10` is 1.000 in every arm on both vaults.
+
+**The write-side track is what remains.** The read side consumes signals the corpus carries; where two pages share no link and no wording it has nothing to work with. That is unchanged by the merge and it is a write-side problem.
+
+**Three numbers worth keeping beside the code.** The body is the only lexical lever that crosses a real vocabulary gap — `lexMatch` scores 0.021 at r@20 without one and 0.667 with one on test8. BM25F's length normaliser was damping it: turning that off for `text` moved recall 0.385 -> 0.456 and 0.271 -> 0.356, and with the fix BM25F now matches or beats the production substring scorer. And the LLM seed stage is worth about +0.03 weighted over the strict layer — measured +0.125 at r@20 on the 24-33 % of strict questions that trigger it — by translating the asker's phrasing into the target's name-tier words.
+
+**A process rule changed on the same day, because the same day proved it.** Bypass merges are for three cases only — explicitly authorised by name, "merge it" for that specific PR, or documentation only — and approval is the FIRST gate, not the last: Gate 1, side effects, breaking changes and performance must all pass before `gh pr merge`. A term-index cache passed Gate 1 with 4707 tests and shipped stale on body edits; only the side-effect audit found it. See AGENTS §Git Safety Protocol.
+
+**Older state below, kept for the reasoning it carries rather than for currency.**
 
 **Latest shipped release:** **v1.28.0 MINOR** (2026-10-04, 4372 tests / 313 files — CHANGELOG §1.28.0). The tag and the merge commit are both `c47c25a7`; the release carries three assets and a Discussion in `announcements`. It shipped **four opt-in capabilities** — #608 image embeds, #723/#735 per-provider headers with the OpenCode preset, #741 the desktop streaming fallback, #672 one tag vocabulary — plus **#751**, which made two already-shipped features run in a release build.
 

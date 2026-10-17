@@ -800,6 +800,8 @@ export const EN_TEXTS = {
     // here to exclude source pages from lint duplicate-detection.
     lintDedupIncludeSourcesName: 'Include sources in dedup',
     lintDedupIncludeSourcesDesc: 'On by default. When on, sources with identical bodies are flagged as duplicates during lint. Turn off if your source corpus generates false positives.',
+    legacyScorerName: 'Legacy query scorer',
+    legacyScorerDesc: 'Off by default. When on, query ranking uses the older hand-tuned scorer instead of the newer BM25F one. Turn on if search results got worse after an update.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'Skip candidates the source only mentions',
     skipMentionOnlyCandidatesDesc: 'Off by default. When on, an extracted entity or concept whose name does not appear in the note’s running text — absent, or only inside parentheses, enumerations or short list items — gets no page and no further model call, and is removed from the other candidates’ related lists. Works for wiki languages with a word-boundary profile (German measured; English, French, Spanish, Portuguese, Dutch estimated); for other languages the ingest reports once that it cannot apply. Leave off for glossary-style vaults or bullet-point notes where every named term should become a page.',
