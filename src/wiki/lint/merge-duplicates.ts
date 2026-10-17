@@ -17,6 +17,15 @@ export async function mergeDuplicatePages(
   targetPath: string,
   sourcePath: string
 ): Promise<string> {
+  // Issue #826: the two reads below both succeed when target and source are the
+  // same path — a file can be read twice — so the not-found guard beneath this
+  // does not catch it. Unguarded, the merge writes `targetPath` and then deletes
+  // it, and reports `merged A → A`. Refusing is the only safe outcome: there is
+  // nothing to merge, and every step after this point is destructive.
+  if (targetPath === sourcePath) {
+    throw new Error(`Cannot merge: target and source are the same page (${targetPath})`);
+  }
+
   const targetContent = await ctx.tryReadFile(targetPath);
   const sourceContent = await ctx.tryReadFile(sourcePath);
   if (!targetContent || !sourceContent) {

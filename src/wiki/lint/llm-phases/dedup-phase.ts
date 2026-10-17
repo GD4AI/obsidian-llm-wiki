@@ -739,7 +739,15 @@ export async function runDedupPhase(
             target: normalizeLLMPath(d.target, ctx.settings.wikiFolder),
             source: normalizeLLMPath(d.source, ctx.settings.wikiFolder),
             reason: d.reason,
-          }));
+          }))
+          // Issue #826: the filter above runs BEFORE `normalizeLLMPath`, so it
+          // never compares target to source — and two distinct strings that
+          // resolve to one page both pass it. `wiki/entities/a.md` and
+          // `entities/a.md` become the same path, and a literally repeated pair
+          // needs no transformation at all. The self-pair then reaches the
+          // merge path, which writes the target and deletes it. Normalise first,
+          // compare second: that is what makes the filter mean what it reads as.
+          .filter(d => d.target !== d.source);
           allDuplicates.push(...validDups);
         } else {
           const reason = result.reason instanceof Error ? result.reason.message : String(result.reason || 'unknown');
