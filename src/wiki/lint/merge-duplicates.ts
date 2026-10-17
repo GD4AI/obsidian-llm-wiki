@@ -17,6 +17,15 @@ export async function mergeDuplicatePages(
   targetPath: string,
   sourcePath: string
 ): Promise<string> {
+  // Issue #826: the two reads below both succeed when target and source are the
+  // same path — a file can be read twice — so the not-found guard beneath this
+  // does not catch it. Unguarded, the merge writes `targetPath` and then deletes
+  // it, and reports `merged A → A`. Refusing is the only safe outcome: there is
+  // nothing to merge, and every step after this point is destructive.
+  if (targetPath === sourcePath) {
+    throw new Error(`Cannot merge: target and source are the same page (${targetPath})`);
+  }
+
   const targetContent = await ctx.tryReadFile(targetPath);
   const sourceContent = await ctx.tryReadFile(sourcePath);
   if (!targetContent || !sourceContent) {
@@ -191,16 +200,26 @@ export async function mergeDuplicatePages(
   const sourceRel = sourcePath.replace(wikiFolder + '/', '').replace('.md', '');
   const targetRel = targetPath.replace(wikiFolder + '/', '').replace('.md', '');
   const retargeted = await retargetLinksToPage(ctx.app, sourcePath, targetPath);
-  if (retargeted.stale > 0) {
-    console.warn(
-      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
-      `(file changed since it was indexed) and will be dead after the merge`
-    );
-  }
-
-  await ctx.deleteFile(sourcePath);
   const linkNote = retargeted.linksRewritten > 0
     ? ` (${retargeted.linksRewritten} link${retargeted.linksRewritten === 1 ? '' : 's'} retargeted in ${retargeted.filesChanged} file${retargeted.filesChanged === 1 ? '' : 's'})`
     : '';
+  // Issue #825: a reference that could not be retargeted becomes a dead link the
+  // moment the source is deleted — the delete is what turns this merge into a net
+  // producer of them. The old code warned and deleted regardless. The source now
+  // survives, and the run says why instead of reporting an unqualified merge.
+  //
+  // The frontmatter half of the same issue is deliberately not here:
+  // `collectResolvingReferences` refusing to read `frontmatterLinks` is #386's
+  // scope, restated in #590, and widening it changes every merge's write
+  // behaviour. That is a decision, tracked in #835.
+  if (retargeted.stale > 0) {
+    console.warn(
+      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
+      `(file changed since it was indexed) — source kept so they stay resolvable`
+    );
+    return `merged ${sourceRel} → ${targetRel} but ${retargeted.stale} link${retargeted.stale === 1 ? '' : 's'} still point at the source — source kept${linkNote}`;
+  }
+
+  await ctx.deleteFile(sourcePath);
   return `merged ${sourceRel} → ${targetRel}${linkNote}`;
 }

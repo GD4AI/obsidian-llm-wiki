@@ -35,7 +35,18 @@ function makeCtx(client: LLMClient, files: Record<string, string>): EngineContex
       disableThinking: false,
     },
     // the one vocabulary (vocabulary.ts) is harvested from the vault before every system prompt
-    app: { vault: { getMarkdownFiles: () => [] }, metadataCache: { getFileCache: () => null } },
+    app: {
+      vault: {
+        // Issue #824: `link_target` is resolved against the vault before the
+        // write, so this context has to declare the pages it can read. It used
+        // to return `[]` — which describes an empty vault, and nothing noticed
+        // because nothing consulted the list. Deriving it from `files` keeps the
+        // fixture and the page index from drifting apart.
+        getMarkdownFiles: () =>
+          Object.keys(files).map(p => ({ path: p, basename: p.split('/').pop() ?? p })),
+      },
+      metadataCache: { getFileCache: () => null },
+    },
     getClient: () => client,
     getSchemaContext: () => ({}),
     tryReadFile: async (path: string): Promise<string | null> => files[path] ?? null,

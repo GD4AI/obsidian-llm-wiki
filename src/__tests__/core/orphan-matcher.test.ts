@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   buildOrphanLinkPrompt,
   validateOrphanLinkTarget,
@@ -137,9 +137,53 @@ describe('Orphan Matcher — Pure Functions', () => {
       const result = validateOrphanLinkTarget(content, '[[test]]');
       expect(result).toBe(false);
     });
+
+    // Issue #824: the append decision must also consider whether the target is a
+    // page at all. The model supplies a display-derived guess — measured on a real
+    // vault as `[[sources/paste-rules]]` where the page is
+    // `sources/paste-rules_f7bbee` — and appending it links into nothing. The
+    // third parameter is optional, so every call above keeps its behaviour.
+    describe('with a target resolver (#824)', () => {
+      it('reports skip when the target resolves to no page', () => {
+        expect(validateOrphanLinkTarget('no links here', '[[sources/paste-rules]]', () => false)).toBe(true);
+      });
+
+      it('falls back to the content check when the target does resolve', () => {
+        expect(validateOrphanLinkTarget('no links here', '[[sources/paste-rules]]', () => true)).toBe(false);
+        expect(validateOrphanLinkTarget('has [[sources/paste-rules]]', '[[sources/paste-rules]]', () => true)).toBe(true);
+      });
+
+      it('passes the raw link_target to the resolver', () => {
+        const resolver = vi.fn(() => true);
+        validateOrphanLinkTarget('x', '[[sources/a|A]]', resolver);
+        expect(resolver).toHaveBeenCalledWith('[[sources/a|A]]');
+      });
+    });
   });
 
   describe('buildOrphanLinkUpdate', () => {
+    // Issue #824: `link_text` is a sentence the model writes, and it sometimes
+    // already ends with the link. Appending `link_target` unconditionally then
+    // produces `[[X|Y]]. [[X|Y]]` on one line — measured on a real vault.
+    it('does not append a second copy when link_text already carries the link', () => {
+      const result = buildOrphanLinkUpdate(
+        '# Related topic\n\nBody.',
+        { pagePath: 'entities/r.md', linkText: 'See [[orphans/o|Orphan]]', linkTarget: '[[orphans/o|Orphan]]' },
+        'Related Pages'
+      );
+      const occurrences = result.split('[[orphans/o|Orphan]]').length - 1;
+      expect(occurrences).toBe(1);
+    });
+
+    it('still appends when link_text is prose, so the guard is not a blanket drop', () => {
+      const result = buildOrphanLinkUpdate(
+        '# Related topic\n\nBody.',
+        { pagePath: 'entities/r.md', linkText: 'See also', linkTarget: '[[orphans/o|Orphan]]' },
+        'Related Pages'
+      );
+      expect(result).toContain('- See also [[orphans/o|Orphan]]');
+    });
+
     const mockSuggestion: OrphanLinkSuggestion = {
       pagePath: 'entities/related.md',
       linkText: '- See also',

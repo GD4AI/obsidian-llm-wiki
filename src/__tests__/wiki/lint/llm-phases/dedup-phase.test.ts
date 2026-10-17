@@ -1205,3 +1205,52 @@ describe('runDedupPhase — typed-output migration (#443 expanded scope)', () =>
     expect(createMessage).toHaveBeenCalled();
   });
 });
+
+// Issue #826: the duplicate filter checks only that `target` and `source` are
+// non-empty strings. `normalizeLLMPath` runs in the `.map()` AFTER that filter,
+// so two different strings that resolve to one page both pass — and the pair
+// reaches the merge path as a self-pair. Normalising first and comparing second
+// is what makes the filter mean what it reads as.
+//
+// Measured: `normalizeLLMPath` collapses a literally identical pair and a pair
+// that differs only by the `wiki/` prefix. It does not collapse `./path`.
+describe('runDedupPhase — a self-pair must not survive normalization (#826)', () => {
+  const files = [
+    { path: 'wiki/entities/x.md', basename: 'x.md' },
+    { path: 'wiki/entities/X.md', basename: 'X.md' },
+  ];
+  const pageMap = makePageMap([
+    ['wiki/entities/x.md', '---\ntype: entity\n---\n# x\nshared content here'],
+    ['wiki/entities/X.md', '---\ntype: entity\n---\n# X\nshared content here'],
+  ]);
+
+  it('drops a pair whose two paths are literally identical', async () => {
+    const { client, createMessage } = stubLlm(JSON.stringify({
+      duplicates: [{ target: 'wiki/entities/x.md', source: 'wiki/entities/x.md', reason: 'identical path' }],
+    }));
+    const ctx = makeLintPhaseContext({ llmClient: () => client });
+    const result = await runDedupPhase(ctx, { wikiFiles: files, pageMap }, () => {});
+    // The LLM ran, so the empty result is the filter working rather than an early return.
+    expect(createMessage).toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+
+  it('drops a pair that normalization collapses to one path', async () => {
+    const { client, createMessage } = stubLlm(JSON.stringify({
+      duplicates: [{ target: 'wiki/entities/x.md', source: 'entities/x.md', reason: 'prefix difference' }],
+    }));
+    const ctx = makeLintPhaseContext({ llmClient: () => client });
+    const result = await runDedupPhase(ctx, { wikiFiles: files, pageMap }, () => {});
+    expect(createMessage).toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+
+  it('still returns a genuine pair, so the drop is not a blanket filter', async () => {
+    const { client } = stubLlm(JSON.stringify({
+      duplicates: [{ target: 'wiki/entities/x.md', source: 'wiki/entities/X.md', reason: 'case variant' }],
+    }));
+    const ctx = makeLintPhaseContext({ llmClient: () => client });
+    const result = await runDedupPhase(ctx, { wikiFiles: files, pageMap }, () => {});
+    expect(result).toHaveLength(1);
+  });
+});

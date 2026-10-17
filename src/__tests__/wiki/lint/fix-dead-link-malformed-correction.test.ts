@@ -78,17 +78,18 @@ describe('fixDeadLink — malformed LLM correct_link', () => {
     expect(writes).toHaveLength(0);
   });
 
-  it('preserves the source link\'s own alias when the deterministic fallback creates a stub', async () => {
-    // {} → no usable action → deterministic fallback → creates a stub and rewrites the
-    // referring page's link; the alias already on that link must survive the rewrite.
+  it('leaves the dead link alone when the model gives no usable action', async () => {
+    // {} → no usable action. #827 removed the deterministic fallback that used to
+    // invent a page here, so the referring link is no longer rewritten at all.
+    // This test was built around the alias already on that link; it survives for a
+    // simpler reason now — there is no rewrite to lose it in.
     const client = typedClient({});
     const { ctx, writes } = makeCtx(client);
 
     const out = await fixDeadLink(ctx, 'wiki/concepts/MyPage.md', 'missing-target');
 
-    expect(out).toContain('fallback stub created');
-    const referringWrite = writes.find(w => w.path === 'wiki/concepts/MyPage.md')!;
-    expect(referringWrite.content).toContain('|My Alias]]');
+    expect(out).toContain('left as dead link');
+    expect(writes.filter(w => w.path === 'wiki/concepts/MyPage.md')).toEqual([]);
   });
 
   it('repairs a fully unclosed correct_link by adding the missing closing brackets', async () => {
