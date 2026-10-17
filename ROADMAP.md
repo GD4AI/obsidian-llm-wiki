@@ -139,20 +139,25 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The next-work order — 2026-10-16, re-ranked
+### The next-work order — 2026-10-16, re-ranked (ranks 1–2 closed 2026-10-17)
 
 A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
 
 | Rank | Work | Why here | Cost |
 |---|---|---|---|
-| 1 | **#830 + #831**, `ai` and `@ai-sdk/openai`, **together** | Two holds on production dependencies sitting since 2026-10-12. #828 exists because of `ai@7.0.x`'s types, so the pair needs Gate 1 plus a wire-shape check on the OpenAI request body | One PR |
-| 2 | **#816** verify | Dependabot reopens the same PR if `.github/dependabot.yml` carries no TypeScript 6 entry. A five-minute check against a claim | Minutes |
-| 3 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
-| 4 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
-| 5 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
-| 6 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
-| 7 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
-| 8 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+| ~~1~~ | ~~**#830 + #831**, `ai` and `@ai-sdk/openai`, **together**~~ | **Done 2026-10-17** — landed as #859 (`fded549f`) and both Dependabot branches closed as superseded. Neither was mergeable as it stood: both also downgraded `@typescript-eslint/*` from 8.71.1 to 8.59.1, a type-compatible revert of #834 that Gate 1 would not have caught | — |
+| ~~2~~ | ~~**#816** verify~~ | **Done 2026-10-17** — the claim was false, so PR #860 (`2ff5eb40`) adds the entry. #816 itself stays open: the entry stops the bot, the migration is still 31 errors across 14 files | — |
+| 1 | **Backfill CHANGELOG `[Unreleased]`** | `v1.28.0`'s release is 37 PRs behind and only 7 were recorded; #729's read side, the term-index cache, the URL fix and the answer budget were all missing. A release cannot be cut from this file as it stands, and the debt grows with every merge | One PR |
+| 2 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
+| 3 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
+| 4 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
+| 5 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
+| 6 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
+| 7 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+
+**Two more of the "routine" items closed on 2026-10-17.** #861 (`4cc9e0d2`), a dev-only `vite` 8.2.1 → 8.3.4, was the only PR without a milestone and now has one. And #855's conflict — a single `MEMORY.md` block, both sides inserting a new "Current state" section at the same position — is resolved and pushed, so the branch is reviewable again.
+
+**The `listModels()` row and the eight Shazam "orphans" are not the same kind of finding, and the orphans must not be acted on.** A call-graph tool reports eight symbols with zero incoming references across the old `tools/dev-instrument/` scripts. All eight are live: three are `setup(build)` esbuild plugin methods, which esbuild calls through the plugin object and never by name; four are passed as first-class values (`evaluateMax('MAX', [rankBm25fWithText, rankPpr])`); and `lexScore` leaves through an object shorthand. Deleting them would remove working code from the dev tools. `listModels()` is different — `grep -rn '\.listModels(' src/` returns nothing outside tests, across four implementations.
 
 **Withdrawn: the write-side `source:` marker work.** The production vault's 25.1 % marker coverage was reported as a write-side defect, and work was queued against it. It is the age of that corpus. `test10` is the control: regenerated through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page rather than a source note — `parseSourceSlug` reads `[[sources/<slug>]]`, so there is no slug to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. **"Unmarked" has three causes and only one is a defect, and that one only occurs in a corpus the current plugin did not write.**
 
