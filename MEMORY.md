@@ -14,7 +14,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-12) |
+| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-16-latest-a-full-re-audit-and-two-claims-of-mine-withdrawn) |
 | The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
@@ -26,6 +26,18 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 **Appendix A** holds the four design records; **Appendix B** holds the dated session blocks.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
+
+## Current state (2026-10-16, latest): a full re-audit, and two claims of mine withdrawn
+
+Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to re-rank the work. The order lives in [ROADMAP §"The next-work order — 2026-10-16, re-ranked"](./ROADMAP.md#the-next-work-order--2026-10-16-re-ranked); this section is the state and the two corrections. #855 now sits on `v1.29.0 MINOR`, so the "nothing is unassigned" invariant that both ROADMAP and the milestone map claim is actually true again — 0 issues and 0 PRs without a milestone, where a week ago one PR carried none.
+
+**#781 is held, not rejected, and I had it backwards.** I reported it as "denied by measurement" and recommended closing it. That came from a compaction summary, and I repeated it to the maintainer without opening the primary sources. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and that measurement has never run. DocTpoint's `CHANGES_REQUESTED` states its own scope: "This is a statement about the order of the steps, not about your code." Closing it would have thrown away unfinished work on a claim nobody had checked. Its technical objection stands and is specific: M0 decides by tie-break rather than by signal, 80 % of top-3 cuts landing inside a tied group, and titles beginning with "A" at 9.1 % of pages but 17.1 % of chosen entries.
+
+**Most of #781's prerequisites are already in, and three sites are not.** The query path is seeded — `ppr-cascade.ts:539` does `rng ?? seededRngFrom(query, seeds)` — and two of four tie-break sorts are fixed, `:184` ordering by score → `tokensFound` → path. Still open: `hub-detection.ts:72` and `hub-link-distinctiveness.ts:97` both reach `Math.random` through `options.pprOptions ?? {}`, and `ppr-cascade.ts:473`, `lexMatch`'s weight table, sorts on `b.score - a.score` with no tie-break. Cheap, and it clears the concrete half of the objection.
+
+**The production vault's missing `source:` markers are its age, not a write-side defect.** I reported 25.1 % marker coverage as a write-side finding and queued work against it. `test10` is the control: through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page — `entities/google` carries `sources: - "[[entities/ga4-e-commerce]]"` — so there is no `[[sources/<slug>]]` to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. The current write side is complete.
+
+**`listModels()` has zero production callers**, so the "empty array false pass" on the defect list cannot fire: the settings panel uses `fetchModelsWithFallback`, which already rejects an empty list, and Codex uses `fetchCodexModelCatalog`. Four implementations satisfying an optional interface member, dead. Queued for deletion.
 
 ## Current state (2026-10-12)
 
@@ -485,6 +497,14 @@ The audit trail survived both times only because an approval before a merge is s
 - **Test the mechanism before merging it.** #718's workflow was validated on the real Dependabot branch in a throwaway worktree — failure reproduced, regeneration verified, single-file diff confirmed, and **idempotency proven by SHA-256** so the workflow provably cannot loop — *then* merged, *then* confirmed in production on #707 and #708.
 
 **The queue is the work.** Five items are finished and waiting on a call — choosing between #783 and #760, closing #770/#771/#772 once #786 lands, and answering #729. None of them needs an implementation pass, and building on any of them before the call is the mistake this session was spent learning.
+
+**11. A status claim whose action is destructive gets one command against the primary source, and a compaction summary is not a primary source.**
+
+I called #781 "denied by measurement" and recommended closing the PR. The phrase came from a compaction summary of an earlier session, and I repeated it to the maintainer without opening the decision thread or the review body. Both say the opposite: #729's own words hold the PR "until that measurement lands", that measurement never ran, and DocTpoint wrote that his `CHANGES_REQUESTED` is "a statement about the order of the steps, not about your code". The error pointed the expensive way — it would have discarded unfinished work and closed the thread on a reason that was never true. The rule is procedural rather than a reminder: **before any claim whose action is irreversible, run one command against the source the claim is about.** A summary is a pointer to that source, not the source.
+
+**12. Unmarked is not a defect until the other two causes are excluded, and a coverage figure measured only on old corpora describes the corpora.**
+
+The production vault's 25.1 % `source:` marker coverage was read as a write-side defect and turned into queued work. "Unmarked" has three causes and only one is a defect: a `sources/` note cannot link to itself; a page whose `sources:` frontmatter points at an entity or concept page gives `parseSourceSlug` no `[[sources/<slug>]]` to read; and a page written by an older release never recorded that link at all. Only the third is a real gap, and it occurs only in a corpus the current plugin did not write. `test10` settled it in one command — 96.6 %, with its only unmarked pages being its 12 source notes. **Before a coverage number becomes write-side work, name a corpus the current version wrote and check it there.** A related trap sits next to it: the committed `index.md` in those vaults carries **zero** markers on every one of them, because an older plugin wrote those files too. The generator is the authority on what a marker should be — never the index file already on disk.
 
 **The ruleset is clean and verified** (`bypass_actors=0`, `enforcement=active`). Docs-only merges by the maintainer need the temporary bypass actor; other people's PRs do not, because a cross-account `--approve` satisfies the ruleset (#784, #789, #780 all merged that way). **Never silence the restore** — its failure is silent by construction, so it is the one write that must be read back.
 

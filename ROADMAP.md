@@ -139,6 +139,27 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
+### The next-work order — 2026-10-16, re-ranked
+
+A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
+
+| Rank | Work | Why here | Cost |
+|---|---|---|---|
+| 1 | **#830 + #831**, `ai` and `@ai-sdk/openai`, **together** | Two holds on production dependencies sitting since 2026-10-12. #828 exists because of `ai@7.0.x`'s types, so the pair needs Gate 1 plus a wire-shape check on the OpenAI request body | One PR |
+| 2 | **#816** verify | Dependabot reopens the same PR if `.github/dependabot.yml` carries no TypeScript 6 entry. A five-minute check against a claim | Minutes |
+| 3 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
+| 4 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
+| 5 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
+| 6 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
+| 7 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
+| 8 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+
+**Withdrawn: the write-side `source:` marker work.** The production vault's 25.1 % marker coverage was reported as a write-side defect, and work was queued against it. It is the age of that corpus. `test10` is the control: regenerated through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page rather than a source note — `parseSourceSlug` reads `[[sources/<slug>]]`, so there is no slug to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. **"Unmarked" has three causes and only one is a defect, and that one only occurs in a corpus the current plugin did not write.**
+
+**Reclassified: #781 is held, not rejected.** It was called "denied by measurement". That was wrong, and it was wrong in the expensive direction — closing it would have discarded unfinished work on the strength of a claim nobody checked. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and **that measurement has never run.** DocTpoint's `CHANGES_REQUESTED` says so in his own words: "I am marking this as 'Request changes' so that it does not merge before #729 has an answer. This is a statement about the order of the steps, not about your code."
+
+Two of its prerequisites are already in. The query path is seeded (`ppr-cascade.ts:539` → `seededRngFrom(query, seeds)`) and two of four tie-break sorts are fixed (`:184` orders by score → `tokensFound` → path). **Three sites remain, all cheap:** `hub-detection.ts:72` and `hub-link-distinctiveness.ts:97` still reach `Math.random` through `options.pprOptions ?? {}`, and `ppr-cascade.ts:473` — `lexMatch`'s weight table — still sorts on `b.score - a.score` alone. After those, the only objection left is DocTpoint's unexplained "A" skew (9.1 % of pages, 17.1 % of chosen entries), which no mechanism in the tree accounts for and which needs its own check.
+
 ### #729 — the three directions
 
 **Chosen 2026-10-05: A.** M0 proceeds, with one measurement in front of it. #781 stays held until that measurement lands. B and C stay in the table, because their cost is
