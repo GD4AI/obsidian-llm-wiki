@@ -54,7 +54,11 @@ describe('dead-link writes and reporting', () => {
     { name: 'model correction', pages: {}, response: '{"action":"correct","correct_link":"entities/one"}' },
     { name: 'stub safety net', pages: matchingPages, response: '{"action":"create_stub","stub_title":"One"}' },
     { name: 'model stub', pages: {}, response: '{"action":"create_stub","stub_title":"New Page"}' },
-    { name: 'fallback stub', pages: {}, response: '{}' },
+    // #827: the 'fallback stub' branch used to live here. It created a page for
+    // every unresolvable link whether or not the model asked for one, which is
+    // where pages called `name` and `untitled-concept` came from. It no longer
+    // exists, so its assertion moved to the dedicated test below rather than being
+    // dropped from the parametrised sets.
   ];
 
   it.each(branches)('does not count declined writes in $name', async ({ name, pages, response }) => {
@@ -80,14 +84,30 @@ describe('dead-link writes and reporting', () => {
 
     expect(h.files.get(sourcePath)).not.toBe(content);
     expect(h.files.get(sourcePath)).not.toContain(`[[${target}#`);
-    const destination = name === 'model stub' ? 'entities/new-page'
-      : name === 'fallback stub' ? 'concepts/unknown' : 'entities/one';
+    const destination = name === 'model stub' ? 'entities/new-page' : 'entities/one';
     expect(h.files.get(sourcePath)).toContain(`[[${destination}|Custom label]]`);
     expect(result.fixed).toBe(1);
     expect(result.results).toHaveLength(1);
-    if (name === 'model stub' || name === 'fallback stub') {
+    if (name === 'model stub') {
       expect(h.files.get(`wiki/${destination}.md`)).toContain('stub: true');
     }
+  });
+
+  // #827: replaces the 'fallback stub' branch of the two parametrised sets above.
+  // The fallback used to invent a page when the model gave no usable action. The
+  // judgement now belongs to the model — it reads the source page in the user's own
+  // language, and the prompt gives it `action=leave` for a name that is not a real
+  // thing, which no hardcoded word list can decide. So this asserts the opposite of
+  // what the removed branch asserted: nothing is written, and the link stays dead.
+  it('invents no page when the model gives no usable action (#827)', async () => {
+    const content = `# Referrer\n\nSee [[unknown]].\n`;
+    const { h, ctx } = makeHarness({ files: { [sourcePath]: content }, llmResponses: ['{}'] });
+
+    const result = await runDeadLinkFixes(ctx, undefined, [{ source, target: 'unknown' }]);
+
+    expect(h.files.get(sourcePath)).toBe(content);
+    expect(h.writtenPaths).toEqual([]);
+    expect(result).toEqual({ fixed: 0, results: [] });
   });
 
   it('continues same-page fixes after an earlier write fails', async () => {
