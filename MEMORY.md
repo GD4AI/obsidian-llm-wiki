@@ -14,7 +14,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-16-latest-a-full-re-audit-and-two-claims-of-mine-withdrawn) |
+| What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-17-latest-the-routine-queue-closed-and-the-release-file-caught-37-prs-behind) |
 | The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
@@ -27,9 +27,13 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state (2026-10-16, latest): a full re-audit, and two claims of mine withdrawn
+## Current state (2026-10-17, latest): the routine queue closed, and the release file caught 37 PRs behind
 
-Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to re-rank the work. The order lives in [ROADMAP §"The next-work order — 2026-10-16, re-ranked"](./ROADMAP.md#the-next-work-order--2026-10-16-re-ranked); this section is the state and the two corrections. #855 now sits on `v1.29.0 MINOR`, so the "nothing is unassigned" invariant that both ROADMAP and the milestone map claim is actually true again — 0 issues and 0 PRs without a milestone, where a week ago one PR carried none.
+Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to re-rank the work. The order lives in [ROADMAP §"The next-work order — 2026-10-16, re-ranked"](./ROADMAP.md#the-next-work-order--2026-10-16-re-ranked-ranks-12-closed-2026-10-17); this section is the state and the corrections. #855 sits on `v1.29.0 MINOR` and now carries **no conflict** — the one that appeared was a single `MEMORY.md` block where both sides inserted a "Current state" section at the same position, resolved by keeping both newest-first. So the "nothing is unassigned" invariant is true: 0 issues and 0 PRs without a milestone.
+
+**What ranks 1–2 of the next-work order did, and what they cost.** The Dependabot pair landed as #859 (`fded549f`) with `#830` and `#831` closed as superseded. Neither branch was mergeable as it stood: both also downgraded `@typescript-eslint/parser` and `@typescript-eslint/eslint-plugin` from 8.71.1 to 8.59.1, because both were cut before #834. **That downgrade is type-compatible, so Gate 1 would have passed and the revert would have shipped silently** — the reason to read a dependency PR's whole diff rather than its title. `#816`'s claim that Dependabot already ignores TypeScript 6 was false; the `ignore` list had no `typescript` entry, and #860 (`2ff5eb40`) adds one. `#861` (`4cc9e0d2`) bumped dev-only `vite` and was the only PR without a milestone. Its last CI run predated #859, and the ruleset sets `strict_required_status_checks_policy: false`, so the green check said nothing about the pair: the merged state was verified locally (`pnpm install --frozen-lockfile` plus full Gate 1) before merging.
+
+**The CHANGELOG's `[Unreleased]` section was 37 PRs behind and had recorded 7.** #729's read side (#837, #841, #842), the term-index cache (#843, #844), the custom-Anthropic URL fix (#851), the doubled answer budget (#852), the academic citations (#857) and the dead-link race (#823) were all absent from it. The file is what release notes are cut from, so this was a Gate 5 blocker sitting unnoticed behind a section that looked complete. Backfilled 2026-10-17.
 
 **#781 is held, not rejected, and I had it backwards.** I reported it as "denied by measurement" and recommended closing it. That came from a compaction summary, and I repeated it to the maintainer without opening the primary sources. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and that measurement has never run. DocTpoint's `CHANGES_REQUESTED` states its own scope: "This is a statement about the order of the steps, not about your code." Closing it would have thrown away unfinished work on a claim nobody had checked. Its technical objection stands and is specific: M0 decides by tie-break rather than by signal, 80 % of top-3 cuts landing inside a tied group, and titles beginning with "A" at 9.1 % of pages but 17.1 % of chosen entries.
 
@@ -38,6 +42,8 @@ Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to 
 **The production vault's missing `source:` markers are its age, not a write-side defect.** I reported 25.1 % marker coverage as a write-side finding and queued work against it. `test10` is the control: through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page — `entities/google` carries `sources: - "[[entities/ga4-e-commerce]]"` — so there is no `[[sources/<slug>]]` to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. The current write side is complete.
 
 **`listModels()` has zero production callers**, so the "empty array false pass" on the defect list cannot fire: the settings panel uses `fetchModelsWithFallback`, which already rejects an empty list, and Codex uses `fetchCodexModelCatalog`. Four implementations satisfying an optional interface member, dead. Queued for deletion.
+
+**The eight "orphans" a call-graph tool reports are a different matter and must not be touched.** They are all live: three are `setup(build)` esbuild plugin methods, which esbuild calls through the plugin object and never by name; four are passed as first-class values (`evaluateMax('MAX', [rankBm25fWithText, rankPpr])`); and `lexScore` leaves through an object shorthand. **A zero-reference report is a hypothesis about the tool's resolution rules, not a verdict on the code** — so `listModels()` was worth checking with `grep` before believing it, and so were these.
 
 ## Current state (2026-10-15)
 
