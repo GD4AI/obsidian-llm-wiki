@@ -200,16 +200,26 @@ export async function mergeDuplicatePages(
   const sourceRel = sourcePath.replace(wikiFolder + '/', '').replace('.md', '');
   const targetRel = targetPath.replace(wikiFolder + '/', '').replace('.md', '');
   const retargeted = await retargetLinksToPage(ctx.app, sourcePath, targetPath);
-  if (retargeted.stale > 0) {
-    console.warn(
-      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
-      `(file changed since it was indexed) and will be dead after the merge`
-    );
-  }
-
-  await ctx.deleteFile(sourcePath);
   const linkNote = retargeted.linksRewritten > 0
     ? ` (${retargeted.linksRewritten} link${retargeted.linksRewritten === 1 ? '' : 's'} retargeted in ${retargeted.filesChanged} file${retargeted.filesChanged === 1 ? '' : 's'})`
     : '';
+  // Issue #825: a reference that could not be retargeted becomes a dead link the
+  // moment the source is deleted — the delete is what turns this merge into a net
+  // producer of them. The old code warned and deleted regardless. The source now
+  // survives, and the run says why instead of reporting an unqualified merge.
+  //
+  // The frontmatter half of the same issue is deliberately not here:
+  // `collectResolvingReferences` refusing to read `frontmatterLinks` is #386's
+  // scope, restated in #590, and widening it changes every merge's write
+  // behaviour. That is a decision, tracked in #835.
+  if (retargeted.stale > 0) {
+    console.warn(
+      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
+      `(file changed since it was indexed) — source kept so they stay resolvable`
+    );
+    return `merged ${sourceRel} → ${targetRel} but ${retargeted.stale} link${retargeted.stale === 1 ? '' : 's'} still point at the source — source kept${linkNote}`;
+  }
+
+  await ctx.deleteFile(sourcePath);
   return `merged ${sourceRel} → ${targetRel}${linkNote}`;
 }
