@@ -47,12 +47,26 @@ describe('#699 — third-party notices travel with the bundle', () => {
 
   it('names every bundled package with the version that is actually inlined', () => {
     const notices = readFileSync(NOTICES, 'utf8');
+    const lines = notices.split('\n');
     const entries = collectPackages(ROOT);
     for (const e of entries) {
-      // Name and version on one line, so an entry for a different version of the
-      // same package cannot satisfy this.
-      const line = notices.split('\n').find(l => l.startsWith(`## ${e.name} `));
-      expect(line, `${e.name} must have its own section`).toBe(`## ${e.name} ${e.version}`);
+      // Name AND version, compared as a whole line. Matching on the name alone
+      // returns the FIRST section with that name, so a package inlined at two
+      // versions fails whichever version is not first — which is exactly what the
+      // `ai` 7.0.136 bump did. pnpm keeps each version in its own store path and
+      // esbuild inlines both when two dependents resolve to different ones, so
+      // `@ai-sdk/provider-utils` (5.0.49 and 5.0.58) and `@ai-sdk/provider`
+      // (4.0.18 and 4.0.26) are each present twice and need two sections each.
+      const line = lines.find(l => l === `## ${e.name} ${e.version}`);
+      expect(line, `${e.name}@${e.version} must have its own section`).toBe(`## ${e.name} ${e.version}`);
+    }
+    // The converse: a section per inlined package-version, so a package at two
+    // versions cannot satisfy the loop above with one section.
+    const byName = new Map<string, number>();
+    for (const e of entries) byName.set(e.name, (byName.get(e.name) ?? 0) + 1);
+    for (const [name, count] of byName) {
+      const sections = lines.filter(l => l.startsWith(`## ${name} `)).length;
+      expect(sections, `${name} is inlined at ${count} version(s)`).toBe(count);
     }
   });
 
