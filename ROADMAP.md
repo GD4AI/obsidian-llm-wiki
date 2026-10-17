@@ -118,6 +118,19 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 
 **The decision this batch cannot make for itself.** #825 asks whether `collectResolvingReferences` (`link-retarget.ts:198`) should read `frontmatterLinks`. #386 excluded them on purpose and #590 records that. Widening it changes the write behaviour of every merge, so it is a decision, not a fix. The recommendation is to ship the `stale > 0` half first and treat the frontmatter scope separately.
 
+**The batch plan, for whoever picks this up.** Branch `fix/lint-dead-link-family` from `main`. One PR, four commits in this order, each revertible on its own, and each beginning with a test that fails without the change. #823 is **not** in it — see above. Four fixes, one subsystem, so one review rather than four.
+
+| Seq | # | Where | The test that must fail first |
+|---|---|---|---|
+| 1 | **#826** | `dedup-phase.ts:735` drops self-pairs after `normalizeLLMPath`; a hard guard in `runDuplicateMerges` (`fix-runners.ts:423`) and in `mergeDuplicatePages` (`merge-duplicates.ts:15`) before any write or delete | A self-pair is dropped; `mergeDuplicatePages(x, x)` refuses; `deleteFile` is never called |
+| 2 | **#824** | `validateOrphanLinkTarget` (`orphan-matcher.ts:45`) resolves through the existing page index; `buildOrphanLinkUpdate` (`:61`) drops a line that already carries the link | An unresolvable target is not appended; a duplicate is not appended; "linked from" is not reported when no inbound link was written |
+| 3 | **#827** | The stub branch at `fix-dead-link.ts:325` gets three rules: a single generic word, a code identifier, and a name that appears only inside inline code or a quote | `MyFile` and `Name` create no page; an inline-code name creates no page; **a genuinely unknown entity still does** — over-filtering is the failure mode to test against |
+| 4 | **#825** (stale half only) | `merge-duplicates.ts:194`: when `retargeted.stale > 0`, do not delete, and surface `stale` in the run result | `stale > 0` keeps the source and reports it; `stale === 0` deletes exactly as before |
+
+**Three notes a picker-up needs.** #824 changes an **exported** signature: `validateOrphanLinkTarget` has unit tests and one caller (`link-orphan.ts:93`), so the resolver is an **optional** parameter and the existing call keeps its behaviour. #825's frontmatter half is **not** in the batch — it is decided in #835. And #833's English sentinel (`startsWith('no action taken')` in `fix-runners.ts`, matching literals in `fix-dead-link.ts`) is the same subsystem and is worth folding into seq 1 or 2, because a wording edit there silently restores the false "fixed" counts that #823 was about.
+
+**The order is the ROI order, and the last row is last on purpose.** #825 is the only one whose correct behaviour changes what a merge *deletes*, so it carries the highest risk and belongs where it can be reverted without touching the other three.
+
 **The dependency decisions in the same window.** Three, and each now has an outcome.
 
 `@typescript-eslint`: PR **#821** took only the parser to 8.71.1 — dependabot's normal one-dependency shape — which left the parser and the plugin, both direct devDependencies, from different versions. **Resolved by #834**, which moves the pair together. Measured while doing it: **the pair bump does not remove the second copy of `@typescript-eslint/types`**, because `eslint-plugin-obsidianmd@0.4.2` pins its own `typescript-eslint` chain at 8.59.1 and the meta-package pins its sub-packages exactly. `pnpm dedupe` does not collapse them and was reverted: it converged nothing on that set while moving `picomatch`, `fdir`, `tinyglobby` and `ignore`. Collapsing the two belongs to the release-time Bot-alignment step, which already raises `eslint-plugin-obsidianmd` to its latest for this reason.
@@ -125,6 +138,27 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 `ai` (**#831**) and `@ai-sdk/openai` (**#830**): both production dependencies, both **held**, and they must be taken together. **#828 exists because of `ai@7.0.x`'s types** — `finalStep` is present at runtime and absent from the declared type, which is why `origin/main` stopped compiling at `f41a39d0` and twelve call sites failed at once. An `ai` patch bump inside the same minor can move that type, so the pair needs `tsc --noEmit` and Gate 1 re-run after it lands, plus a wire-shape check on the OpenAI request body. Merging either one first would leave #828's fix unverified against the version actually installed.
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
+
+### The next-work order — 2026-10-16, re-ranked
+
+A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
+
+| Rank | Work | Why here | Cost |
+|---|---|---|---|
+| 1 | **#830 + #831**, `ai` and `@ai-sdk/openai`, **together** | Two holds on production dependencies sitting since 2026-10-12. #828 exists because of `ai@7.0.x`'s types, so the pair needs Gate 1 plus a wire-shape check on the OpenAI request body | One PR |
+| 2 | **#816** verify | Dependabot reopens the same PR if `.github/dependabot.yml` carries no TypeScript 6 entry. A five-minute check against a claim | Minutes |
+| 3 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
+| 4 | **Delete the dead `listModels()`** | Four implementations, **zero production callers**. The settings panel goes through `fetchModelsWithFallback`, which already rejects an empty list, and Codex through `fetchCodexModelCatalog`. It sits on the defect list as an "empty array false pass", which it cannot be: nothing reaches it | One small PR |
+| 5 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
+| 6 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
+| 7 | **#781's three residual sites** | See below. Cheap, and it clears DocTpoint's concrete objections | One small PR |
+| 8 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+
+**Withdrawn: the write-side `source:` marker work.** The production vault's 25.1 % marker coverage was reported as a write-side defect, and work was queued against it. It is the age of that corpus. `test10` is the control: regenerated through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page rather than a source note — `parseSourceSlug` reads `[[sources/<slug>]]`, so there is no slug to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. **"Unmarked" has three causes and only one is a defect, and that one only occurs in a corpus the current plugin did not write.**
+
+**Reclassified: #781 is held, not rejected.** It was called "denied by measurement". That was wrong, and it was wrong in the expensive direction — closing it would have discarded unfinished work on the strength of a claim nobody checked. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and **that measurement has never run.** DocTpoint's `CHANGES_REQUESTED` says so in his own words: "I am marking this as 'Request changes' so that it does not merge before #729 has an answer. This is a statement about the order of the steps, not about your code."
+
+Two of its prerequisites are already in. The query path is seeded (`ppr-cascade.ts:539` → `seededRngFrom(query, seeds)`) and two of four tie-break sorts are fixed (`:184` orders by score → `tokensFound` → path). **Three sites remain, all cheap:** `hub-detection.ts:72` and `hub-link-distinctiveness.ts:97` still reach `Math.random` through `options.pprOptions ?? {}`, and `ppr-cascade.ts:473` — `lexMatch`'s weight table — still sorts on `b.score - a.score` alone. After those, the only objection left is DocTpoint's unexplained "A" skew (9.1 % of pages, 17.1 % of chosen entries), which no mechanism in the tree accounts for and which needs its own check.
 
 ### #729 — the three directions
 
