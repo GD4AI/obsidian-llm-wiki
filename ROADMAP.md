@@ -252,6 +252,112 @@ Four levers are measured and three of them are in `main` or waiting to be. The w
 
 **What is NOT on this track and why.** Embeddings: the encoder's notion of similarity is the training corpus's, so it pulls a vault that deliberately goes beyond consensus back toward it. M2 (model-proposed edges): same reason, and the resolver checks that a page exists, not that a relation holds. Corpus-local co-occurrence expansion, anchor text, reverse links, co-citation projection: each measured and flat or negative on the strict layer. LLM query expansion for the cross-source gap: 0 % rescue measured over 1,180 questions. LLM reranking of the top-10: identical to baseline.
 
+### Query view surface — shipped 2026-10-16, follow-ups open
+
+#857 merged five items from #756: the composer grows with the content (`field-sizing: content`, one line of CSS), inline citations in academic form (`[N]` at the point of use, `[N] Display - description` in the bibliography), the bibliography stays clickable, "clear history" clears `lastOfferedQueryHash` too, and the retrieval label names the pipeline that actually ran (`⚡ BM25F+PPR · 📚 N sources`).
+
+Three bugs on that path are recorded in MEMORY because each looked like a formatting issue and was a logic one. The rule they add: read the prompt before writing the matcher. The reference-list detection broke because it matched a fixed set of heading names and the model writes whatever the prompt asks in the language the answer is in.
+
+### Retrieval-channel measurements — measured 2026-10-16
+
+**Lexical channel: the `legacyScorer` setting, legacy vs BM25F.** This is a real production switch, not two functions a tool invented: `select-seeds.ts` passes `settings.legacyScorer` into `lexMatchByTitleAndAliases(query, pages, { scorer })`, which is the same setting a user flips in Advanced settings. `tools/dev-instrument/run-retrieval-ab.mjs` measures both arms twice — the Stage-1 ranking the seeds are cut from, and the whole pipeline end to end through `selectPprSeeds` — because a better Stage-1 ranking only counts if the walk carries it.
+
+r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges. **BM25F wins on five vaults out of five, at both stages.**
+
+| Vault | Pages | Questions | Stage 1 legacy | Stage 1 BM25F | End-to-end legacy | End-to-end BM25F |
+|---|---|---|---|---|---|---|
+| `sample-50page` | 53 | 154 | 0.032 | 0.325 | 0.468 | 0.578 |
+| `expA-main/wiki` | 161 | 748 | 0.008 | 0.330 | 0.433 | 0.578 |
+| `expB-branch/wiki` | 171 | 819 | 0.006 | 0.288 | 0.376 | 0.545 |
+| `test8` | 172 | 688 | 0.025 | 0.369 | 0.548 | 0.674 |
+| `test10` | 354 | 1,572 | 0.003 | 0.300 | 0.345 | 0.508 |
+
+**How to read the two columns, because the gap shrinks and that is the finding.** At Stage 1 the legacy scorer lands the truth in the top-5 seeds between 0.3 % and 3.2 % of the time — it almost never seeds the right page. End to end the gap is +0.110 to +0.169, not +0.28 to +0.34, because `pprCascade` derives its own implicit lexical seeds and can walk to the truth regardless of what Stage 1 handed it. So the setting matters, and it matters less than the Stage-1 number implies. The legacy arm is a degraded path, not a broken one.
+
+**The CROSS layer is empty on all five vaults, and that is a production fact, not a missing run.** `cross` compares source slugs, and a slug reaches `PageRef` only from an index line's `` `source:` `` marker. No `index.md` in any of these vaults carries one, so production sees `sourceSlug === undefined` on every page and `assembleWithCoverage`'s source-diversity signal has nothing to act on. The cross-source layer — the one the plugin exists to serve — is **not measurable on these corpora and not active in production on them.** Anything quoted as a CROSS figure for these vaults is `n=0`; the older expansion figures came from a loader that read `sources:` out of file frontmatter instead, which is not the path `read-index.ts` takes.
+
+**The previous run of this measurement is void and its numbers are withdrawn.** The tool called `lexMatch(query, pages, tables)`; `lexMatch` takes two parameters, so the corpus argument was discarded and both arms ran the same code. The four vaults agreed to three decimals, which read as a null result and was actually a broken tool. Same for the "fusion" arm: its PPR-alone baseline was a score the tool made up. The earlier claim of "+0.065 to +0.105 across four vaults" has no traceable provenance and is not repeated here.
+
+**Fusion: not a decision this project currently has.** `pprCascade` calls `maxFuse` on its lex and ppr channels and then `assembleWithCoverage`. No setting turns that off. "Is the lex channel earning its place inside `pprCascade`?" is a fair question, but answering it needs a seam in `pprCascade` plus its own test and review — not a flag, and not a fabricated baseline. Until that seam exists the tool reports the question rather than a number.
+
+### The answer-path scorer, measured through the pipeline — 2026-10-16
+
+`pprCascade` was calling `lexMatch(query, pages)` with no tables, so the BM25F branch behind that argument had no production caller and the hand-tuned weight table scored every answer. `PPRCascadeOptions.tables` carries them now, sourced from the same `TermIndexCache` Stage 1 already reads.
+
+This had to be measured AFTER the segmentation fix, not before. @DocTpoint measured the BM25F branch returning **no page at all** for 深度学习 while the weight table returned the right one — it was being handed `tokenizeQuery` output, which keeps a CJK run as one token. Wiring it earlier would have been a regression on exactly the vaults this plugin is used on.
+
+`tools/dev-instrument/run-answer-path-ab.mjs`, both arms through `selectPprSeeds`, r@20:
+
+| Vault | Pages | Questions | Weight table | BM25F | delta |
+|---|---|---|---|---|---|
+| `sample-50page` | 53 | 154 | 0.851 | 0.870 | +0.019 |
+| `expA-main/wiki` | 161 | 300 | 0.700 | 0.733 | +0.033 |
+| `test8` | 172 | 300 | 0.813 | 0.827 | +0.013 |
+
+Small, and positive on both Chinese vaults — which is the claim the earlier numbers could not make.
+
+### The expansion's own verdict — measured 2026-10-16
+
+**This is the first valid measurement the expansion has ever had.** The shipped path fed it an uncut Chinese run, so it returned its input verbatim and every figure attached to it in this PR described an input the plugin does not produce. After the segmentation fix it runs for the first time.
+
+`run-expansion-eval.mjs` runs both arms through `planRetrieval` and `selectPprSeeds`: arm A is `expand: false` — the product minus one step — and arm B is the product. r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges.
+
+**The table lives below, in §"The cross-source layer, measured 2026-10-16", and only there.** Six vaults, the ALL and CROSS layers side by side, plus the sampling caveat the production vault's row needs. A second copy of these deltas used to sit here and it already disagreed with that one — `+0.086` against `+0.089` for test8, two runs of one measurement — which is the argument for one table rather than two.
+
+Positive on every vault it can be measured on, including both Chinese vaults the earlier void figures came from. The tool self-checks and reports **20.0 words added per query, minimum 20.0, zero no-ops** — so this is the mechanism and not the baseline measured twice.
+
+**The deltas land near the old numbers, which is a coincidence and must not be read as confirmation.** The old +0.070 and +0.089 were on an input production never produces, and their baseline was 0.180 on test8 where this run's no-expansion arm reads 0.645 — the baseline moved because it is now `selectPprSeeds`'s real output instead of a hand-written ranking. Same magnitude, different quantity.
+
+**The CROSS layer was then measured, and it is positive on all four vaults that have one.** This paragraph first said `n/a`, on the grounds that no committed `index.md` carries a `source:` marker. That was half right, and the wrong half mattered: the committed indexes carry **zero** markers and they are stale — `index-generator.ts` writes the marker through `parseSourceSlug`, which reads `[[sources/<slug>]]` out of frontmatter, and all 129 of test8's concept pages carry it across 10 distinct sources. Regenerating through the production generator fills them in. CROSS then reads **+0.055** test8, **+0.070** test10, **+0.100** expA and **+0.146** expB, each against its own baseline. **What the stale index did establish is that a marker count taken from a file on disk describes the file, never the capability** — the generator is the authority. The cross-source regression this paragraph feared is not there.
+
+### The cross-source layer, measured 2026-10-16 — and a false-cross defect in my own tool
+
+`tools/dev-instrument/run-regenerate-index.mjs` rebuilds a vault's `index.md` through the **production** `IndexGenerator`, with a `TFile` shim that supplies only the two fields the class reads (`path`, `basename`) and an intercepted `writeFile` so measuring a corpus cannot mutate it.
+
+| Vault | Pages | With a slug | Slugs | False-cross pairs excluded | CROSS questions |
+|---|---|---|---|---|---|
+| `test8` | 172 | 147 (85.5 %) | 10 | 180 | 73 |
+| `test10` | 354 | 342 (96.6 %) | 12 | 386 | 200 |
+| `expA-main/wiki` | 161 | 156 (96.9 %) | 5 | 184 | 90 |
+| `expB-branch/wiki` | 171 | 166 (97.1 %) | 5 | 187 | 89 |
+| `wiki/` (production) | 2,141 | 537 **(25.1 %)** | 36 | 2,967 | 15 in a 400 sample |
+| `sample-50page` | 53 | 0 | 0 | — | 0 |
+
+r@10, budget 20, `--exclude-asker`, both arms through `planRetrieval` and `selectPprSeeds`:
+
+| Vault | ALL n | ALL no-exp | ALL exp | delta ALL | CROSS n | CROSS no-exp | CROSS exp | delta CROSS |
+|---|---|---|---|---|---|---|---|---|
+| `sample-50page` | 154 | 0.526 | 0.656 | +0.130 | 0 | n/a | n/a | n/a |
+| `expA-main/wiki` | 748 | 0.572 | 0.650 | +0.078 | 90 | 0.356 | 0.456 | **+0.100** |
+| `expB-branch/wiki` | 819 | 0.535 | 0.620 | +0.085 | 89 | 0.360 | 0.506 | **+0.146** |
+| `test8` | 688 | 0.645 | 0.734 | +0.089 | 73 | 0.548 | 0.603 | **+0.055** |
+| `test10` | 1,572 | 0.504 | 0.619 | **+0.115** | 200 | 0.390 | 0.460 | **+0.070** |
+| **`wiki/` (production)** | 400 sampled | **0.152** | **0.182** | **+0.030** | 15 | 0.000 | 0.000 | not measurable |
+
+**The production vault is the one that matters and it reads nothing like the test vaults.** Its baseline r@10 is **0.152** against 0.504-0.645 on the test corpora — three to four times lower — and the expansion's gain there is **+0.030**, a third of the test-vault range. The test vaults are 53 to 354 pages; production is 2,141. Every relative comparison above survives, and every absolute figure should be read as a property of a small generated vault rather than of the plugin in use.
+
+**The cross-source layer is barely measurable on the production vault at all.** Only 537 of its 2,141 pages carry a `source:` marker (25.1 %), and a true cross-source pair needs both sides marked, so a 400-question even sample yields **15** such pairs. That is not a zero — it is no data, and **it is a property of that corpus's age, not a write-side defect.** The vault was generated by an older plugin release whose pages never recorded `[[sources/<slug>]]`, and `parseSourceSlug` reads exactly that, so there is nothing to derive a marker from. `test10` is the control: regenerated through the same production generator it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page rather than a source note — the generator correctly declines to derive a slug from those. So the current write side is complete; the 25.1 % measures how old the production vault is.
+
+**`--limit` sampled the FIRST n questions in page order, and that produced a 20x error.** The first run against the production vault read `ALL no-expansion = 0.007` — at random for 2,141 pages. Its first pages are entities whose index summary is a type label (`- 类型: 产品`), so the first 400 questions were built from summaries with no topical content: measured on a sample, the queries were literally `"类型 产品"`. Even sampling by stride gives 0.152 for the same vault and the same 400 questions. The trap has caught this project once before, on the +0.182-against-+0.011 reading, and I walked into it again.
+
+**The cross-source rule counted unmarked pages as a different source.** `a.sourceSlug !== b.sourceSlug` treats `undefined !== 'some-source'` as true, so a pair with one marked side was cross-source under the loose rule — 2,967 pairs on the production vault alone. Under the strict rule (both marked, both different) the CROSS baseline sits BELOW the ALL baseline on all four test vaults, which restores the premise the PR was opened on. I briefly concluded from the loose rule that the premise was wrong; the measurement was wrong instead. And "the gain is skewed toward same-source pairs" is withdrawn: CROSS gains less than ALL on test8 and test10 and more on expA and expB.
+
+**`test10` was missing from the first cross-source runs.** It carries 12 distinct sources, the most of any corpus, and returns the largest ALL gain of the four (+0.115). That was an unstated omission.
+
+`sample-50page` stays CROSS-empty and that is correct: it is a synthetic fixture whose pages carry no `sources:` frontmatter. The tool says so instead of scoring the empty layer.
+
+**The context has no total budget, and this pass only bounded its growth.** The summary cap is `MAX_PAGE_CONTENT_CHARS / 3` per page, so 20 pages carry 85,320 characters of summaries before anything is added; the new `MATCHED_PARAGRAPHS_TOTAL_CHARS` takes the addition from 85,320 down to 12,800, for 98,120 characters total. Against `TOKENS_QUERY_ANSWER` of 16,000 that is roughly 1.5x at 4 chars/token and 3.6x at 1.7. **No constant governs the assembled context at all** — `TOKENS_QUERY_ANSWER` is the answer's budget. Bounding the whole is a change to the assembly layer, larger than this PR, and it is filed as its own item rather than claimed here.
+
+**The expansion ships.** It earns a full Rocchio pass per query at +0.078 to +0.130 on the corpora available. What is not established is whether it helps on the cross-source gap it was designed for, and that needs a corpus whose index carries source markers before the claim can be made.
+
+### Still open
+
+- #855 awaits a second review from @DocTpoint. The six fixes from the independent review are on the branch at `e3dc1c38`.
+- Five PRs to triage: #836, #831, #830, #781, #755.
+- `wiki/` vault PPR times out on 2,145 pages.
+- The E1 trigger gate fires 0% of the time in production (`coverage < 0.5` never holds).
+- The write-side re-plan after @DocTpoint's seven points.
+
 ### Backlog carried out of those cycles — six items still open
 
 The 2026-09-12 ROI board and the wider priority table that used to sit here are gone. 18 of their rows shipped, and the rest are enumerated below. **Every other

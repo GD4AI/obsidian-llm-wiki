@@ -145,6 +145,7 @@ export const ZH_HANT_TEXTS = {
     saveSettingsDesc: '儲存當前配置',
     saveButton: '儲存設定',
     testConnectionSuccessful: '連線成功',
+    baseUrlUpdated: 'Base URL 已更新為 {url}',
     testConnectionFailed: '連線失敗',
     testConnectionProvider: '提供商：',
     codexAuthRequired: '測試連線前，請先登入 ChatGPT 方案。',

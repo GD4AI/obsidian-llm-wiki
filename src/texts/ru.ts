@@ -171,6 +171,7 @@ export const RU_TEXTS = {
 
     // Проверка подключения
     testConnectionSuccessful: 'Подключение успешно',
+    baseUrlUpdated: 'Base URL обновлён на {url}',
     testConnectionFailed: 'Подключение не удалось',
     testConnectionProvider: 'Провайдер: ',
     codexAuthRequired: 'Войдите в ChatGPT Plan перед проверкой подключения.',

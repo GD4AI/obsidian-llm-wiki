@@ -145,6 +145,7 @@ export const ZH_TEXTS = {
     saveSettingsDesc: '保存当前配置',
     saveButton: '保存设置',
     testConnectionSuccessful: '连接成功',
+    baseUrlUpdated: 'Base URL 已更新为 {url}',
     testConnectionFailed: '连接失败',
     testConnectionProvider: '提供商：',
     codexAuthRequired: '测试连接前，请先登录 ChatGPT 套餐。',
