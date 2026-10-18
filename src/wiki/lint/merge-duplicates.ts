@@ -186,7 +186,19 @@ export async function mergeDuplicatePages(
     }
     mergedBody = targetBody;
     if (sourceBody) {
-      mergedBody += '\n\n## From ' + sourceTitle + '\n\n' + sourceBody;
+      // Issue #825: keeping a source whose references could not be retargeted means
+      // the same pair is seen again on the next lint run. This append therefore has to
+      // be idempotent — `## From <title>` already identifies the absorbed block, so a
+      // second run must not copy the whole source body in again. Without the guard a
+      // kept-source pair grows the survivor by one source body per lint run.
+      //
+      // Skipping is chosen over replacing. An updated source should take the LLM merge
+      // path; silently overwriting a section on a fallback path would be a worse
+      // failure than leaving the earlier copy in place.
+      const fromHeader = '## From ' + sourceTitle;
+      if (!mergedBody.includes(fromHeader)) {
+        mergedBody += '\n\n' + fromHeader + '\n\n' + sourceBody;
+      }
     }
   }
 
