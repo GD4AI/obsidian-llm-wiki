@@ -4,6 +4,7 @@
 
 import { Notice, TFile } from 'obsidian';
 import { LintContext } from './types';
+import { canonicalPagePath } from './merge-duplicates';
 import { TEXTS } from '../../texts';
 import { PROMPTS } from '../../prompts';
 import { parseJsonResponse } from '../../core/json';
@@ -418,8 +419,13 @@ export async function runDuplicateMerges(
   // the same path, so the pair is dropped here — before the progress notice and
   // before the merge. `dedup-phase` filters the same case one layer up; this is
   // the guard for every other producer of a duplicate list.
-  const selfPairs = duplicates.filter(d => d.target === d.source);
-  const mergeable = duplicates.filter(d => d.target !== d.source);
+  // Issue #826, second half: a repeated path is the easy self-pair and a missing
+  // `wiki/` prefix is the next one, but six spellings survived a string compare —
+  // `./`, a doubled slash, a dropped `.md`, and Unicode NFC/NFD. Compare resolved
+  // identity so those are dropped here instead of reaching `mergeDuplicatePages`,
+  // which refuses them but reports each one as a failure.
+  const selfPairs = duplicates.filter(d => canonicalPagePath(d.target) === canonicalPagePath(d.source));
+  const mergeable = duplicates.filter(d => canonicalPagePath(d.target) !== canonicalPagePath(d.source));
   if (selfPairs.length > 0) {
     console.warn(
       `[DuplicateMerge] Skipped ${selfPairs.length} self-pair(s) — target and source resolve to the same page`

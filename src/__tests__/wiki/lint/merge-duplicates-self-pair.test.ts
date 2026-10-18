@@ -105,6 +105,21 @@ describe('runDuplicateMerges — a self-pair must never reach the merge (#826)',
     expect(ctx.wikiEngine.mergeDuplicatePages).toHaveBeenCalledWith(PAGE, OTHER);
     expect(merged).toBe(1);
   });
+
+  it('drops a self-pair that differs only in spelling', async () => {
+    // The runner is the second line of defence: without the canonical comparison
+    // this pair reaches `mergeDuplicatePages`, is refused there, and is reported to
+    // the user as a failure. Dropping it here is quiet and correct.
+    const ctx = makeLintCtx();
+
+    const { merged, results } = await runDuplicateMerges(ctx, undefined, [
+      { target: PAGE, source: './wiki//entities/Ferritin', reason: 'same page, different spelling' },
+    ]);
+
+    expect(ctx.wikiEngine.mergeDuplicatePages).not.toHaveBeenCalled();
+    expect(merged).toBe(0);
+    expect(results).toEqual([]);
+  });
 });
 
 // Issue #826's acceptance criterion is "whenever both sides resolve to the same
