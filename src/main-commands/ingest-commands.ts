@@ -26,6 +26,7 @@ import { getText } from '../core/i18n';
 import { slugify } from '../core/slug';
 import { pageBelongsToNote } from '../core/ingest-state';
 import { isIngestableSource } from '../core/folder-scope';
+import { makeUserIgnorePredicate } from '../core/user-ignore';
 import { COMPATIBLE_SOURCE_EXTENSIONS, NOTICE_NORMAL, NOTICE_ERROR } from '../constants';
 import { FileSuggestModal, FolderSuggestModal, MultiFileSuggestModal, IngestReportModal } from '../ui/modals';
 import { ProgressScope } from '../core/progress-notification';
@@ -140,6 +141,11 @@ export const ingestCommands = {
       // root as a wildcard ancestor. See core/folder-scope.ts for the
       // three cases a bare startsWith leaks (sibling-folder-with-prefix,
       // file-sitting-beside-the-folder, the folder itself).
+      // Issue #503: honour Obsidian's own "Excluded files" list (Settings → Files and
+      // links). Only the folder path consults it — the two explicit file pickers
+      // deliberately do not, because a file the user selected by hand is a decision
+      // rather than something to filter.
+      const isUserIgnored = makeUserIgnorePredicate(this.app.metadataCache);
       const files = this.app.vault.getFiles()
         .filter(f => allowedExts.includes(f.extension.toLowerCase()))
         .filter(f => isIngestableSource(
@@ -148,6 +154,7 @@ export const ingestCommands = {
           folder.isRoot(),
           this.settings.wikiFolder,
           this.app.vault.configDir,
+          isUserIgnored,
         ));
 
       if (files.length === 0) {

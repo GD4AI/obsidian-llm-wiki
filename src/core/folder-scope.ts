@@ -95,10 +95,18 @@ export function isIngestableSource(
   folderPath: string,
   isRoot: boolean,
   wikiFolder: string,
-  configDir: string
+  configDir: string,
+  isUserIgnored?: (path: string) => boolean
 ): boolean {
   return (
     isInFolderScope(filePath, folderPath, isRoot) &&
-    !isExcludedFromSourcePicker(filePath, wikiFolder, configDir)
+    !isExcludedFromSourcePicker(filePath, wikiFolder, configDir) &&
+    // Issue #503: Obsidian's own "Excluded files" list. Passed as a predicate so this
+    // file stays pure and IO-free — the undocumented API is adapted in one place
+    // (`core/user-ignore.ts`) rather than here, and the rule is testable without a
+    // vault. Omitting the argument keeps every pre-#503 caller's behaviour, which is
+    // also what the two explicit file pickers want: a file the user selected by hand
+    // is a decision, not something to filter.
+    !(isUserIgnored?.(filePath) ?? false)
   );
 }
