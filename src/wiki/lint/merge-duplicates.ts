@@ -254,5 +254,19 @@ export async function mergeDuplicatePages(
   }
 
   await ctx.deleteFile(sourcePath);
+  // Issue #825's sibling, and the reason a merged pair can come back: the two sides
+  // do not agree on what a path is. `tryReadFile` (`wiki-engine.ts:2209`) normalises
+  // the path and scans directories; `deleteFile` (`:2178`) uses an exact key and,
+  // when it misses, returns void having done nothing. The log then says `merged`
+  // while the source is still there, and the next lint reports the same pair again.
+  // Reading the path back is the cheapest way to tell the truth without widening
+  // `deleteFile`'s contract, which every caller and mock would have to follow.
+  if (await ctx.tryReadFile(sourcePath)) {
+    console.warn(
+      `mergeDuplicatePages: ${sourceRel} survived the delete — the source is still present, ` +
+      `so the next lint will report this pair again`
+    );
+    return `merged ${sourceRel} → ${targetRel} but the source could not be deleted and is still present${linkNote}`;
+  }
   return `merged ${sourceRel} → ${targetRel}${linkNote}`;
 }

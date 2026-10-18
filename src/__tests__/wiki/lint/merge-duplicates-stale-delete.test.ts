@@ -94,4 +94,18 @@ describe('mergeDuplicatePages — a stale retarget must not delete the source (#
     expect(deleted).toEqual([SOURCE]);
     expect(summary).toBe('merged entities/Osteopontin-2 → entities/Osteopontin (1 link retargeted in 1 file)');
   });
+
+  it('reports a source that survived the delete instead of claiming a clean merge', async () => {
+    // Production's read-tolerant / delete-exact asymmetry, seen from the merge's
+    // side: `tryReadFile` normalises the path and scans directories, while
+    // `deleteFile` uses an exact key and returns void when it misses. So the log can
+    // say `merged` with the source still on disk, and the next lint reports the same
+    // pair again. A delete that does nothing is what that looks like from here.
+    const { ctx } = makeCtx();
+    (ctx as unknown as { deleteFile: (p: string) => Promise<void> }).deleteFile = async () => {};
+
+    const summary = await mergeDuplicatePages(ctx, TARGET, SOURCE);
+
+    expect(summary).toContain('could not be deleted');
+  });
 });
