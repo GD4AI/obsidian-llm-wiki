@@ -554,6 +554,7 @@ Two things made it easy to miss.
 
 **Same family, three instances in this repo.** The schema body (this), the term index (#843/#844 — keyed on the index file, so an edited page body left it stale), and the frontmatter alias map that `fix-runners.ts:138` already had to watch with `vault.on('modify')`. Each is a cache whose key did not follow the file it described.
 
+<<<<<<< HEAD
 ### A repair's target comes from the operation, not from what the model guessed (#824, 2026-10-18)
 
 The orphan-link repair kept the model's guessed target whenever the guess "resolved". Resolving meant "names some page that exists" — a link-hygiene question. The question that decides the repair is "does this target name the orphan?" — a link-identity question. The check answered the first one and was used to decide the second.
@@ -568,7 +569,16 @@ Two things made it invisible for months.
 **The second-order cost was performance.** The resolver scanned every markdown file and its frontmatter aliases — once per orphan, per run — to answer a question whose answer did not change the outcome. A check whose answer cannot change the result should not exist; it is pure cost. Deleting it also deleted a vault-wide scan.
 
 **Corollary for the duplicate check.** Once the target is always the orphan, "is this link already there?" is a question about *identity*, not spelling. `[[page]]` and `[[page|Label]]` are the same page, and a page linked under the vault path and under the wiki-relative path is the same page too. Comparing whole strings let one page be linked twice under two spellings — the label is presentation, the target is identity.
->
+
+### Tests that pin the implementation instead of the intent (#793, 2026-10-18)
+
+Two assertions had to be rewritten while fixing a defect, and both were written to match what the code produced rather than what it promised. That is the failure mode worth naming.
+
+- **`log-header.test.ts` asserted a hardcoded list of the *drifted* strings.** It matched `/查看操作历史|操作履歴|작업 기록|…/` — every one of them the wrong name. It was added to check that the header mentions the history command, and it did the job of "the code does what the code does". It would have passed forever while the bug lived, and it is why eleven locales drifted unnoticed. The replacement reads `cmdViewHistory` from the locale, which fails on the day drift appears. **When a test spells out the expected value instead of deriving it, ask which copy it is spelling out.**
+- **The new guard's first version was value-aligned and wrong within one run.** It asserted "no English command name after `Cmd+P`" and failed on `README_IT.md` for `cmdLintWiki`, because Italian registers that command as `Lint wiki` — identical to English by design. The fix is to align on the **key**, not the value: an English string is only evidence when the locale's own registered value differs from it. Any cross-locale assertion needs the same shape, because shared spellings are normal (numbers, product names, loanwords) and not defects.
+
+**Corollary for translation work:** the same pattern produced `#793` in the first place. `cmdViewHistory` and `logHeaderShortcut` were two independent copies of one fact, so they drifted in ten of eleven locales and `ru` ended up quoting English inside Russian guillemets. A function of the shared value makes drift impossible; a convention to keep them equal does not.
+>>
 ### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
