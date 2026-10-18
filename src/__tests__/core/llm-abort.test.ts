@@ -37,3 +37,64 @@ describe('withAbortSignal (#646)', () => {
     expect(calls.map(c => (c as { abortSignal?: AbortSignal }).abortSignal)).toEqual([undefined, own, current]);
   });
 });
+
+describe('withAbortSignal abort-race (#703)', () => {
+  // A provider response that never settles and ignores the abort signal —
+  // the "provider response that never settles" candidate from #703.
+  const hanging = () => {
+    const calls: unknown[] = [];
+    const client = {
+      async createMessage(p: Record<string, unknown>) { calls.push(p); return new Promise<string>(() => {}); },
+    };
+    return { client, calls };
+  };
+
+  it('ends an in-flight call when the signal aborts, even if the call never settles', async () => {
+    const { client } = hanging();
+    const ctl = new AbortController();
+    const w = withAbortSignal(client, () => ctl.signal);
+    const pending = w.createMessage({ model: 'm' });
+    const seen = expect(pending).rejects.toThrowError(expect.objectContaining({ name: 'AbortError' }));
+    await new Promise(r => setTimeout(r, 50));
+    const start = Date.now();
+    ctl.abort();
+    await seen;
+    expect(Date.now() - start).toBeLessThan(2000);
+  });
+
+  it('rejects at once when the signal is already aborted, without starting the call', async () => {
+    const { client, calls } = hanging();
+    const ctl = new AbortController();
+    ctl.abort();
+    const w = withAbortSignal(client, () => ctl.signal);
+    await expect(w.createMessage({ model: 'm' })).rejects.toThrowError(
+      expect.objectContaining({ name: 'AbortError' }),
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it('passes a normally resolving call through untouched', async () => {
+    const client = { async createMessage(_p: Record<string, unknown>) { return 'page'; } };
+    const ctl = new AbortController();
+    const w = withAbortSignal(client, () => ctl.signal);
+    await expect(w.createMessage({ model: 'm' })).resolves.toBe('page');
+  });
+
+  it('races against the caller-provided signal when the caller sets one', async () => {
+    const { client } = hanging();
+    const engineCtl = new AbortController();
+    const ownCtl = new AbortController();
+    const w = withAbortSignal(client, () => engineCtl.signal);
+    const pending = w.createMessage({ model: 'm', abortSignal: ownCtl.signal });
+    const seen = expect(pending).rejects.toThrowError(expect.objectContaining({ name: 'AbortError' }));
+    await new Promise(r => setTimeout(r, 50));
+    ownCtl.abort();
+    await seen;
+  });
+
+  it('returns the original promise when there is no signal', async () => {
+    const client = { async createMessage(_p: Record<string, unknown>) { return 'page'; } };
+    const w = withAbortSignal(client, () => undefined);
+    await expect(w.createMessage({ model: 'm' })).resolves.toBe('page');
+  });
+});
