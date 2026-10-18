@@ -1022,7 +1022,6 @@ export interface LLMClient {
     onFinish?: (meta: LLMFinishMeta) => void;
   }): Promise<string>;
 
-  listModels?(): Promise<string[]>;
 }
 
 // Wiki output language options

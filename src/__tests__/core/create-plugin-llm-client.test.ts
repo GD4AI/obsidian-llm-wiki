@@ -24,7 +24,6 @@ vi.mock('../../llm-sdk/create-llm-client', () => ({
   createLLMClientFromSettingsSync: vi.fn(() => ({
     createMessage: vi.fn().mockResolvedValue('ok'),
     createMessageStream: vi.fn(),
-    listModels: vi.fn().mockResolvedValue([]),
   })),
   preloadLLMClientModules: vi.fn().mockResolvedValue(undefined),
 }));

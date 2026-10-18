@@ -15,7 +15,6 @@ vi.mock('../../llm-sdk/create-llm-client', () => ({
   createLLMClientFromSettingsSync: vi.fn(() => ({
     createMessage: vi.fn().mockResolvedValue('ok'),
     createMessageStream: vi.fn(),
-    listModels: vi.fn().mockResolvedValue([]),
   })),
   preloadLLMClientModules: vi.fn().mockResolvedValue(undefined),
   _resetPreloadedModulesForTests: vi.fn(),
@@ -186,7 +185,6 @@ describe('testLLMConnection — per-task model probes (#208)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     const plugin = makePlugin({});
     const result = await plugin.testLLMConnection();
@@ -201,7 +199,6 @@ describe('testLLMConnection — per-task model probes (#208)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     const plugin = makePlugin({
       usePerTaskModels: true,
@@ -223,7 +220,6 @@ describe('testLLMConnection — per-task model probes (#208)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     const plugin = makePlugin({ usePerTaskModels: true });
     // All three per-task fields undefined → all probe settings.model.
@@ -246,7 +242,6 @@ describe('testLLMConnection — per-task model probes (#208)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     const plugin = makePlugin({
       usePerTaskModels: true,
@@ -312,7 +307,6 @@ describe('testLLMConnection — blank model gate (#517)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     return createMessage;
   }
@@ -393,7 +387,6 @@ describe('testLLMConnection — Bedrock SSO/IAM gate (#425)', () => {
     vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({
       createMessage,
       createMessageStream: vi.fn(),
-      listModels: vi.fn().mockResolvedValue([]),
     });
     return createMessage;
   }

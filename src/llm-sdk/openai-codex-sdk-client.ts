@@ -4,7 +4,6 @@ import { obsidianFetchBridge } from '../core/obsidian-fetch-bridge';
 import type { LLMClient, LLMMessage } from '../types';
 import { mapAiSdkError } from './openai-sdk-client';
 import type { CodexAuthManager } from './openai-codex/auth-manager';
-import { CODEX_MODELS } from './openai-codex/constants';
 import { normalizeCodexRequest } from './openai-codex/request-adapter';
 import { wrapReasoningContent } from '../core/markdown';
 import { extractResultReasoning } from './finish-reason';
@@ -175,9 +174,6 @@ export class OpenAICodexSdkClient implements LLMClient {
     } catch (error) {
       throw mapAiSdkError(error);
     }
-  }
-  async listModels(): Promise<string[]> {
-    return [...CODEX_MODELS];
   }
   private getModel(modelId: string, fetchImpl: CodexFetch): LanguageModel {
     const provider = createOpenAI({ apiKey: 'codex-oauth', fetch: createCodexRequestFetch({ auth: this.auth, fetchImpl, sessionId: this.sessionId, version: this.version, quotaMessage: this.quotaMessage }) });

@@ -384,8 +384,4 @@ export class AnthropicSdkClient implements LLMClient {
       throw mapAiSdkError(err);
     }
   }
-
-  async listModels(): Promise<string[]> {
-    return [];
-  }
 }
