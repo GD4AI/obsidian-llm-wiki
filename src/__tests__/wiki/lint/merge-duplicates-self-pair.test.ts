@@ -22,7 +22,7 @@
 // to be independent, which is why this ships first.
 
 import { describe, it, expect, vi } from 'vitest';
-import { mergeDuplicatePages } from '../../../wiki/lint/merge-duplicates';
+import { mergeDuplicatePages, canonicalPagePath } from '../../../wiki/lint/merge-duplicates';
 import { runDuplicateMerges } from '../../../wiki/lint/fix-runners';
 import type { LintContext } from '../../../wiki/lint/types';
 import { createMergeCtx } from '../../__support__/link-vault';
@@ -104,5 +104,65 @@ describe('runDuplicateMerges — a self-pair must never reach the merge (#826)',
     expect(ctx.wikiEngine.mergeDuplicatePages).toHaveBeenCalledTimes(1);
     expect(ctx.wikiEngine.mergeDuplicatePages).toHaveBeenCalledWith(PAGE, OTHER);
     expect(merged).toBe(1);
+  });
+});
+
+// Issue #826's acceptance criterion is "whenever both sides resolve to the same
+// file", and the first fix compared strings — which caught a repeated path and a
+// missing `wiki/` prefix, and nothing else. These are the variants that survived
+// it. NFC/NFD is the one that costs data: `tryReadFile` normalises and scans
+// directories so both spellings read one file, while `deleteFile` uses an exact
+// key, so the self-pair either deleted the only copy or silently did nothing while
+// the log reported a merge.
+describe('canonicalPagePath — the spellings that denote one file (#826)', () => {
+  const CANONICAL = 'wiki/entities/Ferritin.md';
+
+  it.each([
+    ['wiki/entities/Ferritin.md', 'literally repeated'],
+    ['./wiki/entities/Ferritin.md', './ prefix'],
+    ['wiki//entities/Ferritin.md', 'doubled slash'],
+    ['wiki/entities/Ferritin', 'no .md suffix'],
+    ['wiki/entities/ferritin.md', 'different case'],
+    ['WIKI/ENTITIES/FERRITIN.MD', 'different case throughout'],
+  ])('treats %s as the same page (%s)', other => {
+    expect(canonicalPagePath(other)).toBe(canonicalPagePath(CANONICAL));
+  });
+
+  // A missing `wiki/` prefix is NOT in the list above, and that is a boundary
+  // rather than an oversight: `canonicalPagePath` is not told the wiki folder, so
+  // it cannot add one. Prefixing is `normalizeLLMPath`'s job in `dedup-phase`, and
+  // by the time a pair reaches the merge both sides have been through it. Widening
+  // this helper to guess the folder would mean guessing, which is the failure mode
+  // it exists to remove.
+  it('does not invent a wiki prefix, because it is not told the folder', () => {
+    expect(canonicalPagePath('entities/Ferritin.md')).toBe('entities/ferritin');
+  });
+
+  it('folds the NFC/NFD spellings of one name together', () => {
+    expect(canonicalPagePath('wiki/entities/Cafe\u0301.md'))
+      .toBe(canonicalPagePath('wiki/entities/Caf\u00e9.md'));
+  });
+
+  it('keeps two genuinely different pages apart', () => {
+    expect(canonicalPagePath('wiki/entities/Ferritin-2.md'))
+      .not.toBe(canonicalPagePath(CANONICAL));
+  });
+
+  it('is deliberately case-insensitive, and that is the safe direction', () => {
+    // On a case-sensitive filesystem this refuses a merge that would have been
+    // legitimate: a duplicate stays, visible in the next lint. The other direction
+    // deletes a page and says nothing.
+    expect(canonicalPagePath('wiki/entities/Foo.md')).toBe(canonicalPagePath('wiki/entities/foo.md'));
+  });
+
+  it('refuses the NFC/NFD pair at the merge, not only in the filter', async () => {
+    const { ctx, deleted } = createMergeCtx(
+      { 'wiki/entities/Cafe\u0301.md': PAGE_CONTENT },
+      { captureDeletes: true },
+    );
+    await expect(
+      mergeDuplicatePages(ctx, 'wiki/entities/Caf\u00e9.md', 'wiki/entities/Cafe\u0301.md'),
+    ).rejects.toThrow(/same page/i);
+    expect(deleted).toEqual([]);
   });
 });

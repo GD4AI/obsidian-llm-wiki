@@ -12,6 +12,36 @@ import { retargetLinksToPage } from '../../core/link-retarget';
 import { localDateStamp } from '../../core/format';
 import { activeVocabulary, activeVocabularyLists, vocabularyKindFor } from '../../core/vocabulary';
 
+/**
+ * Two different strings can name one file, and a string comparison cannot say so.
+ *
+ * Issue #826's own acceptance criterion says "whenever both sides resolve to the
+ * same file", and the first fix compared strings: that caught a repeated path and
+ * a missing `wiki/` prefix, and nothing else. `./` prefixes, doubled slashes, a
+ * dropped `.md`, and Unicode NFC/NFD spelling all survived it.
+ *
+ * NFC/NFD is the one that costs data. `tryReadFile` (`wiki-engine.ts:2209`)
+ * normalises and scans directories, so both spellings read the same file — but
+ * `deleteFile` (`:2178`) uses an exact key. So a self-pair reached the merge, both
+ * reads succeeded, and the delete either removed the only copy of the page or
+ * silently did nothing while the log reported a merge.
+ *
+ * The comparison is deliberately **case-insensitive**, and that is a choice about
+ * which way to be wrong. On a case-sensitive filesystem this refuses a merge that
+ * would have been legitimate — a duplicate stays, visible in the next lint report.
+ * The other direction deletes a page and says nothing.
+ */
+export function canonicalPagePath(path: string): string {
+  return path
+    .normalize('NFC')
+    .replace(/\\/g, '/')
+    .replace(/\/{2,}/g, '/')
+    .replace(/(^|\/)\.\//g, '$1')
+    .replace(/\.md$/i, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+}
+
 export async function mergeDuplicatePages(
   ctx: EngineContext,
   targetPath: string,
@@ -22,7 +52,10 @@ export async function mergeDuplicatePages(
   // does not catch it. Unguarded, the merge writes `targetPath` and then deletes
   // it, and reports `merged A → A`. Refusing is the only safe outcome: there is
   // nothing to merge, and every step after this point is destructive.
-  if (targetPath === sourcePath) {
+  // Issue #826, second half: compare resolved identity, not spelling. See
+  // `canonicalPagePath` above for why the comparison is case-insensitive and why
+  // NFC/NFD is the case that costs data rather than merely leaving a hole.
+  if (canonicalPagePath(targetPath) === canonicalPagePath(sourcePath)) {
     throw new Error(`Cannot merge: target and source are the same page (${targetPath})`);
   }
 
