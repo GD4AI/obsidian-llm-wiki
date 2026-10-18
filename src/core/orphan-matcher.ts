@@ -65,6 +65,48 @@ export function validateOrphanLinkTarget(
 }
 
 /**
+ * Rebuild a link so that it names the orphan itself.
+ *
+ * Issue #824's acceptance criterion is that the orphan **gains an inbound link**.
+ * Skipping an unresolvable target does not meet it: the page stays orphaned and is
+ * re-reported on the next run, which is the loop the report describes. The repair
+ * needs no second model call — the orphan's own path is known here, and a link built
+ * from it cannot be wrong, because the page is by definition there.
+ *
+ * The model's readable text is kept as the display label, so a repaired entry still
+ * reads `sources/paste-rules` where the file is `sources/paste-rules_f7bbee`. That
+ * suffix is an ingester artefact, and showing it to the user is a worse outcome than
+ * the label the model already wrote.
+ *
+ * The function is idempotent on its own output, and returns the input unchanged when
+ * the target already equals the real path.
+ *
+ * @param linkTarget - What the model supplied: `[[target]]`, `[[target|display]]`, or
+ *   prose carrying no wikilink at all
+ * @param orphanPath - Full vault path of the orphan, e.g. `wiki/sources/x_f7bbee.md`
+ * @param wikiFolder - Wiki root, stripped so the link matches the vault's own style
+ * @returns A wikilink whose target names a page that exists
+ */
+export function retargetOrphanLinkTarget(
+  linkTarget: string,
+  orphanPath: string,
+  wikiFolder: string
+): string {
+  const prefix = `${wikiFolder}/`;
+  // Mirrors `makeOrphanLinkTargetResolver`, which registers both forms: stripping the
+  // wiki prefix only when it is there, so a page outside the wiki folder still works.
+  const rel = (orphanPath.startsWith(prefix) ? orphanPath.slice(prefix.length) : orphanPath)
+    .replace(/\.md$/, '');
+  const match = linkTarget.match(/\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]\]/);
+  if (!match) return `[[${rel}]]`;
+  const inner = match[1].trim().replace(/\.md$/, '');
+  const display = match[2]?.trim();
+  if (display) return `[[${rel}|${display}]]`;
+  if (inner === rel) return `[[${rel}]]`;
+  return `[[${rel}|${inner}]]`;
+}
+
+/**
  * Build the content update for linking an orphan page.
  *
  * @param relatedContent - Current content of related page

@@ -4,11 +4,57 @@ import {
   validateOrphanLinkTarget,
   buildOrphanLinkUpdate,
   normalizeOrphanPagePath,
+  retargetOrphanLinkTarget,
   type OrphanContext,
   type OrphanLinkSuggestion,
 } from '../../core/orphan-matcher';
 
 describe('Orphan Matcher — Pure Functions', () => {
+  // Issue #824's acceptance criterion is that the orphan gains an inbound link.
+  // Rebuilding the target from the orphan's own path is the only repair available
+  // without a second model call, and it cannot be wrong: the page is there by
+  // definition. The model's readable text is kept as the display label, because the
+  // `_f7bbee` suffix is an ingester artefact the user should not have to read.
+  describe('retargetOrphanLinkTarget', () => {
+    const ORPHAN = 'wiki/sources/paste-rules_f7bbee.md';
+
+    it('replaces an unresolvable bare target and keeps the guess as the label', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee|sources/paste-rules]]');
+    });
+
+    it('keeps an existing display label and changes only the target', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules|Paste Rules]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee|Paste Rules]]');
+    });
+
+    it('builds a link when the model supplied no wikilink at all', () => {
+      expect(retargetOrphanLinkTarget('paste rules', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee]]');
+    });
+
+    it('drops a wiki prefix the model put on the target', () => {
+      expect(retargetOrphanLinkTarget('[[wiki/sources/x|X]]', 'wiki/sources/x.md', 'wiki'))
+        .toBe('[[sources/x|X]]');
+    });
+
+    it('handles an orphan outside the wiki folder', () => {
+      // The resolver registers both forms, so this case must not grow a prefix.
+      expect(retargetOrphanLinkTarget('[[X]]', 'sources/x.md', 'wiki'))
+        .toBe('[[sources/x|X]]');
+    });
+
+    it('is idempotent on its own output', () => {
+      const once = retargetOrphanLinkTarget('[[sources/paste-rules]]', ORPHAN, 'wiki');
+      expect(retargetOrphanLinkTarget(once, ORPHAN, 'wiki')).toBe(once);
+    });
+
+    it('leaves a target that already names the page unchanged', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules_f7bbee]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee]]');
+    });
+  });
+
   describe('buildOrphanLinkPrompt', () => {
     const mockContext: OrphanContext = {
       orphanContent: '# Orphan Page\n\nThis page needs links.',

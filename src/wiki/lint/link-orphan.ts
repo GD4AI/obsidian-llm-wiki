@@ -11,6 +11,7 @@ import {
   validateOrphanLinkTarget,
   buildOrphanLinkUpdate,
   normalizeOrphanPagePath,
+  retargetOrphanLinkTarget,
 } from '../../core/orphan-matcher';
 import { LinkOrphanSchema, type LinkOrphan } from '../../llm-sdk/output-schemas';
 
@@ -129,13 +130,27 @@ export async function linkOrphanPage(
     const relatedContent = await ctx.tryReadFile(fullPath);
     if (!relatedContent) continue;
 
-    if (!validateOrphanLinkTarget(relatedContent, related.link_target, resolvesTarget)) {
+    // Issue #824's acceptance criterion is that the orphan gains an inbound link.
+    // Skipping an unresolvable target kept it orphaned and re-reported on every run.
+    // The orphan's own path is known, so the link is rebuilt from it rather than
+    // dropped — the model's readable text survives as the display label.
+    const resolves = resolvesTarget(related.link_target);
+    const linkTarget = resolves
+      ? related.link_target
+      : retargetOrphanLinkTarget(related.link_target, orphanPath, ctx.settings.wikiFolder);
+    // A `link_text` that already ends with the dead link would otherwise keep that
+    // link and gain the repaired one beside it, so the dead copy is replaced first.
+    const linkText = related.link_text.includes(related.link_target)
+      ? related.link_text.replace(related.link_target, linkTarget)
+      : related.link_text;
+
+    if (!validateOrphanLinkTarget(relatedContent, linkTarget, resolvesTarget)) {
       const updated = buildOrphanLinkUpdate(
         relatedContent,
         {
           pagePath: related.page_path,
-          linkText: related.link_text,
-          linkTarget: related.link_target,
+          linkText,
+          linkTarget,
         },
         labels.related_pages
       );

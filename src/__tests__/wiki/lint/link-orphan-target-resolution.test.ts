@@ -12,8 +12,15 @@
 // model writes and it sometimes already ends with the link.
 //
 // Two decisions, both from the report rather than from a guess: an unresolvable
-// target is skipped before the write, and a `link_text` that already carries the
-// link is not given a second copy.
+// target is **rebuilt from the orphan's own path** rather than written as the model
+// guessed it, and a `link_text` that already carries the link is not given a second
+// copy.
+//
+// The first version of this file asserted a skip, and that met only half the issue:
+// nothing dead was written, and the orphan stayed orphaned — which is the loop the
+// report describes. The issue's own expected outcome is that the orphan *gains an
+// inbound link*, and the orphan's path is known at the call site, so the link is
+// returned to a target that exists.
 
 import { describe, it, expect, vi } from 'vitest';
 import { linkOrphanPage } from '../../../wiki/lint/link-orphan';
@@ -62,8 +69,8 @@ function realVault(): Array<{ path: string; basename: string }> {
   ];
 }
 
-describe('linkOrphanPage — an unresolvable link_target must not be written (#824)', () => {
-  it('skips the append and does not report the page as linking the orphan', async () => {
+describe('linkOrphanPage — an unresolvable link_target is rebuilt, not skipped (#824)', () => {
+  it('rewrites the target to the orphan\'s real path, so the orphan gains a link', async () => {
     const writes: Array<{ path: string; content: string }> = [];
     // The guess the report measured: display-derived, and not the real page.
     const ctx = makeCtx(
@@ -75,8 +82,34 @@ describe('linkOrphanPage — an unresolvable link_target must not be written (#8
 
     const linked = await linkOrphanPage(ctx, ORPHAN);
 
-    expect(writes).toEqual([]);
-    expect(linked).toEqual([]);
+    expect(writes).toHaveLength(1);
+    // The model's readable label survives; only the target is corrected.
+    expect(writes[0].content).toContain('[[sources/paste-rules_f7bbee|sources/paste-rules]]');
+    expect(writes[0].content).not.toContain('[[sources/paste-rules]]');
+    expect(linked).toEqual([RELATED]);
+  });
+
+  it('replaces a dead link that link_text already carries instead of adding a second', async () => {
+    const writes: Array<{ path: string; content: string }> = [];
+    const ctx = makeCtx(
+      makeClient({
+        related_pages: [{
+          page_path: RELATED,
+          link_text: 'See [[sources/paste-rules]]',
+          link_target: '[[sources/paste-rules]]',
+        }],
+      }),
+      { [ORPHAN]: ORPHAN_CONTENT, [RELATED]: RELATED_CONTENT },
+      realVault(),
+      writes,
+    );
+
+    await linkOrphanPage(ctx, ORPHAN);
+
+    // Both halves at once: the dead target is gone, and the good one is there once.
+    expect(writes[0].content).not.toContain('[[sources/paste-rules]]');
+    const repaired = writes[0].content.split('[[sources/paste-rules_f7bbee|sources/paste-rules]]').length - 1;
+    expect(repaired).toBe(1);
   });
 
   it('still appends a target that does resolve, so the check is not a blanket refusal', async () => {
