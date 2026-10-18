@@ -737,7 +737,7 @@ export const PT_TEXTS = {
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Registro de operações',
     logHeaderSubtitle: 'Cada ingestão, execução de lint e operação de manutenção é registrada aqui automaticamente. Para uma melhor visualização, use o painel **Histórico de operações**:',
-    logHeaderShortcut: 'Cmd+P → "Ver histórico de operações"',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → "${cmd}"`,
     logHeaderSettingsShortcut: 'Ou em Configurações → Manutenção automática → Histórico de operações',
     ingestionCreatedPages: '{count} página(s) criada(s)',
     ingestionUpdatedPages: '{count} página(s) atualizada(s)',

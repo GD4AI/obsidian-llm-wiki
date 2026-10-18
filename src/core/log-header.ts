@@ -21,7 +21,7 @@ export function buildLogHeader(lang: string): string {
 # ${t.logHeaderTitle}
 
 ${t.logHeaderSubtitle}
-- ${t.logHeaderShortcut}
+- ${t.logHeaderShortcut(t.cmdViewHistory)}
 - ${t.logHeaderSettingsShortcut}
 
 ---

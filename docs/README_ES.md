@@ -97,12 +97,12 @@ Escribes notas. Se quedan en carpetas. Encontrar relaciones significa recordar h
 1. **Instala.** Obsidian → Configuración → Plugins comunitarios → Examinar → busca "Karpathy LLM Wiki" → Instalar → Habilitar. O visita la [página del Plugin Comunitario](https://community.obsidian.md/plugins/karpathywiki) y haz clic en **Add to Obsidian**.
 2. **Configura un proveedor.** Abre Configuración → Karpathy LLM Wiki → elige un proveedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → introduce la clave API (no necesaria para local) → haz clic en **Test Connection** → Guardar.
 3. **Ingesta una nota.** Dos formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingest single source" → elige cualquier archivo Markdown (o **PDF**, v1.25.0+).
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingestar fuente individual" → elige cualquier archivo Markdown (o **PDF**, v1.25.0+).
    - **🖱️ Icono de la barra de herramientas:** Haz clic en el **icono de pegatina** en la cinta izquierda de Obsidian para ingerir al instante la nota actualmente abierta — sin buscar en menús.
    
    Tus primeras páginas wiki aparecen en `wiki/sources/`, `wiki/entities/`, `wiki/concepts/` en segundos.
 4. **Consulta tu wiki.** Dos formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Query wiki".
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Consultar wiki".
    - **🖱️ Icono de la barra de herramientas:** Haz clic en el **icono de bocadillo de mensaje** en la cinta izquierda de Obsidian.
    
    Se abre un panel lateral derecho estilo Copilot en el que puedes chatear con tu wiki. Las respuestas llevan `[[wiki-links]]` que enlazan de vuelta a tu grafo de conocimiento.
@@ -115,15 +115,15 @@ Eso es todo. El plugin no modifica nada en tus notas originales — solo crea p�
 
 | Comando | Qué hace |
 |---------|----------|
-| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → "Ingest single source" — elige un archivo Markdown o **PDF (v1.25.0+)**, obtén páginas de entidades/conceptos/wiki. *O bien: 🖱️ haz clic en el icono de pegatina de la cinta izquierda sobre la nota activa.* |
-| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → "Ingest from folder" — ingesta por lotes cada nota de una carpeta, con salto inteligente de lotes |
-| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → "Ingest multiple files" — selecciona un subconjunto mediante un árbol de carpetas de dos paneles (con cola en vivo + cancelación por archivo) |
-| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → "Query wiki" — chatea con tu wiki en un panel lateral derecho; las respuestas llevan `[[wiki-links]]`. *O bien: 🖱️ haz clic en el icono de bocadillo de mensaje de la cinta izquierda.* |
-| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → "Lint wiki" — escaneo de salud completo: duplicados, enlaces rotos, páginas vacías, huérfanas, alias faltantes, contradicciones |
+| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → "Ingestar fuente individual" — elige un archivo Markdown o **PDF (v1.25.0+)**, obtén páginas de entidades/conceptos/wiki. *O bien: 🖱️ haz clic en el icono de pegatina de la cinta izquierda sobre la nota activa.* |
+| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → "Ingestar desde carpeta" — ingesta por lotes cada nota de una carpeta, con salto inteligente de lotes |
+| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → "Ingerir varios archivos" — selecciona un subconjunto mediante un árbol de carpetas de dos paneles (con cola en vivo + cancelación por archivo) |
+| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → "Consultar wiki" — chatea con tu wiki en un panel lateral derecho; las respuestas llevan `[[wiki-links]]`. *O bien: 🖱️ haz clic en el icono de bocadillo de mensaje de la cinta izquierda.* |
+| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → "Verificar wiki" — escaneo de salud completo: duplicados, enlaces rotos, páginas vacías, huérfanas, alias faltantes, contradicciones |
 | **⚡ Smart Fix All** | dentro del Modal Lint — reparación en orden causal con un clic e informe por fase |
-| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerate index" — reconstruye `wiki/index.md` con páginas y alias actuales |
-| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" o haz clic en la barra de estado — se detiene limpiamente en el próximo límite de lote |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
+| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerar índice" — reconstruye `wiki/index.md` con páginas y alias actuales |
+| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancelar ingesta actual" o haz clic en la barra de estado — se detiene limpiamente en el próximo límite de lote |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "Ver historial de ingesta" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Antes | Después |
@@ -350,7 +350,7 @@ Usa granularidad Gruesa o Mínima para ingesta por lotes. Smart Batch Skip detec
 
 ### Cómo cancelo una operación en curso?
 
-Haz clic en la barra de estado (muestra "Ingesting… click to cancel") o `Cmd+P/Ctrl+P` → "Cancel current ingestion". Se detiene limpiamente en el próximo límite de lote.
+Haz clic en la barra de estado (muestra "Ingesting… click to cancel") o `Cmd+P/Ctrl+P` → "Cancelar ingesta actual". Se detiene limpiamente en el próximo límite de lote.
 
 ### Dónde obtengo ayuda?
 

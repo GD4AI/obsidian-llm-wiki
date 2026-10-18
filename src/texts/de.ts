@@ -739,7 +739,7 @@ export const DE_TEXTS = {
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Betriebsprotokoll',
     logHeaderSubtitle: 'Jede Aufnahme, Lint-Ausführung und Wartungsoperation wird hier automatisch aufgezeichnet. Für eine bessere Ansicht nutzen Sie das **Betriebsverlauf**-Panel:',
-    logHeaderShortcut: 'Cmd+P → "Betriebsverlauf anzeigen"',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → "${cmd}"`,
     logHeaderSettingsShortcut: 'Oder über Einstellungen → Automatische Wartung → Betriebsverlauf',
     ingestionCreatedPages: '{count} Seite(n) erstellt',
     ingestionUpdatedPages: '{count} Seite(n) aktualisiert',

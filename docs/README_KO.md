@@ -96,12 +96,12 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 1. **설치.** Obsidian → 설정 → 커뮤니티 플러그인 → 찾아보기 → "Karpathy LLM Wiki" 검색 → 설치 → 활성화. 또는 [커뮤니티 플러그인 페이지](https://community.obsidian.md/plugins/karpathywiki)에서 **Add to Obsidian** 클릭.
 2. **공급자 설정.** 설정 → Karpathy LLM Wiki 열기 → 공급자 선택 (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) 등) → API 키 입력 (로컬은 불필요) → **Test Connection** 클릭 → 저장.
 3. **노트 하나 수집.** 두 가지 방법:
-   - **⌨️ 키보드:** `Cmd+P/Ctrl+P` → "Ingest single source" → Markdown (또는 PDF, v1.25.0+) 파일 선택.
+   - **⌨️ 키보드:** `Cmd+P/Ctrl+P` → "단일 소스 수집" → Markdown (또는 PDF, v1.25.0+) 파일 선택.
    - **🖱️ 도구 모음 아이콘:** Obsidian 왼쪽 리본의 **스티커 아이콘**을 클릭하면 현재 열려 있는 노트를 즉시 수집합니다 — 메뉴를 뒤질 필요 없음.
    
    몇 초 안에 첫 Wiki 페이지가 `wiki/sources/`, `wiki/entities/`, `wiki/concepts/`에 생성됩니다.
 4. **Wiki 질의.** 두 가지 방법:
-   - **⌨️ 키보드:** `Cmd+P/Ctrl+P` → "Query wiki".
+   - **⌨️ 키보드:** `Cmd+P/Ctrl+P` → "위키 질의".
    - **🖱️ 도구 모음 아이콘:** Obsidian 왼쪽 리본의 **말풍선 아이콘**을 클릭.
    
    Copilot 스타일의 우측 도킹 사이드 패널이 열리며, 그 안에서 Wiki와 대화할 수 있습니다. 답변에는 지식 그래프로 다시 연결되는 `[[wiki-links]]` 가 포함됩니다.
@@ -114,15 +114,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 | 명령어 | 기능 |
 |--------|------|
-| **📥 단일 소스 수집** | `Cmd+P/Ctrl+P` → "Ingest single source" — Markdown 또는 **PDF (v1.25.0+)** 파일을 선택하여 Entity/Concept/Wiki 페이지 생성. *또는: 🖱️ 활성 노트에서 왼쪽 리본의 스티커 아이콘 클릭.* |
-| **📂 폴더에서 수집** | `Cmd+P/Ctrl+P` → "Ingest from folder" — 폴더의 모든 노트를 스마트 배치 스킵과 함께 일괄 수집 |
-| **📑 여러 파일 수집** | `Cmd+P/Ctrl+P` → "Ingest multiple files" — 2패널 파일 트리에서 하위 집합 선택 (라이브 큐 + 파일별 취소) |
-| **🔍 Wiki 질의** | `Cmd+P/Ctrl+P` → "Query wiki" — 우측 도킹 사이드 패널에서 Wiki와 대화; 답변에 `[[wiki-links]]` 포함. *또는: 🖱️ 왼쪽 리본의 말풍선 아이콘 클릭.* |
-| **🛠️ Wiki 린트** | `Cmd+P/Ctrl+P` → "Lint wiki" — 전체 상태 검사: 중복, 데드 링크, 빈 페이지, 고아, 누락된 alias, 모순 |
+| **📥 단일 소스 수집** | `Cmd+P/Ctrl+P` → "단일 소스 수집" — Markdown 또는 **PDF (v1.25.0+)** 파일을 선택하여 Entity/Concept/Wiki 페이지 생성. *또는: 🖱️ 활성 노트에서 왼쪽 리본의 스티커 아이콘 클릭.* |
+| **📂 폴더에서 수집** | `Cmd+P/Ctrl+P` → "폴더에서 수집" — 폴더의 모든 노트를 스마트 배치 스킵과 함께 일괄 수집 |
+| **📑 여러 파일 수집** | `Cmd+P/Ctrl+P` → "여러 파일 수집" — 2패널 파일 트리에서 하위 집합 선택 (라이브 큐 + 파일별 취소) |
+| **🔍 Wiki 질의** | `Cmd+P/Ctrl+P` → "위키 질의" — 우측 도킹 사이드 패널에서 Wiki와 대화; 답변에 `[[wiki-links]]` 포함. *또는: 🖱️ 왼쪽 리본의 말풍선 아이콘 클릭.* |
+| **🛠️ Wiki 린트** | `Cmd+P/Ctrl+P` → "위키 린트" — 전체 상태 검사: 중복, 데드 링크, 빈 페이지, 고아, 누락된 alias, 모순 |
 | **⚡ Smart Fix All** | Lint 모달 내부 — 원클릭 인과순서 수리, 단계별 보고서 제공 |
-| **📋 인덱스 재생성** | `Cmd+P/Ctrl+P` → "Regenerate index" — 현재 페이지와 alias로 `wiki/index.md` 재구축 |
-| **⏹ 작업 취소** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 중지 |
-| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "View operation history" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
+| **📋 인덱스 재생성** | `Cmd+P/Ctrl+P` → "인덱스 재생성" — 현재 페이지와 alias로 `wiki/index.md` 재구축 |
+| **⏹ 작업 취소** | `Cmd+P/Ctrl+P` → "현재 수집 취소" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 중지 |
+| **📊 수집 기록** | `Cmd+P/Ctrl+P` → "수집 이력 보기" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | 전 | 후 |
@@ -347,7 +347,7 @@ Obsidian 커뮤니티 플러그인에서 설치 → 공급자 선택 → **Test 
 
 ### 실행 중인 작업을 취소하려면?
 
-상태 표시줄 클릭 ("수집 중… 클릭하여 취소" 표시) 또는 `Cmd+P/Ctrl+P` → "Cancel current ingestion". 다음 배치 경계에서 깔끔하게 중지됩니다.
+상태 표시줄 클릭 ("수집 중… 클릭하여 취소" 표시) 또는 `Cmd+P/Ctrl+P` → "현재 수집 취소". 다음 배치 경계에서 깔끔하게 중지됩니다.
 
 ### 도움은 어디서 받나요?
 

@@ -97,12 +97,12 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 1. **インストール。** Obsidian → 設定 → コミュニティプラグイン → ブラウズ → 「Karpathy LLM Wiki」を検索 → インストール → 有効化。または[コミュニティプラグインページ](https://community.obsidian.md/plugins/karpathywiki)にアクセスして「Add to Obsidian」をクリック。
 2. **プロバイダーを設定。** 設定 → Karpathy LLM Wiki → プロバイダーを選択（OpenAI、Anthropic、Ollama、ChatGPT Plan（Codex OAuth）など）→ APIキーを入力（ローカルは不要）→ **Test Connection** → 保存。
 3. **ノートを取り込む。** 2つの方法：
-   - **⌨️ キーボード：** `Cmd+P/Ctrl+P` → 「Ingest single source」 → Markdown（またはPDF、v1.25.0+）ファイルを選択。
+   - **⌨️ キーボード：** `Cmd+P/Ctrl+P` → 「単一ソースの取り込み」 → Markdown（またはPDF、v1.25.0+）ファイルを選択。
    - **🖱️ ツールバーアイコン：** Obsidian の左側リボンにある **ステッカーアイコン**をクリックすれば、現在開いているノートを即座に取り込めます — メニューを探す必要なし。
    
    数秒で最初のWikiページが`wiki/sources/`、`wiki/entities/`、`wiki/concepts/`に生成されます。
 4. **Wikiに問い合わせる。** 2つの方法：
-   - **⌨️ キーボード：** `Cmd+P/Ctrl+P` → 「Query wiki」。
+   - **⌨️ キーボード：** `Cmd+P/Ctrl+P` → 「Wikiに問い合わせ」。
    - **🖱️ ツールバーアイコン：** Obsidian の左側リボンにある **メッセージ円形アイコン**をクリック。
    
    Copilot スタイルの右側ドッキングサイドパネルが開き、そこで Wiki とチャットできます。回答にはナレッジグラフへ戻る `[[wiki-links]]` が含まれます。
@@ -115,15 +115,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 | コマンド | 内容 |
 |---------|------|
-| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → 「Ingest single source」 — Markdownまたは**PDF（v1.25.0+）**ファイルを選択し、エンティティ・概念ページを生成。*または：🖱️ 現在のノートで左側リボンのステッカーアイコンをクリック。* |
-| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → 「Ingest from folder」 — フォルダ内の全ノートを一括取り込み（スマートバッチスキップ対応） |
-| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → 「Ingest multiple files」 — 2ペインファイルツリーでサブセットを選択（ライブキュー＋ファイル単位キャンセル） |
-| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → 「Query wiki」 — 右側サイドパネルでWikiとチャット、回答に`[[wiki-links]]`付き。*または：🖱️ 左側リボンのメッセージ円形アイコンをクリック。* |
-| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → 「Lint wiki」 — 重複・リンク切れ・空ページ・孤立ページ・欠落エイリアス・矛盾をフルスキャン |
+| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → 「単一ソースの取り込み」 — Markdownまたは**PDF（v1.25.0+）**ファイルを選択し、エンティティ・概念ページを生成。*または：🖱️ 現在のノートで左側リボンのステッカーアイコンをクリック。* |
+| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → 「フォルダーからの取り込み」 — フォルダ内の全ノートを一括取り込み（スマートバッチスキップ対応） |
+| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → 「複数ファイルを取り込み」 — 2ペインファイルツリーでサブセットを選択（ライブキュー＋ファイル単位キャンセル） |
+| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → 「Wikiに問い合わせ」 — 右側サイドパネルでWikiとチャット、回答に`[[wiki-links]]`付き。*または：🖱️ 左側リボンのメッセージ円形アイコンをクリック。* |
+| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → 「WikiのLint」 — 重複・リンク切れ・空ページ・孤立ページ・欠落エイリアス・矛盾をフルスキャン |
 | **⚡ Smart Fix All** | Lintモーダル内 — ワンクリック因果順修復（フェーズごとにレポート表示） |
-| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → 「Regenerate index」 — `wiki/index.md`を現在のページとエイリアスで再構築 |
-| **⏹ Cancel** | `Cmd+P/Ctrl+P` → 「Cancel current ingestion」またはステータスバーをクリック — 次のバッチ境界でクリーンに停止 |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「View operation history」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
+| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → 「インデックスの再生成」 — `wiki/index.md`を現在のページとエイリアスで再構築 |
+| **⏹ Cancel** | `Cmd+P/Ctrl+P` → 「現在の取り込みをキャンセル」またはステータスバーをクリック — 次のバッチ境界でクリーンに停止 |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「取り込み履歴を表示」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Before | After |
@@ -350,7 +350,7 @@ Obsidianコミュニティプラグインからインストール → プロバ�
 
 ### 実行中の操作をキャンセルするには？
 
-ステータスバー（「Ingesting… click to cancel」と表示）をクリック、または`Cmd+P/Ctrl+P` → 「Cancel current ingestion」。次のバッチ境界でクリーンに停止。
+ステータスバー（「Ingesting… click to cancel」と表示）をクリック、または`Cmd+P/Ctrl+P` → 「現在の取り込みをキャンセル」。次のバッチ境界でクリーンに停止。
 
 ### ヘルプはどこで得られますか？
 

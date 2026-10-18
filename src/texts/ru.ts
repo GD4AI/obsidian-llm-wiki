@@ -722,7 +722,7 @@ export const RU_TEXTS = {
     // v1.22.2: содержимое заголовка log.md (подсказка панели истории операций)
     logHeaderTitle: 'Журнал операций Wiki',
     logHeaderSubtitle: 'Каждый импорт, запуск lint и операция обслуживания автоматически записываются сюда. Для лучшего опыта используйте панель **Operation History**:',
-    logHeaderShortcut: 'Cmd+P → «View operation history»',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → «${cmd}»`,
     logHeaderSettingsShortcut: 'Или откройте из Настройки → Автоматическое обслуживание → История операций',
     // v1.22.2: краткие метки сводки импорта для Notice (без модального окна)
     ingestionCreatedPages: '{count} стр. создано',

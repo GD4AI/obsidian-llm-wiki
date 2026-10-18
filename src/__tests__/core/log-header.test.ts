@@ -3,6 +3,7 @@
 // log and pointing to the Operation History Panel for better visualisation.
 import { describe, it, expect } from 'vitest';
 import { buildLogHeader } from '../../core/log-header';
+import { TEXTS } from '../../texts';
 
 describe('buildLogHeader (v1.22.2 — log header i18n)', () => {
   it('returns English header by default', () => {
@@ -18,9 +19,15 @@ describe('buildLogHeader (v1.22.2 — log header i18n)', () => {
   });
 
   it('every header mentions the View operation history command', () => {
-    for (const lang of ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es', 'pt', 'it', 'zh-Hant']) {
-      const h = buildLogHeader(lang);
-      expect(h).toMatch(/View operation history|查看操作历史|操作履歴|작업 기록|Betriebsverlauf|historique|historial|histórico|cronologia operazioni|檢視操作歷史/);
+    // Issue #793: this assertion used to be a hardcoded list of the *drifted*
+    // strings — `查看操作历史`, `操作履歴` and so on — which is the very value the header
+    // should not have carried. It was written to match what the code produced, so it
+    // pinned the defect instead of catching it. Reading the name the locale actually
+    // registers is the assertion that would have failed on the day the drift appeared.
+    for (const lang of Object.keys(TEXTS) as Array<keyof typeof TEXTS>) {
+      const h = buildLogHeader(lang as string);
+      expect(h, `${String(lang)} header must name its own command`)
+        .toContain(TEXTS[lang].cmdViewHistory);
     }
   });
 

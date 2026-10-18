@@ -98,12 +98,12 @@ Você escreve notas. Elas ficam em pastas. Encontrar o que se relaciona com o qu
 1. **Instalar.** Obsidian → Configurações → Plugins da comunidade → Procurar → pesquise "Karpathy LLM Wiki" → Instalar → Ativar. Ou visite a [página do plugin comunitário](https://community.obsidian.md/plugins/karpathywiki) e clique em **Add to Obsidian**.
 2. **Configurar um provedor.** Abra Configurações → Karpathy LLM Wiki → escolha um provedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → insira a chave API (não necessária para locais) → clique em **Test Connection** → Salvar.
 3. **Ingerir uma nota.** Duas formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingest single source" → escolha qualquer arquivo Markdown (ou **PDF, v1.25.0+**).
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingerir fonte individual" → escolha qualquer arquivo Markdown (ou **PDF, v1.25.0+**).
    - **🖱️ Ícone da barra de ferramentas:** Clique no **ícone de adesivo** na faixa esquerda do Obsidian para ingerir instantaneamente a nota aberta no momento — sem procurar nos menus.
    
    Suas primeiras páginas wiki aparecem em `wiki/sources/`, `wiki/entities/`, `wiki/concepts/` em segundos.
 4. **Consultar sua wiki.** Duas formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Query wiki".
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Consultar Wiki".
    - **🖱️ Ícone da barra de ferramentas:** Clique no **ícone de balão de mensagem** na faixa esquerda do Obsidian.
    
    Abre-se um painel lateral direito estilo Copilot onde você pode conversar com sua wiki. As respostas carregam `[[wiki-links]]` de volta para o seu grafo de conhecimento.
@@ -116,15 +116,15 @@ Você escreve notas. Elas ficam em pastas. Encontrar o que se relaciona com o qu
 
 | Comando | O que faz |
 |---------|-----------|
-| **📥 Ingerir fonte individual** | `Cmd+P/Ctrl+P` → "Ingest single source" — escolha um arquivo Markdown ou **PDF (v1.25.0+)**, obtenha páginas de entidade/conceito/wiki. *Ou: 🖱️ clique no ícone de adesivo da faixa esquerda sobre a nota ativa.* |
-| **📂 Ingerir de pasta** | `Cmd+P/Ctrl+P` → "Ingest from folder" — ingerir em lote todas as notas de uma pasta, com smart batch skip |
-| **📑 Ingerir múltiplos arquivos** | `Cmd+P/Ctrl+P` → "Ingest multiple files" — escolha um subconjunto via árvore de dois painéis (com fila ao vivo + cancelamento por arquivo) |
-| **🔍 Consultar Wiki** | `Cmd+P/Ctrl+P` → "Query wiki" — converse com sua wiki num painel lateral direito; respostas carregam `[[wiki-links]]`. *Ou: 🖱️ clique no ícone de balão de mensagem da faixa esquerda.* |
-| **🛠️ Verificar Wiki** | `Cmd+P/Ctrl+P` → "Lint wiki" — verificação completa de saúde: duplicados, links mortos, páginas vazias, órfãos, aliases ausentes, contradições |
+| **📥 Ingerir fonte individual** | `Cmd+P/Ctrl+P` → "Ingerir fonte individual" — escolha um arquivo Markdown ou **PDF (v1.25.0+)**, obtenha páginas de entidade/conceito/wiki. *Ou: 🖱️ clique no ícone de adesivo da faixa esquerda sobre a nota ativa.* |
+| **📂 Ingerir de pasta** | `Cmd+P/Ctrl+P` → "Ingerir de pasta" — ingerir em lote todas as notas de uma pasta, com smart batch skip |
+| **📑 Ingerir múltiplos arquivos** | `Cmd+P/Ctrl+P` → "Ingerir vários ficheiros" — escolha um subconjunto via árvore de dois painéis (com fila ao vivo + cancelamento por arquivo) |
+| **🔍 Consultar Wiki** | `Cmd+P/Ctrl+P` → "Consultar Wiki" — converse com sua wiki num painel lateral direito; respostas carregam `[[wiki-links]]`. *Ou: 🖱️ clique no ícone de balão de mensagem da faixa esquerda.* |
+| **🛠️ Verificar Wiki** | `Cmd+P/Ctrl+P` → "Verificar Wiki" — verificação completa de saúde: duplicados, links mortos, páginas vazias, órfãos, aliases ausentes, contradições |
 | **⚡ Smart Fix All** | dentro do Modal Lint — reparo em ordem causal com relatório por fase, num clique |
-| **📋 Regenerar índice** | `Cmd+P/Ctrl+P` → "Regenerate index" — reconstrói `wiki/index.md` com páginas e aliases atuais |
-| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" ou clique na barra de status — para com segurança no próximo limite de lote |
-| **📊 Histórico de ingestão** | `Cmd+P/Ctrl+P` → "View operation history" — UI pesquisável para ingestões passadas, relatórios Lint e execuções de manutenção |
+| **📋 Regenerar índice** | `Cmd+P/Ctrl+P` → "Regenerar índice" — reconstrói `wiki/index.md` com páginas e aliases atuais |
+| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancelar ingestão atual" ou clique na barra de status — para com segurança no próximo limite de lote |
+| **📊 Histórico de ingestão** | `Cmd+P/Ctrl+P` → "Ver histórico de ingestão" — UI pesquisável para ingestões passadas, relatórios Lint e execuções de manutenção |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Antes | Depois |
@@ -345,7 +345,7 @@ Use granularidade Grossa ou Mínima para ingestão em lote. Smart Batch Skip det
 
 ### Como cancelo uma operação em execução?
 
-Clique na barra de status (mostra "Ingerindo… clique para cancelar") ou `Cmd+P/Ctrl+P` → "Cancel current ingestion". Para com segurança no próximo limite de lote.
+Clique na barra de status (mostra "Ingerindo… clique para cancelar") ou `Cmd+P/Ctrl+P` → "Cancelar ingestão atual". Para com segurança no próximo limite de lote.
 
 ### Onde obtenho ajuda?
 
