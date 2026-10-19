@@ -167,11 +167,11 @@ export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: H
             if (parsed > 60) {
               tempSettings.autoWatchDebounceMs = 60000;
               text.setValue('60');
-              new Notice(tab.getText('numberRangeClamped').replace('{}', '60'), NOTICE_SHORT);
+              new Notice(tab.getText('autoWatchDebounceClamped').replace('{}', '60'), NOTICE_SHORT);
             } else if (parsed < 1) {
               tempSettings.autoWatchDebounceMs = 1000;
               text.setValue('1');
-              new Notice(tab.getText('numberRangeClamped').replace('{}', '1'), NOTICE_SHORT);
+              new Notice(tab.getText('autoWatchDebounceClamped').replace('{}', '1'), NOTICE_SHORT);
             } else if (!isNaN(parsed)) {
               tempSettings.autoWatchDebounceMs = parsed * 1000;
             }

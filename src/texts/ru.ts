@@ -433,6 +433,7 @@ export const RU_TEXTS = {
     watchModeAuto: 'Авто-импорт',
     autoWatchDebounceName: 'Задержка дебаунса (секунды)',
     autoWatchDebounceDesc: 'Время ожидания перед запуском импорта после изменения файла (1-60 секунд)',
+    autoWatchDebounceClamped: 'Значение вне диапазона (1-60), автоматически установлено {}',
     periodicLintName: 'Периодический Lint',
     periodicLintDesc: 'Запускать LLM lint по расписанию, только когда исходные файлы изменились с последней проверки',
     periodicLintOff: 'Выкл',

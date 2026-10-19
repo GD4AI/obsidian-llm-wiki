@@ -410,6 +410,7 @@ export const JA_TEXTS = {
     watchModeAuto: '自動取り込み',
     autoWatchDebounceName: 'チャタリング防止遅延（秒）',
     autoWatchDebounceDesc: 'ファイル変更後に取り込みをトリガーするまでの待機時間（1〜60秒）',
+    autoWatchDebounceClamped: '値が範囲外です（1-60）、自動的に {} に設定されました',
     periodicLintName: '定期 Lint',
     periodicLintDesc: 'スケジュールに従ってLLM Lintを実行。前回チェック以降にソースファイルの変更がある場合のみ実行します',
     periodicLintOff: 'オフ',

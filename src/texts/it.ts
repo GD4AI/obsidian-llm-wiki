@@ -421,6 +421,7 @@ export const IT_TEXTS = {
     watchModeAuto: 'Acquisizione automatica',
     autoWatchDebounceName: 'Ritardo debounce (secondi)',
     autoWatchDebounceDesc: 'Tempo di attesa prima di avviare l\'acquisizione dopo una modifica di file (1-60 secondi)',
+    autoWatchDebounceClamped: 'Valore fuori intervallo (1-60), impostato automaticamente a {}',
     periodicLintName: 'Lint periodico',
     periodicLintDesc: 'Esegui il lint LLM su pianificazione, solo quando i file sorgente sono cambiati dall\'ultimo controllo',
     periodicLintOff: 'Disattivato',

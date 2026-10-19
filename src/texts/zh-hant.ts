@@ -409,6 +409,7 @@ export const ZH_HANT_TEXTS = {
     watchModeAuto: '自動攝入',
     autoWatchDebounceName: '防抖延遲 (秒)',
     autoWatchDebounceDesc: '檔案變更後等待多久觸發攝入 (1-60秒)',
+    autoWatchDebounceClamped: '數值超出範圍（1-60），已自動設定為 {}',
     periodicLintName: '定時維護',
     periodicLintDesc: '定期檢查 Wiki 健康狀況，有原始檔變更時才執行 LLM 維護',
     periodicLintOff: '關閉',

@@ -412,6 +412,7 @@ export const DE_TEXTS = {
     watchModeAuto: 'Automatisch aufnehmen',
     autoWatchDebounceName: 'Entprell-Verzögerung (Sekunden)',
     autoWatchDebounceDesc: 'Wartezeit vor der Aufnahmeauslösung nach einer Dateiänderung (1–60 Sekunden)',
+    autoWatchDebounceClamped: 'Wert außerhalb des Bereichs (1-60), automatisch auf {} gesetzt',
     periodicLintName: 'Periodische Prüfung',
     periodicLintDesc: 'LLM-Prüfung zeitgesteuert ausführen, nur wenn sich Quelldateien seit der letzten Prüfung geändert haben',
     periodicLintOff: 'Aus',
