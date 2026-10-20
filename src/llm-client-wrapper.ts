@@ -72,11 +72,11 @@ type AdvancedSettingsOverlay = Partial<{
  * pattern silently mutated the caller's client reference) with
  * `Object.create(client)` + explicit override of `createMessage`.
  * spread `{ ...client }` is NOT used because `OpenAICompatSdkClient`
- * (and other implementations) define `createMessageStream` and
- * `listModels` as prototype methods — spread only captures own
+ * (and other implementations) define `createMessageStream` as a
+ * prototype method — spread only captures own
  * enumerable properties, which drops all prototype methods.
  * `Object.create(client)` preserves the prototype chain, so prototype
- * methods like `listModels` stay available; `createMessage`,
+ * methods stay available; `createMessage`,
  * `createMessageWithOutput`, and `createMessageStream` are explicitly
  * overridden below whenever the client implements them (Issue #451).
  */
@@ -86,8 +86,8 @@ export function wrapWithAdvancedSettings(
 ): LLMClient {
   const capTokens = settings.maxTokensPerCall > 0;
 
-  // Preserve prototype chain — Object.create inherits all prototype
-  // methods (listModels) from the original client.
+  // Preserve prototype chain — Object.create inherits the prototype
+  // methods from the original client.
   const wrapper = Object.create(client) as LLMClient;
   wrapper.createMessage = (params) => withTaskAccounting(params.task, async () => {
     logLlmCall(params.task, params.model, params.max_tokens, 'plain');

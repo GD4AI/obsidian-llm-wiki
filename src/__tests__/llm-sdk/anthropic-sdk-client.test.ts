@@ -576,13 +576,4 @@ describe('AnthropicSdkClient', () => {
     });
   });
 
-  describe('listModels', () => {
-    it('returns empty array (placeholder)', async () => {
-      const client = new AnthropicSdkClient({ apiKey: 'sk-ant-test' });
-      // LLMClient declares listModels as optional (?). Non-null assertion
-      // is the canonical pattern when the implementation provides it.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      expect(await client.listModels!()).toEqual([]);
-    });
-  });
 });

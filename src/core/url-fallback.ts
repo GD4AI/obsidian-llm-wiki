@@ -242,9 +242,8 @@ function delay(ms: number): Promise<void> {
 // succeeds for Kimi Anthropic-compatible. Fetch Models fails because
 // the hand-rolled path is rigid.
 //
-// This function unifies the two paths — both settings.ts Fetch Models
-// and SDK client listModels() should call fetchModelsWithFallback
-// instead of duplicating the URL construction logic.
+// This function unifies the two paths — settings.ts Fetch Models should
+// call fetchModelsWithFallback instead of duplicating the URL construction logic.
 
 export type ProviderKind = 'openai-compatible' | 'anthropic-compatible' | 'openai' | 'anthropic';
 

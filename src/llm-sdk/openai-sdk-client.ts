@@ -572,21 +572,6 @@ export class OpenAISdkClient implements LLMClient {
       throw mapAiSdkError(err);
     }
   }
-
-  /**
-   * List available models for the Test Connection / Settings dropdown.
-   *
-   * AI-SDK's OpenAI provider doesn't expose listModels — models are
-   * constructed ad-hoc by string id. We return [] and rely on
-   * PREDEFINED_PROVIDERS (types.ts) for the model suggestions in the
-   * settings UI.
-   *
-   * Future: could call OpenAI's /v1/models endpoint and merge with
-   * the curated suggestion list.
-   */
-  async listModels(): Promise<string[]> {
-    return [];
-  }
 }
 
 /**

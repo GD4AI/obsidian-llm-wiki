@@ -608,20 +608,4 @@ describe('OpenAISdkClient', () => {
     });
   });
 
-  describe('listModels', () => {
-    // Test Connection uses listModels for the model dropdown. AI-SDK's
-    // createOpenAI has no listModels (each model is constructed ad-hoc
-    // by string id). We expose a placeholder that returns [] — the
-    // Settings UI falls back to PREDEFINED_PROVIDERS for model
-    // suggestions. (Future: wire up to provider's /models endpoint.)
-    it('returns empty array (placeholder for OpenAI provider)', async () => {
-      const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
-      // LLMClient declares listModels as optional (?). The non-null
-      // assertion is the canonical pattern when the implementation
-      // is known to provide it.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const models = await client.listModels!();
-      expect(models).toEqual([]);
-    });
-  });
 });
