@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   buildOrphanLinkPrompt,
   validateOrphanLinkTarget,
@@ -184,25 +184,50 @@ describe('Orphan Matcher — Pure Functions', () => {
       expect(result).toBe(false);
     });
 
+    // The identity of a link is its target, not its spelling. `[[page]]` and
+    // `[[page|Label]]` are the same link to the same page, and the label is
+    // presentation. Comparing whole strings instead let the same page be
+    // linked twice under two spellings.
+    describe('target identity (#824)', () => {
+      it('treats the same page under a different label as already linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/test|Test]]')).toBe(true);
+      });
+
+      it('treats the same page under the other label as already linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test|Test]]', '[[entities/test]]')).toBe(true);
+      });
+
+      it('accepts another spelling of the same page', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/test|Test]]', ['entities/test'])).toBe(true);
+      });
+
+      it('still reports a different page as not linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/other]]', '[[entities/test|Test]]')).toBe(false);
+      });
+    });
+
     // Issue #824: the append decision must also consider whether the target is a
     // page at all. The model supplies a display-derived guess — measured on a real
     // vault as `[[sources/paste-rules]]` where the page is
     // `sources/paste-rules_f7bbee` — and appending it links into nothing. The
     // third parameter is optional, so every call above keeps its behaviour.
-    describe('with a target resolver (#824)', () => {
-      it('reports skip when the target resolves to no page', () => {
-        expect(validateOrphanLinkTarget('no links here', '[[sources/paste-rules]]', () => false)).toBe(true);
+    //
+    // The third parameter used to be a *resolver* — "does this target name some
+    // existing page?". That question is void now. The target is the orphan by
+    // construction, and the orphan is a file that was just read, so the target
+    // always names a real page. The parameter now carries the other spellings
+    // of that same page, so the comparison can be by identity.
+    describe('with accepted spellings (#824)', () => {
+      it('reports skip when the content already links an accepted spelling', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/target|Target]]', ['entities/test'])).toBe(true);
       });
 
-      it('falls back to the content check when the target does resolve', () => {
-        expect(validateOrphanLinkTarget('no links here', '[[sources/paste-rules]]', () => true)).toBe(false);
-        expect(validateOrphanLinkTarget('has [[sources/paste-rules]]', '[[sources/paste-rules]]', () => true)).toBe(true);
+      it('does not skip when the content links a different page', () => {
+        expect(validateOrphanLinkTarget('has [[entities/other]]', '[[entities/target|Target]]', ['entities/test'])).toBe(false);
       });
 
-      it('passes the raw link_target to the resolver', () => {
-        const resolver = vi.fn(() => true);
-        validateOrphanLinkTarget('x', '[[sources/a|A]]', resolver);
-        expect(resolver).toHaveBeenCalledWith('[[sources/a|A]]');
+      it('treats an empty accepted list as no extra spellings', () => {
+        expect(validateOrphanLinkTarget('no links here', '[[entities/target|Target]]', [])).toBe(false);
       });
     });
   });

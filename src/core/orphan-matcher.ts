@@ -55,13 +55,68 @@ export function buildOrphanLinkPrompt(
  *   the behaviour every pre-#824 caller keeps.
  * @returns True when the append must be skipped
  */
+/**
+ * The target of a wikilink: `[[path|Label]]` → `path`, without the extension.
+ *
+ * The identity of a link is its target, not its spelling. A label is
+ * presentation, and `[[page]]` and `[[page|Label]]` are the same link to the
+ * same page.
+ */
+export function linkTargetOf(linkTarget: string): string {
+  const match = linkTarget.match(/\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]\]/);
+  return (match ? match[1] : linkTarget).trim().replace(/\.md$/, '');
+}
+
+/**
+ * Should the append be skipped?
+ *
+ * True when the content already links to the same page. The comparison is by
+ * target identity, not by whole string: `[[page]]` and `[[page|Label]]` are the
+ * same link, and a page linked under the vault path and under the wiki-relative
+ * path is the same page too. Comparing whole strings let one page be linked
+ * twice under two spellings.
+ *
+ * @param relatedContent - Current content of the related page
+ * @param linkTarget - The link that would be appended
+ * @param acceptedTargets - Other spellings of the same page
+ * @returns True when the content already links that page
+ */
 export function validateOrphanLinkTarget(
   relatedContent: string,
   linkTarget: string,
-  resolveTargetExists?: (linkTarget: string) => boolean
+  acceptedTargets: readonly string[] = []
 ): boolean {
-  if (resolveTargetExists && !resolveTargetExists(linkTarget)) return true;
-  return relatedContent.includes(linkTarget);
+  if (relatedContent.includes(linkTarget)) return true;
+  const wanted = linkTargetOf(linkTarget);
+  if (!wanted) return false;
+  const spellings = new Set<string>([wanted]);
+  for (const accepted of acceptedTargets) {
+    const normalized = accepted.trim().replace(/\.md$/, '');
+    if (normalized) spellings.add(normalized);
+  }
+  for (const match of relatedContent.matchAll(/\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]\]/g)) {
+    if (spellings.has(linkTargetOf(match[1]))) return true;
+  }
+  return false;
+}
+
+/**
+ * The page's path relative to the wiki folder, without the extension.
+ */
+export function wikiRelativePagePath(orphanPath: string, wikiFolder: string): string {
+  const prefix = `${wikiFolder}/`;
+  return (orphanPath.startsWith(prefix) ? orphanPath.slice(prefix.length) : orphanPath)
+    .replace(/\.md$/, '');
+}
+
+/**
+ * Every spelling a link to this page can take: the vault path, the path
+ * relative to the wiki folder, and the bare file name.
+ */
+export function orphanLinkSpellings(orphanPath: string, wikiFolder: string): string[] {
+  const rel = wikiRelativePagePath(orphanPath, wikiFolder);
+  const base = rel.split('/').pop() ?? rel;
+  return [orphanPath.replace(/\.md$/, ''), rel, base];
 }
 
 /**
@@ -92,11 +147,9 @@ export function retargetOrphanLinkTarget(
   orphanPath: string,
   wikiFolder: string
 ): string {
-  const prefix = `${wikiFolder}/`;
   // Mirrors `makeOrphanLinkTargetResolver`, which registers both forms: stripping the
   // wiki prefix only when it is there, so a page outside the wiki folder still works.
-  const rel = (orphanPath.startsWith(prefix) ? orphanPath.slice(prefix.length) : orphanPath)
-    .replace(/\.md$/, '');
+  const rel = wikiRelativePagePath(orphanPath, wikiFolder);
   const match = linkTarget.match(/\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]\]/);
   if (!match) return `[[${rel}]]`;
   const inner = match[1].trim().replace(/\.md$/, '');

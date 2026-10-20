@@ -477,6 +477,21 @@ Two things made it easy to miss.
 
 **Same family, three instances in this repo.** The schema body (this), the term index (#843/#844 — keyed on the index file, so an edited page body left it stale), and the frontmatter alias map that `fix-runners.ts:138` already had to watch with `vault.on('modify')`. Each is a cache whose key did not follow the file it described.
 
+### A repair's target comes from the operation, not from what the model guessed (#824, 2026-10-18)
+
+The orphan-link repair kept the model's guessed target whenever the guess "resolved". Resolving meant "names some page that exists" — a link-hygiene question. The question that decides the repair is "does this target name the orphan?" — a link-identity question. The check answered the first one and was used to decide the second.
+
+Two things made it invisible for months.
+
+- **The model cannot know the orphan's real path.** It sees the orphan's content and the wiki index, never its file name. It guesses a path from the display name. Every guess is wrong by construction — whether or not it happens to hit a page that exists. "The guess resolved" was never evidence that the guess was right.
+- **The failure reported success.** The run wrote the link, pushed the page onto the "linked" list, and told the user it was linked — while the orphan gained no inbound link and was reported again on the next run. That is worse than a plain failure: it hides the loop from the user and from the next lint. A report that says "fixed" while the file says otherwise is a false success, and it is worth treating a report and the file as two independent claims that must both hold.
+
+**The rule: name the question the operation must answer, then check that the code asks it.** A guard that answers a nearby question is worse than no guard, because it looks like protection.
+
+**The second-order cost was performance.** The resolver scanned every markdown file and its frontmatter aliases — once per orphan, per run — to answer a question whose answer did not change the outcome. A check whose answer cannot change the result should not exist; it is pure cost. Deleting it also deleted a vault-wide scan.
+
+**Corollary for the duplicate check.** Once the target is always the orphan, "is this link already there?" is a question about *identity*, not spelling. `[[page]]` and `[[page|Label]]` are the same page, and a page linked under the vault path and under the wiki-relative path is the same page too. Comparing whole strings let one page be linked twice under two spellings — the label is presentation, the target is identity.
+>
 ### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)

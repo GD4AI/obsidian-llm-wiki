@@ -149,3 +149,53 @@ describe('linkOrphanPage — an unresolvable link_target is rebuilt, not skipped
     expect(occurrences).toBe(1);
   });
 });
+
+// The link's purpose is to make the orphan reachable, so the target is the
+// orphan by definition. A guess that happens to name *another* existing page is
+// still a guess about the wrong page, and keeping it leaves the orphan
+// orphaned while the run reports that it linked it.
+describe('linkOrphanPage — the target is the orphan, not a page the guess resolves to (#824)', () => {
+  it('links the orphan even when the guess names a different page that exists', async () => {
+    const writes: Array<{ path: string; content: string }> = [];
+    // The vault holds a page whose name matches the model's guess. This is not
+    // unusual: a guess derived from the display name of a source page is often
+    // also the name of the topic page for the same note.
+    const ctx = makeCtx(
+      makeClient({ related_pages: [{ page_path: RELATED, link_text: 'See also', link_target: '[[sources/paste-rules]]' }] }),
+      {
+        [ORPHAN]: ORPHAN_CONTENT,
+        [RELATED]: RELATED_CONTENT,
+        'wiki/sources/paste-rules.md': '# Paste rules\n',
+      },
+      [...realVault(), { path: 'wiki/sources/paste-rules.md', basename: 'paste-rules.md' }],
+      writes,
+    );
+
+    const linked = await linkOrphanPage(ctx, ORPHAN);
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0].content).toContain('[[sources/paste-rules_f7bbee|sources/paste-rules]]');
+    expect(writes[0].content).not.toContain('[[sources/paste-rules]]');
+    expect(linked).toEqual([RELATED]);
+  });
+
+  it('does not add a second link when the content already links the orphan plainly', async () => {
+    const writes: Array<{ path: string; content: string }> = [];
+    // Same page, spelled without the display label. The label is presentation;
+    // the target is identity.
+    const ctx = makeCtx(
+      makeClient({ related_pages: [{ page_path: RELATED, link_text: 'See also', link_target: '[[sources/paste-rules]]' }] }),
+      {
+        [ORPHAN]: ORPHAN_CONTENT,
+        [RELATED]: `${RELATED_CONTENT}\n\nAlready linked: [[sources/paste-rules_f7bbee]]\n`,
+      },
+      realVault(),
+      writes,
+    );
+
+    const linked = await linkOrphanPage(ctx, ORPHAN);
+
+    expect(writes).toHaveLength(0);
+    expect(linked).toEqual([]);
+  });
+});
