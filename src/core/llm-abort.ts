@@ -19,14 +19,14 @@
 
 type Signalled = { abortSignal?: AbortSignal };
 
-function abortReason(signal: AbortSignal): Error {
+function abortReason(signal: AbortSignal): Error | DOMException {
   const reason: unknown = signal.reason;
   if (reason instanceof Error) return reason;
-  // Fallback for runtimes without signal.reason: a real Error carrying
-  // the AbortError name, so callers can rely on the name either way.
-  const fallback = new Error('Aborted');
-  fallback.name = 'AbortError';
-  return fallback;
+  // Fallback for runtimes without signal.reason, or a non-Error reason:
+  // a real DOMException, matching the codebase's single cancellation
+  // convention — the engine recognises a cancellation with
+  // `instanceof DOMException && name === 'AbortError'`.
+  return new DOMException('Aborted', 'AbortError');
 }
 
 /**
