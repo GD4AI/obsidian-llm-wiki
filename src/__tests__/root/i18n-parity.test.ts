@@ -297,9 +297,11 @@ describe('startupCheckDisableHint names the notice level setting in every locale
 });
 
 describe('autoWatchDebounceClamped states the debounce range in every locale', () => {
-  it.each(LOCALES)('locale "%s" says 1-60 and keeps the value placeholder', (locale) => {
+  it.each(LOCALES)('locale "%s" states the debounce range its own description states', (locale) => {
     const t = TEXTS[locale] as unknown as Record<string, string>;
-    expect(t.autoWatchDebounceClamped).toContain('1-60');
+    const range = /(\d+\s*[-–〜]\s*\d+)/.exec(t.autoWatchDebounceDesc)?.[1];
+    expect(range).toBeTruthy();
+    expect(t.autoWatchDebounceClamped).toContain(range!);
     expect(t.autoWatchDebounceClamped).toContain('{}');
   });
 });
