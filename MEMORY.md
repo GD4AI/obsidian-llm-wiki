@@ -488,6 +488,23 @@ Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private
 memory directory for this project.
 
+### A value has to reach the consumer in a form the consumer reads (#855, 2026-10-18)
+
+The two-stage expansion computed a history weight of 0.3, used it to choose which terms to add, and then dropped it: `twoStageExpand` flattens to `string[]`, `planRetrieval` joins the strings, and the ranking path receives a flat string. The weight was therefore not "small" in the ranking — it was **zero**.
+
+Two facts make the shape of the bug obvious in hindsight.
+
+- **The consumer was already able to read it.** `bm25fScore` takes `readonly (string | WeightedTerm)[]` and multiplies by the weight. The scorer was never the obstacle; the *carrier* was.
+- **A flat string cannot carry a weight.** The only way to express one in a string is repetition, and both ends delete it: `bm25fScore` counts "a repeated query term … once (the query is a set of terms, not a bag)" and `tokenizeQuery` collects into a `Set`. So the loss was structural, not a tuning mistake, and no amount of joining differently would have fixed it.
+
+**The general rule: a parameter that is computed, used once, and then flattened is not a parameter — it is a hint that stops at the boundary.** The question to ask of any "the weighting is applied" claim is not *is the value computed* but *does the consumer see it*. "Reaches the expansion" is a statement about a code path; the effect is a number that moves.
+
+**The tell was a comment.** The code carried the line *"The WEIGHTS score; they do not travel"* next to the parameter that was supposed to carry them. When a comment explains why a value cannot travel, that is not a limitation to accept — it is a design decision that was never made. Read it as a question.
+
+**The second obstacle was a representation mismatch.** The weighted terms were segmented by `segment()` and the ranking re-tokenized the joined string with `tokenizeQuery()` — **two separate implementations** with different rules. When a value crosses a boundary, the two sides have to agree on the *representation*, not only on the type. A `string[]` on both sides is not agreement.
+
+**And the honest ending: it was not measurable.** The repo had no harness for the two cases that decide the question — the *topic-switch* case (the question plus unrelated history turns, measuring whether the question's own page is still rank 1) and the *follow-up* case (a question whose missing words live in the history). The gain had been measured on r@10 over a corpus; the thing that had to hold was about *conversations*. **Write the harness first and pin both cases before touching production code** — the harness is the reusable part, and it is what turns "the mechanism is in place" into "the effect arrived".
+
 ### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
