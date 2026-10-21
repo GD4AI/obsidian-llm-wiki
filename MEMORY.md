@@ -651,8 +651,25 @@ Two assertions had to be rewritten while fixing a defect, and both were written 
 - **The new guard's first version was value-aligned and wrong within one run.** It asserted "no English command name after `Cmd+P`" and failed on `README_IT.md` for `cmdLintWiki`, because Italian registers that command as `Lint wiki` — identical to English by design. The fix is to align on the **key**, not the value: an English string is only evidence when the locale's own registered value differs from it. Any cross-locale assertion needs the same shape, because shared spellings are normal (numbers, product names, loanwords) and not defects.
 
 **Corollary for translation work:** the same pattern produced `#793` in the first place. `cmdViewHistory` and `logHeaderShortcut` were two independent copies of one fact, so they drifted in ten of eleven locales and `ru` ended up quoting English inside Russian guillemets. A function of the shared value makes drift impossible; a convention to keep them equal does not.
->>
-### GitHub hygiene
+
+### A value has to reach the consumer in a form the consumer reads (#855, 2026-10-18)
+
+The two-stage expansion computed a history weight of 0.3, used it to choose which terms to add, and then dropped it: `twoStageExpand` flattens to `string[]`, `planRetrieval` joins the strings, and the ranking path receives a flat string. The weight was therefore not "small" in the ranking — it was **zero**.
+
+Two facts make the shape of the bug obvious in hindsight.
+
+- **The consumer was already able to read it.** `bm25fScore` takes `readonly (string | WeightedTerm)[]` and multiplies by the weight. The scorer was never the obstacle; the *carrier* was.
+- **A flat string cannot carry a weight.** The only way to express one in a string is repetition, and both ends delete it: `bm25fScore` counts "a repeated query term … once (the query is a set of terms, not a bag)" and `tokenizeQuery` collects into a `Set`. So the loss was structural, not a tuning mistake, and no amount of joining differently would have fixed it.
+
+**The general rule: a parameter that is computed, used once, and then flattened is not a parameter — it is a hint that stops at the boundary.** The question to ask of any "the weighting is applied" claim is not *is the value computed* but *does the consumer see it*. "Reaches the expansion" is a statement about a code path; the effect is a number that moves.
+
+**The tell was a comment.** The code carried the line *"The WEIGHTS score; they do not travel"* next to the parameter that was supposed to carry them. When a comment explains why a value cannot travel, that is not a limitation to accept — it is a design decision that was never made. Read it as a question.
+
+**The second obstacle was a representation mismatch.** The weighted terms were segmented by `segment()` and the ranking re-tokenized the joined string with `tokenizeQuery()` — **two separate implementations** with different rules. When a value crosses a boundary, the two sides have to agree on the *representation*, not only on the type. A `string[]` on both sides is not agreement.
+
+**And the honest ending: it was not measurable.** The repo had no harness for the two cases that decide the question — the *topic-switch* case (the question plus unrelated history turns, measuring whether the question's own page is still rank 1) and the *follow-up* case (a question whose missing words live in the history). The gain had been measured on r@10 over a corpus; the thing that had to hold was about *conversations*. **Write the harness first and pin both cases before touching production code** — the harness is the reusable part, and it is what turns "the mechanism is in place" into "the effect arrived".
+
+>### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
 - **`gh release delete` is irreversible.** v1.25.8 incident: deleted the published release body; recovery required re-publishing from a local `/tmp/release-body-*.md` backup. Rule: edit in place with `gh release edit <tag> --notes-file --draft=false`, never delete. Always verify `tagName + isDraft + body` before editing. (`feedback_gh_release_edit_delete_safety`)
