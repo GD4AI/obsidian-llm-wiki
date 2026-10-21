@@ -1,0 +1,65 @@
+{
+  "_comment": "Follow-up cases for run-conversation-eval.mjs. Each case is a conversation whose LAST turn refers back to the earlier turns, so the words that identify the page live in the history and not in the question. The question alone must not retrieve the page; the history must. These are the cases a fix that drops the history from the ranking query would break, and they are hand-written because anaphora is not derivable from a link graph. The pages are real pages of the production vault.",
+  "cases": [
+    {
+      "name": "follow-up:stable-diffusion-vram",
+      "family": "follow-up",
+      "question": "它的显存需求呢？",
+      "history": [
+        "user: 稳定扩散 1.5 的 latent diffusion 架构和采样器改进",
+        "user: 那它的显存需求呢？"
+      ],
+      "expected": "entities/稳定扩散-1-5"
+    },
+    {
+      "name": "follow-up:vllm-throughput",
+      "family": "follow-up",
+      "question": "它的吞吐量表现如何？",
+      "history": [
+        "user: vLLM 的 PagedAttention 和连续批处理机制",
+        "user: 那它的吞吐量表现如何？"
+      ],
+      "expected": "entities/vLLM"
+    },
+    {
+      "name": "follow-up:bezier-typography",
+      "family": "follow-up",
+      "question": "它在字体设计里是怎么用的？",
+      "history": [
+        "user: 贝塞尔曲线的定义、控制点和几何性质",
+        "user: 那它在字体设计里是怎么用的？"
+      ],
+      "expected": "entities/贝塞尔曲线"
+    },
+    {
+      "name": "follow-up:shannon-entropy",
+      "family": "follow-up",
+      "question": "他提出的熵概念指什么？",
+      "history": [
+        "user: 克劳德·香农的信息论工作与信道编码",
+        "user: 那他提出的熵概念指什么？"
+      ],
+      "expected": "entities/克劳德·香农"
+    },
+    {
+      "name": "follow-up:fractalnet-resnet",
+      "family": "follow-up",
+      "question": "它和 ResNet 的残差连接有什么区别？",
+      "history": [
+        "user: 分形网络的结构设计与分形卷积",
+        "user: 那它和 ResNet 的残差连接有什么区别？"
+      ],
+      "expected": "entities/分形网络"
+    },
+    {
+      "name": "follow-up:community-plugins-json",
+      "family": "follow-up",
+      "question": "它一般放在仓库的哪个位置？",
+      "history": [
+        "user: 社区插件JSON文件 community-plugins.json 的字段结构",
+        "user: 那它一般放在仓库的哪个位置？"
+      ],
+      "expected": "entities/社区插件JSON文件"
+    }
+  ]
+}
