@@ -259,6 +259,8 @@ export class SchemaManager {
   private getLLMClient: () => LLMClient | null;
   private cachedBody: string | null = null;
   private cacheValid = false;
+  /** The mtime the cached body was read at. Issue #317. */
+  private cachedMtime: number | null = null;
 
   constructor(
     app: App,
@@ -287,6 +289,7 @@ export class SchemaManager {
   invalidateCache(): void {
     this.cacheValid = false;
     this.cachedBody = null;
+    this.cachedMtime = null;
   }
 
   updateSettings(settings: LLMWikiSettings): void {
@@ -347,14 +350,21 @@ ${selectedBody}
   }
 
   async loadSchema(): Promise<WikiSchema | null> {
-    if (this.cacheValid && this.cachedBody !== null) {
-      return { version: 0, updated: '', auto_suggestion_count: 0, body: this.cachedBody };
-    }
-
     const path = this.getSchemaPath();
     const file = this.app.vault.getAbstractFileByPath(path);
 
     if (!(file instanceof TFile)) return null;
+
+    // Issue #317: the cache is keyed on the file's mtime, not on time. It used
+    // to be invalidated from exactly one place — the plugin's own "apply
+    // suggestion" flow — so a user who edited `schema/config.md` in the
+    // Obsidian editor saw the old body until Obsidian was restarted. Keying
+    // on the mtime needs no event wiring, and it also catches an edit made
+    // outside Obsidian: a sync, a file drop, a git checkout.
+    const mtime = file.stat.mtime;
+    if (this.cacheValid && this.cachedBody !== null && this.cachedMtime === mtime) {
+      return { version: 0, updated: '', auto_suggestion_count: 0, body: this.cachedBody };
+    }
 
     try {
       const content = await this.app.vault.read(file);
@@ -368,6 +378,7 @@ ${selectedBody}
       // the SOLE tag vocabulary the model encounters.
       const sanitizedBody = stripLegacyBakedTagEnum(parsed.body);
       this.cachedBody = sanitizedBody;
+      this.cachedMtime = mtime;
       this.cacheValid = true;
 
       return { ...parsed, body: sanitizedBody };

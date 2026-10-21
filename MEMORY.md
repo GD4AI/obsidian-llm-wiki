@@ -448,6 +448,21 @@ Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private
 memory directory for this project.
 
+### A cache's lifetime belongs to the file, not to the command that wrote it (#317, 2026-10-18)
+
+`SchemaManager` cached the body of `wiki/schema/config.md`. The cache was invalidated from exactly one place — the plugin's own "apply suggestion" flow. So a user who opened the schema file in the Obsidian editor, changed it, and ran an ingest saw **the old body**, and the edit stayed invisible until Obsidian was restarted. The issue's title, "Schema.md changes are ignored", was literally true.
+
+Two things made it easy to miss.
+
+- **The cache was invalidated somewhere, so it looked maintained.** `invalidateCache()` existed, was tested, and was called. It was called by the one flow that *wrote* the file through the plugin. Every path that *edited* the file by hand went around it.
+- **The invalidation was tied to a command rather than to the file.** A command is one way a file can change; a sync, a file drop and a git checkout are others. An event listener would have caught the editor and missed the rest.
+
+**The fix keys the cache on the file's mtime.** No event wiring, no lifecycle, and it catches every way a file can change. The cost is one `getAbstractFileByPath` call — an in-memory lookup, not a read — on the path that was already calling it.
+
+**The general rule: when a cache holds a file's content, the cache key must include something that changes when the file changes.** A boolean "have I loaded this?" is only correct when the file is written exclusively by the code that owns the cache. The moment a user can edit the file, the cache needs a content-derived key — mtime, a hash, or an explicit invalidation wired to the file's own lifecycle.
+
+**Same family, three instances in this repo.** The schema body (this), the term index (#843/#844 — keyed on the index file, so an edited page body left it stale), and the frontmatter alias map that `fix-runners.ts:138` already had to watch with `vault.on('modify')`. Each is a cache whose key did not follow the file it described.
+
 ### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
