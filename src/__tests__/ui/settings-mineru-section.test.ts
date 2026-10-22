@@ -28,6 +28,7 @@ vi.mock('obsidian', () => {
     setHeading(): this { return this; }
     addDropdown(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addText(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
+    addTextArea(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addToggle(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addButton(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addComponent(callback: (element: HTMLElement) => unknown): this { callback({} as HTMLElement); return this; }

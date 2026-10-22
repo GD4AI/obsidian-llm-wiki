@@ -403,6 +403,16 @@ export const EN_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Duplicate tag skipped',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Prompt Customization',
+    promptFocusScopeGlobal: 'Global — applies to every topic without its own override. Use the Vocabulary Scope selector above to edit a specific topic.',
+    promptFocusScopeTopic: 'Editing topic "{}" — these values override the global fields for this topic only.',
+    extractionFocusName: 'Extraction Focus',
+    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
+    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
+    contentRequirementsName: 'Content Requirements',
+    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
+    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
     // Ingestion Acceleration
     accelerationSectionTitle: 'Ingestion Acceleration',
     pageGenerationConcurrencyName: 'LLM Concurrency',
