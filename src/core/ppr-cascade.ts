@@ -405,7 +405,7 @@ export function lexIsReliable(tokens: string[]): boolean {
 export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
-  const scored: { page: PageRef; score: number }[] = [];
+  const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
   for (const page of pages) {
     const titleLower = page.title.toLowerCase();
     const aliasLowers = page.aliases.map(a => a.toLowerCase());
@@ -428,9 +428,21 @@ export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
       else if (needleHits(textLower, kw)) { score += 1; tokensFound++; }
     }
     if (tokensFound === tokens.length && tokens.length > 1) score += 2;
-    if (score > 0) scored.push({ page, score });
+    if (score > 0) scored.push({ page, score, tokensFound });
   }
-  return scored.sort((a, b) => b.score - a.score).map(s => s.page);
+  // Ties break by breadth of match first and only then on a stable identity.
+  // Sorting on the score alone left the order to the caller's array — the
+  // order the index happened to be read in — so two pages that matched the
+  // same number of tokens in different fields came out in an order nobody
+  // chose. Path-only would be the same defect in an alphabetical hat, so the
+  // breadth comes first, exactly as the BM25F path does.
+  scored.sort(
+    (a, b) =>
+      b.score - a.score
+      || b.tokensFound - a.tokensFound
+      || (a.page.path < b.page.path ? -1 : a.page.path > b.page.path ? 1 : 0),
+  );
+  return scored.map(s => s.page);
 }
 
 /**

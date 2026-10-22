@@ -23,7 +23,7 @@
 // signals: a hub for the current query is one that has historical
 // centrality AND query-time proximity.
 
-import { personalizedPageRank, type Graph, type PPROptions } from './monte-carlo-ppr';
+import { personalizedPageRank, seededRngFrom, type Graph, type PPROptions } from './monte-carlo-ppr';
 
 export type { Graph, PPROptions };
 
@@ -68,8 +68,18 @@ export function detectHubs(graph: Graph, options: HubDetectionOptions = {}): Hub
   }
 
   // Step 2 (optional): PPR from query seed.
+  // The rng is seeded from the seed node when the caller supplies none, so
+  // the same graph gives the same PPR every time. It used to be
+  // `Math.random`, which made a hub's `pprScore` — and with it the composite
+  // score that decides whether the page is a hub — a different number on every
+  // run. The lint reads that number and can strip a link because of it, so a
+  // finding that flickers is a finding that fires at random.
+  const pprOptions = options.pprOptions ?? {};
   const pprScores = options.pprSeed !== undefined
-    ? personalizedPageRank(graph, options.pprSeed, options.pprOptions ?? {})
+    ? personalizedPageRank(graph, options.pprSeed, {
+        ...pprOptions,
+        rng: pprOptions.rng ?? seededRngFrom(options.pprSeed, [options.pprSeed]),
+      })
     : null;
 
   // Step 3: build candidates with composite score.
