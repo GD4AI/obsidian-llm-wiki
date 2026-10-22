@@ -12,11 +12,53 @@ import { retargetLinksToPage } from '../../core/link-retarget';
 import { localDateStamp } from '../../core/format';
 import { activeVocabulary, activeVocabularyLists, vocabularyKindFor } from '../../core/vocabulary';
 
+/**
+ * Two different strings can name one file, and a string comparison cannot say so.
+ *
+ * Issue #826's own acceptance criterion says "whenever both sides resolve to the
+ * same file", and the first fix compared strings: that caught a repeated path and
+ * a missing `wiki/` prefix, and nothing else. `./` prefixes, doubled slashes, a
+ * dropped `.md`, and Unicode NFC/NFD spelling all survived it.
+ *
+ * NFC/NFD is the one that costs data. `tryReadFile` (`wiki-engine.ts:2209`)
+ * normalises and scans directories, so both spellings read the same file — but
+ * `deleteFile` (`:2178`) uses an exact key. So a self-pair reached the merge, both
+ * reads succeeded, and the delete either removed the only copy of the page or
+ * silently did nothing while the log reported a merge.
+ *
+ * The comparison is deliberately **case-insensitive**, and that is a choice about
+ * which way to be wrong. On a case-sensitive filesystem this refuses a merge that
+ * would have been legitimate — a duplicate stays, visible in the next lint report.
+ * The other direction deletes a page and says nothing.
+ */
+export function canonicalPagePath(path: string): string {
+  return path
+    .normalize('NFC')
+    .replace(/\\/g, '/')
+    .replace(/\/{2,}/g, '/')
+    .replace(/(^|\/)\.\//g, '$1')
+    .replace(/\.md$/i, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+}
+
 export async function mergeDuplicatePages(
   ctx: EngineContext,
   targetPath: string,
   sourcePath: string
 ): Promise<string> {
+  // Issue #826: the two reads below both succeed when target and source are the
+  // same path — a file can be read twice — so the not-found guard beneath this
+  // does not catch it. Unguarded, the merge writes `targetPath` and then deletes
+  // it, and reports `merged A → A`. Refusing is the only safe outcome: there is
+  // nothing to merge, and every step after this point is destructive.
+  // Issue #826, second half: compare resolved identity, not spelling. See
+  // `canonicalPagePath` above for why the comparison is case-insensitive and why
+  // NFC/NFD is the case that costs data rather than merely leaving a hole.
+  if (canonicalPagePath(targetPath) === canonicalPagePath(sourcePath)) {
+    throw new Error(`Cannot merge: target and source are the same page (${targetPath})`);
+  }
+
   const targetContent = await ctx.tryReadFile(targetPath);
   const sourceContent = await ctx.tryReadFile(sourcePath);
   if (!targetContent || !sourceContent) {
@@ -144,7 +186,19 @@ export async function mergeDuplicatePages(
     }
     mergedBody = targetBody;
     if (sourceBody) {
-      mergedBody += '\n\n## From ' + sourceTitle + '\n\n' + sourceBody;
+      // Issue #825: keeping a source whose references could not be retargeted means
+      // the same pair is seen again on the next lint run. This append therefore has to
+      // be idempotent — `## From <title>` already identifies the absorbed block, so a
+      // second run must not copy the whole source body in again. Without the guard a
+      // kept-source pair grows the survivor by one source body per lint run.
+      //
+      // Skipping is chosen over replacing. An updated source should take the LLM merge
+      // path; silently overwriting a section on a fallback path would be a worse
+      // failure than leaving the earlier copy in place.
+      const fromHeader = '## From ' + sourceTitle;
+      if (!mergedBody.includes(fromHeader)) {
+        mergedBody += '\n\n' + fromHeader + '\n\n' + sourceBody;
+      }
     }
   }
 
@@ -191,16 +245,40 @@ export async function mergeDuplicatePages(
   const sourceRel = sourcePath.replace(wikiFolder + '/', '').replace('.md', '');
   const targetRel = targetPath.replace(wikiFolder + '/', '').replace('.md', '');
   const retargeted = await retargetLinksToPage(ctx.app, sourcePath, targetPath);
-  if (retargeted.stale > 0) {
-    console.warn(
-      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
-      `(file changed since it was indexed) and will be dead after the merge`
-    );
-  }
-
-  await ctx.deleteFile(sourcePath);
   const linkNote = retargeted.linksRewritten > 0
     ? ` (${retargeted.linksRewritten} link${retargeted.linksRewritten === 1 ? '' : 's'} retargeted in ${retargeted.filesChanged} file${retargeted.filesChanged === 1 ? '' : 's'})`
     : '';
+  // Issue #825: a reference that could not be retargeted becomes a dead link the
+  // moment the source is deleted — the delete is what turns this merge into a net
+  // producer of them. The old code warned and deleted regardless. The source now
+  // survives, and the run says why instead of reporting an unqualified merge.
+  //
+  // The frontmatter half of the same issue is deliberately not here:
+  // `collectResolvingReferences` refusing to read `frontmatterLinks` is #386's
+  // scope, restated in #590, and widening it changes every merge's write
+  // behaviour. That is a decision, tracked in #835.
+  if (retargeted.stale > 0) {
+    console.warn(
+      `mergeDuplicatePages: ${retargeted.stale} link(s) to ${sourceRel} could not be retargeted ` +
+      `(file changed since it was indexed) — source kept so they stay resolvable`
+    );
+    return `merged ${sourceRel} → ${targetRel} but ${retargeted.stale} link${retargeted.stale === 1 ? '' : 's'} still point at the source — source kept${linkNote}`;
+  }
+
+  await ctx.deleteFile(sourcePath);
+  // Issue #825's sibling, and the reason a merged pair can come back: the two sides
+  // do not agree on what a path is. `tryReadFile` (`wiki-engine.ts:2209`) normalises
+  // the path and scans directories; `deleteFile` (`:2178`) uses an exact key and,
+  // when it misses, returns void having done nothing. The log then says `merged`
+  // while the source is still there, and the next lint reports the same pair again.
+  // Reading the path back is the cheapest way to tell the truth without widening
+  // `deleteFile`'s contract, which every caller and mock would have to follow.
+  if (await ctx.tryReadFile(sourcePath)) {
+    console.warn(
+      `mergeDuplicatePages: ${sourceRel} survived the delete — the source is still present, ` +
+      `so the next lint will report this pair again`
+    );
+    return `merged ${sourceRel} → ${targetRel} but the source could not be deleted and is still present${linkNote}`;
+  }
   return `merged ${sourceRel} → ${targetRel}${linkNote}`;
 }

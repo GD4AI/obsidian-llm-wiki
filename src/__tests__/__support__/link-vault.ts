@@ -35,6 +35,13 @@ export interface FakeLinkVault {
   };
   read(path: string): string;
   write(path: string, content: string): void;
+  /**
+   * Remove a file. Added so the fake can be as faithful as production here: it used
+   * to record a delete without performing one, which made a caller that read the
+   * path back afterwards see the file still present and was the reason a read-back
+   * check could not be written for #825.
+   */
+  remove(path: string): void;
   /** Paths whose content was handed to `vault.process`, in call order. */
   processed: string[];
 }
@@ -131,6 +138,7 @@ export function createFakeLinkVault(initial: Record<string, string>): FakeLinkVa
     },
     read: path => files.get(path) ?? '',
     write: (path, content) => { files.set(path, content); },
+    remove: path => { files.delete(path); },
     processed,
   };
 }
@@ -154,7 +162,7 @@ export function createMergeCtx(
     getClient: () => null,
     tryReadFile: async (path: string) => (files[path] === undefined ? fake.read(path) || null : fake.read(path)),
     createOrUpdateFile: async (path: string, content: string) => { fake.write(path, content); },
-    deleteFile: async (path: string) => { if (opts.captureDeletes) deleted.push(path); },
+    deleteFile: async (path: string) => { if (opts.captureDeletes) deleted.push(path); fake.remove(path); },
     getSchemaContext: async () => undefined,
   } as unknown as EngineContext;
   return { ctx, fake, deleted };

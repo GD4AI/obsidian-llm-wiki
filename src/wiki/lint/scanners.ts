@@ -8,6 +8,7 @@ import { getActiveEntityTags, getActiveConceptTags, getActiveSourceTags } from '
 import type { VocabularyLists } from '../../core/vocabulary';
 import { isDomainTag } from '../../core/domain-axis';
 import { normalizeQuote, isQuoteGrounded } from './utils';
+import { isStubPage } from '../page-factory/stub-page';
 import { LLMWikiSettings } from '../../types';
 
 export interface ScannerPage {
@@ -49,7 +50,11 @@ export function detectAliasDeficiency(
       const info = pageMap.get(file.path);
       if (info) {
         const fmMatch = info.content.match(/^---\n([\s\S]*?)\n---/);
-        if (fmMatch && !hasNonEmptyAliases(fmMatch[1])) {
+        // Issue #827's "at minimum" bar: a stub page must not become a finding.
+        // A stub was born from a gate dissent, not from a source, so it carries
+        // nothing to curate. Reporting it as alias-deficient asks the user to finish
+        // the tool's own artefact, and it asks again on every lint run.
+        if (fmMatch && !hasNonEmptyAliases(fmMatch[1]) && !isStubPage(parseFrontmatter(info.content))) {
           result.push(info);
         }
       }
@@ -118,6 +123,40 @@ function hasNonEmptyAliases(frontmatter: string): boolean {
   return blockHasContent;
 }
 
+const FENCE = /^\s*(```|~~~)/;
+
+/**
+ * Obsidian does not read a `[[link]]` inside inline code or a fenced block as a
+ * link, and neither may the scanners.
+ *
+ * Issue #827's root cause is here rather than in the fixer. A page that documents
+ * the syntax, or quotes a tool's manual, otherwise reports its own examples as
+ * dead links — and the fixer then creates a page for `Name` or `MyFile`. Masking
+ * needs only the page's text, with no link positions and no new contract between
+ * scanning and repair, which is why the two earlier attempts (a word list in the
+ * fixer, then a prompt rule there) were aimed a layer too high.
+ *
+ * Length is preserved so a caller that ever wants offsets still can. Quotation is
+ * deliberately NOT masked: `"[[X]]"` is a real link in Obsidian, so blanking it
+ * would delete real references, and the reporter's `"[[entities/name|Name]]"`
+ * example is instruction text that leaked into a page — a judging problem for the
+ * model, not a markup one.
+ */
+export function maskCodeRegions(content: string): string {
+  let inFence = false;
+  return content
+    .split('\n')
+    .map(line => {
+      if (FENCE.test(line)) {
+        inFence = !inFence;
+        return ' '.repeat(line.length);
+      }
+      if (inFence) return ' '.repeat(line.length);
+      return line.replace(/`[^`]*`/g, m => ' '.repeat(m.length));
+    })
+    .join('\n');
+}
+
 // Scan wiki pages for dead links ([[wikilinks]] pointing to non-existent targets).
 // Uses Map<string, {path, content, basename}> which requires no Obsidian types.
 export function scanDeadLinks(
@@ -134,8 +173,10 @@ export function scanDeadLinks(
   const seen = new Set<string>();
   const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
   for (const { path, content } of pageMap.values()) {
+    // #827: scan the masked text, so a link written as an example is not a target.
+    const scannable = maskCodeRegions(content);
     let match: RegExpExecArray | null;
-    while ((match = linkRegex.exec(content)) !== null) {
+    while ((match = linkRegex.exec(scannable)) !== null) {
       const target = match[1].trim();
       const targetLower = target.toLowerCase();
       if (!knownTargets.has(target) && !knownTargetsLower.has(targetLower)) {
@@ -170,8 +211,10 @@ export function scanOrphans(
   const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
   for (const { path, content } of pageMap.values()) {
     const sourceRel = path.replace(wikiFolder + '/', '').replace('.md', '');
+    // #827: an incoming link written as a code example does not un-orphan a page.
+    const scannable = maskCodeRegions(content);
     let match: RegExpExecArray | null;
-    while ((match = linkRegex.exec(content)) !== null) {
+    while ((match = linkRegex.exec(scannable)) !== null) {
       const target = match[1].trim();
       if (!incomingLinks.has(target)) incomingLinks.set(target, []);
       incomingLinks.get(target)!.push(sourceRel);
@@ -181,6 +224,11 @@ export function scanOrphans(
   const orphans: string[] = [];
   for (const { path, basename, content } of pageMap.values()) {
     const fm = parseFrontmatter(content);
+    // Issue #827's "at minimum": a stub is born from a gate dissent rather than from
+    // a source, so it has no natural inbound link and would be re-reported forever.
+    // It still counts as a link *source* above — it is a real page, and Obsidian's
+    // graph would count it — but it is never an orphan.
+    if (isStubPage(fm)) continue;
     const aliases = Array.isArray(fm?.aliases) ? fm.aliases : [];
     const relPath = path.replace(wikiFolder + '/', '').replace('.md', '');
     const nameWithoutExt = basename.replace('.md', '');

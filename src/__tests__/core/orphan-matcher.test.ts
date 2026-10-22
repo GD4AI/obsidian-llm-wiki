@@ -4,11 +4,57 @@ import {
   validateOrphanLinkTarget,
   buildOrphanLinkUpdate,
   normalizeOrphanPagePath,
+  retargetOrphanLinkTarget,
   type OrphanContext,
   type OrphanLinkSuggestion,
 } from '../../core/orphan-matcher';
 
 describe('Orphan Matcher — Pure Functions', () => {
+  // Issue #824's acceptance criterion is that the orphan gains an inbound link.
+  // Rebuilding the target from the orphan's own path is the only repair available
+  // without a second model call, and it cannot be wrong: the page is there by
+  // definition. The model's readable text is kept as the display label, because the
+  // `_f7bbee` suffix is an ingester artefact the user should not have to read.
+  describe('retargetOrphanLinkTarget', () => {
+    const ORPHAN = 'wiki/sources/paste-rules_f7bbee.md';
+
+    it('replaces an unresolvable bare target and keeps the guess as the label', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee|sources/paste-rules]]');
+    });
+
+    it('keeps an existing display label and changes only the target', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules|Paste Rules]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee|Paste Rules]]');
+    });
+
+    it('builds a link when the model supplied no wikilink at all', () => {
+      expect(retargetOrphanLinkTarget('paste rules', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee]]');
+    });
+
+    it('drops a wiki prefix the model put on the target', () => {
+      expect(retargetOrphanLinkTarget('[[wiki/sources/x|X]]', 'wiki/sources/x.md', 'wiki'))
+        .toBe('[[sources/x|X]]');
+    });
+
+    it('handles an orphan outside the wiki folder', () => {
+      // The resolver registers both forms, so this case must not grow a prefix.
+      expect(retargetOrphanLinkTarget('[[X]]', 'sources/x.md', 'wiki'))
+        .toBe('[[sources/x|X]]');
+    });
+
+    it('is idempotent on its own output', () => {
+      const once = retargetOrphanLinkTarget('[[sources/paste-rules]]', ORPHAN, 'wiki');
+      expect(retargetOrphanLinkTarget(once, ORPHAN, 'wiki')).toBe(once);
+    });
+
+    it('leaves a target that already names the page unchanged', () => {
+      expect(retargetOrphanLinkTarget('[[sources/paste-rules_f7bbee]]', ORPHAN, 'wiki'))
+        .toBe('[[sources/paste-rules_f7bbee]]');
+    });
+  });
+
   describe('buildOrphanLinkPrompt', () => {
     const mockContext: OrphanContext = {
       orphanContent: '# Orphan Page\n\nThis page needs links.',
@@ -137,9 +183,78 @@ describe('Orphan Matcher — Pure Functions', () => {
       const result = validateOrphanLinkTarget(content, '[[test]]');
       expect(result).toBe(false);
     });
+
+    // The identity of a link is its target, not its spelling. `[[page]]` and
+    // `[[page|Label]]` are the same link to the same page, and the label is
+    // presentation. Comparing whole strings instead let the same page be
+    // linked twice under two spellings.
+    describe('target identity (#824)', () => {
+      it('treats the same page under a different label as already linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/test|Test]]')).toBe(true);
+      });
+
+      it('treats the same page under the other label as already linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test|Test]]', '[[entities/test]]')).toBe(true);
+      });
+
+      it('accepts another spelling of the same page', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/test|Test]]', ['entities/test'])).toBe(true);
+      });
+
+      it('still reports a different page as not linked', () => {
+        expect(validateOrphanLinkTarget('has [[entities/other]]', '[[entities/test|Test]]')).toBe(false);
+      });
+    });
+
+    // Issue #824: the append decision must also consider whether the target is a
+    // page at all. The model supplies a display-derived guess — measured on a real
+    // vault as `[[sources/paste-rules]]` where the page is
+    // `sources/paste-rules_f7bbee` — and appending it links into nothing. The
+    // third parameter is optional, so every call above keeps its behaviour.
+    //
+    // The third parameter used to be a *resolver* — "does this target name some
+    // existing page?". That question is void now. The target is the orphan by
+    // construction, and the orphan is a file that was just read, so the target
+    // always names a real page. The parameter now carries the other spellings
+    // of that same page, so the comparison can be by identity.
+    describe('with accepted spellings (#824)', () => {
+      it('reports skip when the content already links an accepted spelling', () => {
+        expect(validateOrphanLinkTarget('has [[entities/test]]', '[[entities/target|Target]]', ['entities/test'])).toBe(true);
+      });
+
+      it('does not skip when the content links a different page', () => {
+        expect(validateOrphanLinkTarget('has [[entities/other]]', '[[entities/target|Target]]', ['entities/test'])).toBe(false);
+      });
+
+      it('treats an empty accepted list as no extra spellings', () => {
+        expect(validateOrphanLinkTarget('no links here', '[[entities/target|Target]]', [])).toBe(false);
+      });
+    });
   });
 
   describe('buildOrphanLinkUpdate', () => {
+    // Issue #824: `link_text` is a sentence the model writes, and it sometimes
+    // already ends with the link. Appending `link_target` unconditionally then
+    // produces `[[X|Y]]. [[X|Y]]` on one line — measured on a real vault.
+    it('does not append a second copy when link_text already carries the link', () => {
+      const result = buildOrphanLinkUpdate(
+        '# Related topic\n\nBody.',
+        { pagePath: 'entities/r.md', linkText: 'See [[orphans/o|Orphan]]', linkTarget: '[[orphans/o|Orphan]]' },
+        'Related Pages'
+      );
+      const occurrences = result.split('[[orphans/o|Orphan]]').length - 1;
+      expect(occurrences).toBe(1);
+    });
+
+    it('still appends when link_text is prose, so the guard is not a blanket drop', () => {
+      const result = buildOrphanLinkUpdate(
+        '# Related topic\n\nBody.',
+        { pagePath: 'entities/r.md', linkText: 'See also', linkTarget: '[[orphans/o|Orphan]]' },
+        'Related Pages'
+      );
+      expect(result).toContain('- See also [[orphans/o|Orphan]]');
+    });
+
     const mockSuggestion: OrphanLinkSuggestion = {
       pagePath: 'entities/related.md',
       linkText: '- See also',

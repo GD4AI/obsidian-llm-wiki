@@ -359,36 +359,22 @@ export async function fixDeadLink(
     return `stub created (unfilled): ${stubPath} — will be filled by next ingest of a real source`;
   }
 
-  // findDeadLinkTarget's pre-check above already ruled out every existing-page match.
-  // No match — create an honest placeholder stub. Do NOT expand it via LLM.
-  // #485: same leave-it gate as the LLM create_stub branch above.
-  if (!shouldCreateStubForUnresolvableLink(ctx.settings)) {
-    return 'left as dead link (stub creation disabled by createStubsForUnresolvableLinks)';
+  // #827: the model can now decline, and saying so beats falling through to the
+  // generic line below — when a user asks why a link is still dead, "the model
+  // judged this not to name a real thing" is the answer worth having.
+  if (result?.action === 'leave') {
+    return `left as dead link (model judged "${targetName}" not to name a real thing)`;
   }
-// #197: a dead link that doesn't resolve to any existing page is an honest
-// forward-reference. The user will eventually ingest a real source note that
-// defines the target, and at that point the normal ingest path (gated by
-// #164/#174) fills the stub through correct channels. Handing the stub to
-// fillEmptyPage() here would let the LLM fabricate alias claims and related
-// links against zero source content.
-const cleanBasename = targetBasename.replace(/^(entities|concepts|sources)([^\s\-_a-zA-Z0-9])/, '$2');
-const stubType: 'entity' | 'concept' = targetName.includes('/entities/') ? 'entity' : 'concept';
-const stubDir = stubType === 'entity' ? WIKI_SUBFOLDERS.entities : WIKI_SUBFOLDERS.concepts;
-const stubSlug = slugify(cleanBasename, ctx.settings.slugCase === 'preserve');
-const stubPath = `${ctx.settings.wikiFolder}/${stubDir}/${stubSlug}.md`;
-const sourceRel = makeRelPath(sourcePath, ctx.settings.wikiFolder);
-const stubContent = buildStubContent({
-  title: cleanBasename,
-  stubType,
-  wikiFolder: ctx.settings.wikiFolder,
-  referringPageRel: sourceRel,
-});
 
-await ctx.createOrUpdateFile(stubPath, stubContent);
-// #197: deliberately do NOT call fillEmptyPage here.
-
-const newLink = `[[${stubDir}/${stubSlug}|${cleanBasename}]]`;
-const updatedContent = replaceDeadLink(sourceContent, targetName, newLink);
-await ctx.createOrUpdateFile(sourcePath, updatedContent);
-return `fallback stub created (unfilled): ${stubPath} — will be filled by next ingest of a real source`;
+  // #827: this branch used to invent a stub for every dead link that resolved to
+  // nothing, whether or not the model had asked for one. The judgement belongs to
+  // the model, and it now has `action=leave` for a name that is not a real thing
+  // — it reads the source page, in the user's own language, which no hardcoded
+  // word list can do. When the model's answer is unusable there is no judgement
+  // to act on, so the code does not supply one of its own. Inventing a title here
+  // is what produced pages called `myfile`, `name`, `unknown-entity` and
+  // `untitled-concept`, and the report's own observation applies: a user cannot
+  // "fix" a page titled `Name`. #197's forward reference still works — it reaches
+  // the model branch above, where the model decides whether the name is real.
+  return `left as dead link (no usable repair for ${targetName})`;
 }

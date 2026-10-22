@@ -14,6 +14,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
+| **The handoff — what was decided, and what to do next** | [Handoff — 2026-10-22, before compaction](#handoff--2026-10-22-before-compaction) |
 | What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-17-latest-the-routine-queue-closed-and-the-release-file-caught-37-prs-behind) |
 | The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
@@ -26,6 +27,82 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 **Appendix A** holds the four design records; **Appendix B** holds the dated session blocks.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
+
+## Handoff — 2026-10-22, before compaction
+
+### The maintainer's decisions, and what each one authorises
+
+1. **Merge #864, #874, #867, #871.** All four are APPROVED, CI green, CLEAN. The merge is authorised; it is the first action on resume. #864 and #874 carry @DocTpoint's approval; #867 and #871 carry mine.
+2. **#866 waits on @DocTpoint's re-review.** The blocking point is fixed in `23956702` and the branch is rebased onto the current `main`. Do not merge it and do not review it again.
+3. **#855: re-measure before cutting or keeping the history.** The steps are spelled out below. The maintainer chose the measurement over a decision.
+4. **#755: I may rebase it, provided the contributor's identity is not lost.** The author's identity survives a rebase; the committer becomes the maintainer, and the maintainer accepted that. The credit survives because a squash merge's author is the PR author. The contributor's own trailer stays on the contributor's work — use `--subject`/`--body` on the squash rather than the default message, so the trailer is not carried onto a maintainer-authored commit.
+5. **#873's Q1–Q5 are still open.** The options, the costs and the recommendations are in the issue thread; each question closes with a one-line reply there. No code before they are answered.
+
+### The merge, step by step
+
+**#864 needs a fresh approving review before it can merge.** @DocTpoint's approval of `561b7847` was **dismissed** when the handoff commit was pushed on top of it (review `5597752014`, state DISMISSED). The code diff is byte-identical — `git diff --name-only 561b7847..6972533b -- src/ tools/` is empty, and the whole change is `MEMORY.md` and `ROADMAP.md` — so the dismissal is the cost of pushing to an approved PR, not a change in what was reviewed. The ruleset has `required_approving_review_count: 1` and no bypass actor, so the options are a re-approval or a temporary admin bypass. **A request for a re-approval is on #864**; if it is unanswered, ask again rather than bypassing.
+
+The same trap applies to #874, #867 and #871: **do not push to them after their approval lands.** Their heads are `0d896db3`, `1501c90b` and `2062119d` respectively, and those are the commits the approvals cover.
+
+```bash
+# 1. Closing keywords in the PR body — every hit must be an issue you mean to close.
+gh pr view <N> --json title,body --jq '.title, .body' \
+  | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'
+# 2. AI trailers on the branch commits AND on the draft squash message.
+git log origin/main..origin/<branch> --format=%B \
+  | grep -inE '^(co-authored-by|generated with|signed-off-by|assisted-by):'
+# 3. A review event, before the merge. An APPROVE already exists on all four;
+#    add a --comment audit note. `gh pr review --approve` is BLOCKED on my own PRs.
+gh pr review <N> --comment --body "<audit note>"
+# 4. The merge, with the message written explicitly.
+gh pr merge <N> --squash --delete-branch --subject "<subject>" --body-file <msg>
+# 5. Read the merge commit back — author, trailer, the closing keyword's effect.
+git show --stat --format="author: %an <%ae>%nsubject: %s" <merge-sha>
+```
+
+**Watch for the duplicate-review trap.** A `gh pr review` that returns a GraphQL EOF may still have posted. Check `gh pr view <N> --json reviews` before retrying, and note the duplicate in a PR comment — GitHub refuses to delete or dismiss a submitted COMMENTED review.
+
+### #855 — the re-measurement, spelled out so it needs no re-derivation
+
+The branch is `feat/two-stage-query-expansion` (head `b17d9068`); the harness and the corrected docs landed on it in `31566806`.
+
+1. **Extend the harness** (`tools/dev-instrument/run-conversation-eval.mjs`): report **r@10** alongside MRR and hit@1, and add a **derived follow-up set** — questions built from the vault's own edges, with the referring context supplied as history — next to the six hand-written cases in `conversation-cases.json`.
+2. **Re-run on the production vault**:
+   `npx tsx tools/dev-instrument/run-conversation-eval.mjs "/Users/greener/Documents/Obsidian Vault/wiki" --cases tools/dev-instrument/conversation-cases.json --derive --limit 30`
+3. **Judge against `none`, never against `concat`.** On `main` the retrieval query is the question alone (`selectPprSeeds(userMessage, …)`), so `none` is the arm that stands for what ships today. `concat` was never shipped. Measured against `none` the current weighted arm is **worse** on topic-switch (0.615 → 0.550) and better on follow-up MRR (0.121 → 0.248, hit@1 zero in both arms).
+4. **Then cut or keep.** If the history cannot beat `none` on both families, **remove the history half from the PR** — `buildWeightedRetrievalQuery`, `buildRetrievalQuery`, the history branch of `prepareRetrievalInputs`, and the `history: N rounds (weight 0.3)` line in the retrieval label — because with the history out they are unreachable and the dead-code policy forbids shipping them. Flipping a flag to zero and keeping them is shipping dead code. Then re-examine the three query strings, which collapse toward one when there is no history. If it can, keep it and implement the gate-based design the measurement points at: the question's own lexical coverage (`LEX_COVERAGE_MIN`, `LEX_MATCH_MIN_COUNT` in `select-seeds.ts`) decides whether the history joins the ranking query.
+5. **Before cutting, reconcile the ROADMAP's 16-33x r@10 on follow-ups** with the harness's numbers. They are different metrics on different question sets and are not yet on one instrument. Cutting a feature against six cases while a 16-33x claim stands unexamined is an unmeasured decision.
+
+### The state of everything
+
+| PR | State | Note |
+|---|---|---|
+| #864 | APPROVED, CLEAN | merge first; the lint family, 23 files |
+| #865 | MERGED (`2cd8c7e5`) | #503 closed by it |
+| #866 | CHANGES_REQUESTED, head `23956702` | waiting on @DocTpoint |
+| #867 | APPROVED, CLEAN | @juliasadler; the abort race and the two catch-alls |
+| #871 | APPROVED, CLEAN | @NotAFlightRisk; the debounce clamp Notice |
+| #874 | APPROVED, CLEAN | the schema cache, mtime-keyed |
+| #875 | MERGED into the #855 branch | the harness, `31566806` |
+| #855 | CHANGES_REQUESTED, head `b17d9068` | the re-measurement above |
+| #781, #755 | CONFLICTING | #755 may be rebased by me; #781 still waits on @DocTpoint's order |
+
+Issues opened this cycle: **#872** (the watcher does not consult the excluded-files list), **#873** (the user-defined taxonomy; decisions in the thread), **#876** (the log header's hint is never refreshed, so existing vaults keep the wrong one).
+
+### What is not verified, and what a continuation must not assume
+
+- **#867 and #871 were reviewed from their diffs and the production code, not by running their suites locally.** Their CI is green.
+- **#873's Q3 option C was costed in PRs, not in code.** The template layer and the rule layer have not been read.
+- **The ROADMAP's 16-33x r@10 on follow-ups has never been independently reproduced.**
+- **#781's blocking measurement** — the 2026-10-09 ruling says its premise measurement ran; the ROADMAP's "never run" refers to a different M0/A offset measurement. The two statements still have to be reconciled before the branch is touched.
+
+### Operational notes that cost time to rediscover
+
+- **Gate 1 takes over 30 minutes in the foreground** and times out at 3600 s. Run it in the background and read the exit codes: `nohup bash -c 'pnpm lint > /tmp/g-lint.log 2>&1; echo "lint=$?" >> /tmp/g.log; npx tsc --noEmit > /tmp/g-tsc.log 2>&1; echo "tsc=$?" >> /tmp/g.log; pnpm build > /tmp/g-build.log 2>&1; echo "build=$?" >> /tmp/g.log; pnpm test > /tmp/g-test.log 2>&1; echo "test=$?" >> /tmp/g.log; pnpm css-lint > /tmp/g-css.log 2>&1; echo "css=$?" >> /tmp/g.log' &`. **Build must precede test** — a test-first run fails with ENOENT on a fresh clone.
+- **`shazam_verify` reports 8 false-positive orphans**, all in `tools/dev-instrument/` (three `setup` esbuild plugin methods, four functions passed as first-class values, one `lexScore` object-shorthand export). Do not "fix" them.
+- **The production vault is `/Users/greener/Documents/Obsidian Vault/wiki`** — 2,141 pages, 537 carrying a `source:` marker. The test vaults that are still on disk are `/tmp/expA/wiki` and `/tmp/expB/wiki`.
+- **MiniMax credentials live only in `/tmp/wikkey.env`** and must not enter the repository.
+- **A subagent launch failed with `Cannot find package '@earendil-works/pi-coding-agent'`** — an infrastructure fault, not a task fault. Do not silently switch execution modes over it.
 
 ## Current state (2026-10-17, latest): the routine queue closed, and the release file caught 37 PRs behind
 
@@ -46,6 +123,20 @@ Swept ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones to 
 **#503 is implemented, and the reason it asks Obsidian instead of reimplementing is a measurement.** `folder-scope.ts` stays pure: the exclusion predicate arrives as an argument, and `core/user-ignore.ts` is the single place that knows `metadataCache.isUserIgnored`, which is not in the published typings. DocTpoint measured the semantics on Obsidian 1.13.7: a plain entry is a string **prefix** where the trailing slash is part of the pattern, `#Definition` matches **nothing** (not even a note carrying the tag), and `/…/` entries are regexes. Three rules, one of which is "silently match nothing" — the same reasoning that rejected an English stub word list in #827. **The two explicit file pickers deliberately keep the old behaviour**: a file the user selected by hand is a decision, not something to filter.
 
 **The eight "orphans" a call-graph tool reports are a different matter and must not be touched.** They are all live: three are `setup(build)` esbuild plugin methods, which esbuild calls through the plugin object and never by name; four are passed as first-class values (`evaluateMax('MAX', [rankBm25fWithText, rankPpr])`); and `lexScore` leaves through an object shorthand. **A zero-reference report is a hypothesis about the tool's resolution rules, not a verdict on the code** — so `listModels()` was worth checking with `grep` before believing it, and so were these.
+
+**The lint batch shipped as PR #864, nine commits, and three of the four plan rows were wrong in ways that change the next step.** One commit per issue, each with its own RED test and its own Gate 1; CI Gate 1 passes. The plan's #827 row asked for "three rules: generic word, code identifier, inline-code-or-quote-only"; its #826 row said the commit-time guard was "two guards, and one already exists one layer down"; and its #824 row named "can duplicate the link text on one line", which the substring rule cannot produce. Full corrections in [ROADMAP §"ROI order — the lint-fix correctness family"](./ROADMAP.md#roi-order--the-lint-fix-correctness-family-2026-10-12); this is the state. **A bold paragraph lead is not an address** — that section's plan and status live under a bold lead rather than a heading, so it cannot be linked to; the family heading is what resolves.
+
+**The word list was rejected, and the principle that replaced it is worth keeping.** The #827 plan resolved to roughly 70 English words. The project ships 11 locales, so that rule silently disables in 10 of them — a fix that works only where the reporter happened to write is not a fix. The model decides now (`action=leave` in `prompts/fixes.ts`), because "is this name real" is a question about meaning: `Osteopontin` and `LinkedIn` are real names, `Name` is not, and a spelling list cannot tell them apart. The list is gone from branch history — `git log -S GENERIC_STUB_WORDS` returns 0. `candidate-gate.ts`'s per-language connectives are **not** a precedent: those are a closed grammatical class, while placeholders are an open, behaviour-dependent set.
+
+**#827's root cause is in the scanner, and I first said it could not be fixed there.** I declined an inline-code rule on the grounds that it needed a new position contract between the scanner and the fixer. That was false: masking needs only the page's text, no positions, no contract. The cost of the wrong call was two patches at the wrong layer — the word list, then a prompt rule. `scanDeadLinks` and `scanOrphans` ran their link regex over raw content, so a `[[link]]` inside inline code or a fence was reported dead and the fixer then created a page for `Name` or `MyFile`; the reporter's placeholder pages came mostly from example text. Both scanners mask code regions now (`maskCodeRegions`). **Quotation is deliberately not masked, and a test asserts it** — `"[[X]]"` is a real link in Obsidian, and the reporter's `"[[entities/name|Name]]"` is instruction text that leaked into a page, which is a judging problem for the model.
+
+**Compare page identity, not path spelling — and the read/delete asymmetry is why it matters.** A string compare caught the literally repeated path and the missing `wiki/` prefix, and let **six** spellings through: `./`, a doubled slash, a dropped `.md`, and Unicode NFC/NFD in both directions. NFC/NFD is the dangerous one because the two sides disagree about what a path is: `tryReadFile` (`wiki-engine.ts:2209`) normalises the path and scans directories, while `deleteFile` (`:2178`) uses an exact key — so one spelling reads the page and the other deletes it. `canonicalPagePath` folds all six; the merge refuses on a match and the runner drops those pairs before they arrive. The same asymmetry runs the other way too: `merged` could be logged with the source still on disk, so the merge now reads the source back and reports when it survived.
+
+**Two test doubles were more forgiving than production, which is why both defects stayed hidden.** `createMergeCtx`'s `deleteFile` recorded a delete without performing one, so the read-back check above could not be written — it would have failed on the fake, not on the code. And `link-vault.ts` already skipped fenced links, which is why the link-retarget tests never surfaced the scanner bug. Both are fixed. **A lenient double hides exactly the defect you are looking for.**
+
+**Three of the four issues now meet their acceptance criteria outright, and the three follow-ups that closed the gap came from executing the batch rather than reading it.** #824 is `Closes`: an unresolvable target is rebuilt from the orphan's own path (`retargetOrphanLinkTarget`) instead of being skipped, because the page is there by definition and the model's readable text survives as the label. #827 is `Closes`: the model decides whether a name is real, the scanner masks code regions so an example is not a link, and a stub no longer returns as an alias-deficient or orphan finding. **One clause is declined on the record** — a name appearing only inside a quote is not treated as fiction, because `"[[X]]"` is a real link in Obsidian and treating quotation as evidence would delete real references. #826 is `Closes`. Only #825 stays `Refs`: the stale half is fixed and the fallback merge is idempotent, but the issue also asks whether `collectResolvingReferences` should read `frontmatterLinks`, and #386 excluded them deliberately.
+
+**Still open, and the order I would take them.** `deleteFile` returning `boolean` rather than `void` — the merge now reads the source back as a cheaper substitute, which reports the failure without changing a contract every caller and mock would have to follow. Then the `merged` count that still increments for a kept-source pair, which needs a structured outcome rather than a match on the message text. Then #855's P0: `weightedTerms` reaching the final ranking, `expanded.join(' ')` at `retrieval-plan.ts:131` untouched, waiting on its Doc review.
 
 ## Current state (2026-10-15)
 
@@ -463,6 +554,21 @@ Two things made it easy to miss.
 
 **Same family, three instances in this repo.** The schema body (this), the term index (#843/#844 — keyed on the index file, so an edited page body left it stale), and the frontmatter alias map that `fix-runners.ts:138` already had to watch with `vault.on('modify')`. Each is a cache whose key did not follow the file it described.
 
+### A repair's target comes from the operation, not from what the model guessed (#824, 2026-10-18)
+
+The orphan-link repair kept the model's guessed target whenever the guess "resolved". Resolving meant "names some page that exists" — a link-hygiene question. The question that decides the repair is "does this target name the orphan?" — a link-identity question. The check answered the first one and was used to decide the second.
+
+Two things made it invisible for months.
+
+- **The model cannot know the orphan's real path.** It sees the orphan's content and the wiki index, never its file name. It guesses a path from the display name. Every guess is wrong by construction — whether or not it happens to hit a page that exists. "The guess resolved" was never evidence that the guess was right.
+- **The failure reported success.** The run wrote the link, pushed the page onto the "linked" list, and told the user it was linked — while the orphan gained no inbound link and was reported again on the next run. That is worse than a plain failure: it hides the loop from the user and from the next lint. A report that says "fixed" while the file says otherwise is a false success, and it is worth treating a report and the file as two independent claims that must both hold.
+
+**The rule: name the question the operation must answer, then check that the code asks it.** A guard that answers a nearby question is worse than no guard, because it looks like protection.
+
+**The second-order cost was performance.** The resolver scanned every markdown file and its frontmatter aliases — once per orphan, per run — to answer a question whose answer did not change the outcome. A check whose answer cannot change the result should not exist; it is pure cost. Deleting it also deleted a vault-wide scan.
+
+**Corollary for the duplicate check.** Once the target is always the orphan, "is this link already there?" is a question about *identity*, not spelling. `[[page]]` and `[[page|Label]]` are the same page, and a page linked under the vault path and under the wiki-relative path is the same page too. Comparing whole strings let one page be linked twice under two spellings — the label is presentation, the target is identity.
+>
 ### GitHub hygiene
 
 - **Issue state can drift from merge history.** A PR that fixes Issue N but uses `Refs #N` / `See #N` / no link in its commit message → GitHub does NOT auto-close on merge. Verify with `gh issue view N --json state` before declaring an issue "solved". 5 such state-drift issues found on 2026-08-07 in v1.26.0 alone; remediation is `gh issue close N --comment "Closed by PR #XXX (merged ...)"`. (`feedback_issue_tracker_state_vs_merge_history`)
