@@ -339,7 +339,7 @@ contract are on `main`. What follows is what the model still needs in order to b
 | **Preview-Confirm gate** | #358 item 6 / #330 §2 | UX cost evaluation is still pending discussion — the gate is named as the smallest kernel of the Karpathy cycle |
 | **Stable mutation interface** | #358 item 7 / #330 §8 | Prerequisite for the external CLI sibling project |
 | **Per-type registration via Settings** | #358 item 1 / #328 Phase 2 | Strongly coupled to cross-type dedup |
-| **User-defined types** (events / risks / issues) | #317, joint with #491 / #330 / #358 | Adds an `event` page type beside entity/concept; the `config.md` type list becomes runtime-driven. **Not yet built — and see the note on #656 below** |
+| **User-defined types** (events / risks / issues) | #873, joint with #491 / #330 / #358 | Adds an `event` page type beside entity/concept; the type list becomes **runtime-driven through the injection layer** — a setting, never the schema file, per the three-layer split. **Not yet built.** #317's *other* half — a direct edit of `schema/config.md` being ignored — was a cache bug and is fixed separately; #873 holds the capability and the questions the maintainer has to answer first |
 | **User-extensible typed edges** (frontmatter `relations:`) | #358 item 2 / #285 | Community-pending |
 | **Bidirectional frontmatter** (`derived_from` + `wiki_pages`) | #358 item 3 / #220 | Source-revision awareness is the foundation |
 | **Source-revision awareness for merge** | #220 | Distinguishing "the page changed because its source changed" from "the page changed because a different source now affects it" |
