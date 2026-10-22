@@ -34,7 +34,7 @@ is current state.
 
 1. **Merge #864, #874, #867, #871.** All four are APPROVED, CI green, CLEAN. The merge is authorised; it is the first action on resume. #864 and #874 carry @DocTpoint's approval; #867 and #871 carry mine.
 2. **#866 waits on @DocTpoint's re-review.** The blocking point is fixed in `23956702` and the branch is rebased onto the current `main`. Do not merge it and do not review it again.
-3. **#855: re-measure before cutting or keeping the history.** The steps are spelled out below. The maintainer chose the measurement over a decision.
+3. **#855: re-measure before cutting or keeping the history — DONE 2026-10-22. The history stays.** The measurement ran on the production vault and the answer is keep: without the history a follow-up is unanswerable (r@10 0.000 over 30 derived cases), and the weighted form is the better of the two. The coverage-gate design that was the next candidate is refuted by the same measurement. Details in [§"Current state (2026-10-22, later)"](#current-state-2026-10-22-later-855s-history-question-is-measured-and-the-answer-is-keep).
 4. **#755: I may rebase it, provided the contributor's identity is not lost.** The author's identity survives a rebase; the committer becomes the maintainer, and the maintainer accepted that. The credit survives because a squash merge's author is the PR author. The contributor's own trailer stays on the contributor's work — use `--subject`/`--body` on the squash rather than the default message, so the trailer is not carried onto a maintainer-authored commit.
 5. **#873's Q1–Q5 are still open.** The options, the costs and the recommendations are in the issue thread; each question closes with a one-line reply there. No code before they are answered.
 
@@ -118,6 +118,36 @@ Issues opened this cycle: **#872** (the watcher does not consult the excluded-fi
 - **The production vault is `/Users/greener/Documents/Obsidian Vault/wiki`** — 2,141 pages, 537 carrying a `source:` marker. The test vaults that are still on disk are `/tmp/expA/wiki` and `/tmp/expB/wiki`.
 - **MiniMax credentials live only in `/tmp/wikkey.env`** and must not enter the repository.
 - **A subagent launch failed with `Cannot find package '@earendil-works/pi-coding-agent'`** — an infrastructure fault, not a task fault. Do not silently switch execution modes over it.
+
+## Current state (2026-10-22, later): #855's history question is measured, and the answer is keep
+
+The fourth review left one point: the history in the ranking query. The maintainer chose the measurement over the decision, the harness was extended (r@10, a derived follow-up set, the question's own name-tier coverage, and a per-case table), and the measurement ran on the 2,141-page production vault through the production path — `planRetrieval` plus `selectPprSeeds`, three arms.
+
+| family | arm | MRR | hit@1 | r@10 | not in list |
+|---|---|---|---|---|---|
+| topic-switch (n=30, derived) | none | **0.615** | **0.400** | **1.000** | 0 |
+| | concat | 0.205 | 0.100 | 0.367 | 13 |
+| | weighted | 0.550 | 0.333 | 0.967 | 1 |
+| follow-up (n=6, hand-written) | none | 0.121 | 0.000 | 0.333 | 3 |
+| | concat | **0.650** | **0.500** | **0.833** | 0 |
+| | weighted | 0.248 | 0.000 | 0.667 | 0 |
+| follow-up (n=30, derived) | none | 0.000 | 0.000 | 0.000 | 30 |
+| | concat | **0.622** | **0.400** | **1.000** | 0 |
+| | weighted | 0.599 | 0.400 | **1.000** | 0 |
+
+**The history stays.** Without it the derived follow-up family is not worse — it is *unanswerable*: r@10 0.000, all 30 misses, the expected page absent from the list in every case. The hand-written family drops to r@10 0.333 with hit@1 0.000. The history costs 0.065 MRR on topic-switch and one case in 30 falling out of the top 10. The trade is 3.3 % of the topic-switch r@10 against 33-100 % of the follow-up r@10, so it is a bad deal only if fewer than one query in ten is a follow-up.
+
+**The weighted form is the right form.** `concat` is the better arm on the hand-written follow-ups (0.650 vs 0.248) and the far worse one on topic-switch (0.205 vs 0.550). Weighted costs 0.065 MRR on topic-switch and gains 0.127 (hand-written) and 0.599 (derived), so its break-even mix is 34 % and 10 % follow-ups; concatenated's are 44 % and 45 %. The lower break-even wins, and the branch already ships the weighted form.
+
+**The coverage gate is refuted.** The design the ROADMAP pointed at was a gate on the question's own name-tier coverage: when the question covers enough on its own the history stays out, when it covers nothing the history carries it. The harness computes that statistic with the production functions (`lexMatchByTitleAndAliases`, `tokenizeQuery`, `segment`, `buildPageTerms`, `nameTierCoverage`), and it does not separate the families. The derived questions score 0.000 across all 30 cases and the topic-switch questions 1.000 across all 30 — but the six hand-written follow-ups score 1.000, 0.000, 1.000, 1.000, 0.730, 0.482, median 1.000. **The statistic measures the question's aspect word, not whether the question names its topic**: "它的显存需求呢？" matches some other page's name tier perfectly and is still an anaphora. A gate on that number would exclude the history for exactly the cases that need it.
+
+**One cost the harness cannot see, pointing the same way.** The harness passes no LLM client, so it measures the lexical and PPR path only. The cut shape also empties the *gate* query, and the gate is what decides whether a query escalates to the paid LLM stage — a follow-up's question names nothing, so gating on the question alone escalates every one. That is why `select-seeds.ts` keeps the history in the gate query on purpose ("a follow-up carries no content words, so gating on the question alone would escalate every one"). The cut shape is worse than the table shows.
+
+**Two measurement defects found and fixed, because both changed the reading.** The limit was applied per family, so the derived list was sampled while the hand-written cases sat in front of it: six hand-written cases became one, and the report blended two populations. The limit now applies per family AND per source. And the tool had no r@10 at all, while the ROADMAP's claim is in r@10 — the pipeline returns at most `RETRIEVAL_BUDGET` (20) pages, so "not in the list" was r@20 and there was no cut inside it.
+
+**What is still open.** The 16-33x r@10 claim is about the *expansion's* effect, measured by `run-expansion-eval.mjs` on synthetic corpora; these numbers are about the *history's* effect, measured by another tool on the production vault. Different intervention, so not reconciled — the claim should be restated as a claim about the expansion. And the harness's own caveats stand: the topic-switch question is the page's own title (a controlled displacement, not a natural utterance), and the derived follow-up question is a bare anaphora with no aspect word (a lower bound on the realistic shape, not the realistic shape).
+
+**One thing this measurement did not settle: the history's *weight*.** The weight reaches the ranking only indirectly, through which terms the expansion adds. The measurement says the history's presence is worth a great deal; it does not say 0.3 is the right number for it, and the harness does not sweep the weight. That is the next measurement, and it needs the harness to gain a weight axis before it can run.
 
 ## Current state (2026-10-17, latest): the routine queue closed, and the release file caught 37 PRs behind
 
