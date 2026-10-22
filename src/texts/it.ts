@@ -747,7 +747,7 @@ export const IT_TEXTS = {
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Registro operazioni',
     logHeaderSubtitle: 'Ogni acquisizione, esecuzione lint e operazione di manutenzione viene registrata qui automaticamente. Per una migliore visualizzazione, usa il pannello **Cronologia operazioni**:',
-    logHeaderShortcut: 'Cmd+P → "Visualizza cronologia operazioni"',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → "${cmd}"`,
     logHeaderSettingsShortcut: 'Oppure da Impostazioni → Manutenzione automatica → Cronologia operazioni',
     ingestionCreatedPages: '{count} pagina/e creata/e',
     ingestionUpdatedPages: '{count} pagina/e aggiornata/e',

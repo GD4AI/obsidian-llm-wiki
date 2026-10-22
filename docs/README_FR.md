@@ -99,12 +99,12 @@ Vous prenez des notes. Elles restent dans des dossiers. Retrouver ce qui se reli
 1. **Installez.** Obsidian → Paramètres → Plugins communautaires → Parcourir → recherchez « Karpathy LLM Wiki » → Installer → Activer. Ou visitez la [page du plugin communautaire](https://community.obsidian.md/plugins/karpathywiki) et cliquez sur **Ajouter à Obsidian**.
 2. **Configurez un fournisseur.** Ouvrez Paramètres → Karpathy LLM Wiki → choisissez un fournisseur (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → entrez la clé API (pas nécessaire pour le local) → cliquez sur **Test Connection** → Enregistrez.
 3. **Ingérez une note.** Deux méthodes :
-   - **⌨️ Clavier :** `Cmd+P/Ctrl+P` → « Ingest single source » → choisissez n'importe quel fichier Markdown (ou PDF, v1.25.0+).
+   - **⌨️ Clavier :** `Cmd+P/Ctrl+P` → « Importer une source unique » → choisissez n'importe quel fichier Markdown (ou PDF, v1.25.0+).
    - **🖱️ Icône de barre d'outils :** Cliquez sur l'**icône d'autocollant** dans le ruban gauche d'Obsidian pour ingérer instantanément la note actuellement ouverte — pas besoin de chercher dans les menus.
    
    Vos premières pages wiki apparaissent dans `wiki/sources/`, `wiki/entities/`, `wiki/concepts/` en quelques secondes.
 4. **Discutez avec votre wiki.** Deux méthodes :
-   - **⌨️ Clavier :** `Cmd+P/Ctrl+P` → « Query wiki ».
+   - **⌨️ Clavier :** `Cmd+P/Ctrl+P` → « Interroger le wiki ».
    - **🖱️ Icône de barre d'outils :** Cliquez sur l'**icône de bulle de message** dans le ruban gauche d'Obsidian.
    
    Un panneau latéral droit de style Copilot s'ouvre, dans lequel vous pouvez discuter avec votre wiki. Les réponses sont accompagnées de `[[wiki-links]]` qui renvoient vers votre graphe de connaissances.
@@ -117,15 +117,15 @@ C'est tout. Le plugin ne modifie rien dans vos notes originales — il crée uni
 
 | Commande | Action |
 |----------|--------|
-| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → « Ingest single source » — choisissez un fichier Markdown ou **PDF (v1.25.0+)** pour obtenir des pages entité/concept/wiki. *Ou : 🖱️ cliquez sur l'icône d'autocollant du ruban gauche sur la note active.* |
-| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → « Ingest from folder » — ingestion par lot de toutes les notes d'un dossier, avec saut intelligent de lot |
-| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → « Ingest multiple files » — sélectionnez un sous-ensemble via une arborescence à deux volets (file d'attente en direct + annulation par fichier) |
-| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → « Query wiki » — discutez avec votre wiki dans un panneau latéral droit ; les réponses sont accompagnées de `[[wiki-links]]`. *Ou : 🖱️ cliquez sur l'icône de bulle de message du ruban gauche.* |
-| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → « Lint wiki » — analyse complète de santé : doublons, liens morts, pages vides, orphelines, alias manquants, contradictions |
+| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → « Importer une source unique » — choisissez un fichier Markdown ou **PDF (v1.25.0+)** pour obtenir des pages entité/concept/wiki. *Ou : 🖱️ cliquez sur l'icône d'autocollant du ruban gauche sur la note active.* |
+| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → « Importer depuis un dossier » — ingestion par lot de toutes les notes d'un dossier, avec saut intelligent de lot |
+| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → « Importer plusieurs fichiers » — sélectionnez un sous-ensemble via une arborescence à deux volets (file d'attente en direct + annulation par fichier) |
+| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → « Interroger le wiki » — discutez avec votre wiki dans un panneau latéral droit ; les réponses sont accompagnées de `[[wiki-links]]`. *Ou : 🖱️ cliquez sur l'icône de bulle de message du ruban gauche.* |
+| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → « Vérifier le wiki » — analyse complète de santé : doublons, liens morts, pages vides, orphelines, alias manquants, contradictions |
 | **⚡ Smart Fix All** | dans le modal Lint — réparation en un clic par ordre causal avec rapport par phase |
-| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → « Regenerate index » — reconstruit `wiki/index.md` avec les pages et alias actuels |
-| **⏹ Cancel** | `Cmd+P/Ctrl+P` → « Cancel current ingestion » ou cliquez sur la barre d'état — s'arrête proprement à la prochaine limite de lot |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → « View operation history » — UI consultable pour les ingestions passées, rapports Lint et maintenances |
+| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → « Régénérer l'index » — reconstruit `wiki/index.md` avec les pages et alias actuels |
+| **⏹ Cancel** | `Cmd+P/Ctrl+P` → « Annuler l'ingestion en cours » ou cliquez sur la barre d'état — s'arrête proprement à la prochaine limite de lot |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → « Voir l'historique d'ingestion » — UI consultable pour les ingestions passées, rapports Lint et maintenances |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Avant | Après |
@@ -346,7 +346,7 @@ Utilisez la granularité d'extraction Grossière ou Minimale pour l'ingestion pa
 
 ### Comment annuler une opération en cours ?
 
-Cliquez sur la barre d'état (affiche « Ingestion… cliquer pour annuler ») ou `Cmd+P/Ctrl+P` → « Cancel current ingestion ». S'arrête proprement à la prochaine limite de lot.
+Cliquez sur la barre d'état (affiche « Ingestion… cliquer pour annuler ») ou `Cmd+P/Ctrl+P` → « Annuler l'ingestion en cours ». S'arrête proprement à la prochaine limite de lot.
 
 ### Où obtenir de l'aide ?
 

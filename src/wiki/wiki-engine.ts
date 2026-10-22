@@ -304,6 +304,12 @@ export class WikiEngine {
     this.logWriter = new LogWriter({
       wikiFolder: this.settings.wikiFolder,
       wikiLanguage: this.settings.wikiLanguage ?? '',
+      // Issue #793: the command palette is registered from the INTERFACE
+      // language, so the header quotes the command as it is registered there.
+      // With `language: en` and `wikiLanguage: de` the palette shows "View
+      // operation history", and a header that quoted the German name would
+      // point at a command the user cannot run.
+      commandName: (TEXTS[this.settings.language] || TEXTS.en).cmdViewHistory,
       readFile: (path: string) => this.tryReadFile(path),
       // #603 slice 2: the log declares its intent instead of inheriting the
       // full gate. `guard: false` — see `LOG_WRITE_INTENT`: the path-prefix

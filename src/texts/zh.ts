@@ -690,7 +690,7 @@ export const ZH_TEXTS = {
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki 操作日志',
     logHeaderSubtitle: '每次摄入、Lint 运行和维护操作都会自动记录在这里。推荐使用**操作历史**面板获得更好的可视化呈现：',
-    logHeaderShortcut: 'Cmd+P → "查看操作历史"',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → "${cmd}"`,
     logHeaderSettingsShortcut: '或从 设置 → 自动维护 → 操作历史 进入',
     ingestionCreatedPages: '{count} 个页面已创建',
     ingestionUpdatedPages: '{count} 个页面已更新',

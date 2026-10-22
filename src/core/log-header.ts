@@ -15,13 +15,30 @@ import { TEXTS } from '../texts';
 
 const HEADER_MARKER_START = '<!-- llm-wiki-log-header-start -->';
 
-export function buildLogHeader(lang: string): string {
-  const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.en;
+/**
+ * Build the log header.
+ *
+ * `headerLang` is the language the header is written in — the wiki's content
+ * language. `commandName` is the name of the command the header points at,
+ * and it comes from the **interface** language, because that is the language
+ * the command palette is registered in. Issue #793: with `language: en` and
+ * `wikiLanguage: de`, the palette shows "View operation history", so a
+ * German header that quoted "Ingestionsverlauf anzeigen" would send the user
+ * looking for a command that does not exist.
+ *
+ * The name is a required argument rather than an optional one. An optional
+ * parameter with a fallback to the header language's own name is the same
+ * "one fact stored twice" shape that produced the drift in the first place:
+ * a caller that forgets it gets a plausible wrong answer instead of a
+ * compile error.
+ */
+export function buildLogHeader(headerLang: string, commandName: string): string {
+  const t = TEXTS[headerLang as keyof typeof TEXTS] || TEXTS.en;
   return `${HEADER_MARKER_START}
 # ${t.logHeaderTitle}
 
 ${t.logHeaderSubtitle}
-- ${t.logHeaderShortcut}
+- ${t.logHeaderShortcut(commandName)}
 - ${t.logHeaderSettingsShortcut}
 
 ---
@@ -58,8 +75,15 @@ export function needsLogHeaderMigration(content: string | null, lang: string): b
 
 /** Non-destructive migration: replace the legacy single-line H1 with the
  *  new multi-line header from buildLogHeader, preserving all subsequent
- *  ## [date time] entries. Idempotent on already-migrated content. */
-export function migrateLogHeader(content: string | null, lang: string): string | null {
+ *  ## [date time] entries. Idempotent on already-migrated content.
+ *
+ *  `commandName` is the registered command name, for the same reason it is
+ *  required in `buildLogHeader`. */
+export function migrateLogHeader(
+  content: string | null,
+  lang: string,
+  commandName: string
+): string | null {
   if (!content) return content;
   if (!needsLogHeaderMigration(content, lang)) return content;
   // The H1 is the first line. Drop it + the immediate blank line (if any),
@@ -75,6 +99,6 @@ export function migrateLogHeader(content: string | null, lang: string): string |
   }
   cutIdx++; // cut AFTER the trailing blank line
   const tail = lines.slice(cutIdx).join('\n');
-  const newHeader = buildLogHeader(lang);
+  const newHeader = buildLogHeader(lang, commandName);
   return newHeader + tail;
 }
