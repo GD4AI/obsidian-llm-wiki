@@ -40,9 +40,24 @@ is current state.
 
 ### The merge, step by step
 
-**#864 needs a fresh approving review before it can merge.** @DocTpoint's approval of `561b7847` was **dismissed** when the handoff commit was pushed on top of it (review `5597752014`, state DISMISSED). The code diff is byte-identical — `git diff --name-only 561b7847..6972533b -- src/ tools/` is empty, and the whole change is `MEMORY.md` and `ROADMAP.md` — so the dismissal is the cost of pushing to an approved PR, not a change in what was reviewed. The ruleset has `required_approving_review_count: 1` and no bypass actor, so the options are a re-approval or a temporary admin bypass. **A request for a re-approval is on #864**; if it is unanswered, ask again rather than bypassing.
+**All four merges landed on 2026-10-22.** #864 needed a mechanism the earlier draft did not anticipate, and the two facts that make it work are below — read them before the next merge that touches an approved branch.
 
-The same trap applies to #874, #867 and #871: **do not push to them after their approval lands.** Their heads are `0d896db3`, `1501c90b` and `2062119d` respectively, and those are the commits the approvals cover.
+**A push dismisses the approval, because the ruleset says so.** Ruleset 16884813 carries `dismiss_stale_reviews_on_push: true` inside the `pull_request` rule. The repository-level setting reads `null`, which is why a check of the repo attributes finds nothing and the dismissal looks inexplicable. Any push after an approval — even a documentation commit — dismisses it. So: **do not push to a branch that holds an approval.** Commit everything first, then push once, then ask for the review.
+
+**The bypass endpoint that does not exist.** `GET` and `PUT` on `/repos/{owner}/{repo}/rulesets/{id}/bypass_actors` both return 404, with and without the `X-GitHub-Api-Version` header. The way through is a read-modify-write of the whole ruleset:
+
+```bash
+gh api repos/GD4AI/obsidian-llm-wiki/rulesets/16884813 > /tmp/ruleset-before.json
+# keep name, target, enforcement, conditions, rules; set bypass_actors
+#   to [{"actor_type": "OrganizationAdmin", "role_name": "admin"}]
+gh api --method PUT repos/GD4AI/obsidian-llm-wiki/rulesets/16884813 --input <body>
+gh pr merge <N> --squash --delete-branch --admin --subject "..." --body-file <msg>
+# restore: same body, bypass_actors: [] — then re-read and compare every field
+```
+
+`RepositoryRole` is rejected with a 422 — it wants an `actor_id`. `OrganizationAdmin` with `role_name: admin` is accepted, and `current_user_can_bypass` flips from `never` to `always`. **Restore the ruleset immediately after the merge and read it back**: the six fields `name`, `target`, `enforcement`, `conditions`, `rules` and `bypass_actors` must compare equal to the snapshot taken before the change. A ruleset left open is a ruleset that lets anyone merge anything.
+
+**The body file must not repeat the subject.** `gh pr merge --body-file <f>` sets the body from the file and the subject from `--subject`, and the file's first line becomes the body's first line. A file that starts with the subject line puts the subject in the message twice. #865 and #874 have that duplication; the commits are merged and cannot be amended, so the cost is a subject line that appears twice in `git log`. #867 and #871 were merged without it.
 
 ```bash
 # 1. Closing keywords in the PR body — every hit must be an issue you mean to close.
@@ -77,12 +92,12 @@ The branch is `feat/two-stage-query-expansion` (head `b17d9068`); the harness an
 
 | PR | State | Note |
 |---|---|---|
-| #864 | APPROVED, CLEAN | merge first; the lint family, 23 files |
-| #865 | MERGED (`2cd8c7e5`) | #503 closed by it |
-| #866 | CHANGES_REQUESTED, head `23956702` | waiting on @DocTpoint |
-| #867 | APPROVED, CLEAN | @juliasadler; the abort race and the two catch-alls |
-| #871 | APPROVED, CLEAN | @NotAFlightRisk; the debounce clamp Notice |
-| #874 | APPROVED, CLEAN | the schema cache, mtime-keyed |
+| #864 | **MERGED** (`3136bfb35e`) | the lint family, 23 files; #826, #824, #827 closed |
+| #865 | **MERGED** (`2cd8c7e5`) | #503 closed by it |
+| #866 | CHANGES_REQUESTED, head `cf9c1d5f` | rebased onto the new main; waiting on @DocTpoint |
+| #867 | **MERGED** (`d461b054`) | @juliasadler; the abort race and the two catch-alls; #703 closed |
+| #871 | **MERGED** (`5665855d`) | @NotAFlightRisk; the debounce clamp Notice; closed nothing |
+| #874 | **MERGED** (`8d6556ac6b`) | the schema cache, mtime-keyed; #317 closed |
 | #875 | MERGED into the #855 branch | the harness, `31566806` |
 | #855 | CHANGES_REQUESTED, head `b17d9068` | the re-measurement above |
 | #781, #755 | CONFLICTING | #755 may be rebased by me; #781 still waits on @DocTpoint's order |
