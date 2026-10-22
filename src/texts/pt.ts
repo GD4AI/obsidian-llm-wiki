@@ -412,6 +412,7 @@ export const PT_TEXTS = {
     watchModeAuto: 'Ingerir automaticamente',
     autoWatchDebounceName: 'Atraso de debounce (segundos)',
     autoWatchDebounceDesc: 'Tempo de espera antes de acionar a ingestão após alteração de arquivo (1-60 segundos)',
+    autoWatchDebounceClamped: 'Valor fora do intervalo (1-60), automaticamente definido como {}',
     periodicLintName: 'Verificação periódica',
     periodicLintDesc: 'Executar verificação LLM agendada, somente quando arquivos fonte foram alterados desde a última verificação',
     periodicLintOff: 'Desativado',

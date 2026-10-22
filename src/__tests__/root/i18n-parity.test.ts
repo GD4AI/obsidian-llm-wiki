@@ -295,3 +295,13 @@ describe('startupCheckDisableHint names the notice level setting in every locale
     expect(t.startupCheckDisableHint).toContain(t.startupCheckNoticeLevelName);
   });
 });
+
+describe('autoWatchDebounceClamped states the debounce range in every locale', () => {
+  it.each(LOCALES)('locale "%s" states the debounce range its own description states', (locale) => {
+    const t = TEXTS[locale] as unknown as Record<string, string>;
+    const range = /(\d+\s*[-–〜]\s*\d+)/.exec(t.autoWatchDebounceDesc)?.[1];
+    expect(range).toBeTruthy();
+    expect(t.autoWatchDebounceClamped).toContain(range!);
+    expect(t.autoWatchDebounceClamped).toContain('{}');
+  });
+});

@@ -412,6 +412,7 @@ export const ES_TEXTS = {
     watchModeAuto: 'Ingestión automática',
     autoWatchDebounceName: 'Retraso de debounce (segundos)',
     autoWatchDebounceDesc: 'Tiempo de espera antes de disparar la ingestión tras un cambio en un archivo (1-60 segundos)',
+    autoWatchDebounceClamped: 'Valor fuera del rango (1-60), automáticamente establecido a {}',
     periodicLintName: 'Verificación lint periódica',
     periodicLintDesc: 'Ejecuta lint LLM de forma programada, solo cuando los archivos fuente han cambiado desde la última comprobación',
     periodicLintOff: 'Desactivado',

@@ -411,6 +411,7 @@ export const KO_TEXTS = {
     watchModeAuto: '자동 수집',
     autoWatchDebounceName: '디바운스 지연 (초)',
     autoWatchDebounceDesc: '파일 변경 후 수집 트리거까지 대기 시간 (1-60초)',
+    autoWatchDebounceClamped: '값이 범위(1-60)를 벗어나 {}초로 자동 설정되었습니다',
     periodicLintName: '정기 린트',
     periodicLintDesc: '일정에 따라 LLM 린트 실행, 마지막 확인 이후 소스 파일이 변경된 경우에만',
     periodicLintOff: '끄기',

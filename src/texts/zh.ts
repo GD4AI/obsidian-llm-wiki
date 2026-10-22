@@ -411,6 +411,7 @@ export const ZH_TEXTS = {
     watchModeAuto: '自动摄入',
     autoWatchDebounceName: '防抖延迟 (秒)',
     autoWatchDebounceDesc: '文件变更后等待多久触发摄入 (1-60秒)',
+    autoWatchDebounceClamped: '数值超出范围（1-60），已自动设定为 {}',
     periodicLintName: '定时维护',
     periodicLintDesc: '定期检查 Wiki 健康状况，有源文件变更时才执行 LLM 维护',
     periodicLintOff: '关闭',

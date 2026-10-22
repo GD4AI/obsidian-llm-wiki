@@ -430,6 +430,7 @@ export const EN_TEXTS = {
     watchModeAuto: 'Auto Ingest',
     autoWatchDebounceName: 'Debounce Delay (seconds)',
     autoWatchDebounceDesc: 'Wait time before triggering ingest after a file change (1-60 seconds)',
+    autoWatchDebounceClamped: 'Value outside range (1-60), automatically set to {}',
     periodicLintName: 'Periodic Lint',
     periodicLintDesc: 'Run LLM lint on schedule, only when source files have changed since last check',
     periodicLintOff: 'Off',

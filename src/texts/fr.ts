@@ -412,6 +412,7 @@ export const FR_TEXTS = {
     watchModeAuto: 'Import automatique',
     autoWatchDebounceName: "Délai d'anti-rebond (secondes)",
     autoWatchDebounceDesc: "Temps d'attente avant de déclencher l'import après une modification de fichier (1-60 secondes)",
+    autoWatchDebounceClamped: 'Valeur hors plage (1-60), automatiquement réglée sur {}',
     periodicLintName: 'Vérification périodique',
     periodicLintDesc: "Exécuter une vérification LLM planifiée, uniquement lorsque les fichiers sources ont changé depuis la dernière vérification",
     periodicLintOff: 'Désactivé',
