@@ -40,6 +40,10 @@ is current state.
 
 ### The merge, step by step
 
+**#864 needs a fresh approving review before it can merge.** @DocTpoint's approval of `561b7847` was **dismissed** when the handoff commit was pushed on top of it (review `5597752014`, state DISMISSED). The code diff is byte-identical — `git diff --name-only 561b7847..6972533b -- src/ tools/` is empty, and the whole change is `MEMORY.md` and `ROADMAP.md` — so the dismissal is the cost of pushing to an approved PR, not a change in what was reviewed. The ruleset has `required_approving_review_count: 1` and no bypass actor, so the options are a re-approval or a temporary admin bypass. **A request for a re-approval is on #864**; if it is unanswered, ask again rather than bypassing.
+
+The same trap applies to #874, #867 and #871: **do not push to them after their approval lands.** Their heads are `0d896db3`, `1501c90b` and `2062119d` respectively, and those are the commits the approvals cover.
+
 ```bash
 # 1. Closing keywords in the PR body — every hit must be an issue you mean to close.
 gh pr view <N> --json title,body --jq '.title, .body' \
