@@ -46,7 +46,12 @@
 //
 //   --cases <file>     JSON case file. See CASES FORMAT below.
 //   --derive           auto-derive topic-switch cases from the vault's pages.
-//   --limit <n>        cap the number of cases (evenly sampled, never the head).
+//   --derive-followup  auto-derive follow-up cases: the question names
+//                      nothing, the history carries the target's title.
+//   --followup-phrase  the anaphoric question a derived follow-up asks.
+//                      Several, separated by `|`. Default: 那它呢？
+//   --limit <n>        cap the number of cases per family AND per source
+//                      (evenly sampled, never the head).
 //   --family <name>    topic-switch | follow-up | all  (default: all)
 //   --rounds <n>       history rounds (default: the production constant)
 //   --out <file>       write the report to a file
@@ -79,7 +84,15 @@ import { planRetrieval } from '../../src/wiki/query-engine/pipeline/retrieval-pl
 import { TermIndexCache } from '../../src/core/term-index-cache.ts';
 import { ExpansionTermsCache, DEFAULT_EXPANSION } from '../../src/core/query-expansion.ts';
 import { EN_TEXTS } from '../../src/texts/en.ts';
-import { segment } from '../../src/core/term-index.ts';
+import {
+  segment,
+  buildPageTerms,
+  nameTierCoverage,
+} from '../../src/core/term-index.ts';
+import {
+  lexMatchByTitleAndAliases,
+  tokenizeQuery,
+} from '../../src/core/ppr-cascade.ts';
 import { RETRIEVAL_HISTORY_ROUNDS } from '../../src/constants.ts';
 
 const args = process.argv.slice(2);
@@ -94,6 +107,16 @@ const flag = (name, dflt) => {
 };
 const CASES_FILE = flag('cases', null);
 const DERIVE = args.includes('--derive');
+const DERIVE_FOLLOWUP = args.includes('--derive-followup');
+/**
+ * The anaphoric question a derived follow-up asks.
+ *
+ * It carries no content words, so the words that identify the page can only
+ * come from the history. The production vault is Chinese, so that is the
+ * default; `--followup-phrase` overrides it for another vault, and the flag
+ * takes several phrases separated by `|`.
+ */
+const FOLLOWUP_PHRASES = (flag('followup-phrase', '那它呢？') || '那它呢？').split('|').map(s => s.trim()).filter(Boolean);
 const LIMIT = Number(flag('limit', 0)) || 0;
 const FAMILY = flag('family', 'all');
 const ROUNDS = Number(flag('rounds', RETRIEVAL_HISTORY_ROUNDS)) || RETRIEVAL_HISTORY_ROUNDS;
@@ -132,14 +155,20 @@ function toTurns(history) {
 }
 
 /**
- * Auto-derive topic-switch cases from the vault's own pages.
+ * Auto-derive the target pages from the vault's own pages.
  *
- * The question is the page's own title, so the page is retrievable in
- * principle; the history is built from OTHER pages' titles, chosen so they
- * share no vocabulary with it. That is the switch: the history is on a
- * different subject, and the question's page must still come first.
+ * A target is a page with a title. For each target, the pages whose titles
+ * share no vocabulary with it are collected as the "unrelated" set — a
+ * topic-switch history is built from those, and a follow-up history is built
+ * from the target's own title.
+ *
+ * The two families are built from the SAME targets, so the difference between
+ * them is the question and nothing else: the topic-switch question is the
+ * target's own title (self-sufficient), the follow-up question is an
+ * anaphora that names nothing (so the identifying words can only come from
+ * the history). That is the comparison the cut-or-keep decision needs.
  */
-function deriveTopicSwitch() {
+function deriveTargets() {
   const titles = refs
     .map(r => ({ path: r.path, title: (r.title ?? '').trim() }))
     .filter(x => x.title.length > 3);
@@ -160,36 +189,79 @@ function deriveTopicSwitch() {
     const stride = Math.max(1, Math.floor(others.length / 4));
     const history = [0, 1, 2, 3].map(k => others[k * stride]?.title).filter(Boolean);
     if (history.length < 4) continue;
-    out.push({
-      name: `topic-switch:${target.path}`,
-      family: 'topic-switch',
-      question: target.title,
-      history,
-      expected: target.path,
-    });
+    out.push({ target, history });
   }
   return out;
+}
+
+/** The topic-switch case for one target: the question names the page. */
+function topicSwitchCase({ target, history }) {
+  return {
+    name: `topic-switch:${target.path}`,
+    family: 'topic-switch',
+    source: 'derived',
+    question: target.title,
+    history,
+    expected: target.path,
+  };
+}
+
+/**
+ * The follow-up case for one target: the question names nothing.
+ *
+ * The history is the target's own title and the anaphora, which is the shape
+ * of a real follow-up: the words that identify the page were said in the
+ * previous turn. There is no unrelated turn here on purpose — this family
+ * isolates the signal ("the history carries the identifying words"), and the
+ * topic-switch family measures the cost of the noise.
+ */
+function followUpCase({ target }, phrase) {
+  return {
+    name: `follow-up:${target.path}`,
+    family: 'follow-up',
+    source: 'derived',
+    question: phrase,
+    history: [`user: ${target.title}`, `user: ${phrase}`],
+    expected: target.path,
+  };
 }
 
 let cases = [];
 if (CASES_FILE) {
   const parsed = JSON.parse(readFileSync(CASES_FILE, 'utf8'));
   cases = Array.isArray(parsed) ? parsed : (parsed.cases ?? []);
+  // The hand-written cases and the derived ones are different shapes, and
+  // they answer different questions: the hand-written ones carry an aspect
+  // word ("its VRAM requirement"), the derived ones name nothing at all. The
+  // report splits them, so a number is never a blend of two populations.
+  for (const c of cases) if (!c.source) c.source = 'hand-written';
 }
-if (DERIVE) cases = cases.concat(deriveTopicSwitch());
+if (DERIVE || DERIVE_FOLLOWUP) {
+  const targets = deriveTargets();
+  if (DERIVE) cases = cases.concat(targets.map(topicSwitchCase));
+  if (DERIVE_FOLLOWUP) {
+    for (const t of targets) {
+      for (const phrase of FOLLOWUP_PHRASES) cases.push(followUpCase(t, phrase));
+    }
+  }
+}
 if (FAMILY !== 'all') cases = cases.filter(c => c.family === FAMILY);
-// The limit applies PER FAMILY. Applied to the combined list it would change
-// which cases each family contributes, and two runs would stop being
-// comparable — the number a report quotes has to be the number a re-run
-// reproduces.
+// The limit applies PER FAMILY AND PER SOURCE. Applied to the combined list
+// it would change which cases each group contributes, and two runs would
+// stop being comparable — the number a report quotes has to be the number a
+// re-run reproduces. The source is part of the key because the hand-written
+// cases and the derived ones are different populations: a limit applied to
+// the family alone samples the derived list, and the hand-written cases sit
+// in front of it, so they are almost all skipped.
 if (LIMIT > 0) {
-  const byFamily = new Map();
+  const byGroup = new Map();
   for (const c of cases) {
-    if (!byFamily.has(c.family)) byFamily.set(c.family, []);
-    byFamily.get(c.family).push(c);
+    const key = `${c.family}|${c.source ?? 'hand-written'}`;
+    if (!byGroup.has(key)) byGroup.set(key, []);
+    byGroup.get(key).push(c);
   }
   cases = [];
-  for (const [, group] of byFamily) {
+  for (const [, group] of byGroup) {
     if (group.length <= LIMIT) { cases.push(...group); continue; }
     const stride = Math.floor(group.length / LIMIT);
     cases.push(...group.filter((_, i) => i % stride === 0).slice(0, LIMIT));
@@ -206,6 +278,38 @@ if (cases.length === 0) {
 
 const termCache = new TermIndexCache();
 const expansionCache = new ExpansionTermsCache();
+
+// The name tier is the same table Stage 1 of the production pipeline reads:
+// title and aliases, no summary, no body. The question statistics below come
+// from it, so the number this tool prints is the number the pipeline computes.
+const nameTier = termCache.getNameTier(indexContent, refs);
+const corpusTerms = nameTier.corpus;
+
+/**
+ * The question's own lexical standing, computed by the production functions.
+ *
+ * This is the statistic the two conversation families differ on. A topic-switch
+ * question names its page, so the name tier covers most of the query's IDF; a
+ * follow-up question names nothing, so the coverage is near zero and the
+ * identifying words can only come from the history. A rule that could serve
+ * both families at once would read this number, so the tool measures it.
+ */
+function questionStats(question) {
+  const hits = lexMatchByTitleAndAliases(question, refs, { corpus: corpusTerms });
+  const queryTerms = tokenizeQuery(question).flatMap(t => segment(t));
+  const topPageTerms = hits.length > 0
+    ? buildPageTerms({
+        title: hits[0].page.title,
+        aliases: hits[0].page.aliases,
+        summary: '',
+        text: '',
+      })
+    : null;
+  const coverage = topPageTerms
+    ? nameTierCoverage(queryTerms, topPageTerms, corpusTerms)
+    : 0;
+  return { count: hits.length, coverage };
+}
 
 // The production seed selection logs a Stage-1 line per query through
 // `console.debug`, which in Node is `console.log`. Silenced here so the report
@@ -240,6 +344,7 @@ function rankOf(ranked, expected) {
 const ARMS = ['none', 'concat', 'weighted'];
 const results = { none: [], concat: [], weighted: [] };
 const plans = { none: null, concat: null, weighted: null };
+const qStats = [];
 let shown = 0;
 
 for (const c of cases) {
@@ -285,12 +390,15 @@ for (const c of cases) {
     results[arm].push(rankOf(ranked, c.expected));
     if (arm === 'weighted') plans[arm] = plan;
   }
+  qStats.push(questionStats(c.question));
   if (shown < 3) {
     shown += 1;
+    const st = qStats.at(-1);
     emit(`\n[${c.name}] family=${c.family}`);
     emit(`  question : ${c.question}`);
     emit(`  history  : ${(c.history ?? []).join(' | ')}`);
     emit(`  expected : ${c.expected}`);
+    emit(`  question's own lexical standing: name-tier hits=${st.count} coverage=${st.coverage.toFixed(3)}`);
     emit(`  weighted expandedQuery the scorer received:`);
     emit(`    ${plans.weighted.expandedQuery}`);
     emit(`  ranks    : none=${results.none.at(-1)} concat=${results.concat.at(-1)} weighted=${results.weighted.at(-1)}`);
@@ -309,24 +417,64 @@ function hit1(ranks) {
   if (ranks.length === 0) return 'n/a';
   return (ranks.filter(r => r === 1).length / ranks.length).toFixed(3);
 }
+/**
+ * Recall at k: the share of cases whose expected page is in the top k.
+ *
+ * A rank of 0 means the page was not in the list at all, so it is a miss at
+ * every k. The list the pipeline returns is at most `RETRIEVAL_BUDGET` (20)
+ * long, so r@20 is "in the list" and r@10 is a real cut inside it.
+ */
+function recallAt(ranks, k) {
+  if (ranks.length === 0) return 'n/a';
+  const hit = ranks.filter(r => r > 0 && r <= k).length;
+  return (hit / ranks.length).toFixed(3);
+}
 function missed(ranks) {
   return ranks.filter(r => r === 0).length;
 }
+/** The range of a family's question coverage, for the separation line. */
+function coverageRange(values) {
+  if (values.length === 0) return 'n/a';
+  const sorted = [...values].sort((a, b) => a - b);
+  return `min=${sorted[0].toFixed(3)} med=${sorted[Math.floor(sorted.length / 2)].toFixed(3)} max=${sorted.at(-1).toFixed(3)}`;
+}
 
 emit('\n=== CONVERSATION: three arms, one pipeline ===');
+emit('  none      = no history reaches the query. This is the arm that stands for');
+emit('              what `main` ships: on main the retrieval query is the question');
+emit('              alone, so `none` is `main` plus this branch\'s expansion.');
+emit('  concat    = the history appended to the question.');
+emit('  weighted  = the production behaviour: the history weighted at 0.3.');
 const families = [...new Set(cases.map(c => c.family))];
 for (const family of families) {
-  const idx = cases.map((c, i) => ({ c, i })).filter(x => x.c.family === family).map(x => x.i);
-  emit(`\n  family: ${family}  (n=${idx.length})`);
-  for (const arm of ARMS) {
-    const ranks = idx.map(i => results[arm][i]);
-    emit(`    ${arm.padEnd(8)} MRR=${mrr(ranks)}  hit@1=${hit1(ranks)}  not-in-list=${missed(ranks)}`);
+  const famIdx = cases.map((c, i) => ({ c, i })).filter(x => x.c.family === family).map(x => x.i);
+  emit(`\n  family: ${family}  (n=${famIdx.length})`);
+  const sources = [...new Set(famIdx.map(i => cases[i].source ?? 'hand-written'))];
+  for (const source of sources) {
+    const idx = famIdx.filter(i => (cases[i].source ?? 'hand-written') === source);
+    const pad = sources.length > 1 ? '      ' : '    ';
+    if (sources.length > 1) emit(`    source: ${source}  (n=${idx.length})`);
+    for (const arm of ARMS) {
+      const ranks = idx.map(i => results[arm][i]);
+      emit(`${pad}${arm.padEnd(8)} MRR=${mrr(ranks)}  hit@1=${hit1(ranks)}  r@10=${recallAt(ranks, 10)}  r@20=${recallAt(ranks, 20)}  not-in-list=${missed(ranks)}`);
+    }
+    const cov = idx.map(i => qStats[i].coverage);
+    emit(`${pad}question's own name-tier coverage: ${coverageRange(cov)}`);
   }
-  const w = mrr(idx.map(i => results.weighted[i]));
-  const k = mrr(idx.map(i => results.concat[i]));
+  const w = mrr(famIdx.map(i => results.weighted[i]));
+  const k = mrr(famIdx.map(i => results.concat[i]));
   const same = w === k;
   emit(`    VERDICT  weighted vs concat: ${same ? 'IDENTICAL — the weighting does not change the ranking' : 'different — the weighting reaches the ranking'}`);
 }
+
+// The per-case table. The aggregate says which arm wins; this says which
+// cases, and it is where a family that behaves differently from its own
+// average shows up.
+emit('\n=== PER CASE ===');
+cases.forEach((c, i) => {
+  const st = qStats[i];
+  emit(`  ${(c.source ?? 'hand-written').padEnd(12)} ${c.family.padEnd(12)} cov=${st.coverage.toFixed(3)} hits=${String(st.count).padStart(4)}  none=${results.none[i]} concat=${results.concat[i]} weighted=${results.weighted[i]}  ${c.expected}`);
+});
 
 if (OUT) {
   writeFileSync(OUT, lines.join('\n') + '\n');
