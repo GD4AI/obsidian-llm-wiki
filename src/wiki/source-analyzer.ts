@@ -1180,6 +1180,10 @@ Respond with this JSON object and nothing else: {"type": "<one of the allowed ty
       console.debug(`[Type repair] unusable answer for "${name}": ${JSON.stringify(parsed)}`);
       return null;
     } catch (err) {
+      // A user cancellation reaches here as an AbortError now that
+      // createMessage rejects on abort (#703) — let it propagate so the
+      // engine's cancelled branch, not the provider-failure path, owns it.
+      if (err instanceof DOMException && err.name === 'AbortError') throw err;
       console.warn('[Type repair] call failed:', err);
       return null;
     }
@@ -1231,6 +1235,9 @@ Respond with this JSON object and nothing else: {"kind": "entity"} or {"kind": "
       console.debug(`[Lemma guarantee] unusable type answer: ${JSON.stringify(parsed)}`);
       return null;
     } catch (err) {
+      // Same as the type-repair catch above: an AbortError is a user
+      // cancellation, not a provider failure — rethrow it.
+      if (err instanceof DOMException && err.name === 'AbortError') throw err;
       console.warn('[Lemma guarantee] type classification call failed:', err);
       return null;
     }

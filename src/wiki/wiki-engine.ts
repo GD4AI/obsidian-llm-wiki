@@ -459,11 +459,14 @@ export class WikiEngine {
   /** Issue #137: get the current LLM client. All consumers (page-factory,
    * source-analyzer, conversation-ingestor, contradictions) get their client
    * via this getter, which forwards through the shared closure `() => this.llmClient`
-   * that main.ts updates via `initializeLLMClient()`. */
+   * that main.ts updates via `initializeLLMClient()`.
+   * Issue #703: wrapped with withAbortSignal like the ctx getter — without
+   * it the source-page generation call never receives the ingest abort
+   * signal and cancelIngestion() cannot abort it. */
   private get client(): LLMClient {
     const c = this.getLLMClient();
     if (!c) throw new Error('LLM Client not initialized');
-    return c;
+    return withAbortSignal(c, () => this.abortController?.signal);
   }
 
   private applySectionLabels(prompt: string): string {
