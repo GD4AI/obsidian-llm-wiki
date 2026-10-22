@@ -460,7 +460,11 @@ export class AutoMaintainManager {
       const existingLog = await this.wikiEngine.tryReadFile(logPath);
       const lang = this.settings.language;
       if (existingLog && needsLogHeaderMigration(existingLog, lang)) {
-        const migrated = migrateLogHeader(existingLog, lang);
+        // Issue #793: the command name comes from the interface language,
+        // which is the language the palette is registered in — the same
+        // language this migration path writes the header in.
+        const commandName = (TEXTS[lang] || TEXTS.en).cmdViewHistory;
+        const migrated = migrateLogHeader(existingLog, lang, commandName);
         if (migrated !== null && migrated !== existingLog) {
           await this.wikiEngine.createOrUpdateFile(logPath, migrated);
           console.debug(`[QuickFixes] Phase 4.5: log.md header migrated to v1.22.2 format`);

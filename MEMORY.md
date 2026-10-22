@@ -554,7 +554,6 @@ Two things made it easy to miss.
 
 **Same family, three instances in this repo.** The schema body (this), the term index (#843/#844 — keyed on the index file, so an edited page body left it stale), and the frontmatter alias map that `fix-runners.ts:138` already had to watch with `vault.on('modify')`. Each is a cache whose key did not follow the file it described.
 
-<<<<<<< HEAD
 ### A repair's target comes from the operation, not from what the model guessed (#824, 2026-10-18)
 
 The orphan-link repair kept the model's guessed target whenever the guess "resolved". Resolving meant "names some page that exists" — a link-hygiene question. The question that decides the repair is "does this target name the orphan?" — a link-identity question. The check answered the first one and was used to decide the second.

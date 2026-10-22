@@ -43,6 +43,17 @@ export interface IngestMetrics {
 export interface LogWriterOptions {
   wikiFolder: string;
   wikiLanguage: string;
+  /**
+   * The name of the command the log header points at, **as the command palette
+   * registers it**. The palette is registered from the interface language,
+   * while the header is written in the wiki language, so these differ whenever
+   * the two settings differ. Issue #793: with `language: en` and
+   * `wikiLanguage: de`, the palette shows "View operation history" and a
+   * header quoting the German name would send the user after a command that
+   * does not exist. Required rather than optional, so a caller cannot
+   * silently get the wiki language's own name.
+   */
+  commandName: string;
   /** Read the current log file content (returns null if not found). */
   readFile: (path: string) => Promise<string | null>;
   /** Write the full log content to the given path. */
@@ -52,12 +63,14 @@ export interface LogWriterOptions {
 export class LogWriter {
   private readonly wikiFolder: string;
   private readonly wikiLanguage: string;
+  private readonly commandName: string;
   private readonly readFile: LogWriterOptions['readFile'];
   private readonly writeFile: LogWriterOptions['writeFile'];
 
   constructor(opts: LogWriterOptions) {
     this.wikiFolder = opts.wikiFolder;
     this.wikiLanguage = opts.wikiLanguage;
+    this.commandName = opts.commandName;
     this.readFile = opts.readFile;
     this.writeFile = opts.writeFile;
   }
@@ -111,7 +124,7 @@ export class LogWriter {
       }
     }
 
-    const existingLog = (await this.readFile(logPath)) || buildLogHeader(this.wikiLanguage);
+    const existingLog = (await this.readFile(logPath)) || buildLogHeader(this.wikiLanguage, this.commandName);
     await this.writeFile(logPath, existingLog + entry);
   }
 
@@ -139,7 +152,7 @@ export class LogWriter {
     try {
       let existingLog = await this.readFile(logPath);
       if (!existingLog) {
-        existingLog = buildLogHeader(this.wikiLanguage);
+        existingLog = buildLogHeader(this.wikiLanguage, this.commandName);
       }
 
       // Cap at 512 KB to avoid Obsidian choking on multi-MB files.

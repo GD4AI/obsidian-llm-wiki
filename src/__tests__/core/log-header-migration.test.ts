@@ -9,6 +9,7 @@ import {
   isOldFormatLogHeader,
   buildLogHeader,
 } from '../../core/log-header';
+import { TEXTS } from '../../texts';
 
 describe('log.md header migration (v1.22.2 — non-destructive, language-agnostic)', () => {
   it('detects old-format English header (single-line)', () => {
@@ -53,13 +54,13 @@ describe('log.md header migration (v1.22.2 — non-destructive, language-agnosti
   it('does NOT flag new-format header (real header from buildLogHeader)', () => {
     // Use the actual buildLogHeader output — this is what the production
     // code generates, including the <!-- llm-wiki-log-header-start --> marker.
-    const realNew = buildLogHeader('en') + '## [2026-06-15] entry\n';
+    const realNew = buildLogHeader('en', TEXTS.en.cmdViewHistory) + '## [2026-06-15] entry\n';
     expect(isOldFormatLogHeader(realNew, 'en')).toBe(false);
   });
 
   it('detects new-format header regardless of language (real buildLogHeader output)', () => {
     for (const lang of ['en', 'zh', 'zh-Hant', 'ja', 'ko', 'de', 'fr', 'es', 'pt', 'it']) {
-      const realNew = buildLogHeader(lang) + '## [2026-06-15] Ingest\n';
+      const realNew = buildLogHeader(lang, TEXTS[lang as keyof typeof TEXTS].cmdViewHistory) + '## [2026-06-15] Ingest\n';
       expect(isOldFormatLogHeader(realNew, lang)).toBe(false);
     }
   });
@@ -80,7 +81,7 @@ describe('log.md header migration (v1.22.2 — non-destructive, language-agnosti
 
   it('needsLogHeaderMigration returns true for old format, false otherwise', () => {
     expect(needsLogHeaderMigration('# Wiki Operation Log\n\n', 'en')).toBe(true);
-    expect(needsLogHeaderMigration(buildLogHeader('en') + '## entry', 'en')).toBe(false);
+    expect(needsLogHeaderMigration(buildLogHeader('en', TEXTS.en.cmdViewHistory) + '## entry', 'en')).toBe(false);
     expect(needsLogHeaderMigration('', 'en')).toBe(false);
     expect(needsLogHeaderMigration(null, 'en')).toBe(false);
   });
@@ -98,7 +99,7 @@ describe('log.md header migration (v1.22.2 — non-destructive, language-agnosti
       'Some lint details',
       '',
     ].join('\n');
-    const migrated = migrateLogHeader(old, 'en')!;
+    const migrated = migrateLogHeader(old, 'en', TEXTS.en.cmdViewHistory)!;
     // New format contains Operation History hint
     expect(migrated).toMatch(/View operation history/);
     // The marker is embedded so detection stays robust
@@ -112,23 +113,23 @@ describe('log.md header migration (v1.22.2 — non-destructive, language-agnosti
 
   it('migrateLogHeader is idempotent on real new-format content', () => {
     // First pass: old → new
-    const firstPass = migrateLogHeader('# Wiki Operation Log\n\n## [2026-06-15] entry\n', 'en')!;
+    const firstPass = migrateLogHeader('# Wiki Operation Log\n\n## [2026-06-15] entry\n', 'en', TEXTS.en.cmdViewHistory)!;
     // Second pass: new → new (must be a no-op, no duplicate header)
-    const secondPass = migrateLogHeader(firstPass, 'en');
+    const secondPass = migrateLogHeader(firstPass, 'en', TEXTS.en.cmdViewHistory);
     expect(secondPass).toBe(firstPass);
     expect(firstPass.match(/<!-- llm-wiki-log-header-start -->/g)?.length).toBe(1);
   });
 
   it('migrateLogHeader handles edge case: file with just header and no entries', () => {
     const onlyHeader = '# Wiki Operation Log\n\n';
-    const migrated = migrateLogHeader(onlyHeader, 'en')!;
+    const migrated = migrateLogHeader(onlyHeader, 'en', TEXTS.en.cmdViewHistory)!;
     expect(migrated).toMatch(/View operation history/);
     expect(migrated).toMatch(/# Wiki Operation Log/);
     expect(migrated).toMatch(/<!-- llm-wiki-log-header-start -->/);
   });
 
   it('migrateLogHeader is a no-op on empty/null input', () => {
-    expect(migrateLogHeader('', 'en')).toBe('');
-    expect(migrateLogHeader(null, 'en')).toBe(null);
+    expect(migrateLogHeader('', 'en', TEXTS.en.cmdViewHistory)).toBe('');
+    expect(migrateLogHeader(null, 'en', TEXTS.en.cmdViewHistory)).toBe(null);
   });
 });

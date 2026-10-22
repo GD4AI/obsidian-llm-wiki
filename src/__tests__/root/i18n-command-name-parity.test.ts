@@ -65,7 +65,8 @@ describe('logHeaderShortcut must not restate the command name (#793)', () => {
   it("the rendered log header carries the locale's command name", () => {
     const offences: string[] = [];
     for (const locale of LOCALES) {
-      if (!buildLogHeader(locale as string).includes(TEXTS[locale].cmdViewHistory)) {
+      const t = TEXTS[locale as keyof typeof TEXTS];
+      if (!buildLogHeader(locale as string, t.cmdViewHistory).includes(t.cmdViewHistory)) {
         offences.push(String(locale));
       }
     }
