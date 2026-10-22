@@ -14,6 +14,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
+| **The handoff — what was decided, and what to do next** | [Handoff — 2026-10-22, before compaction](#handoff--2026-10-22-before-compaction) |
 | What is true **today** — release, open counts, the next action | [Current state](#current-state-2026-10-17-latest-the-routine-queue-closed-and-the-release-file-caught-37-prs-behind) |
 | The rule for choosing what to work on | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
@@ -26,6 +27,78 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 **Appendix A** holds the four design records; **Appendix B** holds the dated session blocks.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
+
+## Handoff — 2026-10-22, before compaction
+
+### The maintainer's decisions, and what each one authorises
+
+1. **Merge #864, #874, #867, #871.** All four are APPROVED, CI green, CLEAN. The merge is authorised; it is the first action on resume. #864 and #874 carry @DocTpoint's approval; #867 and #871 carry mine.
+2. **#866 waits on @DocTpoint's re-review.** The blocking point is fixed in `23956702` and the branch is rebased onto the current `main`. Do not merge it and do not review it again.
+3. **#855: re-measure before cutting or keeping the history.** The steps are spelled out below. The maintainer chose the measurement over a decision.
+4. **#755: I may rebase it, provided the contributor's identity is not lost.** The author's identity survives a rebase; the committer becomes the maintainer, and the maintainer accepted that. The credit survives because a squash merge's author is the PR author. The contributor's own trailer stays on the contributor's work — use `--subject`/`--body` on the squash rather than the default message, so the trailer is not carried onto a maintainer-authored commit.
+5. **#873's Q1–Q5 are still open.** The options, the costs and the recommendations are in the issue thread; each question closes with a one-line reply there. No code before they are answered.
+
+### The merge, step by step
+
+```bash
+# 1. Closing keywords in the PR body — every hit must be an issue you mean to close.
+gh pr view <N> --json title,body --jq '.title, .body' \
+  | grep -inE '\b(closes?|closed|fix(es|ed)?|resolve[sd]?)\s+#[0-9]+'
+# 2. AI trailers on the branch commits AND on the draft squash message.
+git log origin/main..origin/<branch> --format=%B \
+  | grep -inE '^(co-authored-by|generated with|signed-off-by|assisted-by):'
+# 3. A review event, before the merge. An APPROVE already exists on all four;
+#    add a --comment audit note. `gh pr review --approve` is BLOCKED on my own PRs.
+gh pr review <N> --comment --body "<audit note>"
+# 4. The merge, with the message written explicitly.
+gh pr merge <N> --squash --delete-branch --subject "<subject>" --body-file <msg>
+# 5. Read the merge commit back — author, trailer, the closing keyword's effect.
+git show --stat --format="author: %an <%ae>%nsubject: %s" <merge-sha>
+```
+
+**Watch for the duplicate-review trap.** A `gh pr review` that returns a GraphQL EOF may still have posted. Check `gh pr view <N> --json reviews` before retrying, and note the duplicate in a PR comment — GitHub refuses to delete or dismiss a submitted COMMENTED review.
+
+### #855 — the re-measurement, spelled out so it needs no re-derivation
+
+The branch is `feat/two-stage-query-expansion` (head `b17d9068`); the harness and the corrected docs landed on it in `31566806`.
+
+1. **Extend the harness** (`tools/dev-instrument/run-conversation-eval.mjs`): report **r@10** alongside MRR and hit@1, and add a **derived follow-up set** — questions built from the vault's own edges, with the referring context supplied as history — next to the six hand-written cases in `conversation-cases.json`.
+2. **Re-run on the production vault**:
+   `npx tsx tools/dev-instrument/run-conversation-eval.mjs "/Users/greener/Documents/Obsidian Vault/wiki" --cases tools/dev-instrument/conversation-cases.json --derive --limit 30`
+3. **Judge against `none`, never against `concat`.** On `main` the retrieval query is the question alone (`selectPprSeeds(userMessage, …)`), so `none` is the arm that stands for what ships today. `concat` was never shipped. Measured against `none` the current weighted arm is **worse** on topic-switch (0.615 → 0.550) and better on follow-up MRR (0.121 → 0.248, hit@1 zero in both arms).
+4. **Then cut or keep.** If the history cannot beat `none` on both families, **remove the history half from the PR** — `buildWeightedRetrievalQuery`, `buildRetrievalQuery`, the history branch of `prepareRetrievalInputs`, and the `history: N rounds (weight 0.3)` line in the retrieval label — because with the history out they are unreachable and the dead-code policy forbids shipping them. Flipping a flag to zero and keeping them is shipping dead code. Then re-examine the three query strings, which collapse toward one when there is no history. If it can, keep it and implement the gate-based design the measurement points at: the question's own lexical coverage (`LEX_COVERAGE_MIN`, `LEX_MATCH_MIN_COUNT` in `select-seeds.ts`) decides whether the history joins the ranking query.
+5. **Before cutting, reconcile the ROADMAP's 16-33x r@10 on follow-ups** with the harness's numbers. They are different metrics on different question sets and are not yet on one instrument. Cutting a feature against six cases while a 16-33x claim stands unexamined is an unmeasured decision.
+
+### The state of everything
+
+| PR | State | Note |
+|---|---|---|
+| #864 | APPROVED, CLEAN | merge first; the lint family, 23 files |
+| #865 | MERGED (`2cd8c7e5`) | #503 closed by it |
+| #866 | CHANGES_REQUESTED, head `23956702` | waiting on @DocTpoint |
+| #867 | APPROVED, CLEAN | @juliasadler; the abort race and the two catch-alls |
+| #871 | APPROVED, CLEAN | @NotAFlightRisk; the debounce clamp Notice |
+| #874 | APPROVED, CLEAN | the schema cache, mtime-keyed |
+| #875 | MERGED into the #855 branch | the harness, `31566806` |
+| #855 | CHANGES_REQUESTED, head `b17d9068` | the re-measurement above |
+| #781, #755 | CONFLICTING | #755 may be rebased by me; #781 still waits on @DocTpoint's order |
+
+Issues opened this cycle: **#872** (the watcher does not consult the excluded-files list), **#873** (the user-defined taxonomy; decisions in the thread), **#876** (the log header's hint is never refreshed, so existing vaults keep the wrong one).
+
+### What is not verified, and what a continuation must not assume
+
+- **#867 and #871 were reviewed from their diffs and the production code, not by running their suites locally.** Their CI is green.
+- **#873's Q3 option C was costed in PRs, not in code.** The template layer and the rule layer have not been read.
+- **The ROADMAP's 16-33x r@10 on follow-ups has never been independently reproduced.**
+- **#781's blocking measurement** — the 2026-10-09 ruling says its premise measurement ran; the ROADMAP's "never run" refers to a different M0/A offset measurement. The two statements still have to be reconciled before the branch is touched.
+
+### Operational notes that cost time to rediscover
+
+- **Gate 1 takes over 30 minutes in the foreground** and times out at 3600 s. Run it in the background and read the exit codes: `nohup bash -c 'pnpm lint > /tmp/g-lint.log 2>&1; echo "lint=$?" >> /tmp/g.log; npx tsc --noEmit > /tmp/g-tsc.log 2>&1; echo "tsc=$?" >> /tmp/g.log; pnpm build > /tmp/g-build.log 2>&1; echo "build=$?" >> /tmp/g.log; pnpm test > /tmp/g-test.log 2>&1; echo "test=$?" >> /tmp/g.log; pnpm css-lint > /tmp/g-css.log 2>&1; echo "css=$?" >> /tmp/g.log' &`. **Build must precede test** — a test-first run fails with ENOENT on a fresh clone.
+- **`shazam_verify` reports 8 false-positive orphans**, all in `tools/dev-instrument/` (three `setup` esbuild plugin methods, four functions passed as first-class values, one `lexScore` object-shorthand export). Do not "fix" them.
+- **The production vault is `/Users/greener/Documents/Obsidian Vault/wiki`** — 2,141 pages, 537 carrying a `source:` marker. The test vaults that are still on disk are `/tmp/expA/wiki` and `/tmp/expB/wiki`.
+- **MiniMax credentials live only in `/tmp/wikkey.env`** and must not enter the repository.
+- **A subagent launch failed with `Cannot find package '@earendil-works/pi-coding-agent'`** — an infrastructure fault, not a task fault. Do not silently switch execution modes over it.
 
 ## Current state (2026-10-17, latest): the routine queue closed, and the release file caught 37 PRs behind
 
