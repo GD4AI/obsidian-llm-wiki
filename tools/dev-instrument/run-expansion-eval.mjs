@@ -153,7 +153,14 @@ const falseCross = all.filter(q => q.crossLoose && !q.cross).length;
 // order is how a 0.007 was reported for a 2,141-page vault whose first pages are
 // type-label entities.
 const stride = LIMIT > 0 && LIMIT < questions.length ? Math.floor(questions.length / LIMIT) : 1;
-const sampled = stride > 1 ? questions.filter((_, i) => i % stride === 0).slice(0, LIMIT) : questions;
+// `[...questions]`, not `questions`: the truncation below empties the source
+// array, and when `stride === 1` the "sampled" list WAS that same array. The
+// alias made every run without `--limit` sample from an array it had already
+// emptied, so it reported zero questions and said "the graph carries no
+// resolvable (asker -> truth) pair" — a tool defect described as a data
+// defect, which is the failure mode this repository has a rule about. Copy
+// first, then truncate.
+const sampled = stride > 1 ? questions.filter((_, i) => i % stride === 0).slice(0, LIMIT) : [...questions];
 questions.length = 0;
 questions.push(...sampled);
 
@@ -171,8 +178,13 @@ if (indexedSources.size === 0) {
   say(`sourceSlugs: ${indexedSources.size} distinct across ${pageRefs.filter(p => p.sourceSlug !== undefined).length} of ${pageRefs.length} pages`);
 }
 if (questions.length === 0) {
-  say('No questions: the graph carries no resolvable (asker -> truth) pair.');
-  process.exit(0);
+  // Say which of the two it was. The previous version could not: an empty
+  // sample and an empty graph both landed here, and its message blamed the
+  // graph.
+  say(all.length === 0
+    ? 'No questions: the graph carries no resolvable (asker -> truth) pair.'
+    : `No questions in the sample: ${all.length} were available and the sampling returned none (limit=${LIMIT}).`);
+  process.exit(all.length === 0 ? 0 : 2);
 }
 if (falseCross > 0) {
   say(`false cross-source pairs excluded: ${falseCross} — one side carries no source marker, and undefined !== slug would have counted the pair as cross-source.`);

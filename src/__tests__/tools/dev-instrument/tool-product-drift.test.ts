@@ -168,4 +168,53 @@ describe('tool/product drift — a measurement tool enters the product, it does 
       expect(src, `${tool} reports a recall without its n`).toMatch(/questions=|n=\$\{|questions\.length/);
     }
   });
+
+  it('a sampling truncation copies its source before emptying it', () => {
+    // The seventh instance, and the one that hid longest because it produced a
+    // plausible explanation instead of an error.
+    //
+    // `run-expansion-eval.mjs` sampled like this:
+    //
+    //   const sampled = stride > 1 ? questions.filter(...) : questions;
+    //   questions.length = 0;
+    //   questions.push(...sampled);
+    //
+    // When `stride === 1` — every run WITHOUT `--limit` — `sampled` WAS
+    // `questions`, so emptying the source emptied the result, and the run
+    // reported zero questions. It then printed "the graph carries no
+    // resolvable (asker -> truth) pair", which blames the corpus for a tool
+    // defect. Every full-set expansion run was therefore impossible, and the
+    // only shape the tool could produce was a `--limit` sample.
+    //
+    // The assertion is structural because the defect is structural: truncate
+    // an array that `sampled` aliases, and the sample is empty. It targets the
+    // SAMPLED assignment line, not the file: `: [...all]` appears a few lines
+    // above in the layer selection, so a file-wide match passes on the buggy
+    // version too. That is what the first version of this test did, and it
+    // reported PASS against the defect it was written to catch.
+    for (const tool of RETRIEVAL_TOOLS) {
+      const src = read(tool);
+      const sampledLine = src.split('\n').find(l => /^\s*const sampled\s*=/.test(l));
+      if (!sampledLine) continue; // does not sample
+      if (!/questions\.length\s*=\s*0/.test(src)) continue; // does not truncate in place
+      expect(
+        sampledLine,
+        `${tool} truncates a question list in place while the sampled alias may point at it`,
+      ).toMatch(/\[\s*\.\.\.questions\s*\]/);
+    }
+  });
+
+  it('a tool that samples says which of the two reasons left no questions', () => {
+    // "No questions" has two causes: the graph yielded none, or the sample came
+    // out empty. They need different fixes, and the expansion tool gave the
+    // graph's answer for both. The requirement applies only to a tool that
+    // SAMPLES — a tool with no sampling has one cause and one correct message.
+    for (const tool of RETRIEVAL_TOOLS) {
+      const src = read(tool);
+      if (!/No questions/.test(src)) continue;
+      if (!/stride/.test(src)) continue; // no sampling, so no second cause
+      expect(src, `${tool} samples and reports an empty question set without naming the cause`)
+        .toMatch(/available/);
+    }
+  });
 });
