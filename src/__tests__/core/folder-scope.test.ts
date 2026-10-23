@@ -5,6 +5,7 @@ import {
   isAtOrInFolderScope,
   isExcludedFromSourcePicker,
   isIngestableSource,
+  isInSourceScope,
 } from '../../core/folder-scope';
 
 describe('folderScopePrefix', () => {
@@ -135,13 +136,15 @@ describe('isExcludedFromSourcePicker', () => {
 // This function is that missing file-level rule, in the same module as the
 // other three.
 describe('isIngestableSource', () => {
+  const none = () => false;
+
   it('collects an ordinary source file inside the chosen folder', () => {
-    expect(isIngestableSource('Notizen/a.md', 'Notizen', false, 'wiki', '.obsidian')).toBe(true);
+    expect(isIngestableSource('Notizen/a.md', 'Notizen', false, 'wiki', '.obsidian', none)).toBe(true);
   });
 
   it('collects an ordinary source file when the vault root is chosen', () => {
-    expect(isIngestableSource('Notizen/a.md', '/', true, 'wiki', '.obsidian')).toBe(true);
-    expect(isIngestableSource('a.md', '/', true, 'wiki', '.obsidian')).toBe(true);
+    expect(isIngestableSource('Notizen/a.md', '/', true, 'wiki', '.obsidian', none)).toBe(true);
+    expect(isIngestableSource('a.md', '/', true, 'wiki', '.obsidian', none)).toBe(true);
   });
 
   it('does not reinstate the wiki folder when the vault root is chosen', () => {
@@ -149,15 +152,51 @@ describe('isIngestableSource', () => {
     expect(isExcludedFromSourcePicker('wiki/entities/x.md', 'wiki', '.obsidian')).toBe(true);
     expect(isInFolderScope('wiki/entities/x.md', '/', true)).toBe(true);
     // ... so the collection step has to combine them.
-    expect(isIngestableSource('wiki/entities/x.md', '/', true, 'wiki', '.obsidian')).toBe(false);
+    expect(isIngestableSource('wiki/entities/x.md', '/', true, 'wiki', '.obsidian', none)).toBe(false);
   });
 
   it('keeps the folder boundary it inherits from isInFolderScope', () => {
-    expect(isIngestableSource('Notizen-temp/a.md', 'Notizen', false, 'wiki', '.obsidian')).toBe(false);
-    expect(isIngestableSource('Notizen.md', 'Notizen', false, 'wiki', '.obsidian')).toBe(false);
+    expect(isIngestableSource('Notizen-temp/a.md', 'Notizen', false, 'wiki', '.obsidian', none)).toBe(false);
+    expect(isIngestableSource('Notizen.md', 'Notizen', false, 'wiki', '.obsidian', none)).toBe(false);
   });
 
   it('keeps a sibling folder sharing the wiki name prefix', () => {
-    expect(isIngestableSource('wiki-archive/x.md', '/', true, 'wiki', '.obsidian')).toBe(true);
+    expect(isIngestableSource('wiki-archive/x.md', '/', true, 'wiki', '.obsidian', none)).toBe(true);
+  });
+
+  // Issue #872 — the automatic path asked a different question than the manual one.
+  // The manual folder ingest consulted Obsidian's "Excluded files" list; the
+  // automatic watcher and the related-names list did not, so a file the user
+  // had excluded was ingested anyway whenever the change came from the
+  // watcher. The predicate is required rather than optional, so a call site
+  // cannot forget it and silently get the pre-#872 behaviour.
+  it('refuses a file the user excluded from ingestion', () => {
+    const excluded = (p: string) => p === 'Notizen/private.md';
+    expect(isIngestableSource('Notizen/private.md', 'Notizen', false, 'wiki', '.obsidian', excluded)).toBe(false);
+    expect(isIngestableSource('Notizen/public.md', 'Notizen', false, 'wiki', '.obsidian', excluded)).toBe(true);
+  });
+});
+
+// The two questions are different, and one function answered both.
+//
+// "May this file be ingested as a source?" is about the user's ingest intent.
+// "Does this note already exist in the vault?" is about the vault's contents.
+// A file the user excluded from ingestion still exists — it is still a note the
+// user wrote, and a link to it is still a true link. The related-names list
+// asked the second question through the first function, and inherited the
+// first function's answer. These two tests pin the difference, because
+// merging them back is the easy mistake.
+describe('isInSourceScope — existence, not ingestability', () => {
+  it('accepts a file the user excluded from ingestion, because the note still exists', () => {
+    expect(isInSourceScope('Notizen/private.md', 'Notizen', false, 'wiki', '.obsidian')).toBe(true);
+  });
+
+  it('still refuses the wiki folder and the config directory', () => {
+    expect(isInSourceScope('wiki/entities/x.md', '/', true, 'wiki', '.obsidian')).toBe(false);
+    expect(isInSourceScope('.obsidian/plugins/x.md', '/', true, 'wiki', '.obsidian')).toBe(false);
+  });
+
+  it('keeps the folder boundary', () => {
+    expect(isInSourceScope('Notizen-temp/a.md', 'Notizen', false, 'wiki', '.obsidian')).toBe(false);
   });
 });

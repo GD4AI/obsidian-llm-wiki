@@ -81,9 +81,11 @@ describe('isIngestableSource — the exclusion composes with the existing rules 
       .toBe(true);
   });
 
-  it('keeps the pre-#503 behaviour when no predicate is supplied', () => {
-    // The two explicit file pickers rely on this.
-    expect(isIngestableSource('Notizen/archive/x.md', 'Notizen', false, WIKI, CONFIG))
+  it('collects the file when the caller states that nothing is excluded', () => {
+    // The predicate is required since #872, so "this caller excludes nothing"
+    // is now a statement the caller makes rather than a silence it leaves.
+    const excludesNothing = () => false;
+    expect(isIngestableSource('Notizen/archive/x.md', 'Notizen', false, WIKI, CONFIG, excludesNothing))
       .toBe(true);
   });
 

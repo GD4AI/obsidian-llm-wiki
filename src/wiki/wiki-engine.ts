@@ -31,7 +31,7 @@ import { renderTemplate } from '../core/template-renderer';
 import { slugify, filterRedundantAliases, resolveMinAliasLength } from '../core/slug';
 import { shapeRelatedLists, kindOf } from '../core/related-shaping';
 import { withAbortSignal } from '../core/llm-abort';
-import { isIngestableSource } from '../core/folder-scope';
+import { isInSourceScope } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
 import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody, enforceFrontmatterConstraints } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
@@ -1285,7 +1285,13 @@ export class WikiEngine {
         const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
         const configDir = this.app.vault.configDir;
         const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
-          .filter(f => folders.some(w => isIngestableSource(f.path, w, false, this.settings.wikiFolder, configDir)))
+          // Issue #872 — this list answers "which note names already exist?", not
+          // "which files may be ingested?". A file the user excluded from
+          // ingestion is still a note in the vault, and a link to it is still a
+          // true link, so the exclusion list must not remove it here. The
+          // function that answers the ingest question is a different one
+          // (`isIngestableSource`), and it consults the exclusion list.
+          .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
           .map(f => f.basename);
         const shaped = shapeRelatedLists(analysis, {
           resolve: name => {
