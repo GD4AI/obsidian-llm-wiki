@@ -493,10 +493,6 @@ function mrr(ranks) {
   for (const r of ranks) acc += r === 0 ? 0 : 1 / r;
   return (acc / ranks.length).toFixed(3);
 }
-function hit1(ranks) {
-  if (ranks.length === 0) return 'n/a';
-  return (ranks.filter(r => r === 1).length / ranks.length).toFixed(3);
-}
 /**
  * Recall at k: the share of cases whose expected page is in the top k.
  *

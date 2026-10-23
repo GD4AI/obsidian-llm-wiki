@@ -66,6 +66,7 @@ import { TermIndexCache } from '../../src/core/term-index-cache.ts';
 import { ExpansionTermsCache, DEFAULT_EXPANSION } from '../../src/core/query-expansion.ts';
 import { EN_TEXTS } from '../../src/texts/en.ts';
 import { segment } from '../../src/core/term-index.ts';
+import { makeSeededRng } from '../../src/core/monte-carlo-ppr.ts';
 import { RETRIEVAL_BUDGET } from '../../src/constants.ts';
 
 const args = process.argv.slice(2);
@@ -82,6 +83,7 @@ const LAYER = flag('layer', 'ALL');
 const OUT = flag('out', null);
 const INDEX_OVERRIDE = flag('index', null);
 const LIMIT = Number(flag('limit', null)) || 0;
+const BOOTSTRAP = Number(flag('bootstrap', 2000)) || 0;
 
 // Production loading. The wiki index carries the page list and a one-line
 // description per page; the bodies come from the files, as `withBodies` does.
@@ -179,6 +181,15 @@ if (falseCross > 0) {
 const termCache = new TermIndexCache();
 const expansionCache = new ExpansionTermsCache();
 const tally = () => ({ ALL: [0, 0], CROSS: [0, 0] });
+// The per-question hits, kept so the delta can carry an interval.
+//
+// The two arms are PAIRED: the same question is asked with and without the
+// expansion, on the same pages. Resampling the two arms independently would
+// throw that pairing away and answer a different question — "what would two
+// independent samples of questions look like" instead of "how much does the
+// expansion move THIS set of questions". The paired bootstrap resamples the
+// QUESTIONS and keeps each question's two hits together.
+const perQuestion = [];
 const score = (t, q, ranked) => {
   const hit = ranked.indexOf(q.truthPath) >= 0 && ranked.indexOf(q.truthPath) < 10;
   t.ALL[1] += 1;
@@ -189,6 +200,35 @@ const score = (t, q, ranked) => {
   }
 };
 const r10 = (t, layer) => (t[layer][1] === 0 ? 'n/a' : (t[layer][0] / t[layer][1]).toFixed(3));const row = (label, t) => `  ${label} r@10 ALL = ${r10(t, 'ALL')} (n=${t.ALL[1]})   CROSS = ${r10(t, 'CROSS')} (n=${t.CROSS[1]})`;
+
+/**
+ * The paired bootstrap interval for the r@10 delta.
+ *
+ * A delta without an interval is a claim the reader has to trust. The
+ * production vault's delta is +0.030 on 400 sampled questions, and whether
+ * that is a real effect or the sampling noise of one vault is exactly the
+ * question an interval answers.
+ *
+ * The seed is fixed, so two runs report the same interval.
+ */
+function pairedBootstrapCI(entries, iterations, seedText) {
+  if (!iterations || entries.length === 0) return null;
+  const rng = makeSeededRng(seedText);
+  const n = entries.length;
+  const stats = [];
+  for (let it = 0; it < iterations; it++) {
+    let aHit = 0, bHit = 0;
+    for (let i = 0; i < n; i++) {
+      const e = entries[Math.floor(rng() * n)];
+      if (e.a) aHit++;
+      if (e.b) bHit++;
+    }
+    stats.push((bHit - aHit) / n);
+  }
+  stats.sort((x, y) => x - y);
+  const q = (p) => stats[Math.min(stats.length - 1, Math.max(0, Math.floor(stats.length * p)))];
+  return { lo: q(0.025), hi: q(0.975), crossesZero: q(0.025) <= 0 && q(0.975) >= 0 };
+}
 
 const lines = [];
 const emit = line => { say(line); lines.push(line); };
@@ -233,8 +273,13 @@ for (const q of questions) {
     plan.gateQuery,
   )).matches.map(m => m.page.path);
 
-  score(A, q, await arm(planA));
-  score(B, q, await arm(planB));
+  const aRanked = await arm(planA);
+  const bRanked = await arm(planB);
+  score(A, q, aRanked);
+  score(B, q, bRanked);
+  // The paired record: the same question, both arms, kept together.
+  const hitOf = ranked => ranked.indexOf(q.truthPath) >= 0 && ranked.indexOf(q.truthPath) < 10;
+  perQuestion.push({ cross: !!q.cross, a: hitOf(aRanked), b: hitOf(bRanked) });
 }
 
 emit('\n=== EXPANSION: product minus one step (A) vs the product (B) ===');
@@ -243,6 +288,25 @@ emit(row('B expansion   ', B));
 const dAll = A.ALL[1] ? ((B.ALL[0] - A.ALL[0]) / A.ALL[1]).toFixed(3) : 'n/a';
 const dCross = A.CROSS[1] ? ((B.CROSS[0] - A.CROSS[0]) / A.CROSS[1]).toFixed(3) : 'n/a';
 emit(`  delta ALL = ${dAll}   CROSS = ${dCross}`);
+
+// The paired interval on the delta. The delta is a difference between two
+// arms on the SAME questions, so the resampling is over questions and each
+// question's two hits travel together.
+const allEntries = perQuestion.map(e => ({ a: e.a, b: e.b }));
+const crossEntries = perQuestion.filter(e => e.cross).map(e => ({ a: e.a, b: e.b }));
+const ciAll = pairedBootstrapCI(allEntries, BOOTSTRAP, 'expansion|ALL');
+const ciCross = pairedBootstrapCI(crossEntries, BOOTSTRAP, 'expansion|CROSS');
+if (ciAll) {
+  emit('');
+  emit(`  delta ALL 95% CI: [${ciAll.lo.toFixed(3)}, ${ciAll.hi.toFixed(3)}]${ciAll.crossesZero ? '  — CROSSES ZERO, not significant' : '  — excludes zero'}`);
+}
+if (ciCross) {
+  emit(`  delta CROSS 95% CI: [${ciCross.lo.toFixed(3)}, ${ciCross.hi.toFixed(3)}]${ciCross.crossesZero ? '  — CROSSES ZERO, not significant' : '  — excludes zero'}`);
+}
+if (ciAll && ciAll.crossesZero) {
+  emit('  A delta whose interval crosses zero is not evidence of an effect.');
+  emit('  It is evidence that the run cannot rule one out at this sample size.');
+}
 
 emit('\n=== SELF-CHECK: did the expansion actually run? ===');
 emit(`  words added per query: mean ${(addedTotal / questions.length).toFixed(1)}, min ${addedMin === Infinity ? 'n/a' : addedMin}`);
