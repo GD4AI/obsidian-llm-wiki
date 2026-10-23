@@ -78,6 +78,15 @@ export interface RetrievalPlanInput {
    */
   expand?: boolean;
   opts?: ExpansionOptions;
+  /**
+   * The weight the history's words carry against the question's. Defaults to
+   * the production value (0.3). It is an argument rather than a constant
+   * because the weight is a measurement question — 0.3 was chosen from a
+   * corpus measurement, and a corpus measurement cannot say whether 0.3 is
+   * the right value for a given vault. A weight that cannot be varied cannot
+   * be checked.
+   */
+  historyWeight?: number;
 }
 
 export interface RetrievalPlan {
@@ -100,6 +109,7 @@ export function planRetrieval(input: RetrievalPlanInput): RetrievalPlan {
     input.current,
     input.history,
     input.historyRounds,
+    input.historyWeight,
   );
 
   if (input.expand === false) {

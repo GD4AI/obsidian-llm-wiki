@@ -54,6 +54,10 @@
 //                      (evenly sampled, never the head).
 //   --family <name>    topic-switch | follow-up | all  (default: all)
 //   --rounds <n>       history rounds (default: the production constant)
+//   --weights <list>   the history weights to sweep, comma-separated.
+//                      Default: the production value alone (0.3).
+//   --bootstrap <n>    bootstrap iterations for the confidence intervals
+//                      (default: 2000; 0 turns them off)
 //   --out <file>       write the report to a file
 //
 // CASES FORMAT
@@ -84,6 +88,7 @@ import { planRetrieval } from '../../src/wiki/query-engine/pipeline/retrieval-pl
 import { TermIndexCache } from '../../src/core/term-index-cache.ts';
 import { ExpansionTermsCache, DEFAULT_EXPANSION } from '../../src/core/query-expansion.ts';
 import { EN_TEXTS } from '../../src/texts/en.ts';
+import { makeSeededRng } from '../../src/core/monte-carlo-ppr.ts';
 import {
   segment,
   buildPageTerms,
@@ -96,15 +101,44 @@ import {
 import { RETRIEVAL_HISTORY_ROUNDS } from '../../src/constants.ts';
 
 const args = process.argv.slice(2);
-const dir = args.find(a => !a.startsWith('--'));
-if (!dir) {
-  console.error('usage: node tools/dev-instrument/run-conversation-eval.mjs <vault-dir> [--cases <file>] [--derive] [--limit n] [--family name] [--rounds n] [--out file]');
-  process.exit(1);
+
+// The options that take a value. Their VALUES are not positionals, and
+// treating one as the vault directory makes the whole run measure an empty
+// index: `--cases <file>` puts a path that does not start with `--` into the
+// argument list, and "the first argument that is not an option" then names the
+// case file, not the vault.
+//
+// That is not a hypothetical. This file ran for a while with `--cases` on the
+// command line and reported six follow-up cases at MRR 0.000 with a coverage
+// of 0.000 — a plausible-looking result, measured on nothing. The check that
+// would have caught it is the one below: a vault directory that has no
+// `index.md` is an error, not an empty measurement.
+const OPTIONS_WITH_VALUE = new Set([
+  'cases', 'family', 'followup-phrase', 'limit', 'rounds', 'out', 'weights', 'bootstrap', 'vault',
+]);
+
+const positionals = [];
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a.startsWith('--')) {
+    const name = a.slice(2);
+    if (OPTIONS_WITH_VALUE.has(name) && args[i + 1] !== undefined && !args[i + 1].startsWith('--')) i++;
+    continue;
+  }
+  positionals.push(a);
 }
+
 const flag = (name, dflt) => {
   const i = args.indexOf(`--${name}`);
-  return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : dflt;
+  if (i >= 0 && args[i + 1] !== undefined && !args[i + 1].startsWith('--')) return args[i + 1];
+  return dflt;
 };
+
+const dir = flag('vault', positionals[0]);
+if (!dir) {
+  console.error('usage: npx tsx tools/dev-instrument/run-conversation-eval.mjs <vault-dir> [--cases <file>] [--derive] [--limit n] [--family name] [--rounds n] [--weights list] [--bootstrap n] [--out file]');
+  process.exit(1);
+}
 const CASES_FILE = flag('cases', null);
 const DERIVE = args.includes('--derive');
 const DERIVE_FOLLOWUP = args.includes('--derive-followup');
@@ -120,6 +154,8 @@ const FOLLOWUP_PHRASES = (flag('followup-phrase', '那它呢？') || '那它呢�
 const LIMIT = Number(flag('limit', 0)) || 0;
 const FAMILY = flag('family', 'all');
 const ROUNDS = Number(flag('rounds', RETRIEVAL_HISTORY_ROUNDS)) || RETRIEVAL_HISTORY_ROUNDS;
+const WEIGHTS = (flag('weights', '0.3') || '0.3').split(',').map(s => s.trim()).filter(Boolean).map(Number);
+const BOOTSTRAP = Number(flag('bootstrap', 2000)) || 0;
 const OUT = flag('out', null);
 
 const say = console.log;
@@ -129,8 +165,21 @@ const emit = line => { say(line); lines.push(line); };
 // ---------------------------------------------------------------- load vault
 
 const indexPath = join(dir, 'index.md');
-const indexContent = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
+// A missing index is an ERROR, not an empty measurement. Every metric in this
+// file is a ratio over the cases, and a run against an empty index produces
+// zeros that look like a finding: "the follow-up arm scores 0.000" is a
+// sentence, and it is also what a mis-pointed vault directory produces.
+if (!existsSync(indexPath)) {
+  console.error(`no wiki index at ${indexPath}`);
+  console.error('the first argument must be the directory that CONTAINS index.md — the wiki folder itself.');
+  process.exit(2);
+}
+const indexContent = readFileSync(indexPath, 'utf8');
 const pageRefs = parseIndexForPages(indexContent);
+if (pageRefs.length === 0) {
+  console.error(`the index at ${indexPath} lists no pages`);
+  process.exit(2);
+}
 const bodies = new Map();
 const loaded = [];
 for (const ref of pageRefs) {
@@ -344,6 +393,10 @@ function rankOf(ranked, expected) {
 const ARMS = ['none', 'concat', 'weighted'];
 const results = { none: [], concat: [], weighted: [] };
 const plans = { none: null, concat: null, weighted: null };
+// One rank list per swept weight. The production weight (0.3) is the `weighted`
+// arm itself; the sweep asks whether it is the right value, which a single
+// number cannot answer.
+const weightScan = new Map();
 const qStats = [];
 let shown = 0;
 
@@ -372,7 +425,8 @@ for (const c of cases) {
     expansionCache,
     opts: DEFAULT_EXPANSION,
   });
-  // Arm C — the production behaviour: the history, weighted at 0.3.
+  // Arm C — the production behaviour: the history, weighted at the production
+  // value. The sweep below runs the same arm at the other weights.
   const planWeighted = planRetrieval({
     current: c.question,
     history: turns,
@@ -381,6 +435,7 @@ for (const c of cases) {
     indexContent,
     expansionCache,
     opts: DEFAULT_EXPANSION,
+    historyWeight: 0.3,
   });
 
   for (const [arm, plan] of [['none', planNone], ['concat', planConcat], ['weighted', planWeighted]]) {
@@ -389,6 +444,31 @@ for (const c of cases) {
     unsilence();
     results[arm].push(rankOf(ranked, c.expected));
     if (arm === 'weighted') plans[arm] = plan;
+  }
+
+  // The weight sweep. Each weight is the production arm with one number
+  // changed, through the same pipeline — not a parallel implementation.
+  for (const w of WEIGHTS) {
+    const key = w.toFixed(3);
+    if (!weightScan.has(key)) weightScan.set(key, []);
+    if (Math.abs(w - 0.3) < 1e-9) {
+      weightScan.get(key).push(results.weighted.at(-1));
+      continue;
+    }
+    const plan = planRetrieval({
+      current: c.question,
+      history: turns,
+      historyRounds: ROUNDS,
+      retrievalRefs: refs,
+      indexContent,
+      expansionCache,
+      opts: DEFAULT_EXPANSION,
+      historyWeight: w,
+    });
+    silence();
+    const ranked = await rank(plan);
+    unsilence();
+    weightScan.get(key).push(rankOf(ranked, c.expected));
   }
   qStats.push(questionStats(c.question));
   if (shown < 3) {
@@ -439,12 +519,66 @@ function coverageRange(values) {
   return `min=${sorted[0].toFixed(3)} med=${sorted[Math.floor(sorted.length / 2)].toFixed(3)} max=${sorted.at(-1).toFixed(3)}`;
 }
 
+/**
+ * A bootstrap confidence interval for one metric over one case set.
+ *
+ * Why this exists. A difference between two arms on 30 cases is a number, and
+ * a number without an interval is a claim the reader has to trust. The
+ * third-party audit asked for intervals on the expansion's +0.030 for exactly
+ * this reason, and the same argument applies here: `weighted` at 0.967 and
+ * `concat` at 0.367 is a large gap, and `0.615` against `0.600` is not.
+ *
+ * The resampling is over CASES, and the metric is recomputed on each
+ * resample. The seed is fixed, so two runs of this harness report the same
+ * interval — an interval that moved between runs would be a second source of
+ * noise on top of the one being measured.
+ *
+ * The interval is a percentile interval (2.5% to 97.5%). It says what the
+ * metric would be if the cases were a sample from the same population, which
+ * is the assumption a 30-case set makes whether or not it holds.
+ */
+function bootstrapCI(ranks, metric, iterations, seedText) {
+  if (!iterations || ranks.length === 0) return null;
+  const rng = makeSeededRng(seedText);
+  const stats = [];
+  const n = ranks.length;
+  for (let it = 0; it < iterations; it++) {
+    const sample = new Array(n);
+    for (let i = 0; i < n; i++) sample[i] = ranks[Math.floor(rng() * n)];
+    stats.push(metric(sample));
+  }
+  stats.sort((a, b) => a - b);
+  const q = (p) => stats[Math.min(stats.length - 1, Math.max(0, Math.floor(stats.length * p)))];
+  return { lo: q(0.025), hi: q(0.975) };
+}
+
+/** MRR over a rank list, as a number (not a string) so it can be averaged. */
+const mrrOf = ranks => ranks.reduce((a, r) => a + (r === 0 ? 0 : 1 / r), 0) / ranks.length;
+/** Recall@k over a rank list, as a number. */
+const recallOf = (ranks, k) => ranks.filter(r => r > 0 && r <= k).length / ranks.length;
+
+/** `0.615 [0.512, 0.720]` — the point estimate with its interval. */
+function withCI(ranks, metric, label, seedText) {
+  const point = metric(ranks);
+  const ci = bootstrapCI(ranks, metric, BOOTSTRAP, seedText);
+  const pointStr = point.toFixed(3);
+  if (!ci) return `${label}=${pointStr}`;
+  return `${label}=${pointStr} [${ci.lo.toFixed(3)}, ${ci.hi.toFixed(3)}]`;
+}
+
 emit('\n=== CONVERSATION: three arms, one pipeline ===');
 emit('  none      = no history reaches the query. This is the arm that stands for');
 emit('              what `main` ships: on main the retrieval query is the question');
 emit('              alone, so `none` is `main` plus this branch\'s expansion.');
 emit('  concat    = the history appended to the question.');
 emit('  weighted  = the production behaviour: the history weighted at 0.3.');
+emit('');
+emit('  A derived follow-up is a CONSTRUCTED case, not a sample of real ones: its');
+emit('  question names nothing at all ("那它呢？"), so "no history answers it" is');
+emit('  close to built in. It shows the history CAN carry a follow-up; it does');
+emit('  NOT say how many real follow-ups there are. The hand-written follow-ups');
+emit('  are the closer shape (they carry an aspect word) and there are six of');
+emit('  them, which is why the break-even mix is quoted as a range.');
 const families = [...new Set(cases.map(c => c.family))];
 for (const family of families) {
   const famIdx = cases.map((c, i) => ({ c, i })).filter(x => x.c.family === family).map(x => x.i);
@@ -456,7 +590,8 @@ for (const family of families) {
     if (sources.length > 1) emit(`    source: ${source}  (n=${idx.length})`);
     for (const arm of ARMS) {
       const ranks = idx.map(i => results[arm][i]);
-      emit(`${pad}${arm.padEnd(8)} MRR=${mrr(ranks)}  hit@1=${hit1(ranks)}  r@10=${recallAt(ranks, 10)}  r@20=${recallAt(ranks, 20)}  not-in-list=${missed(ranks)}`);
+      const seedText = `${family}|${source}|${arm}`;
+      emit(`${pad}${arm.padEnd(8)} ${withCI(ranks, mrrOf, 'MRR', seedText)}  ${withCI(ranks, x => recallOf(x, 10), 'r@10', seedText + '|r10')}  r@20=${recallAt(ranks, 20)}  not-in-list=${missed(ranks)}`);
     }
     const cov = idx.map(i => qStats[i].coverage);
     emit(`${pad}question's own name-tier coverage: ${coverageRange(cov)}`);
@@ -465,6 +600,27 @@ for (const family of families) {
   const k = mrr(famIdx.map(i => results.concat[i]));
   const same = w === k;
   emit(`    VERDICT  weighted vs concat: ${same ? 'IDENTICAL — the weighting does not change the ranking' : 'different — the weighting reaches the ranking'}`);
+}
+
+// The weight sweep. 0.3 came out of a corpus measurement; this asks whether
+// that number is the right one on this vault with these cases. A weight that
+// cannot be varied cannot be checked.
+if (weightScan.size > 1) {
+  emit('\n=== HISTORY WEIGHT SWEEP ===');
+  emit('  The production arm with one number changed, through the same pipeline.');
+  for (const family of families) {
+    const famIdx = cases.map((c, i) => ({ c, i })).filter(x => x.c.family === family).map(x => x.i);
+    emit(`\n  family: ${family}  (n=${famIdx.length})`);
+    for (const [w, ranks] of weightScan) {
+      const r = famIdx.map(i => ranks[i]);
+      const seedText = `sweep|${family}|${w}`;
+      emit(`    weight=${w.padEnd(6)} ${withCI(r, mrrOf, 'MRR', seedText)}  ${withCI(r, x => recallOf(x, 10), 'r@10', seedText + '|r10')}  r@20=${recallAt(r, 20)}  not-in-list=${missed(r)}`);
+    }
+  }
+  emit('');
+  emit('  The production weight is 0.3. A row that is best at another weight is');
+  emit('  a finding, not a change — the weight is a product decision until a');
+  emit('  measurement says otherwise.');
 }
 
 // The per-case table. The aggregate says which arm wins; this says which

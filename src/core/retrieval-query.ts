@@ -115,13 +115,14 @@ export function prepareRetrievalInputs(
   current: string,
   history: ReadonlyArray<{ role: string; content: string }>,
   maxRounds: number,
+  historyWeight?: number,
 ): RetrievalInputs {
   const retrievalQuery = buildRetrievalQuery(current, history, maxRounds);
   return {
     retrievalQuery,
     // Weighted, not just segmented: `buildWeightedRetrievalQuery` segments on
     // the way `segment` does, which is what the scorer's tables are keyed by.
-    expansionTerms: buildWeightedRetrievalQuery(current, history, maxRounds),
+    expansionTerms: buildWeightedRetrievalQuery(current, history, maxRounds, historyWeight),
     llmQuery: current,
     gateQuery: retrievalQuery,
   };
