@@ -62,6 +62,26 @@ const DETERMINISTIC_PPR = { numWalks: 500, maxSteps: 30, rng: makeRng(1) } as co
 
 // ─── scoreHubLinkDistinctiveness — direct unit tests ──────────────────────
 
+describe('scoreHubLinkDistinctiveness — the score is a function, not a lottery', () => {
+  // Every other test in this file passes an explicit `rng`, so the production
+  // default was never exercised: `personalizedPageRank` falls back to
+  // `Math.random`, so the same page scored a different distinctiveness on
+  // every run — and a distinctiveness below the threshold is what makes the
+  // lint strip a link.
+  it('gives the same score for the same graph when the caller supplies no rng', () => {
+    const g = graph([
+      ['Hub', ['A', 'B', 'C']],
+      ['A', ['B']],
+      ['B', ['C']],
+      ['C', ['A']],
+    ]);
+    const options = { numWalks: 200, maxSteps: 30 };
+    const first = scoreHubLinkDistinctiveness(g, 'Hub', ['A', 'B', 'C'], options);
+    const second = scoreHubLinkDistinctiveness(g, 'Hub', ['A', 'B', 'C'], options);
+    expect([...first.entries()]).toEqual([...second.entries()]);
+  });
+});
+
 describe('scoreHubLinkDistinctiveness — single target', () => {
   it('returns distinctiveness=1 for single target (no comparison set)', () => {
     const g = graph([['A', ['B']]]);

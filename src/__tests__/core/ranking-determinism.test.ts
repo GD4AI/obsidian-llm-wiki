@@ -19,6 +19,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { makeSeededRng, seededRngFrom } from '../../core/monte-carlo-ppr';
+import { lexMatch } from '../../core/ppr-cascade';
+import { localKeywordMatch } from '../../core/index-search';
 
 describe('seededRngFrom — the seed is the request, not the world', () => {
   // Regression. The seed used to include the graph size, so adding an
@@ -50,6 +52,57 @@ import { selectCandidateWindow, type WindowPage } from '../../core/candidate-win
 function page(path: string, title: string, aliases: string[] = [], summary?: string): PageRef {
   return { path, title, aliases, summary };
 }
+
+describe('lexMatch — the legacy weight table breaks ties the same way', () => {
+  // `lexMatch` is the legacy scorer's path: title 3, alias 2, summary 1, body 1,
+  // plus a +2 bonus when every token was found. It sorted on the score alone,
+  // so two pages that matched the same number of tokens in different fields
+  // came out in the caller's array order — and the caller's array order is the
+  // order the index happened to be read in.
+  it('breaks a tie by breadth of match first', () => {
+    // Three tokens, so the "every token found" bonus (+2) fires for neither.
+    // A: 'alpha' on the alias (2) and 'beta' on the summary (1) → score 3,
+    //    breadth 2. B: 'alpha' on the title (3) → score 3, breadth 1.
+    // Equal scores, and the paths disagree with the breadth: 'x/z' has the
+    // breadth, 'x/a' sorts first. Breadth wins.
+    const broad = { path: 'x/z', title: 'delta', aliases: ['alpha'], summary: 'beta' };
+    const narrow = { path: 'x/a', title: 'alpha', aliases: [], summary: '' };
+    const r = lexMatch('alpha beta gamma', [narrow, broad]);
+    expect(r.map(p => p.path)).toEqual(['x/z', 'x/a']);
+  });
+
+  it('breaks a full tie by path ascending, whatever order the pages arrive in', () => {
+    const tiedA = { path: 'x/a', title: 'alpha', aliases: [], summary: '' };
+    const tiedB = { path: 'x/b', title: 'alpha', aliases: [], summary: '' };
+    const first = lexMatch('alpha', [tiedB, tiedA]).map(p => p.path);
+    const second = lexMatch('alpha', [tiedA, tiedB]).map(p => p.path);
+    expect(first).toEqual(['x/a', 'x/b']);
+    expect(second).toEqual(['x/a', 'x/b']);
+  });
+});
+
+describe('localKeywordMatch — ties do not follow the array', () => {
+  // The same defect in the index search: title 3, alias 2, and nothing else.
+  // Two pages with the same score came out in the order the index was read.
+  it('breaks a tie by breadth of match first', () => {
+    // A: 'alpha' on the title (3) and 'beta' on an alias (2) → score 5,
+    //    breadth 2. B: 'alpha' on the title (3) and on an alias (2) → score 5,
+    //    breadth 1. Equal scores, and the paths disagree with the breadth.
+    const broad = { path: 'x/z', title: 'alpha', aliases: ['beta'], summary: '' };
+    const narrow = { path: 'x/a', title: 'alpha', aliases: ['alpha'], summary: '' };
+    const r = localKeywordMatch('alpha beta', [narrow, broad]);
+    expect(r.map(p => p.path)).toEqual(['x/z', 'x/a']);
+  });
+
+  it('breaks a full tie by path ascending, whatever order the pages arrive in', () => {
+    const tiedA = { path: 'x/a', title: 'alpha', aliases: [], summary: '' };
+    const tiedB = { path: 'x/b', title: 'alpha', aliases: [], summary: '' };
+    const first = localKeywordMatch('alpha', [tiedB, tiedA]).map(p => p.path);
+    const second = localKeywordMatch('alpha', [tiedA, tiedB]).map(p => p.path);
+    expect(first).toEqual(['x/a', 'x/b']);
+    expect(second).toEqual(['x/a', 'x/b']);
+  });
+});
 
 describe('makeSeededRng', () => {
   it('gives the same sequence for the same seed', () => {
