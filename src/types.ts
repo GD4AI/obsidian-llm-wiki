@@ -601,6 +601,23 @@ export interface LLMWikiSettings {
   // Recommended for local models with small context windows.
   maxTokensPerCall: number;
 
+  /**
+   * Issue #880 — the ceiling on the answer context, in TOKENS.
+   *
+   * Before this, `RETRIEVAL_BUDGET` (20) bounded the number of PAGES and each
+   * page carried its own character cap, so the total had no ceiling at all:
+   * 20 x 12,800 characters is the worst case, and measured on the production
+   * vault 27 of 30 answers exceeded an 8k window while the budget still read
+   * "20 of 20". Pages are dropped from the tail until this ceiling is met.
+   *
+   * `0` disables the ceiling, which is what a user on a very large window may
+   * want and what keeps every pre-#880 behaviour reachable.
+   *
+   * Optional so a settings object written before this field existed still
+   * type-checks; the read site falls back to the default.
+   */
+  queryContextBudgetTokens?: number;
+
   // Issue #111: slug casing for generated filenames.
   // 'lower' preserves backwards-compatible all-lowercase filenames.
   // 'preserve' keeps the casing the LLM produces — required for languages
@@ -1595,6 +1612,13 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // Local model users can set this when the provider is Ollama, LM Studio,
   // custom, or anthropic-compatible.
   maxTokensPerCall: 0,
+
+  // Issue #880: the answer context's ceiling in tokens. 8192 because that is
+  // the common floor a local runtime will serve, and because a single default
+  // needs one sentence in eleven locales rather than a rule the user has to
+  // understand. Deliberately conservative: the estimator over-counts tokens, so
+  // the cost of this number being low is a slightly shorter answer.
+  queryContextBudgetTokens: 8192,
 
   // v1.20.0: default false. The plugin does NOT send any thinking-control
   // field unless the user explicitly enables "Disable thinking" in Custom

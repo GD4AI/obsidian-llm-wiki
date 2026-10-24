@@ -540,6 +540,9 @@ export const ES_TEXTS = {
     lintDedupIncludeSourcesDesc: 'Activado por defecto. Cuando está activo, las fuentes con cuerpos idénticos se marcan como duplicados durante el lint. Desactívalo si tu corpus de fuentes genera falsos positivos.',
     legacyScorerName: 'Clasificador de consultas antiguo',
     legacyScorerDesc: 'Desactivado por defecto. Cuando está activo, la ordenación de consultas usa el clasificador antiguo ajustado a mano en lugar del nuevo BM25F. Actívalo si los resultados de búsqueda empeoraron tras una actualización.',
+    // Issue #880: the answer context's token ceiling (bottom Advanced settings panel).
+    queryContextBudgetName: 'Presupuesto de tokens del contexto',
+    queryContextBudgetDesc: 'Limita las páginas wiki enviadas con una respuesta, en tokens. Desactivado = 0. 8K sirve para la mayoría de entornos locales; súbelo para un modelo en la nube grande. Se descartan páginas empezando por el rango más bajo.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'Omitir candidatos que la fuente solo menciona',
     skipMentionOnlyCandidatesDesc: 'Desactivado por defecto. Cuando está activo, una entidad o concepto extraído cuyo nombre no aparece en el texto corrido de la nota — ausente, o solo entre paréntesis, enumeraciones o elementos de lista cortos — no recibe página ni más llamadas al modelo, y se elimina de las listas de relacionados de los demás candidatos. Funciona para idiomas de wiki con perfil de límites de palabra (alemán medido; inglés, francés, español, portugués, neerlandés estimados); para otros idiomas la ingesta informa una vez que no puede aplicarse. Déjalo desactivado en vaults tipo glosario o notas en viñetas donde cada término nombrado deba tener página.',
