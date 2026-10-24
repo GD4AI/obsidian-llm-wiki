@@ -196,6 +196,29 @@ function collectResolvingReferences(
     if (targets.has(file.path)) continue;
 
     const cache = deps.metadataCache.getFileCache(file);
+    // BODY LINKS ONLY, and #835 is the decision that keeps it that way.
+    //
+    // Obsidian keeps frontmatter links in a third array, `frontmatterLinks`. A
+    // `sources:` entry that resolves to a page this merge deletes is therefore
+    // not retargeted here. It survives the delete. That is deliberate, and
+    // #386 scoped the pass this way before #590 recorded the reason.
+    //
+    // `sources:` is the ATTRIBUTION surface — which source note produced this
+    // page — and #729's provenance work reads it. Rewriting an entry during a
+    // merge would change a provenance record, not a link.
+    //
+    // Reconsidering it in 2026-10-24 found a second reason. Measured on three
+    // vaults, 0.2 % to 18.5 % of `sources:` entries name an entity or concept
+    // rather than a source note, and the samples read like
+    // `concepts/addcommand.md -> concepts/registerview`. Those records were
+    // wrong when they were written. Retargeting them would keep the wrong
+    // record and make it look maintained.
+    //
+    // The cost of not retargeting is a leftover dead link, and that cost is
+    // paid visibly: `scanDeadLinks` runs its regex over the whole file,
+    // frontmatter included, so the leftover entry is reported like any other.
+    // `scanners.test.ts` pins that, because it is now the justification for
+    // this decision rather than an incidental property.
     const references = [...(cache?.links ?? []), ...(cache?.embeds ?? [])];
     if (references.length === 0) continue;
 
