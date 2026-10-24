@@ -143,6 +143,30 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
       .setValue(tempSettings.legacyScorer === true)
       .onChange((value) => { tempSettings.legacyScorer = value; }));
 
+  // Issue #880: the answer context's token ceiling. Bottom panel for the same
+  // reason as the scorer toggle above — it bounds a query-surface cost, not a
+  // sampling parameter, and AGENTS' settings-panel rule keeps the LLM Advanced
+  // section for sampling and provider overrides only.
+  //
+  // A dropdown rather than free text: the numbers are the windows runtimes
+  // actually serve, and a typo'd budget would either truncate every answer or
+  // never apply. `0` keeps the pre-#880 behaviour reachable.
+  {
+    const budgetOptions = [0, 4096, 8192, 16384, 32768, 65536];
+    const budgetLabels = ['0 (off)', '4K', '8K', '16K', '32K', '64K'];
+    const current = tempSettings.queryContextBudgetTokens ?? 8192;
+    new Setting(containerEl)
+      .setName(tab.getText('queryContextBudgetName'))
+      .setDesc(tab.getText('queryContextBudgetDesc'))
+      .addDropdown(dropdown => {
+        budgetOptions.forEach((val, idx) => {
+          dropdown.addOption(String(val), budgetLabels[idx]);
+        });
+        dropdown.setValue(String(current));
+        dropdown.onChange((value) => { tempSettings.queryContextBudgetTokens = parseInt(value); });
+      });
+  }
+
   // Slug Case (filename casing for generated wiki pages). Moved here from
   // Wiki Configuration in v1.26.0 — a one-time naming-policy choice.
   new Setting(containerEl)
