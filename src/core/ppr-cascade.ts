@@ -431,16 +431,6 @@ export function lexMatch(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   // The BM25F branch, when the caller has bodies to build tables from.
-  //
-  // Its tie-break is the same shape as the legacy branch below: score, then
-  // breadth of match, then a stable path. #878 established that rule on the
-  // legacy branch because a score-only sort left the order to whatever the
-  // index happened to be read in; this branch was written before that fix
-  // landed and sorted on score + path alone, which is deterministic but makes
-  // the alphabet decide every tie. Breadth is the meaningful second key: a
-  // page matching "cache" and "invalidation" is a better answer than one
-  // matching "cache" twice as strongly in one field. `tokensFound` is that
-  // count, and `bm25fScore` does not expose it, so it is counted here.
   if (tables) {
     // SEGMENTED, same reason and same shape as `scorePagesByNeedles` above.
     // `bm25fScore` looks terms up in a `PageTerms` table built by `segment`, so
