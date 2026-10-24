@@ -15,6 +15,7 @@ import { isLocalNoKeyProvider } from '../core/local-no-key-provider';
 import { resolveProviderApiKey } from '../llm-sdk/provider-api-key-resolver';
 import type { LLMClient } from '../types';
 import { isIngestableSource } from '../core/folder-scope';
+import { makeUserIgnorePredicate } from '../core/user-ignore';
 import { localDateStamp } from '../core/format';
 
 export class AutoMaintainManager {
@@ -115,6 +116,13 @@ export class AutoMaintainManager {
   // would watch `wiki/` and feed the plugin its own generated pages (#502).
   private isWatched(path: string): boolean {
     if (this.settings.watchedFolders.length === 0) return false;
+    // Issue #872 — the watcher is the automatic path, and it was the one path
+    // that did not consult Obsidian's "Excluded files" list. The manual folder
+    // ingest asked Obsidian; the watcher did not, so a file the user had
+    // excluded was ingested anyway as soon as the change came from the
+    // watcher. The predicate is created once per call and asked per path; it
+    // holds no state, and a missing API yields "nothing is excluded".
+    const isUserIgnored = makeUserIgnorePredicate(this.app.metadataCache);
     return this.settings.watchedFolders.some(folder => {
       const trimmed = folder.replace(/\/+$/, '');
       return isIngestableSource(
@@ -123,6 +131,7 @@ export class AutoMaintainManager {
         trimmed.length === 0,
         this.settings.wikiFolder,
         this.app.vault.configDir,
+        isUserIgnored,
       );
     });
   }
