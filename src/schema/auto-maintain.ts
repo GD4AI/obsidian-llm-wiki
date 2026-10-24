@@ -458,13 +458,17 @@ export class AutoMaintainManager {
     try {
       const logPath = `${wikiFolder}/log.md`;
       const existingLog = await this.wikiEngine.tryReadFile(logPath);
-      const lang = this.settings.language;
-      if (existingLog && needsLogHeaderMigration(existingLog, lang)) {
-        // Issue #793: the command name comes from the interface language,
-        // which is the language the palette is registered in — the same
-        // language this migration path writes the header in.
-        const commandName = (TEXTS[lang] || TEXTS.en).cmdViewHistory;
-        const migrated = migrateLogHeader(existingLog, lang, commandName);
+      // Issue #793: two languages, not one. The header is written in the wiki's
+      // content language, because that is the language of the file; the command
+      // name comes from the interface language, because that is the language
+      // the command palette is registered in. `log-writer.ts:127` already splits
+      // them. A migration that did not would rewrite every engine-written header
+      // back into the interface language — and with #876's freshness check it
+      // would do so on every startup, not once.
+      const headerLang = this.settings.wikiLanguage ?? '';
+      const commandName = (TEXTS[this.settings.language] || TEXTS.en).cmdViewHistory;
+      if (existingLog && needsLogHeaderMigration(existingLog, headerLang, commandName)) {
+        const migrated = migrateLogHeader(existingLog, headerLang, commandName);
         if (migrated !== null && migrated !== existingLog) {
           await this.wikiEngine.createOrUpdateFile(logPath, migrated);
           console.debug(`[QuickFixes] Phase 4.5: log.md header migrated to v1.22.2 format`);
