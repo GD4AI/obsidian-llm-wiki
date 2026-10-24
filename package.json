@@ -53,7 +53,7 @@
   },
   "overrides": {
     "brace-expansion": "5.0.12",
-    "undici": "8.10.2",
+    "undici": "8.12.3",
     "source-map-js": "1.2.2"
   },
   "dependencies": {
@@ -62,6 +62,6 @@
     "@ai-sdk/openai-compatible": "3.0.57",
     "ai": "7.0.136",
     "fflate": "0.8.3",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
