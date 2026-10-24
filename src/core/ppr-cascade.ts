@@ -448,23 +448,21 @@ export function lexMatch(
     // has never seen it and it matches nothing. Measured 2026-10-16: the BM25F
     // path returned no page at all for 深度学习 where the legacy path returned
     // the right one.
+    //
+    // The tie-break here is score then path. #878 changed the LEGACY branch
+    // below to score -> breadth -> path, and this branch is deliberately left
+    // at score -> path: the +0.086 and +0.113 this PR reports were measured
+    // with this comparison, and changing it here would make the numbers
+    // describe code that is not the code being merged. Whether the two
+    // branches should share one tie-break rule is a real question, and it is
+    // a measured question, so it is not answered in a conflict resolution.
     const queryTerms = tokens.flatMap(n => segment(n));
-    const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
+    const scored: { page: PageRef; score: number }[] = [];
     for (let i = 0; i < pages.length; i += 1) {
       const score = bm25fScore(queryTerms, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
-      if (score <= 0) continue;
-      const page = pages[i];
-      // Breadth, counted over the SAME segmented terms the scorer used.
-      const haystack = `${page.title} ${page.aliases.join(' ')} ${page.summary ?? ''} ${page.text ?? ''}`.toLowerCase();
-      let tokensFound = 0;
-      for (const kw of queryTerms) if (haystack.includes(kw)) tokensFound += 1;
-      scored.push({ page, score, tokensFound });
+      if (score > 0) scored.push({ page: pages[i], score });
     }
-    return scored
-      .sort((a, b) => b.score - a.score
-        || b.tokensFound - a.tokensFound
-        || (a.page.path < b.page.path ? -1 : a.page.path > b.page.path ? 1 : 0))
-      .map(s => s.page);
+    return scored.sort((a, b) => b.score - a.score || (a.page.path < b.page.path ? -1 : 1)).map(s => s.page);
   }
   const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
   for (const page of pages) {
