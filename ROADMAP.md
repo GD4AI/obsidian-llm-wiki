@@ -100,54 +100,23 @@ is stored twice per locale. A verification pass on 2026-10-04 corrected its own 
 rather than 10. `README_RU.md` is the better reference, because it already quotes translated names.
 **Shipped, and where that record lives:** [CHANGELOG.md](./CHANGELOG.md). A "resolved since this queue was written" list used to sit here. It was removed on 2026-10-12: it had been frozen at 2026-10-03, and a frozen resolve list reads as current state long after it stops being true. The per-version composition record is canonical in CHANGELOG, and a second copy here is a second place to be wrong.
 
-### ROI order — the lint-fix correctness family (2026-10-12)
+### ROI order — the lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
-Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, plus #676, which the same family produced. Every claim was read against the source before acceptance; none was taken from the report alone. They share one subsystem — the lint fix path — so they are ordered as one batch, not by issue number. `ROI = (impact × certainty) / effort`, per [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived).
+Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, plus #676, which the same family produced. **All of it shipped as PR #864** (merged `3136bfb35e`; 23 files, 348 test files, 4839 tests): #826, #824 and #827 closed by it, #825's stale half fixed with its frontmatter clause left open. The ROI table, the batch plan, and what executing it taught are in the PR thread and in [MEMORY §"Lessons learned"](./MEMORY.md#lessons-learned-from-session-memory); the user-facing entries are in the CHANGELOG. What is left is small, and it is here:
 
-| Rank | # | The defect | Impact | Certainty | Effort | Verdict |
-|---|---|---|---|---|---|---|
-| 1 | **#826** | Dedup can pair a page with itself, and the merge path has no `target !== source` guard — so it writes the page and then deletes the same path | High — silent data loss | High — two guards, and one already exists one layer down (`link-retarget.ts:142`) | Low | Fix first |
-| 2 | **#823** | Same-page fixes race at `pageGenerationConcurrency`; the log reports corrections that never landed | High — the same dead links are "fixed" on every run, forever | High — `Promise.allSettled` over whole-file writes, and `createOrUpdateFile` discards `writeFileWithIntent`'s `boolean` | Low-medium | **In flight in #833** (@Noumenon-ai) — per-source promise chaining plus a write-outcome check. Do not re-implement |
-| 3 | **#824** | `linkOrphanPage` appends an LLM-guessed target it never resolves, and can duplicate the link text on one line | Medium-high — orphans stay orphaned and the dead-link pool grows | High — `validateOrphanLinkTarget` is a substring check | Low-medium | Resolve against the page index before the write |
-| 4 | **#827** | Fabricated placeholder stubs from doc-example identifiers (`myfile`, `name`, `unknown-entity`) become permanent lint items | Medium — the user cannot "fix" a page titled `Name` | Medium — needs a rule set, not a word list | Medium | Three rules: generic word, code identifier, inline-code-or-quote-only |
-| 5 | **#825** | A merge reports retargets it skipped as stale, never rewrites frontmatter refs, then deletes the source | High — the merge is a net producer of dead links | Medium — the stale half is a defect; the frontmatter half reopens #386's deliberate scope | Medium | **Split.** Fix the delete-despite-stale half; take the frontmatter scope as its own decision |
+| Left | What | Where it belongs |
+|---|---|---|
+| `deleteFile`'s return type | `void` where `boolean` would let the caller know the page went | its own change — every caller and every mock follows it |
+| The `merged` count | it still increments for a pair whose source was kept, and it reaches the user through `t.lintMergeComplete`, so the count can exceed the pages actually merged | **#835**, with #825's frontmatter clause — correcting it needs a structured outcome from `mergeDuplicatePages` rather than a match on the message text, and the match on the message text is the fragile coupling this whole family is about |
+| #827's declined clause | a name appearing only inside a quote is not treated as fiction, because `"[[X]]"` is a real link in Obsidian | on the record, not on the roadmap |
 
-**#676 is the same family and shipped 2026-10-12** as `b09ab3d7` (PR #829): the repair path could resolve a dead link to the page that contains it, which destroys the evidence that a page was ever missing. Reported at 24 pages / 27 list items on a ~2,300-page vault.
+**The idempotency requirement is worth naming separately because it is not a detail of #825.** Keeping a source makes the merge re-entrant, so the fallback append had to become a containment check on `## From <title>` in the same change. A fix that keeps a page and then re-merges it on every run trades one silent deletion for slow unbounded growth — both failures of the same kind.
 
-**One row left this batch while the batch was being written.** #823 was ranked second on impact and certainty, and PR **#833** opened the same day with that fix — per-source promise chaining in `runDeadLinkFixes` plus a write-outcome check. It was not visible when the roster was fetched, and it is **not available work**. This is the case the "already in flight in an OPEN PR" check exists for: a defect ranked by reading the report is not a defect nobody has started.
-
-**The decision this batch cannot make for itself.** #825 asks whether `collectResolvingReferences` (`link-retarget.ts:198`) should read `frontmatterLinks`. #386 excluded them on purpose and #590 records that. Widening it changes the write behaviour of every merge, so it is a decision, not a fix. The recommendation is to ship the `stale > 0` half first and treat the frontmatter scope separately.
-
-**The batch plan, for whoever picks this up.** Branch `fix/lint-dead-link-family` from `main`. One PR, four commits in this order, each revertible on its own, and each beginning with a test that fails without the change. #823 is **not** in it — see above. Four fixes, one subsystem, so one review rather than four.
-
-| Seq | # | Where | The test that must fail first |
-|---|---|---|---|
-| 1 | **#826** | `dedup-phase.ts:735` drops self-pairs after `normalizeLLMPath`; a hard guard in `runDuplicateMerges` (`fix-runners.ts:423`) and in `mergeDuplicatePages` (`merge-duplicates.ts:15`) before any write or delete | A self-pair is dropped; `mergeDuplicatePages(x, x)` refuses; `deleteFile` is never called |
-| 2 | **#824** | The link's target is the orphan by construction: `retargetOrphanLinkTarget` (`orphan-matcher.ts`) always rebuilds it from the orphan's own path, and `validateOrphanLinkTarget` compares by **target identity** — `[[page]]` and `[[page\|Label]]` are the same page — so a page already linked under another spelling is not linked twice | The orphan gains an inbound link whatever the model guessed; a duplicate is not appended; "linked from" is not reported when no inbound link was written. The page-index resolver is **gone**: "does this target name some page?" is a different question from "does this target name the orphan?" |
-| 3 | **#827** | The stub branch at `fix-dead-link.ts:325` gets three rules: a single generic word, a code identifier, and a name that appears only inside inline code or a quote | `MyFile` and `Name` create no page; an inline-code name creates no page; **a genuinely unknown entity still does** — over-filtering is the failure mode to test against. **Open:** the model's per-link decision is not stored, so every run re-asks for every link it left, and without a temperature the answer can change — a link left on Monday can become a stub on Tuesday |
-| 4 | **#825** (stale half only) | `merge-duplicates.ts:194`: when `retargeted.stale > 0`, do not delete, and surface `stale` in the run result | `stale > 0` keeps the source and reports it; `stale === 0` deletes exactly as before |
-
-**Three notes a picker-up needs.** #824 changes an **exported** signature: `validateOrphanLinkTarget` has unit tests and one caller (`link-orphan.ts:93`), so the resolver is an **optional** parameter and the existing call keeps its behaviour. #825's frontmatter half is **not** in the batch — it is decided in #835. And #833's English sentinel (`startsWith('no action taken')` in `fix-runners.ts`, matching literals in `fix-dead-link.ts`) is the same subsystem and is worth folding into seq 1 or 2, because a wording edit there silently restores the false "fixed" counts that #823 was about.
-
-**The order is the ROI order, and the last row is last on purpose.** #825 is the only one whose correct behaviour changes what a merge *deletes*, so it carries the highest risk and belongs where it can be reverted without touching the other three.
-
-**Status 2026-10-17: three of the four shipped on `fix/lint-dead-link-family`, and #827 waits on a decision.** #826, #824 and #825 each landed as their own commit with their own RED test and their own Gate 1. Four things came out of executing the plan rather than reading it:
-
-- **#833 was already merged**, on 2026-10-12 as `f905b520`. Two paragraphs above still call it "in flight" and say "do not re-implement it" — both were true when written and stale five days later. The `'no action taken'` sentinel it touches is still there, and is **6** occurrences in `lint/fix-dead-link.ts`, not the four this plan names, matched by `startsWith` in `fix-runners.ts:272`. Fold that coupling into a later commit; do not silently edit the wording.
-- **Seq 1's row described the fix, not the defect.** `dedup-phase.ts` did *not* drop self-pairs; it filtered only that `target` and `source` were non-empty strings, and `normalizeLLMPath` ran in the `.map()` **after** that filter, so the two were never compared. Two forms collapse — a literally repeated string, and the same path with the `wiki/` prefix on one side only. **`./entities/A.md` does not**: it becomes `wiki/./entities/A.md`. Verified by calling the production function, not by reading it.
-- **Seq 2's second half was mis-attributed.** The plan calls it "can duplicate the link text on one line". The substring rule cannot: the duplicate comes from `link_text` already ending with the link. The defect is real; the cause named was not.
-- **Forcing `stale > 0` in a test takes the right lever.** Replacing a cached reference's `original` looks correct and is not — the replacement is computed by substituting into `original`, so a corrupted `original` makes the replacement equal to it and the edit is dropped as a no-op before `applyEdits` sees it. Shift the recorded **position** instead.
+**Status 2026-10-17: three of the four shipped on `fix/lint-dead-link-family`, and #827 waits on a decision.** #826, #824 and #825 each landed as their own commit with their own RED test and their own Gate 1. Four things came out of executing the plan rather than reading it — the plan's row for #823 was already merged in #833 and was not available work; the row for #826 described the fix rather than the defect (`normalizeLLMPath` ran after the filter, so the two paths were never compared); the row for #824 named a cause that was not the cause (the duplicate comes from `link_text` already ending with the link, not from the substring rule); and forcing `stale > 0` in a test takes the recorded **position**, not the `original` text, because the replacement is computed by substituting into `original` and a corrupted `original` makes it a no-op. The lessons are in MEMORY and the detail is in the PR thread.
 
 **One residual from seq 4 is deliberately left visible.** `runDuplicateMerges` still increments `merged` for a pair whose source was kept, and `merged` reaches the user through `t.lintMergeComplete`, so the count can exceed the number of pages actually merged. Correcting it needs a structured outcome from `mergeDuplicatePages` rather than a match on the message text — the same fragile coupling as the sentinel. File it with #825's frontmatter half under the `#835` decision rather than patching the string.
 
-**Status 2026-10-18: the review found one blocking point in #824, and it was mine.** The review probed the case where the model's guess names a *different page that exists*. The old code kept the guess, because the resolver it asked was "does this target name some page?" — not "does this target name the orphan?". The orphan gained no inbound link, the run reported that it had linked it, and the next lint reported the orphan again: the loop #824 describes, with a success message on top.
-
-The fix is to stop asking the wrong question. The link's purpose is to make the orphan reachable, so the target is the orphan by definition; the model cannot know the orphan's real path — it sees the orphan's content and the index, never its file name — so it guesses one from the display name, and the guess is replaced unconditionally. The resolver is deleted with it: it asked a question that has no answer in this path, and it cost a vault-wide scan per orphan. The duplicate check moved from string comparison to **target identity**, because a page linked under a different label is the same page, and the label is presentation.
-
-**Two remarks from the same review, neither blocking, and both answered rather than coded.**
-
-- **#825, the write order.** The merged target is written before `retargetLinksToPage` runs, so when `stale > 0` keeps the source, two pages exist for one name until the next run merges them again. The order is kept deliberately. `stale` is a property of the retarget, so it *can* be learned first — by a dry-run scan, or by retargeting before the write. The dry run doubles a vault-wide scan on every merge. The reorder is worse: it makes links point at the target while the target still holds its *pre-merge* content, so a failed write leaves the answer behind the merge. Writing the merged content first means the target never holds less than it should. The two-page state converges on the next run and breaks no link — Obsidian prefers a file name to an alias.
-- **#827, the unstored decision.** `fix-dead-link.ts` uses the model's `action=leave` for that run and stores nothing, so every run re-asks for every link it left. Recorded in the #827 row above rather than coded: persisting the decision changes what the next run is allowed to do, which is a larger question than this batch answers.
+**Status 2026-10-18: the review found one blocking point in #824, and it was mine.** The review probed the case where the model's guess names a *different page that exists*. The old code kept the guess, because the resolver it asked was "does this target name some page?" — not "does this target name the orphan?". The orphan gained no inbound link, the run reported that it had linked it, and the next lint reported the orphan again: the loop #824 describes, with a success message on top. The fix is to stop asking the wrong question: the link's purpose is to make the orphan reachable, so the target is the orphan by definition, and the resolver is deleted with it. The duplicate check moved from string comparison to **target identity**, because a page linked under a different label is the same page, and the label is presentation. Two remarks from the same review were answered rather than coded, and both are on the record in the PR thread: **#825's write order** is kept deliberately (reordering would make links point at a target that still holds its pre-merge content, so a failed write would leave the answer behind the merge), and **#827's unstored decision** is not persisted, because persisting it changes what the next run is allowed to do.
 
 **Status: all four shipped, plus five follow-ups the plan did not name — PR #864, nine commits, CI Gate 1 green.** The paragraph above says #827 "waits on a decision" and that was true when written; the decision was made and the row was wrong. What executing the rest of it changed:
 
@@ -288,9 +257,39 @@ Four levers are measured and three of them are in `main` or waiting to be. The w
 
 **#855 is one review point from done, and that point is a measurement, not a patch.** The three blocking points from @DocTpoint's review at `9102c478` are fixed — the expanded query no longer goes to the LLM stages as the user's question, the per-query term-table rebuild is gone, and the measurement now lives in `tools/dev-instrument/run-expansion-eval.mjs` and runs through the production path. What remains is the history in the ranking, and the fourth review (2026-10-21) settled **which arm is the baseline**: on `main` the retrieval query is the question alone, so `none` — not `concat` — stands for what ships today. Against `none` the weighted arm is **worse** on topic-switch (MRR 0.615 → 0.550) and better on follow-up MRR (0.121 → 0.248, hit@1 zero in both arms).
 
-**The maintainer chose the measurement over the decision (2026-10-22).** Before cutting or keeping the history: extend `tools/dev-instrument/run-conversation-eval.mjs` to report r@10 and to run a derived follow-up set, re-measure against `none`, and reconcile the 16-33x claim on the same instrument. If the history cannot beat `none` on both families, **remove the history half from the PR** — `buildWeightedRetrievalQuery`, `buildRetrievalQuery`, the history branch of `prepareRetrievalInputs` and the `history: N rounds (weight 0.3)` label line — because with the history out they are unreachable and the dead-code policy forbids shipping them; flipping a flag to zero and keeping them is shipping dead code. The full steps are in [MEMORY §"Handoff — 2026-10-22, before compaction"](./MEMORY.md#handoff--2026-10-22-before-compaction).
+**The maintainer chose the measurement over the decision (2026-10-22), and the measurement has now answered it: the history stays.** The steps were to extend the harness to report r@10, to run a derived follow-up set, to re-measure against `none` — the only baseline that means anything, because on `main` `selectPprSeeds(userMessage, …)` takes the question alone — and to reconcile the 16-33x claim on the same instrument. The first three are done; the numbers are below, and the fourth is a restatement of the claim, not a reconciliation. The rule the measurement had to follow was written down before it ran: if the history cannot beat `none` on both families, **remove the history half from the PR** — `buildWeightedRetrievalQuery`, `buildRetrievalQuery`, the history branch of `prepareRetrievalInputs` and the `history: N rounds (weight 0.3)` label line — because with the history out they are unreachable and the dead-code policy forbids shipping them; flipping a flag to zero and keeping them is shipping dead code. It can, so nothing is removed.
 
-**Next measurements, in order.**
+Two shapes of fix, neither cheap. **A** carries `WeightedTerm[]` to the ranking path and has it consume `segment()`'s output instead of re-tokenizing a string; that needs the two segmenters reconciled, because `segment` (`term-index.ts:60`) and `tokenizeQuery` (`ppr-cascade.ts:328`) are separate implementations. **B** keeps the ranking query to the current question's terms plus the expansion's additions, so the history drives the expansion and the term selection and never enters the ranking query — the topic-switch case then holds by construction, but the history's missing words would reach the ranking only through the expansion, which is a different promise from the one `buildWeightedRetrievalQuery`'s docstring makes.
+
+**The code-level finding, and the correction.** The weight cannot reach the ranking *as a weight*: `twoStageExpand` flattens the weighted terms to strings, and the only way a flat string expresses a weight is repetition, which both ends delete — `bm25fScore` counts "a repeated query term … once (the query is a set of terms, not a bag)" and `tokenizeQuery` collects into a `Set`. But the weight still reaches the ranking **indirectly**, by changing which terms the expansion adds. I had written, and posted on the PR, that the weighting "has no effect on the ranking at all". The harness corrected that: the effect is real, its route is not the one the parameter owns, and that is why nobody could say which part of it was responsible for a number.
+
+**The measurement, on the 2,141-page production vault** (`tools/dev-instrument/run-conversation-eval.mjs`, three arms through `planRetrieval` + `selectPprSeeds`; r@10 added, and the follow-up family split into its two populations because a limit applied to the family alone sampled the derived list and left one hand-written case):
+
+| family | arm | MRR | hit@1 | r@10 | not in list |
+|---|---|---|---|---|---|
+| topic-switch (n=30, derived) | none | **0.615** | **0.400** | **1.000** | 0 |
+| | concat | 0.205 | 0.100 | 0.367 | 13 |
+| | weighted | 0.550 | 0.333 | 0.967 | 1 |
+| follow-up (n=6, hand-written) | none | 0.121 | 0.000 | 0.333 | 3 |
+| | concat | **0.650** | **0.500** | **0.833** | 0 |
+| | weighted | 0.248 | 0.000 | 0.667 | 0 |
+| follow-up (n=30, derived) | none | 0.000 | 0.000 | 0.000 | 30 |
+| | concat | **0.622** | **0.400** | **1.000** | 0 |
+| | weighted | 0.599 | 0.400 | **1.000** | 0 |
+
+**The answer: the history stays, and the weighted form is the right one.** Without the history in the ranking query the derived follow-up family is not merely worse — it is **unanswerable**: r@10 0.000, all 30 misses, the expected page absent from the list in every case. The hand-written family drops to r@10 0.333 with hit@1 0.000. The history's cost on topic-switch is 0.065 MRR and one case in 30 falling out of the top 10. The trade is **3.3 % of the topic-switch r@10 against 33-100 % of the follow-up r@10** — a bad deal only if fewer than one query in ten is a follow-up.
+
+**The weighted form beats the concatenated one.** `concat` is the better arm on the hand-written follow-ups (MRR 0.650 vs 0.248) and the far worse one on topic-switch (0.205 vs 0.550). Weighted costs 0.065 MRR on topic-switch and gains 0.127 (hand-written) and 0.599 (derived) on the follow-ups, so its break-even mix is 34 % and 10 % follow-ups; concatenated's are 44 % and 45 %. The lower break-even wins, and the branch already ships the weighted form.
+
+**The coverage gate is refuted, and that closes the design question.** The design this section pointed at was a gate on the question's own name-tier coverage: when the question covers enough on its own the history stays out, when it covers nothing the history carries it. The harness computes that statistic with the production functions, and it does **not** separate the families. The derived questions score coverage 0.000 across all 30 cases and the topic-switch questions 1.000 across all 30 — but the six **hand-written** follow-ups score 1.000, 0.000, 1.000, 1.000, 0.730, 0.482, median 1.000. The statistic measures the question's *aspect* word ("显存", "残差连接"), not whether the question names its topic: "它的显存需求呢？" matches some other page's name tier perfectly and is still an anaphora. A gate on that number would exclude the history for exactly the cases that need it, and the hand-written family's r@10 would fall from 0.667 to 0.333.
+
+**One cost the harness cannot see, and it points the same way.** The harness passes no LLM client, so it measures the lexical and PPR path only. The third shape also empties the **gate** query, and the gate is what decides whether a query escalates to the paid LLM stage. A follow-up's question names nothing, so gating on the question alone escalates every one — which is why `select-seeds.ts` deliberately keeps the history in the gate query ("a follow-up carries no content words, so gating on the question alone would escalate every one"). The third shape is worse than the table shows.
+
+**What is still open, and what is not.** The 16-33x r@10 claim in this file is about the **expansion's** effect, measured by `run-expansion-eval.mjs` on synthetic corpora; the numbers above are about the **history's** effect, measured by another tool on the production vault. Different intervention, so not reconciled — and the claim should be restated as a claim about the expansion. The history's own effect is measured now, and it is large.
+
+**The harness is the reusable part and it landed first.** `tools/dev-instrument/run-conversation-eval.mjs` runs the three arms through the production pipeline, derives the topic-switch cases and the derived follow-up cases from the vault's own pages, and keeps the hand-written follow-ups in `tools/dev-instrument/conversation-cases.json` (anaphora is not derivable from a link graph). The two caveats it carries: the topic-switch question is the page's own title, so it is a controlled displacement rather than a natural utterance; and the derived follow-up question is a bare anaphora with no aspect word, so it is a lower bound on the realistic shape rather than the realistic shape itself.
+
+>**Next measurements, in order.**
 
 1. `maxFuse` of lexical and PPR scores WORSE than PPR alone on both vaults (0.850 vs 0.923 test8, 0.826 vs 0.926 test10). The fusion is diluting the graph channel and it deserves its own pass before any more weight goes on the lexical side. Note that the eval set builds its questions from `a -> b` links and PPR walks those links, so this number needs `--exclude-asker` before it means anything (#854).
 2. The full layered-eval re-run on 390 / 994 questions for the two-stage expansion, through the production path, after the review fixes land.
@@ -298,6 +297,73 @@ Four levers are measured and three of them are in `main` or waiting to be. The w
 **Query surface polish, recorded on #756.** Inline citation links are too loud (smaller than body, quieter than the final reference list, underline kept). 清空历史 empties the view and leaves `data.json` alone — the button says "forget" and does "hide". The composer should default to three lines and grow with the content.
 
 **What is NOT on this track and why.** Embeddings: the encoder's notion of similarity is the training corpus's, so it pulls a vault that deliberately goes beyond consensus back toward it. M2 (model-proposed edges): same reason, and the resolver checks that a page exists, not that a relation holds. Corpus-local co-occurrence expansion, anchor text, reverse links, co-citation projection: each measured and flat or negative on the strict layer. LLM query expansion for the cross-source gap: 0 % rescue measured over 1,180 questions. LLM reranking of the top-10: identical to baseline.
+
+### Query view surface — shipped 2026-10-16, follow-ups open
+
+#857 merged five items from #756: the composer grows with the content (`field-sizing: content`, one line of CSS), inline citations in academic form (`[N]` at the point of use, `[N] Display - description` in the bibliography), the bibliography stays clickable, "clear history" clears `lastOfferedQueryHash` too, and the retrieval label names the pipeline that actually ran (`⚡ BM25F+PPR · 📚 N sources`).
+
+Three bugs on that path are recorded in MEMORY because each looked like a formatting issue and was a logic one. The rule they add: read the prompt before writing the matcher. The reference-list detection broke because it matched a fixed set of heading names and the model writes whatever the prompt asks in the language the answer is in.
+
+### Retrieval-channel measurements — measured 2026-10-16
+
+**Lexical channel: the `legacyScorer` setting, legacy vs BM25F.** This is a real production switch, not two functions a tool invented: `select-seeds.ts` passes `settings.legacyScorer` into `lexMatchByTitleAndAliases(query, pages, { scorer })`, which is the same setting a user flips in Advanced settings. `tools/dev-instrument/run-retrieval-ab.mjs` measures both arms twice — the Stage-1 ranking the seeds are cut from, and the whole pipeline end to end through `selectPprSeeds` — because a better Stage-1 ranking only counts if the walk carries it.
+
+r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges. **BM25F wins on five vaults out of five, at both stages.**
+
+| Vault | Pages | Questions | Stage 1 legacy | Stage 1 BM25F | End-to-end legacy | End-to-end BM25F |
+|---|---|---|---|---|---|---|
+| `sample-50page` | 53 | 154 | 0.032 | 0.325 | 0.468 | 0.578 |
+| `expA-main/wiki` | 161 | 748 | 0.008 | 0.330 | 0.433 | 0.578 |
+| `expB-branch/wiki` | 171 | 819 | 0.006 | 0.288 | 0.376 | 0.545 |
+| `test8` | 172 | 688 | 0.025 | 0.369 | 0.548 | 0.674 |
+| `test10` | 354 | 1,572 | 0.003 | 0.300 | 0.345 | 0.508 |
+
+**How to read the two columns, because the gap shrinks and that is the finding.** At Stage 1 the legacy scorer lands the truth in the top-5 seeds between 0.3 % and 3.2 % of the time — it almost never seeds the right page. End to end the gap is +0.110 to +0.169, not +0.28 to +0.34, because `pprCascade` derives its own implicit lexical seeds and can walk to the truth regardless of what Stage 1 handed it. So the setting matters, and it matters less than the Stage-1 number implies. The legacy arm is a degraded path, not a broken one.
+
+**The CROSS layer is empty on all five vaults, and that is a production fact, not a missing run.** `cross` compares source slugs, and a slug reaches `PageRef` only from an index line's `` `source:` `` marker. No `index.md` in any of these vaults carries one, so production sees `sourceSlug === undefined` on every page and `assembleWithCoverage`'s source-diversity signal has nothing to act on. The cross-source layer — the one the plugin exists to serve — is **not measurable on these corpora and not active in production on them.** Anything quoted as a CROSS figure for these vaults is `n=0`; the older expansion figures came from a loader that read `sources:` out of file frontmatter instead, which is not the path `read-index.ts` takes.
+
+**The previous run of this measurement is void and its numbers are withdrawn.** The tool called `lexMatch(query, pages, tables)`; `lexMatch` takes two parameters, so the corpus argument was discarded and both arms ran the same code. The four vaults agreed to three decimals, which read as a null result and was actually a broken tool. Same for the "fusion" arm: its PPR-alone baseline was a score the tool made up. The earlier claim of "+0.065 to +0.105 across four vaults" has no traceable provenance and is not repeated here.
+
+**Fusion: not a decision this project currently has.** `pprCascade` calls `maxFuse` on its lex and ppr channels and then `assembleWithCoverage`. No setting turns that off. "Is the lex channel earning its place inside `pprCascade`?" is a fair question, but answering it needs a seam in `pprCascade` plus its own test and review — not a flag, and not a fabricated baseline. Until that seam exists the tool reports the question rather than a number.
+
+### The answer-path scorer and the cross-source layer — measured 2026-10-16
+
+Both records moved to [MEMORY §"Measurement record — the query side, 2026-10-16"](./MEMORY.md#measurement-record--the-query-side-2026-10-16) with the tables and the corrections. The verdicts stay here.
+
+**The answer-path scorer ships.** `pprCascade` called `lexMatch(query, pages)` with no tables, so the BM25F branch had no production caller and the hand-tuned weight table scored every answer. `PPRCascadeOptions.tables` carries them now. Measured after the segmentation fix, not before: @DocTpoint measured the BM25F branch returning **no page at all** for 深度学习 while the weight table returned the right one, so wiring it earlier would have been a regression on exactly the vaults this plugin is used on. The gain is small and positive on both Chinese vaults — +0.013 to +0.033 r@20.
+
+**The cross-source layer is barely measurable on the production vault.** Only 537 of its 2,141 pages carry a `source:` marker (25.1 %), and a true cross-source pair needs two pages from different sources, so only 15 questions in a 400-question sample qualify. The expansion's gain on the test corpora is +0.055 to +0.146 on the CROSS subset, and the production vault's CROSS rows are 0.000 in both arms — not measurable. The strict rule is `a.sourceSlug !== undefined && b.sourceSlug !== undefined && a.sourceSlug !== b.sourceSlug`; the loose rule counted unmarked pages as a different source and produced a 20x error in the other direction. The expansion ships on the ALL numbers (+0.078 to +0.130 on the corpora, +0.030 on the production vault's 400-question sample), and the cross-source question stays open under the issue that owns it.
+
+### The expansion's own verdict — measured 2026-10-16
+
+**This is the first valid measurement the expansion has ever had.** The shipped path fed it an uncut Chinese run, so it returned its input verbatim and every figure attached to it in this PR described an input the plugin does not produce. After the segmentation fix it runs for the first time.
+
+`run-expansion-eval.mjs` runs both arms through `planRetrieval` and `selectPprSeeds`: arm A is `expand: false` — the product minus one step — and arm B is the product. r@10, budget 20, `--exclude-asker`, questions built from the production graph's own edges.
+
+| Vault | Pages | Questions | No expansion | Expansion | delta |
+|---|---|---|---|---|---|
+| `expA-main/wiki` | 161 | 748 | 0.572 | 0.650 | **+0.078** |
+| `expB-branch/wiki` | 171 | 819 | 0.535 | 0.620 | **+0.085** |
+| `test8` | 172 | 688 | 0.645 | 0.731 | **+0.086** |
+| `sample-50page` | 53 | 154 | 0.526 | 0.656 | **+0.130** |
+
+Positive on four vaults of four, including both Chinese vaults the earlier void figures came from. The tool self-checks and reports **20.0 words added per query, minimum 20.0, zero no-ops** — so this is the mechanism and not the baseline measured twice.
+
+**The deltas land near the old numbers, which is a coincidence and must not be read as confirmation.** The old +0.070 and +0.089 were on an input production never produces, and their baseline was 0.180 on test8 where this run's no-expansion arm reads 0.645 — the baseline moved because it is now `selectPprSeeds`'s real output instead of a hand-written ranking. Same magnitude, different quantity.
+
+**CROSS is `n/a` on all four, not `0.000`.** No index carries a `` `source:` `` marker, so the cross-source layer has no questions here. **And that is a stale index, not a missing capability** — I said otherwise in the PR first and it was wrong. `index-generator.ts` writes the marker (`sourceStr` from `parseSourceSlug`, which reads `[[sources/<slug>]]` out of frontmatter) and all 129 of test8's concept pages carry that frontmatter across 10 distinct sources. Its `index.md` was generated before that wiring. So the cross-source gap this expansion targets is **measurable today by regenerating an index**, and until it is measured the ALL-layer gain above carries a real risk: a cross-source regression could sit hidden inside a positive overall number.
+
+### The cross-source layer — measured 2026-10-16
+
+The record, the tables and the two corrections are in [MEMORY §"Measurement record — the query side, 2026-10-16"](./MEMORY.md#measurement-record--the-query-side-2026-10-16). The verdict stays here: the expansion ships on the ALL numbers (+0.078 to +0.130 on the corpora, +0.030 on the production vault's 400-question sample), and the cross-source question stays open — the production vault's index carries a source marker on 537 of its 2,141 pages (25.1 %), so a 400-question even sample yields 15 true cross-source pairs, which is no data rather than a zero.
+
+### Still open
+
+- #855 awaits a second review from @DocTpoint. The six fixes from the independent review are on the branch at `e3dc1c38`.
+- Five PRs to triage: #836, #831, #830, #781, #755.
+- `wiki/` vault PPR times out on 2,145 pages.
+- The E1 trigger gate fires 0% of the time in production (`coverage < 0.5` never holds).
+- The write-side re-plan after @DocTpoint's seven points.
 
 ### Backlog carried out of those cycles — six items still open
 

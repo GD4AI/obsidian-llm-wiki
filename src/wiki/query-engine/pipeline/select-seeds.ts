@@ -97,6 +97,25 @@ export async function selectPprSeeds(
   texts: Record<string, string>,
   onProgress?: (phase: string) => void,
   termIndex?: { cache: TermIndexCache; indexContent: string },
+  /**
+   * The words the USER wrote, when `query` has been expanded with words the
+   * user did not write. The lexical scorer and the PPR seed derivation read
+   * `query`; the LLM stages read this. See #855 review point 2.
+   */
+  llmQuery?: string,
+  /**
+   * The words the ESCALATION GATE reads, when `query` carries the expansion.
+   * Defaults to `query`.
+   *
+   * The gate asks whether the query as written already names a page, and
+   * `nameTierCoverage` is the NAME tier's share of the query's total IDF. The
+   * expansion's words are harvested from page bodies, so they sit in no name
+   * tier and can only lower the ratio — which pushes a query whose own words
+   * matched a title into the paid LLM stage. Gate on the un-expanded text.
+   * #855 review point 3. The history stays in it: a follow-up carries no
+   * content words, so gating on the question alone would escalate every one.
+   */
+  gateQuery?: string,
 ): Promise<SeedSelectionResult> {
   onProgress?.(texts.queryPhaseSearching);
 
@@ -117,13 +136,29 @@ export async function selectPprSeeds(
         title: p.title, aliases: p.aliases, summary: '', text: '',
       }));
   const corpusTerms = nameTier ? nameTier.corpus : buildCorpusTerms(nameTierTerms);
+  // The answer path reads title + aliases + summary + BODY, so its tables are
+  // the full tier, not the name tier Stage 1 uses. Built once per index file by
+  // the same cache, keyed on the bodies so a prose edit invalidates them.
+  const fullTier = termIndex ? termIndex.cache.getFull(termIndex.indexContent, pageRefs) : null;
   const lexHits = lexMatchByTitleAndAliases(query, pageRefs, {
     corpus: corpusTerms,
     ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
   });
-  const lexCount = lexHits.length;
 
-  const tokens = tokenizeQuery(query);
+  // The gate gets its OWN lexical pass over the un-expanded text. Reusing
+  // `lexHits` would pair gate terms with the expansion's top hit, which is a
+  // comparison between two different questions. One extra scoring pass from the
+  // prebuilt name-tier tables, so this is a lookup and not a rebuild.
+  const gateSource = gateQuery ?? query;
+  const gateHits = gateSource === query
+    ? lexHits
+    : lexMatchByTitleAndAliases(gateSource, pageRefs, {
+        corpus: corpusTerms,
+        ...(settings.legacyScorer ? { scorer: 'legacy' as const } : {}),
+      });
+  const lexCount = gateHits.length;
+
+  const tokens = tokenizeQuery(gateSource);
   const reliable = lexIsReliable(tokens);
   // The gate is a ratio now, not a score. `lexTopScore >= 5` was calibrated on
   // the title 3 / alias 2 weight table and its meaning left with that table —
@@ -135,8 +170,8 @@ export async function selectPprSeeds(
   const queryTerms = tokens.flatMap(t => segment(t));
   const topPageTerms = lexCount > 0
     ? buildPageTerms({
-        title: lexHits[0].page.title,
-        aliases: lexHits[0].page.aliases,
+        title: gateHits[0].page.title,
+        aliases: gateHits[0].page.aliases,
         summary: '',
         text: '',
       })
@@ -161,7 +196,8 @@ export async function selectPprSeeds(
   // query-keywords.ts for prompt design).
   let keywords: string[] = [];
   if (needsLLM && llmClient) {
-    keywords = await generateQueryKeywords(query, llmClient, settings);
+    // The model sees the words the user wrote, not the expansion's. #855 r2.
+    keywords = await generateQueryKeywords(llmQuery ?? query, llmClient, settings);
     console.debug(`[Stage 1.5a] generated ${keywords.length} keywords: ${JSON.stringify(keywords)}`);
   }
 
@@ -197,7 +233,8 @@ export async function selectPprSeeds(
       .map(h => h.page);
     const candidates = lexTopForLLM.length > 0 ? lexTopForLLM : pageRefs;
     console.debug(`[Stage 1.5 legacy] LLM seed selector triggered (candidates=${candidates.length})`);
-    llmSeeds = await selectSeedsWithLLM(query, candidates, llmClient, settings);
+    // The model sees the words the user wrote, not the expansion's. #855 r2.
+    llmSeeds = await selectSeedsWithLLM(llmQuery ?? query, candidates, llmClient, settings);
     console.debug(`[Stage 1.5 legacy] LLM returned ${llmSeeds.length} seeds`);
   }
 
@@ -244,6 +281,11 @@ export async function selectPprSeeds(
         graph: graph ?? undefined,
         topN: effectiveTopN,
         seeds,
+        // #855 fix 5. Carry the answer path's BM25F tables into the cascade so
+        // its lexical channel stops falling back to the weight table. Sourced
+        // from the same prebuilt cache Stage 1 reads, so this is not a second
+        // build per query.
+        ...(fullTier ? { tables: { terms: fullTier.pageTerms, corpus: fullTier.corpus } } : {}),
       });
 
   const relevantPages = finalMatches.map(m => m.page.path);

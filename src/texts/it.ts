@@ -165,6 +165,7 @@ export const IT_TEXTS = {
 
     // Test Connessione
     testConnectionSuccessful: 'Connessione riuscita',
+    baseUrlUpdated: 'Base URL aggiornato a {url}',
     testConnectionFailed: 'Connessione fallita',
     testConnectionProvider: 'Provider: ',
     codexAuthRequired: 'Accedi al piano ChatGPT prima di verificare la connessione.',

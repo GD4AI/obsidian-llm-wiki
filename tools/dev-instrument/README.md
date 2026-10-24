@@ -97,6 +97,8 @@ for the full migration plan.
 tools/dev-instrument/
 ├── README.md                       # this file
 ├── run-instrument.mjs              # entry — bundles engine-runner.ts via esbuild
+├── run-conversation-eval.mjs       # conversation-history evaluation (three arms, one pipeline)
+├── conversation-cases.json         # the hand-written follow-up cases
 ├── tsconfig.json                   # ESNext + moduleResolution bundler
 ├── .gitignore                      # ignores dist/
 ├── src/
@@ -107,6 +109,41 @@ tools/dev-instrument/
 └── dist/                           # gitignored — esbuild bundle output
     └── run-instrument.mjs
 ```
+
+## The conversation evaluation
+
+`run-conversation-eval.mjs` measures the two conversation cases that the
+corpus-level r@10 numbers cannot see, because the question there is not a
+conversation. It runs three arms through the production pipeline —
+`planRetrieval` and `selectPprSeeds`, the same two functions `QueryView`
+calls — and reports a per-family verdict.
+
+```bash
+npx tsx tools/dev-instrument/run-conversation-eval.mjs <vault-dir> \
+  --cases tools/dev-instrument/conversation-cases.json --derive --limit 30
+```
+
+| arm | what it does | what it stands for |
+|---|---|---|
+| `none` | the history never reaches the query | the product without conversation history |
+| `concat` | the history is appended to the question | the behaviour before the history weighting |
+| `weighted` | the history is weighted at 0.3 | the production behaviour |
+
+Two families:
+
+- **topic-switch** — the question asks about a page and the history is about
+  other pages. The question's own page must stay at rank 1. Auto-derived
+  from the vault's own pages, with the history built from pages that share no
+  vocabulary with the question's.
+- **follow-up** — the question refers back to the history, so the words that
+  identify the page live in the history and not in the question. Hand-written,
+  in `conversation-cases.json`, because anaphora is not derivable from a link
+  graph.
+
+The verdict is the comparison, not any single number: when `weighted` and
+`concat` land on the same figure for a family, the weighting does not change
+that family's ranking. `--limit` applies **per family**, so two runs stay
+comparable.
 
 ## Migration from legacy `tools/llm-wiki-cli/`
 

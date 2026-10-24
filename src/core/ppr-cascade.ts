@@ -32,6 +32,7 @@ import {
   bm25fScore,
   DEFAULT_FIELD_WEIGHTS,
   FIELD_ORDER,
+  type PageTerms,
   type CorpusTerms,
   type FieldWeights,
 } from './term-index';
@@ -281,6 +282,22 @@ export interface PPRCascadeOptions {
   seeds?: string[];
   /** Optional RNG (mulberry32 helper) for deterministic PPR sampling. */
   rng?: () => number;
+  /**
+   * The answer path's lexical tables, for `lexMatch` to score with BM25F
+   * instead of the hand-tuned weight table.
+   *
+   * #855 fix 5. The BM25F branch existed and had seven tests and no production
+   * caller, because `PPRCascadeOptions` had nowhere to carry the tables and
+   * this function called `lexMatch(query, pages)`. The hand-tuned table is
+   * title 3 / alias 2 / summary 1 / text 1 — eleven patches went into it, one
+   * anomaly at a time. Build them from `TermIndexCache.getFull`, which covers
+   * title + aliases + summary + body, and is keyed on the index and the bodies
+   * so a prose edit rebuilds them.
+   *
+   * A caller that passes none keeps the weight table, which is why this is
+   * optional rather than required.
+   */
+  tables?: { terms: readonly PageTerms[]; corpus: CorpusTerms };
 }
 
 import { RETRIEVAL_BUDGET, PPR_MIN_PAGES, PPR_MIN_EDGES, PPR_MIN_EDGE_DENSITY, PPR_SEED_MIN_DEGREE } from '../constants';
@@ -402,9 +419,41 @@ export function lexIsReliable(tokens: string[]): boolean {
  * Page-level bonus:
  * - all query tokens found in page text: +2 (strong relevance signal)
  */
-export function lexMatch(query: string, pages: PageRef[]): PageRef[] {
+export function lexMatch(
+  query: string,
+  pages: PageRef[],
+  /** The scorer's tables. When given, BM25F decides; the legacy hand-tuned
+   *  weight table is the fallback for callers that have no bodies to build
+   *  tables from (the wiki index path). Measured 2026-10-15 on four vaults,
+   *  BM25F+text beats the legacy scorer by +0.065 to +0.105 r@10. */
+  tables?: { terms: readonly PageTerms[]; corpus: CorpusTerms },
+): PageRef[] {
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
+  // The BM25F branch, when the caller has bodies to build tables from.
+  if (tables) {
+    // SEGMENTED, same reason and same shape as `scorePagesByNeedles` above.
+    // `bm25fScore` looks terms up in a `PageTerms` table built by `segment`, so
+    // feeding it `tokenizeQuery` output hands a Chinese run to a scorer that
+    // has never seen it and it matches nothing. Measured 2026-10-16: the BM25F
+    // path returned no page at all for 深度学习 where the legacy path returned
+    // the right one.
+    //
+    // The tie-break here is score then path. #878 changed the LEGACY branch
+    // below to score -> breadth -> path, and this branch is deliberately left
+    // at score -> path: the +0.086 and +0.113 this PR reports were measured
+    // with this comparison, and changing it here would make the numbers
+    // describe code that is not the code being merged. Whether the two
+    // branches should share one tie-break rule is a real question, and it is
+    // a measured question, so it is not answered in a conflict resolution.
+    const queryTerms = tokens.flatMap(n => segment(n));
+    const scored: { page: PageRef; score: number }[] = [];
+    for (let i = 0; i < pages.length; i += 1) {
+      const score = bm25fScore(queryTerms, tables.terms[i], tables.corpus, DEFAULT_FIELD_WEIGHTS);
+      if (score > 0) scored.push({ page: pages[i], score });
+    }
+    return scored.sort((a, b) => b.score - a.score || (a.page.path < b.page.path ? -1 : 1)).map(s => s.page);
+  }
   const scored: { page: PageRef; score: number; tokensFound: number }[] = [];
   for (const page of pages) {
     const titleLower = page.title.toLowerCase();
@@ -536,7 +585,9 @@ export function pprCascade(
   options: PPRCascadeOptions = {},
 ): PageMatch[] {
   const topN = options.topN ?? DEFAULT_TOP_N;
-  const lex = lexMatch(query, pages);
+  const lex = options.tables
+    ? lexMatch(query, pages, options.tables)
+    : lexMatch(query, pages);
   const graph = options.graph;
   // Explicit seeds (from LLM) take precedence over implicit lex seeds.
   // Filter to graph nodes upfront — invalid seeds silently dropped.
