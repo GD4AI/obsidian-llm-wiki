@@ -7,7 +7,7 @@ overrides:
   # the previous HIGH the same way. Keep this list in step with `package.json`'s
   # `overrides` — CI checks the npm-side lockfile against package.json.
   brace-expansion: 5.0.12    # was 5.0.9; >=5.0.11 patches the recursion DoS advisories
-  undici: 8.10.2             # via jsdom; >=8.10.2 patches the DoS / TLS-bypass / cache advisories
+  undici: 8.12.3             # was 8.10.2; >=8.12.2 patches GHSA-xjj6-f33q-929c (HIGH)
   # Published between main's 14:53 run on 2026-10-05 (audit green) and a PR run at 06:41 on
   # 2026-10-06 (audit red), so the failing PR carried no dependency change of its own —
   # unpatched main fails the same audit. Path `.>jsdom>css-tree>source-map-js`, dev-only.
