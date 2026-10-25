@@ -12,3 +12,11 @@ overrides:
   # 2026-10-06 (audit red), so the failing PR carried no dependency change of its own —
   # unpatched main fails the same audit. Path `.>jsdom>css-tree>source-map-js`, dev-only.
   source-map-js: 1.2.2       # was 1.2.1; >=1.2.2 patches the indexed-section-offset event-loop DoS
+  # `ai` 7.0.142 asks for @ai-sdk/provider-utils 5.0.61 while the pinned adapters resolve
+  # 5.0.49 and 5.0.58, so three copies of both @ai-sdk/provider and provider-utils were
+  # bundled: +104.5 KB of bundle, and `instanceof APICallError` silently stopped matching
+  # because the class came from a different copy than the one `ai` exports. Collapsing to
+  # one copy fixes both, and it is the same category of decision as the two lines above:
+  # a transitive resolution this plugin owns because it is the only consumer.
+  '@ai-sdk/provider': 4.0.28
+  '@ai-sdk/provider-utils': 5.0.61
