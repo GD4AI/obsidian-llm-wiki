@@ -10,7 +10,16 @@
 //
 // The classification reuses the harness's own `questionStats` shape — the
 // production `lexMatchByTitleAndAliases` plus `nameTierCoverage` over the top
-// hit — so the two tools cannot disagree about what "names nothing" means.
+// hit — so the two agree on what counts as a name match.
+//
+// They do NOT agree on the corpus, and the difference has a direction. The
+// harness loads page bodies; this tool cannot, because it is given a `wiki`
+// directory and reads only `index.md`. `nameTierCoverage` skips a term whose
+// document frequency is 0 from BOTH the numerator and the denominator, so a term
+// that appears only in a body is absent here and counted there. Coverage here is
+// therefore the HIGHER of the two, which makes a question look self-sufficient,
+// which makes this rate the LOWER of the two. It is a second reason the number
+// is a floor, independent of the aspect-word reason above.
 //
 // It is imprecise, and the imprecision is the point of printing the per-turn
 // table rather than only the rate. On the production vault it classifies a
@@ -42,6 +51,14 @@ const data = JSON.parse(readFileSync(dataJson, 'utf8'));
 const history = data.queryHistory ?? [];
 const users = history.filter(m => m.role === 'user');
 if (users.length === 0) {
+  // A missing field and an empty history are different answers, and the exit
+  // code is the only thing a caller can branch on. "The file has no
+  // `queryHistory`" means the argument is wrong; "zero turns" means the
+  // measurement ran and found nothing.
+  if (data.queryHistory === undefined) {
+    console.error(`no queryHistory field in ${dataJson} — is this the plugin's data.json?`);
+    process.exit(1);
+  }
   console.log('no user turns in queryHistory');
   process.exit(0);
 }
