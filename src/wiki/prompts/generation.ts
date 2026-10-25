@@ -16,6 +16,8 @@ export const GENERATION_PROMPTS = {
 
 {{merge_strategy}}
 
+{{content_requirements}}
+
 **Task Requirements:**
 1. Create an entity page with basic and key information
 2. When referencing another page, write [[Name]] using the name as you would say it. Do NOT write a folder path and do NOT guess one — the system resolves every name to its real page after generation, against the whole wiki. A display name is optional: [[Qwen]] and [[Qwen|the Qwen family]] are both correct.
@@ -73,6 +75,8 @@ aliases: ["Alternative name or translation"]  # REQUIRED: at least 1 alias, must
 {{related_content}}
 
 {{merge_strategy}}
+
+{{content_requirements}}
 
 **Task Requirements:**
 1. Create a concept page including definition, characteristics, and applications

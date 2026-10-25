@@ -37,6 +37,7 @@ import { NOTICE_NORMAL, NOTICE_ERROR, NOTICE_SHORT, CUSTOM_LIMIT_MAX, CUSTOM_LIM
 import { HistoryModal } from '../history-modal';
 import { TagChipInputComponent } from '../tag-chip-input';
 import { setSettingsVisible } from '../settings-helpers';
+import { PROMPT_FOCUS_MAX_CHARS } from '../../core/prompt-focus';
 
 export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -52,6 +53,51 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
       .setPlaceholder(tab.getText('wikiFolderPlaceholder'))
       .setValue(tempSettings.wikiFolder)
       .onChange((value) => { tempSettings.wikiFolder = value; }));
+
+  // v1.27.3: prompt customization (WeKnora-style extraction focus +
+  // content requirements). Two free-textareas whose values are injected into
+  // the extraction and page-generation prompts; empty means the prompt is
+  // byte-identical to what it was before this feature.
+  //
+  // The per-topic override layer is not here: it shipped without a picker to
+  // write a topic, so it could never resolve. Recorded as an issue rather than
+  // carried as a branch that cannot run.
+  {
+    const readFocus = (which: 'extractionFocus' | 'contentRequirements'): string =>
+      tempSettings[which] ?? '';
+    const writeFocus = (which: 'extractionFocus' | 'contentRequirements', value: string): void => {
+      const capped = value.length > PROMPT_FOCUS_MAX_CHARS ? value.slice(0, PROMPT_FOCUS_MAX_CHARS) : value;
+      tempSettings[which] = capped;
+    };
+
+    new Setting(containerEl)
+      .setName(tab.getText('promptFocusSectionName'))
+      .setHeading();
+
+    const extractionFocusSetting = new Setting(containerEl)
+      .setName(tab.getText('extractionFocusName'))
+      .setDesc(tab.getText('extractionFocusDesc'))
+      .addTextArea(text => {
+        text
+          .setPlaceholder(tab.getText('extractionFocusPlaceholder'))
+          .setValue(readFocus('extractionFocus'))
+          .onChange(value => { writeFocus('extractionFocus', value); });
+        text.inputEl.rows = 4;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+      });
+    const contentReqSetting = new Setting(containerEl)
+      .setName(tab.getText('contentRequirementsName'))
+      .setDesc(tab.getText('contentRequirementsDesc'))
+      .addTextArea(text => {
+        text
+          .setPlaceholder(tab.getText('contentRequirementsPlaceholder'))
+          .setValue(readFocus('contentRequirements'))
+          .onChange(value => { writeFocus('contentRequirements', value); });
+        text.inputEl.rows = 4;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+      });
+    setSettingsVisible([extractionFocusSetting, contentReqSetting], true);
+  }
 
   let mineruTokenSetting: Setting | null = null;
   new Setting(containerEl)

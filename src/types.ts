@@ -288,6 +288,7 @@ export interface LLMWikiSettings {
    *  (Anthropic Vision + OpenAI Vision support images natively). */
   markdownConversionBackend?: 'native' | 'mineru';
   wikiFolder: string;
+  /**
   /** UI language — the locale the settings panel and modals render in. Keyed
    *  off the TEXTS barrel (11 locales) so adding a locale updates this type. */
   language: keyof typeof TEXTS;
@@ -625,6 +626,20 @@ export interface LLMWikiSettings {
    * alongside `queryHistory`.
    */
   customQueryInstructions?: string;
+
+  /**
+   * v1.27.3: global fallback for the topic-scoped extraction focus —
+   * free-text domain hint appended to the extraction prompt's Extraction
+   * Scope block. Empty string/undefined = feature off.
+   */
+  extractionFocus?: string;
+
+  /**
+   * v1.27.3: global fallback for the topic-scoped content requirements —
+   * free-text expressive requirements appended to entity/concept
+   * page-generation prompts. Empty string/undefined = feature off.
+   */
+  contentRequirements?: string;
 
   /**
    * v1.24.0 #208: per-task model overrides. Each field is the MODEL
@@ -1644,6 +1659,11 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // compatible). Stored in data.json alongside queryHistory. Scoped
   // strictly to Query Wiki chat; no other workflow is affected.
   customQueryInstructions: '',
+
+  // v1.27.3: global fallbacks for topic-scoped prompt customization.
+  // Empty string = feature off; topic-level fields override these.
+  extractionFocus: '',
+  contentRequirements: '',
 
   // v1.24.1 PATCH Bedrock Stage 1 — default region is the broadest-coverage
   // region (us-east-1). Only consulted when provider is one of the two
