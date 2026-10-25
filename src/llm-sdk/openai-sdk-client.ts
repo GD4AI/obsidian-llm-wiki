@@ -586,7 +586,20 @@ export class OpenAISdkClient implements LLMClient {
  *     shows e.g. `"status 429: You exceeded your current quota..."`.
  */
 export function mapAiSdkError(err: unknown): Error {
-  if (err instanceof APICallError) {
+  // Issue #892: classify by the SDK's marker, never by `instanceof`.
+  //
+  // `instanceof` compares class identity, and identity across module
+  // boundaries holds only while exactly ONE copy of `@ai-sdk/provider` is in
+  // the bundle. `ai` 7.0.142 added a third copy, and this chain silently
+  // stopped matching an object that WAS an `APICallError` — so a 403 came
+  // through as the provider's bare message with no `status 403:` prefix and no
+  // `statusCode`, and `isUrlNotFoundError` downstream lost its first signal.
+  //
+  // The SDK ships `isInstance` on each error class for exactly this reason: it
+  // reads a registered symbol on the value instead of walking the prototype
+  // chain, so it answers the same question at any copy count. It is also a
+  // type guard, so the narrowing below is the same as before.
+  if (APICallError.isInstance(err)) {
     // APICallError.message is "Provider returned error [status]: message"
     // We rebuild it to match the v1.22.5 format exactly:
     //   "status <code>: <provider message>"
@@ -598,10 +611,10 @@ export function mapAiSdkError(err: unknown): Error {
     (enriched as Error & { statusCode?: number; responseBody?: string }).responseBody = err.responseBody ?? '';
     return enriched;
   }
-  if (err instanceof NoSuchModelError) {
+  if (NoSuchModelError.isInstance(err)) {
     return new Error(`Unknown model: ${err.modelId ?? 'unspecified'} (${err.message})`);
   }
-  if (err instanceof InvalidPromptError) {
+  if (InvalidPromptError.isInstance(err)) {
     return new Error(`Invalid prompt: ${err.message}`);
   }
   if (err instanceof Error) {
