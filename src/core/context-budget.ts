@@ -35,8 +35,10 @@
 // over the very budget that had just been applied — the estimate said the
 // context was 7168 tokens when it was 8109.
 //
-// So the floors sit BELOW the observed minima: 1.9 for CJK against 2.04, and
-// 3.3 for other scripts against 3.54.
+// So the shipped floors sit below the observed minima in both scripts: 1.25
+// against a CJK minimum of 2.04, and 2.6 against a non-CJK minimum of 3.54. The
+// gap is wider than "just below the minimum" on purpose — the next block explains
+// why the two-parameter fit (1.52 / 3.20) is not what ships.
 
 /** Script classes the estimator distinguishes. */
 export type ScriptClass = 'cjk' | 'other';
@@ -49,11 +51,11 @@ export type ScriptClass = 'cjk' | 'other';
  * 17 % of cases (estimate/actual down to 0.826) — which is the direction that
  * overflows a window.
  *
- * So both are divided by the same margin, chosen to make the worst case
- * break-even: at 1.25 and 2.6 the ratio estimate/actual never drops below
- * 1.010, so the estimate never promises more room than there is. The cost is
- * that a typical answer fills ~82 % of the budget rather than 100 %, which is
- * the answer's room anyway.
+ * So both are divided by about 1.22x, chosen to make the worst case break-even:
+ * at 1.25 and 2.6 the ratio estimate/actual never drops below 1.010, so the
+ * estimate never promises more room than there is. The cost is a shorter answer:
+ * at these ratios the estimator admits about 82 % of the characters the fit
+ * would admit. (1.25/1.52 = 0.82, 2.6/3.20 = 0.81.)
  */
 export const CHARS_PER_TOKEN_CJK = 1.25;
 
