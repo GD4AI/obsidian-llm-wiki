@@ -88,11 +88,23 @@ export function migrateLogHeader(
   if (!needsLogHeaderMigration(content, lang)) return content;
   // The H1 is the first line. Drop it + the immediate blank line (if any),
   // then prepend the new header.
+  //
+  // Issue #888: the cut below removes ONE line, and that line is the H1. The
+  // precondition is therefore "the file starts with an H1", and it is checked
+  // rather than assumed. Without the check, a file whose first line is an entry
+  // leaves `cutIdx` at 0 and the loop advances past line 0 — deleting an entry,
+  // silently, because `AutoMaintain` writes the result back with no notice.
+  // A cut whose precondition does not hold must not run.
   const lines = content.split('\n');
   let cutIdx = 0;
+  let foundH1 = false;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('# ')) { cutIdx = i; break; }
+    if (lines[i].startsWith('# ')) { cutIdx = i; foundH1 = true; break; }
+    // Leading blank lines are allowed; anything else means this is not the
+    // legacy shape, and there is nothing here for this branch to remove.
+    if (lines[i].trim() !== '') break;
   }
+  if (!foundH1) return content;
   // Skip the H1 line and any blank lines immediately following
   while (cutIdx + 1 < lines.length && lines[cutIdx + 1].trim() === '') {
     cutIdx++;
