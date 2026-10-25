@@ -145,6 +145,7 @@ export const ES_TEXTS = {
     saveSettingsDesc: 'Guarda la configuración actual',
     saveButton: 'Guardar configuración',
     testConnectionSuccessful: 'Conexión exitosa',
+    baseUrlUpdated: 'Base URL actualizada a {url}',
     testConnectionFailed: 'Conexión fallida',
     testConnectionProvider: 'Proveedor: ',
     codexAuthRequired: 'Inicia sesión en el plan ChatGPT antes de probar la conexión.',

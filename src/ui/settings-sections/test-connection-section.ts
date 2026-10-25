@@ -78,6 +78,13 @@ export function renderTestConnectionSection(tab: LLMWikiSettingTab, containerEl:
 
         // Success path: sync testLLMConnection's mutated fields, then commit.
         tab.tempSettings.thinkingControlCache = tab.plugin.settings.thinkingControlCache;
+        // URL auto-adapt: the connection test may have resolved a Base URL that
+        // works where the typed one did not (a `/v1` the gateway needs, for
+        // instance) and written it back to plugin.settings. Mirror it into the
+        // form so the input box shows what will actually be used — otherwise
+        // the user reads one URL in the field and a different one in the
+        // success message, and has no way to tell which the plugin kept.
+        tab.tempSettings.baseUrl = tab.plugin.settings.baseUrl;
         if (tab.plugin.settings.provider === 'openai-codex') {
           tab.syncCodexModelsFromPlugin();
           // Issue #467: a wholesale sync, not a user edit — so it goes through

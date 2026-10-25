@@ -145,6 +145,7 @@ export const KO_TEXTS = {
     saveSettingsDesc: '현재 설정을 저장합니다',
     saveButton: '설정 저장',
     testConnectionSuccessful: '연결 성공',
+    baseUrlUpdated: 'Base URL이 {url}(으)로 업데이트되었습니다',
     testConnectionFailed: '연결 실패',
     testConnectionProvider: 'Provider: ',
     codexAuthRequired: '연결을 테스트하기 전에 ChatGPT 플랜에 로그인하세요.',

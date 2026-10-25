@@ -145,6 +145,7 @@ export const JA_TEXTS = {
     saveSettingsDesc: '現在の設定を保存します',
     saveButton: '設定を保存',
     testConnectionSuccessful: '接続成功',
+    baseUrlUpdated: 'Base URL を {url} に更新しました',
     testConnectionFailed: '接続失敗',
     testConnectionProvider: 'プロバイダー：',
     codexAuthRequired: '接続をテストする前にChatGPTプランへサインインしてください。',

@@ -23,7 +23,7 @@ import { parseJsonResponse } from '../../core/json';
 import { renderTemplate } from '../../core/template-renderer';
 import { formatPageRefSummary } from '../../core/ppr-cascade';
 import { buildTurnIndicator, observeVisibleTurn, updateActiveDot } from '../turn-indicator';
-import { TOKENS_QUERY_ANSWER, TOKENS_QUERY_SAVE_DEDUP, NOTICE_BRIEF, NOTICE_SHORT, NOTICE_NORMAL, NOTICE_ERROR, CUSTOM_QUERY_INSTRUCTIONS_MAX_CHARS } from '../../constants';
+import { TOKENS_QUERY_ANSWER, TOKENS_QUERY_SAVE_DEDUP, NOTICE_BRIEF, NOTICE_SHORT, NOTICE_NORMAL, NOTICE_ERROR, CUSTOM_QUERY_INSTRUCTIONS_MAX_CHARS, RETRIEVAL_HISTORY_ROUNDS } from '../../constants';
 import { capMaxTokens } from '../../core/token-cap';
 import { getSectionLabels } from '../system-prompts';
 
@@ -45,7 +45,9 @@ import { hashConversation } from '../../core/conversation-hash';
 import { citeAnswer, renderReferenceList, normalizeReferenceSection } from '../../core/citation-format';
 import { readWikiIndex, withBodies } from './pipeline/read-index';
 import { TermIndexCache } from '../../core/term-index-cache';
+import { ExpansionTermsCache } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
+import { planRetrieval } from './pipeline/retrieval-plan';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
 import { loadRelevantPagesForQuery } from './pipeline/load-pages';
 import {
@@ -94,6 +96,13 @@ export class QueryView extends ItemView {
   private _sectionLabels: ReturnType<typeof getSectionLabels> | null = null;
   /** Last PPR cascade result — for displaying retrieval source in the response UI. */
   private _lastRetrieval: RetrievalLabelData | null = null;
+
+  /**
+   * The terms of the last retrieval, segmented. `loadRelevantPages` takes page
+   * titles and no query, so the terms the retrieval ran on ride here to let the
+   * matched paragraphs reach the model's context. #855 fix 6.
+   */
+  private _lastRetrievalTerms: string[] = [];
   /**
    * Term tables keyed on the wiki index file. Building them per query was 4.4 s
    * against 21 ms to score from a prebuilt one on 2,864 pages — the scoring was
@@ -102,6 +111,7 @@ export class QueryView extends ItemView {
    * it has not changed.
    */
   private readonly termIndexCache = new TermIndexCache();
+  private readonly expansionCache = new ExpansionTermsCache();
   private _turnIndicator: HTMLElement | null = null;
   /** Issue #850: set when the stream ran out of output budget. Rendered at the
    *  end of the answer so the user sees why it stopped, next to the thinking
@@ -1207,8 +1217,34 @@ export class QueryView extends ItemView {
       // `termIndex` carries a cache keyed on the index file. Building the term
       // table per query was 4.4 s against 21 ms to score from a prebuilt one on
       // 2,864 pages; a session that reads the same index now builds once.
+      //
+      // The retrieval sees the conversation. A follow-up question carries no
+      // content words — "为什么？" scores nothing on its own — and the answer
+      // generator then gets the right context with the wrong pages. Measured
+      // 2026-10-15 on both vaults over 1,000 follow-up cases: 0.015-0.047 r@10
+      // with the follow-up alone, 0.49-0.67 with the recent turns. The round
+      // count is `maxConversationHistory`, the same window the answer sees, so
+      // a provider's prefix cache stays stable across turns.
+      // Sliding window of 5 user turns, not `maxConversationHistory`. The two
+      // want different sizes: the answer wants the widest window a provider's
+      // prefix cache will hold, the retrieval wants only the turns that say
+      // what the user is looking for. Hand pass with the full conversation in
+      // the query produced noise; see `RETRIEVAL_HISTORY_ROUNDS` in constants.
+      // The whole composition — three query strings, the expansion, the term
+      // mapping — is ONE function, and every measurement tool calls the same
+      // one. Six numbers in this cycle described a path the product does not
+      // run, five of them because a tool reimplemented this block. See
+      // `pipeline/retrieval-plan.ts` for the list.
+      const plan = planRetrieval({
+        current: userMessage,
+        history: this.history.messages,
+        historyRounds: RETRIEVAL_HISTORY_ROUNDS,
+        retrievalRefs,
+        indexContent: indexResult.indexContent,
+        expansionCache: this.expansionCache,
+      });
       const seedResult = await selectPprSeeds(
-        userMessage,
+        plan.expandedQuery,
         retrievalRefs,
         graph,
         this.plugin.llmClient as unknown as Parameters<typeof selectPprSeeds>[3],
@@ -1216,10 +1252,24 @@ export class QueryView extends ItemView {
         texts as unknown as Record<string, string>,
         onProgress,
         { cache: this.termIndexCache, indexContent: indexResult.indexContent },
+        // #855 review point 2: the model sees the words the user wrote this
+        // turn — not the expansion's, and not the history. The prompt labels
+        // this "User question:", and from the second turn on `retrievalQuery`
+        // is a transcript, not the question.
+        plan.llmQuery,
+        // #855 review point 3: the gate reads the query as written plus the
+        // history, with no expansion. Expansion words come from page bodies and
+        // the gate measures the name tier's share of the query's IDF, so they
+        // could only ever push a matching query into the paid stage.
+        plan.gateQuery,
       );
 
       // Write back _lastRetrieval for retrieval label UI
       const relevantPages = seedResult.matches.map(m => m.page.path);
+      // The terms that produced this ranking, segmented. `loadRelevantPages`
+      // is called later without a query and needs them to surface the matched
+      // paragraphs. #855 fix 6.
+      this._lastRetrievalTerms = plan.matchTerms;
       this._lastRetrieval = {
         arm: seedResult.armLabel || 'none',
         count: relevantPages.length,
@@ -1236,7 +1286,13 @@ export class QueryView extends ItemView {
       // return 10/20 pages via the adaptive top-N. Show every match
       // so the log + UI reflect the same list.
       console.debug(`[Step 2]   paths:`, seedResult.matches.map(m => `${m.page.path} (${m.arm}, score=${m.score.toFixed(3)})`));
-      console.debug(`[Step 2]   query tokens:`, userMessage.toLowerCase().split(/\s+/).filter(k => k.length > 0));
+      // Print the query the RETRIEVAL actually scores, not the message the
+      // user typed. The two differ whenever the conversation is in play: a
+      // follow-up like "为什么？" is one string to the user and a much longer
+      // one to the scorer. Printing the typed message made a working fix look
+      // broken — the user saw one token where the scorer saw the whole turn.
+      console.debug(`[Step 2]   query tokens:`, plan.retrievalQuery.toLowerCase().split(/\s+/).filter(k => k.length > 0));
+      console.debug(`[Step 2]   history turns in query: ${this.history.messages.filter(m => m.role === 'user').length}`);
       console.debug(`[Step 2]   graph state: ${graph ? `${graph.nodes.length} nodes / ${graph.edges.size} edges` : 'none'}`);
       console.debug(`[Step 2]   LLM augmentation: ${seedResult.llmAugmented ? 'triggered' : 'skipped (fast path sufficient)'}`);
 
@@ -1260,6 +1316,11 @@ export class QueryView extends ItemView {
         wikiFolder,
         reader,
         sectionLabels,
+        // #855 fix 6. The retrieval scored the full body; the display shows one
+        // section. These are the terms that earned each page, so the paragraph
+        // that matched rides along with the summary the model reads. Omitting
+        // this argument left the extractor with `[]` and the fix unreachable.
+        this._lastRetrievalTerms,
       );
       console.debug('[Step 3] Pages loaded:', rawLoadedPages.length);
 
@@ -1315,6 +1376,11 @@ export class QueryView extends ItemView {
       this.plugin.settings.wikiFolder,
       this.plugin.wikiEngine,
       sectionLabels,
+      // The terms of the retrieval that produced these titles. This method
+      // takes no query of its own, so the terms ride on the instance — same
+      // lifetime as `_lastRetrieval`, and empty when nothing has been
+      // retrieved yet, which leaves the summary-only behaviour.
+      this._lastRetrievalTerms,
     );
   }
 

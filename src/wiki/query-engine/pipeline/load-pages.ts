@@ -5,8 +5,8 @@
 // raw markdown bodies (with Tier B summaries where applicable). No
 // mutation of `this._graph` / `_lastRetrieval` (QueryView's job).
 
-import { MAX_PAGE_CONTENT_CHARS } from '../../../constants';
-import { extractSummaryFromPage } from '../../../core/section-extractor';
+import { MAX_PAGE_CONTENT_CHARS, MATCHED_PARAGRAPHS_TOTAL_CHARS } from '../../../constants';
+import { extractSummaryFromPage, extractMatchedParagraphs } from '../../../core/section-extractor';
 
 export interface LoadedPagePayload {
   /** Display path used in the context body (e.g. "wiki/entities/foo"). */
@@ -38,9 +38,23 @@ export async function loadRelevantPagesForQuery(
   wikiFolder: string,
   reader: PageReader,
   sectionLabels: SectionLabelsLike | null,
+  /** The query's terms. When given, the paragraphs that matched ride along
+   *  with the summary so the model can see why the page was retrieved. The
+   *  retrieval scores the full body and the display shows one section; the
+   *  two units must agree or the model is reading the right page for a
+   *  reason it cannot see. */
+  queryTerms?: readonly string[],
 ): Promise<string[]> {
   const pages: string[] = [];
   const wikiPrefix = wikiFolder + '/';
+
+  // The matched-paragraph budget is shared across the whole retrieval. One page
+  // carrying `MAX_PAGE_CONTENT_CHARS / 3` of added prose times RETRIEVAL_BUDGET
+  // pages is more context than `TOKENS_QUERY_ANSWER` allows, so the addition
+  // gets its own total and every page takes a share of it.
+  const matchedPerPage = Math.floor(
+    MATCHED_PARAGRAPHS_TOTAL_CHARS / Math.max(1, pageTitles.length),
+  );
 
   for (const title of pageTitles) {
     // Strip wiki folder prefix if path has it (e.g. "wiki/entities/xxx" → "entities/xxx").
@@ -89,7 +103,17 @@ export async function loadRelevantPagesForQuery(
         maxChars: Math.floor(MAX_PAGE_CONTENT_CHARS / 3), // shorter summary
       });
       if (summary) {
-        body = summary;
+        // The summary section is already shown; the matched paragraphs
+        // outside it are what the retrieval saw and the model has not.
+        const matched = extractMatchedParagraphs(
+          content,
+          queryTerms ?? [],
+          matchedPerPage,
+          { summarySectionLabels: [sectionLabels.description, sectionLabels.definition] },
+        );
+        body = matched ? `${summary}
+
+${matched}` : summary;
       } else {
         body = content.length > MAX_PAGE_CONTENT_CHARS
           ? content.substring(0, MAX_PAGE_CONTENT_CHARS) + '\n\n... (truncated)'
