@@ -386,13 +386,13 @@ export const KO_TEXTS = {
     chipDuplicateHint: '중복 태그 건너뜀',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: '프롬프트 사용자 지정',
+    extractionFocusName: '추출 초점',
+    extractionFocusDesc: '추출 프롬프트에 덧붙이는 자유 텍스트: 이 위키가 우선해야 할 도메인 엔티티·개념을 지정합니다. JSON 프로토콜과 태그 규칙은 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
+    extractionFocusPlaceholder: '예: 초점: 주인공과 보스, 게임 모드와 맵, 무기와 장비 등급, 시즌 배틀패스 메커니즘',
+    contentRequirementsName: '내용 요구사항',
+    contentRequirementsDesc: '페이지 생성 프롬프트에 덧붙이는 자유 텍스트: 표현의 초점, 구성, 반드시 다뤄야 할 aspects를 지정합니다. 인용과 환각 방지 규칙은 시스템 소유이므로 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
+    contentRequirementsPlaceholder: '예: 아는 경우 출처의 회차·장을 인용. 출처 없는 설정은 "전설"/"추정"이라고 쓸 것. 위험이 있는 내용에는 "위험 메모" 절을 둠',
 
     // Ingestion Acceleration
     accelerationSectionTitle: '수집 가속화',

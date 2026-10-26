@@ -387,13 +387,13 @@ export const ES_TEXTS = {
     chipDuplicateHint: 'Etiqueta duplicada omitida',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Personalización del prompt',
+    extractionFocusName: 'Prioridad de extracción',
+    extractionFocusDesc: 'Texto libre que se añade al prompt de extracción: qué entidades y conceptos del dominio debe priorizar este wiki. No cambia el protocolo JSON ni las reglas de etiquetas. Vacío = desactivado. Máx. 4000 caracteres.',
+    extractionFocusPlaceholder: 'p. ej. Prioridad: personajes principales y jefes; modos de juego y mapas; armas y niveles de equipo; mecánicas del pase de batalla de la temporada',
+    contentRequirementsName: 'Requisitos de contenido',
+    contentRequirementsDesc: 'Texto libre que se añade a los prompts de generación de páginas: énfasis expresivo, estructura, aspectos que deben cubrirse. Las reglas de cita y anti-alucinación siguen bajo control del sistema. Vacío = desactivado. Máx. 4000 caracteres.',
+    contentRequirementsPlaceholder: 'p. ej. Cita el episodio o el capítulo de origen cuando se conozca; usa "se dice" / "presumiblemente" para lo que no tiene fuente; incluye una sección "Notas de riesgo" cuando aplique',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aceleración de ingestión',

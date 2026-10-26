@@ -385,13 +385,13 @@ export const JA_TEXTS = {
     chipDuplicateHint: '重複タグをスキップしました',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'プロンプトのカスタマイズ',
+    extractionFocusName: '抽出の重点',
+    extractionFocusDesc: '抽出プロンプトに追記される自由テキスト：この Wiki が優先すべき領域のエンティティ／概念を指定します。JSON プロトコルやタグ規則は変更しません。空欄 = 無効。上限 4000 文字。',
+    extractionFocusPlaceholder: '例：重点：主人公とボス、ゲームモードとマップ、武器と装備のティア、戦闘パス（H）',
+    contentRequirementsName: '内容生成の要件',
+    contentRequirementsDesc: 'ページ生成プロンプトに追記される自由テキスト：表現の重点・構成・必ず扱うべき観点を指定します。引用・統合・Hallucination 防止の規則はシステム管理のため変更されません。空欄 = 無効。上限 4000 文字。',
+    contentRequirementsPlaceholder: '例：既知であれば出典の巻／章を明記する。出典のない設定には「伝承」「推測」と書く。リスクが伴う内容には「リスクメモ」節を置く。',
 
     // Ingestion Acceleration
     accelerationSectionTitle: '取り込み高速化',

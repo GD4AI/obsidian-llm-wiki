@@ -387,13 +387,13 @@ export const FR_TEXTS = {
     chipDuplicateHint: 'Tag en double ignoré',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Personnalisation du prompt',
+    extractionFocusName: 'Priorité d\'extraction',
+    extractionFocusDesc: 'Texte libre ajouté au prompt d\'extraction : quelles entités et concepts du domaine ce wiki doit prioriser. Ne modifie ni le protocole JSON ni les règles de tags. Vide = désactivé. 4000 caractères max.',
+    extractionFocusPlaceholder: 'ex. Priorité : personnages principaux et boss ; modes de jeu et cartes ; armes et paliers d\'équipement ; mécaniques du passe de combat de la saison',
+    contentRequirementsName: 'Exigences de contenu',
+    contentRequirementsDesc: 'Texte libre ajouté aux prompts de génération de pages : insistance expressive, structure, aspects à couvrir impérativement. Les règles de citation et d\'anti-hallucination restent gérées par le système. Vide = désactivé. 4000 caractères max.',
+    contentRequirementsPlaceholder: 'ex. Citer l\'épisode ou le chapitre source quand il est connu ; noter « selon la rumeur » / « présumé » pour leséments sans source ; garder une section « Notes de risque » si elle s\'applique',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Accélération de l\'import',

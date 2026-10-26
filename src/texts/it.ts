@@ -396,13 +396,13 @@ export const IT_TEXTS = {
     chipDuplicateHint: 'Tag duplicato ignorato',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Personalizzazione del prompt',
+    extractionFocusName: 'Priorità di estrazione',
+    extractionFocusDesc: 'Testo libero aggiunto al prompt di estrazione: quali entità e concetti del dominio questo wiki deve privilegiare. Non modifica il protocollo JSON né le regole sui tag. Vuoto = disattivato. Max 4000 caratteri.',
+    extractionFocusPlaceholder: 'es. Priorità: personaggi principali e boss; modalità di gioco e mappe; armi e livelli di equipaggiamento; meccaniche del battle pass stagionale',
+    contentRequirementsName: 'Requisiti di contenuto',
+    contentRequirementsDesc: 'Testo libero aggiunto ai prompt di generazione delle pagine: enfasi espressiva, struttura, aspetti da coprire necessariamente. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
+    contentRequirementsPlaceholder: 'es. Cita l\'episodio o il capitolo di origine quando noto; usa "si dice"/"presunto" per ciò che non ha fonte; mantieni una sezione "Note di rischio" dove applicabile',
 
     // Accelerazione Acquisizione
     accelerationSectionTitle: 'Accelerazione acquisizione',

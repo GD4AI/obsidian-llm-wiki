@@ -408,13 +408,13 @@ export const RU_TEXTS = {
     chipDuplicateHint: 'Дублирующий тег пропущен',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Настройка промпта',
+    extractionFocusName: 'Приоритет извлечения',
+    extractionFocusDesc: 'Свободный текст, добавляемый к промпту извлечения: какие доменные сущности и концепции этому вики нужно считать приоритетными. Протокол JSON и правила тегов не меняются. Пусто = выключено. Не более 4000 символов.',
+    extractionFocusPlaceholder: 'напр. Приоритет: главные персонажи и боссы; игровые режимы и карты; оружие и уровни снаряжения; механики сезонного боевого пропуска',
+    contentRequirementsName: 'Требования к содержанию',
+    contentRequirementsDesc: 'Свободный текст, добавляемый к промптам генерации страниц: выразительный акцент, структура, обязательные аспекты. Правила цитирования и защиты от галлюцинаций остаются системными. Пусто = выключено. Не более 4000 символов.',
+    contentRequirementsPlaceholder: 'напр. Указывай серию или главу источника, если она известна; для сведений без источника пиши «по слухам»/«предположительно»; там, где уместно, добавляй раздел «Заметки о рисках»',
 
     // Ускорение импорта
     accelerationSectionTitle: 'Ускорение импорта',

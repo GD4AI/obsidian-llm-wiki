@@ -387,13 +387,13 @@ export const DE_TEXTS = {
     chipDuplicateHint: 'Doppeltes Tag übersprungen',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Prompt-Anpassung',
+    extractionFocusName: 'Extraktionsschwerpunkt',
+    extractionFocusDesc: 'Freitext, der an den Extraktions-Prompt angehängt wird: welche Domänen-Entitäten und -Konzepte dieses Wiki priorisieren soll. Das JSON-Protokoll und die Tag-Regeln bleiben unverändert. Leer = aus. Max. 4000 Zeichen.',
+    extractionFocusPlaceholder: 'z. B. Schwerpunkt: Hauptfiguren und Bosse; Spielmodi und Karten; Waffen und Ausrüstungsstufen; Battle-Pass-Mechaniken der Saison',
+    contentRequirementsName: 'Inhaltsanforderungen',
+    contentRequirementsDesc: 'Freitext, der an die Seitenerzeugungs-Prompts angehängt wird: Ausdrucksschwerpunkt, Struktur, zwingend zu behandelnde Aspekte. Zitier- und Anti-Halluzinations-Regeln bleiben systemverwaltet. Leer = aus. Max. 4000 Zeichen.',
+    contentRequirementsPlaceholder: 'z. B. Quelle (Folge/Kapitel) angeben, wenn bekannt; Überliefertes ohne Beleg als "berichtet"/"vermutet" kennzeichnen; Risiken in einem eigenen Abschnitt "Risikohinweise" führen',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aufnahmen-Beschleunigung',

@@ -387,13 +387,13 @@ export const PT_TEXTS = {
     chipDuplicateHint: 'Tag duplicada ignorada',
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
-    promptFocusSectionName: 'Prompt Customization',
-    extractionFocusName: 'Extraction Focus',
-    extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
-    contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    promptFocusSectionName: 'Personalização do prompt',
+    extractionFocusName: 'Prioridade de extração',
+    extractionFocusDesc: 'Texto livre anexado ao prompt de extração: quais entidades e conceitos do domínio este wiki deve priorizar. Não altera o protocolo JSON nem as regras de tags. Vazio = desativado. Máx. 4000 caracteres.',
+    extractionFocusPlaceholder: 'ex. Prioridade: personagens principais e chefes; modos de jogo e mapas; armas e níveis de equipamento; mecânicas do passe de batalha da temporada',
+    contentRequirementsName: 'Requisitos de conteúdo',
+    contentRequirementsDesc: 'Texto livre anexado aos prompts de geração de páginas: ênfase expressiva, estrutura, aspectos que precisam ser cobertos. As regras de citação e anti-alucinação continuam sob controle do sistema. Vazio = desativado. Máx. 4000 caracteres.',
+    contentRequirementsPlaceholder: 'ex. Cite o episódio ou o capítulo de origem quando conhecido; use "diz-se"/"presume-se" para o que não tem fonte; mantenha uma seção "Notas de risco" quando se aplicar',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aceleração da ingestão',
