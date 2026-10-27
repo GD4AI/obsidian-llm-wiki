@@ -56,7 +56,7 @@ function summaryOf(text) {
 }
 function parseSourceSlug(text) {
   const m = /^sources:\s*(?:\n\s*-\s*(.+?)\s*$|(.+?)\s*$)/m.exec(text);
-  const raw = (m?.[1] ?? m?.[2] ?? '').trim().replace(/^['\"]|['\"]$/g, '');
+  const raw = (m?.[1] ?? m?.[2] ?? '').trim().replace(/^['"]|['"]$/g, '');
   return raw === '' ? undefined : raw;
 }
 function outlinks(text) {

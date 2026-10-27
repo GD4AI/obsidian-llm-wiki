@@ -83,10 +83,14 @@ per-task real-LLM cost without waiting for sibling repo sync.
 ## Bot compliance
 
 This directory passes `pnpm lint:tools-bot` with **0 `obsidianmd/*`
-findings**. The single local-only `no-unsanitized/method` warning on
-`run-instrument.mjs:97` (the dynamic import of the bundled output) is
-not in the Bot's `obsidianmd/recommended` ruleset and is therefore out
-of scope for submission review.
+findings and 0 errors**. Three local-only `no-unsanitized/method`
+findings remain — the dynamic imports of the bundled output in
+`run-instrument.mjs`, `run-graph-audit.mjs` and `run-recall-harness.mjs`.
+Each carries a one-line disable with its reason, because the argument is a
+hardcoded local constant rather than user input, and the rule is not in the
+Bot's `obsidianmd/recommended` ruleset. The nine remaining warnings are
+`no-unused-vars` on harness scaffolding, which the Bot does not scan in
+`.mjs` either.
 
 See issue [#507](https://github.com/GD4AI/obsidian-llm-wiki/issues/507)
 for the full migration plan.
