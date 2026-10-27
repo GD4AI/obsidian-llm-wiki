@@ -2,13 +2,14 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.28.0 MINOR (2026-10-04, 52 commits / 4372 tests). See [CHANGELOG.md §1.28.0](./CHANGELOG.md#1280---2026-10-04) for the canonical composition record. | **Updated:** 2026-10-12
-**Next MINOR candidate:** **#729 Phase 1** — the M0 co-citation projection. It was v1.28.0's named head, and **v1.28.0 shipped without it**. On 2026-10-05 the ordering
-was **decided: direction A** — one measurement pass comes first, then M0. The measurement's definition, and the defect it also has to fix, are in §"#729 — the three
-directions" below. The milestone moved to `v1.29.0 MINOR` on 2026-10-04, so a released milestone carries no unstarted work. Only the release number changed. The four
-capabilities that shipped in v1.28.0 are in CHANGELOG §1.28.0.
+**Latest shipped:** v1.29.0 MINOR (2026-10-26, 65 commits / 5038 tests). See [CHANGELOG.md §1.29.0](./CHANGELOG.md#1290---2026-10-26) for the canonical composition record. | **Updated:** 2026-10-26
+**Next MINOR candidate:** **v1.30.0 MINOR**, opened 2026-10-26 with three items: **#895** (prompt customization, split out of #755 — held on a design question, see below), **#886** (the answer context's token ceiling), and **#781** (the M0 co-citation projection). #729 Phase 1 was v1.29.0's named head and **v1.29.0 shipped without it**; the ordering was **decided: direction A** — one measurement pass comes first, then M0. The measurement ran and narrowed the claim (CHANGELOG §1.29.0), and what it did NOT settle is the design question #781 implements, so #781 is the one item of the three still blocked on a decision rather than on code.
 
-**Milestone move (2026-10-04).** `v1.28.0 MINOR`'s 12 open items moved to the new `v1.29.0 MINOR`: #787 #764 #756 #752 #729 #677 #668 #664. `v1.28.0 MINOR` is now empty and closes with the release.
+**Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
+
+**v1.29.0 shipped the read side of the retrieval rewrite.** The lexical stage now reads page bodies and scores title, alias, summary and body with BM25F (#837); the two-stage Rocchio expansion sits on top of it, with its claim narrowed by its own measurement (#855); Related pages are shaped so one hub cannot drag every page toward it (#841); and `legacyScorer` gives a reader whose results got worse a way back (#842). The correctness wave in the same release was quieter and just as load-bearing: the watcher honours Obsidian's excluded-files list (#879), the log header's command hint refreshes (#887), the legacy log-header cut no longer deletes the first entry (#889), and error normalization keys off the SDK's marker rather than class identity (#893) — that last one because a dependency bump had silently stopped `instanceof` matching across a duplicate copy.
+
+**#895 is held on a design question, not on code.** The prompt-customization settings shipped with the English text in eight of eleven locales (fixed in #895's follow-up) and, more seriously, a requested section is stripped after generation and merges run without the requirement at all — both reported by @KvikullSigurdur and both independently reproduced here. The section list is plugin-owned, so the open question is whether `contentRequirements` may add sections or only shape the known ones. See the PR thread.
 
 **Of the four PRs that paragraph named as open, two have landed or closed:** #786 shipped as `f41a39d0` (AI SDK v7), and #701 was closed with the analysis that its premise does not hold.
 
@@ -40,9 +41,9 @@ ROADMAP does not duplicate process standards or shipped-version details — only
 
 ---
 
-## v1.29.0 MINOR — Design track
+## v1.30.0 MINOR — Design track
 
-**Opened 2026-09-16.** Two mandates, per user direction. **Feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail
+**Opened 2026-09-16 for v1.29.0; the window was extended and renamed 2026-10-26 when v1.29.0 shipped.** Two mandates, per user direction. **Feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail
 for the first item lives in [MEMORY.md Appendix A §"Design record — cross-source relations"](./MEMORY.md#design-record--cross-source-relations-729-v1280). This section
 carries only the planning decisions.
 
@@ -64,14 +65,14 @@ carries only the planning decisions.
 
 This is the first section to read after a compact. Each row is a decision, not a task.
 The work is done or scoped, and the missing piece is a call. Everything here now sits on
-`v1.29.0 MINOR` or `v1.28.x PATCH`; nothing here blocks v1.28.0, which shipped 2026-10-04.
+`v1.30.0 MINOR` or `v1.29.x PATCH`; nothing here blocks v1.29.0, which shipped 2026-10-26.
 
-**Milestone map (restructured 2026-10-04).** Three windows are open, and every open issue and PR is assigned to one of them.
+**Milestone map (restructured 2026-10-26).** Four windows are open, and every open issue and PR is assigned to one of them.
 
 | Milestone | What belongs in it |
 |---|---|
-| `v1.28.x PATCH` | Bug fixes, docs and engineering hygiene. No new features |
-| `v1.29.0 MINOR` | New capabilities, and the #729 design track's head |
+| `v1.29.x PATCH` | Bug fixes, docs and engineering hygiene. No new features |
+| `v1.30.0 MINOR` | New capabilities, and the #729 design track's head |
 | `v1.27.0+ research` | Ideas with no committed version — experimental, or awaiting a design conversation |
 
 **The per-milestone counts are deliberately not carried here.** This table held them until 2026-10-12, when they were found **wrong across all three rows** — the previous figures read 12 / 16 / 16 and `v1.29.0 MINOR` was five items high, because the move of #729's work into PRs (#781, #819) and the closure of #764 #752 #608 #687 by release had never been subtracted. Re-deriving them fixed that, and then they moved again inside the hour as four PRs and one issue arrived. **A number that changes hourly does not belong in a planning document; it belongs in a command.** Read them with `gh api "/repos/GD4AI/obsidian-llm-wiki/milestones?state=open" --jq '.[] | "\(.title): \(.open_issues)"'`.
@@ -81,7 +82,7 @@ The invariant that *is* carried: **nothing is unassigned.** On 2026-10-12 thirte
 The restructure replaced two milestones that had outlived their names. **`v1.27.x PATCH`** still held 11 items under a title naming a window that closed with v1.27.2 on
 2026-09-15. Its 10 PATCH-scale items moved to `v1.28.x PATCH`. #568 (an `enhancement`, not a fix) moved to `v1.29.0 MINOR`. **`v1.27.0 MINOR`** was empty and
 released, so it was closed. Both rules came from one place: *a released milestone may not carry unstarted work*. That rule is the reason `v1.28.0 MINOR` was emptied
-before its own release.
+before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINOR` and `v1.28.x PATCH` before v1.29.0 shipped.
 
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
@@ -155,6 +156,10 @@ A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 mile
 | 4 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
 | 5 | **#781's residual sites** | **Done — PR #878.** Four sites, not three: the lint-side PPR call that reached `Math.random`, the legacy weight table's score-only sort, and two that the list had not named — the hub detection's PPR (unreachable in production, so a guard rather than a fix) and the index search's score-only sort (its order does not reach the window, so it changes no behaviour). Each with a test that fails without it | Landed |
 | 6 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+
+**Status 2026-10-24: two more merges, and four PRs waiting on review.** #878 (`83b8f73f`, the four determinism sites) and #884 (`866bfb35`, two HIGH advisories that had turned `main`'s own Gate 1 red and every open PR with it). Open and green but unreviewed: **#886** the answer context's token ceiling (#880), **#885** the #835 decision, **#882** the follow-up rate instrument, **#881** the context-cost instrument, **#879** the watcher honouring the excluded-files list. **#855** waits on a re-approval its own rebase dismissed, and **#781** on a five-arm pass that has never run.
+
+**The token ceiling was measured, and the number that matters is the after-state.** On the two vaults that describe the current write path, answers over an 8k window went from 9/30 to **0/30** (test8) and 27/30 to **0/30** (test10), with p50 falling 7,067 → 5,332 and 11,015 → 5,873. The third vault on disk was written by an earlier release and is deliberately not quoted as evidence.
 
 **The whole routine block the maintainer sequenced ahead of the lint batch is now closed.** #830 and #831 were superseded by #859 (`fded549f`), #816's claim was false so #860 (`2ff5eb40`) added the entry, the CHANGELOG was backfilled by #862 (`8934c8f9`), and #861 (`4cc9e0d2`) — a dev-only `vite` 8.2.1 → 8.3.4 — was the only PR without a milestone and now has one. #755 is the one routine item left and it waits on its contributor, not on this repo.
 

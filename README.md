@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0 (MINOR — local Markdown image embeds analysed during ingest, per-provider request headers with an OpenCode preset and a `(Responses)` variant, a desktop `node:https` streaming fallback for blocked origins, and one tag vocabulary across settings, note tags and page tags; plus the build fix that made two already-shipped features actually run in a release build; 4372 tests)
-- last-updated: 2026-09-15
+- latest: v1.29.0 (MINOR — the lexical stage now reads page bodies and scores title/alias/summary/body with BM25F, the single largest recall change in the project; on top of it a two-stage Rocchio query expansion whose claim its own measurement narrowed; related-page shaping so one hub cannot drag every page toward it; a `legacyScorer` switch in Advanced settings as the way back; and a correctness wave covering the watcher's Obsidian exclusion list, the log header's command hint, the legacy log-header cut, and error normalization by SDK marker; 5038 tests)
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -172,6 +172,11 @@ Five on-ramps, switchable per ingest:
 ### 💬 Query & maintenance
 
 - **🧭 5-stage PPR cascade** — see [How retrieval works](#-how-retrieval-works). Personalized PageRank over `[[wiki-link]]` gives graph-aware multi-hop context.
+- **🆕 Body-aware lexical scoring (v1.29.0, #837)** — the fast path scores title, aliases, summary **and body text** with BM25F, so the longest text on a page reaches the scorer. It is the single largest recall change the project has made.
+- **🆕 Related-page shaping (v1.29.0, #841)** — one hub page can no longer drag every other page toward it. Related lists are recomputed on every write from the names that survived, ranked, and capped.
+- **🆕 Legacy query scorer switch (v1.29.0, #842)** — Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned linear ranking instead of the new one. Off by default; the new ranking is the default and the toggle is the way back.
+- **🆕 The answer budget is 16,000 tokens, and the pipeline says when it runs out (v1.29.0, #852)** — the answer no longer stops silently at the budget.
+- **🆕 Citations read in academic form (v1.29.0, #857)** — the composer grows with the content, and *clear history* clears the record.
 - **🪟 Right-docked side panel** — Query Wiki opens in a Copilot-style right sidebar leaf (v1.22.1+) instead of a centered modal.
 - **🔍 Lint health scan** — single command catches: duplicates, dead links, empty pages, orphans, missing aliases, contradictions.
 - **⚡ Smart Fix All** — one-click causal-order repair: fill aliases → merge duplicates → fix dead links → link orphans → expand empty pages, with per-phase report.
@@ -236,13 +241,19 @@ Most "AI search" plugins fragment your notes into chunks and embed them in a vec
 
 When you ask "Who founded Microsoft?", Query Wiki runs five stages before any answer generation:
 
-1. **Lex fast path** — straight token-overlap against every entity/concept title and aliases. Free, instant, and the gating step for everything that follows.
+1. **Lex fast path** — BM25F over every entity/concept title, aliases, summary **and body text**, with per-field saturation and IDF over a real document-frequency table. Free, instant, and the gating step for everything that follows.
 2. **LLM keyword generation** — the LLM proposes 8–12 cross-language keywords from your query (handles synonyms, abbreviations, and token-overlap-resistant terms in one LLM call).
 3. **Local substring scan** — every generated keyword is re-matched locally against page titles, aliases, and body snippets. No extra LLM call; rounds out noise-tolerant recall.
 4. **LLM KB fallback** — when lex + keyword scan returns weak signals, the LLM re-seeds the top-N candidates against the full wiki for one semantic pass.
 5. **PPR graph expansion** — Personalized PageRank (Haveliwala 2002) over the `[[wiki-link]]` graph starting from the candidate seed set. This is what gives graph-aware multi-hop context: "Bill Gates" → "Microsoft" → "competitors", not just literal title overlap.
 
 The cascade truncates at whichever stage returned enough signal — no fixed 5-stage cost; no LLM calls when lex is sufficient; semantic fallback only when lex + keyword scan alone isn't enough.
+
+### Query expansion, and a way back
+
+When the cascade reaches the graph stage, the query is expanded twice before the seeds are chosen: once with the wiki's own terms, then again with LLM-proposed terms. Each pass is weighted, and the gain is measured on the project's own vaults rather than assumed — on the two vaults written by the current release the expansion is worth **+0.086** and **+0.113** at r@10, with the interval excluding zero in both cases. The claim is deliberately narrow: the weighted form is *not* measurably better than the simple concatenation, and the switch that runs the previous scorer is there for a reader whose results got worse.
+
+Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned linear scorer instead. The new ranking is the default; the toggle is the way back.
 
 ### Personalized PageRank at scale
 

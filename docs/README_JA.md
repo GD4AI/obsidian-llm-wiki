@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0（MINOR — 取り込み時のローカル Markdown 画像埋め込みの解析、プロバイダー別リクエストヘッダーと OpenCode プリセット・`(Responses)` 変体、クロスオリジンが遮断された場合のデスクトップ `node:https` ストリーミング・フォールバック、設定/ノートタグ/ページタグを一つの語彙に統一。さらに、出荷済みの 2 機能をリリースビルドで実際に動かすビルド修正。4372 tests）
-- last-updated: 2026-09-15
+- latest: v1.29.0（MINOR — 語彙段がページ本文を読み、タイトル/エイリアス/要約/本文を BM25F でスコアリングするようになりました。これは本プロジェクト最大の検索改善です。その上に二段階 Rocchio クエリ拡張が乗り、その主張は自身の計測によって狭められています。1つの hub が他ページを引き寄せない Related ページ整形。戻す手段として詳細設定の `legacyScorer` スイッチ。加えて正確性の一波：watcher が Obsidian の除外リストを守る、ログヘッダーのコマンドヒント、legacy ログ切り取り、エラー正規化を SDK marker 基準に。5038 tests）
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
 - search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 11 言語プラグイン", "Obsidian 16+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
 - features: グラフベース検索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 段階シード選択カスケード, Tier 1/Tier 2 重複検出, 11 言語 UI + 11 言語 Wiki 出力（独立設定）, 16+ LLM プロバイダー（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-互換, Codex OAuth）, MinerU マルチフォーマット取り込み（PDF + 画像 + Office）, PDF 取り込み（キャッシュのみ、OCR パス）, Lint ヘルススキャン, Smart Fix All, ソースページ逐語引用, 取り込み候補ゲート, ステップ別 taskPolicies UI, Obsidian Graph View 連携, ゼロ埋め込み・ゼロベクトル DB アーキテクチャ, ローカルファーストモード
@@ -168,6 +168,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 ### 💬 クエリとメンテナンス
 
 - **🧭 5段階PPRカスケード** — [検索の仕組み](#-検索の仕組み)を参照。`[[wiki-link]]`上のPersonalized PageRankがグラフ認識のマルチホップコンテキストを提供。
+- **🆕 本文-awareなレキカルスコアリング（v1.29.0、#837）** — 高速パスはタイトル、エイリアス、要約**そして本文**をBM25Fでスコアリングします。ページ上で最長のテキストがようやくスコアラーに届きます。これは本プロジェクトで行った最大の検索改善です。
+- **🆕 Relatedページの整形（v1.29.0、#841）** — 1つのhubページが他のすべてのページを自身へ引き寄せることはなくなりました。Relatedリストは書き込みごとに残った名前から再計算され、順位付けされ、上限が適用されます。
+- **🆕 旧スコアラーの切り替え（v1.29.0、#842）** — 設定 → 詳細設定 → *旧クエリスコアー*（Legacy query scorer）で、以前の手動線形スコアリングを使います。新しいスコアリングが既定で、この切り替えが退路です。
+- **🆕 回答予算は16,000トークンになり、上限に達するとパイプラインが明示します（v1.29.0、#852）** — 回答が予算で黙って切れることはありません。
+- **🆕 引用は学術形式に（v1.29.0、#857）** — コンポーザーは内容に応じて伸び、*履歴を消去*は記録を実際に消します。
 - **🪟 右側ドッキングサイドパネル** — Query Wikiは中央モーダルではなく、Copilotスタイルの右サイドバーリーフで開きます（v1.22.1+）。
 - **🔍 Lintヘルススキャン** — 単一コマンドで以下を検出：重複、リンク切れ、空ページ、孤立ページ、欠落エイリアス、矛盾。
 - **⚡ Smart Fix All** — ワンクリック因果順修復：エイリアス補完→重複マージ→リンク切れ修正→孤立ページリンク→空ページ拡張。フェーズごとにレポート表示。
@@ -232,13 +237,19 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 「Microsoftの創業者は誰ですか？」と尋ねると、Query Wikiは回答生成前に5つの段階を実行します：
 
-1. **Lex高速パス** — すべてのエンティティ・概念タイトルとエイリアスに対してストレートなトークン重複チェック。無料・即時。以降の段階のゲートとなります。
+1. **Lex高速パス** — すべてのエンティティ・概念のタイトル、エイリアス、要約**そして本文**に対してBM25Fでスコアリングし、フィールド飽和と実際の文書頻度表に基づくIDFを適用します。無料・即時。以降の段階のゲートとなります。
 2. **LLMキーワード生成** — LLMがクエリから8〜12の多言語キーワードを生成（類義語、略語、トークン重複に弱い語を1回のLLM呼び出しで吸収）。
 3. **ローカル部分文字列スキャン** — 生成された各キーワードを、ページタイトル・エイリアス・本文断片に対してローカルで再マッチ。追加LLM呼び出しなし、ノイズ許容の再現率を補完。
 4. **LLM KBフォールバック** — lex＋キーワードスキャンのシグナルが弱い場合、LLMがwiki全体からトップN候補を1回だけ意味的に再シード。
 5. **PPRグラフ拡張** — 候補シード集合から`[[wiki-link]]`グラフ上でPersonalized PageRank（Haveliwala 2002）を実行。これがグラフ認識のマルチホップコンテキストを提供する仕組みです：「Bill Gates」→「Microsoft」→「競合他社」というように、単なる文字面のタイトル一致ではありません。
 
 カスケードは十分なシグナルが得られたステージで打ち切られます — 固定の5ステージ分のコストはかからず、lex で十分な時は LLM 呼び出しなし、意味的フォールバックは lex ＋キーワードスキャンだけでは足りない時にのみ実行されます。
+
+### クエリ拡張、そして戻す手段
+
+カスケードがグラフ段階に進むと、シードを選ぶ前にクエリは二度拡張されます。まず Wiki 自身の語で、次に LLM が提案した語です。各パスは重み付けされており、得られる改善は仮定ではなく本プロジェクト自身の Vault で**計測**されています。現在のリリースが書き出した2つの Vault では、拡張の寄与は r@10 でそれぞれ **+0.086** と **+0.113** で、どちらも区間がゼロを含みません。この主張は意図的に狭く表述しています。重み付き形式が単純な連結より測定可能に優れていることは**示せていません**。前のスコアラーに戻すスイッチはそこに用意してあり、結果が悪くなった読者のためにあります。
+
+設定 → 詳細設定 → *旧クエリスコアー*（Legacy query scorer）で、以前の手動線形スコアリングを使います。新しいスコアリングが既定で、この切り替えが戻す手段です。
 
 ### Personalized PageRankのスケーリング
 

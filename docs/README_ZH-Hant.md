@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0（MINOR — 攝入時分析本地 Markdown 圖片嵌入、按服務商設定請求標頭並新增 OpenCode 預設與 `(Responses)` 變體、跨域受限時的桌面端 `node:https` 串流回退、設定/筆記標籤/頁面標籤統一為一套詞彙表；外加讓兩個已發佈功能在正式建置中真正生效的建置修復；4372 tests）
-- last-updated: 2026-09-15
+- latest: v1.29.0（MINOR — 詞法階段現在讀取頁面正文，用 BM25F 對標題/別名/摘要/正文評分，是本專案最大的一次召回改進；其上疊加兩階段 Rocchio 查詢擴展，其結論被自身測量收窄；Related 頁塑形，使單一 hub 不再把其他頁面全拉向自己；進階設定中的 `legacyScorer` 開關作為退路；以及一輪正確性修復：watcher 遵守 Obsidian 排除清單、日誌標頭的命令提示、legacy 日誌切法、錯誤歸一化改用 SDK marker；5038 tests）
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -170,6 +170,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 ### 💬 查詢與維護
 
 - **🧭 5 階段 PPR 級聯** — 參閱 [檢索原理](#-檢索原理)。在 `[[wiki-link]]` 圖譜上執行 Personalized PageRank，提供圖感知的多跳上下文。
+- **🆕 正文感知的詞法評分（v1.29.0，#837）** — 快速路徑對標題、別名、摘要**與正文**做 BM25F 評分，頁面上最長的文字終於能進入評分器。這是本專案做過最大的一次召回改進。
+- **🆕 Related 頁塑形（v1.29.0，#841）** — 一個 hub 頁不再把其他所有頁面都拉向自己。Related 清單每次寫入時按存留的名稱重算、排序並封頂。
+- **🆕 舊版排序開關（v1.29.0，#842）** — 設定 → 進階設定 → *舊版查詢評分器*（Legacy query scorer）改用此前的手工線性排序。新排序是預設值，這個開關是退路。
+- **🆕 答案預算提升到 16,000 token，管道會在用盡時明說（v1.29.0，#852）** — 答案不再在預算處靜默截斷。
+- **🆕 引用改為學術格式（v1.29.0，#857）** — 輸入框隨內容變高，*清除歷史*會真正清掉記錄。
 - **🪟 右側停靠側邊欄** — 查詢 Wiki 以 Copilot 風格的右側 sidebar leaf 開啟（v1.22.1+），取代置中彈窗。
 - **🔍 Lint 健康掃描** — 單一指令即可檢測：重複頁面、斷鏈、空頁面、孤立頁面、缺失別名、矛盾。
 - **⚡ 一鍵智慧修復** — 按因果順序一鍵修復：補全別名 → 合併重複 → 修復斷鏈 → 鏈接孤立頁 → 擴充空頁面，附各階段執行報告。
@@ -230,13 +235,19 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 當你問「誰創辦了 Microsoft？」時，查詢 Wiki 在生成任何答案之前會執行五個階段：
 
-1. **Lex 快速路徑** — 直接對每個實體/概念標題與別名做 token 重疊匹配。免費、即時，且為後續階段的把關步驟。
+1. **Lex 快速路徑** — 對每個實體/概念標題、別名、摘要**與正文**做 BM25F 評分，帶欄位飽和與基於真實文件頻率表的 IDF。免費、即時，且為後續階段的把關步驟。
 2. **LLM 關鍵詞生成** — LLM 從你的查詢中提出 8–12 個跨語言關鍵詞（一次 LLM 呼叫即可處理同義詞、縮寫和 token 重疊不敏感的術語）。
 3. **本地子字串掃描** — 每個生成的關鍵詞在本地對頁面標題、別名與正文片段重新匹配。無額外 LLM 呼叫；補滿雜訊容忍的召回。
 4. **LLM KB 回退** — 當 lex + 關鍵詞掃描信號不足時，LLM 對 top-N 候選針對完整 wiki 重新做一次語義篩選。
 5. **PPR 圖擴展** — 從候選種子集開始，在 `[[wiki-link]]` 圖譜上執行 Personalized PageRank（Haveliwala 2002）。這就是提供圖感知多跳上下文的機制：「比爾蓋茲」→「Microsoft」→「競爭對手」，而非僅靠字面標題重疊。
 
 級聯會在第一個提供足夠信號的階段處截斷——沒有固定的 5 階段開銷；lex 足夠時無需 LLM 呼叫；只有在 lex 加關鍵詞掃描都不夠時才走語義回退。
+
+### 查詢擴展，以及一條退路
+
+當級聯走到圖擴展階段時，查詢會先擴展兩次再選種子：一次用 Wiki 自己的詞，一次用 LLM 提出的詞。每一輪都帶權重，而收益是在本專案自己的庫上**量**出來的，不是假設：在當前版本寫出的兩個庫上，擴展在 r@10 上分別值 **+0.086** 與 **+0.113**，兩者的區間都不含零。這個結論刻意說得很窄：加權形式**並不**比簡單拼接可測量地更好，而切換回舊排序器的開關就在那裡，供結果變差的讀者使用。
+
+設定 → 進階設定 → *舊版查詢評分器*（Legacy query scorer）改用此前的手工線性排序。新排序是預設值，這個開關是退路。
 
 ### 規模化的 Personalized PageRank
 

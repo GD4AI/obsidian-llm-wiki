@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0 (MINOR — 수집 시 로컬 Markdown 이미지 임베드 분석, 프로바이더별 요청 헤더와 OpenCode 프리셋 및 `(Responses)` 변형, 교차 출처가 차단될 때의 데스크톱 `node:https` 스트리밍 폴백, 설정/노트 태그/페이지 태그를 하나의 어휘로 통합. 그리고 이미 출시된 두 기능을 릴리스 빌드에서 실제로 동작하게 만든 빌드 수정. 4372 tests)
-- last-updated: 2026-09-15
+- latest: v1.29.0 (MINOR — 어휘 단계가 이제 페이지 본문을 읽고 제목/alias/요약/본문을 BM25F로 채점합니다. 이 프로젝트에서 가장 큰 검색 개선입니다. 그 위에 2단계 Rocchio 질의 확장이 올라가고, 그 주장은 자체 측정으로 좁혀졌습니다. 하나의 hub가 다른 페이지를 끌어당기지 않도록 Related 페이지를 다듬었고, 되돌리는 수단으로 고급 설정의 `legacyScorer` 스위치가 있습니다. 더불어 정확성 수정 한 묶음: watcher가 Obsidian 제외 목록을 준수, 로그 헤더의 명령 힌트, legacy 로그 자르기, 오류 정규화를 SDK marker 기준으로. 5038 tests)
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -167,6 +167,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 ### 💬 조회 및 유지관리
 
 - **🧭 5단계 PPR 캐스케이드** — [검색 작동 방식](#-검색-작동-방식) 참조. `[[wiki-link]]` 그래프 위의 Personalized PageRank가 그래프 인지 멀티홉 컨텍스트를 제공합니다.
+- **🆕 본문을 읽는 어휘 점수화 (v1.29.0, #837)** — 빠른 경로가 제목, alias, 요약**그리고 본문**을 BM25F로 채점합니다. 페이지에서 가장 긴 텍스트가 처음으로 채점기에 도달합니다. 이 프로젝트가 한 가장 큰 검색 개선입니다.
+- **🆕 Related 페이지整形 (v1.29.0, #841)** — 하나의 hub 페이지가 다른 모든 페이지를 자기 쪽으로 끌어당기지 않습니다. Related 목록은 매 쓰기마다 살아남은 이름으로 다시 계산되고, 순위가 매겨지고, 상한이 적용됩니다.
+- **🆕 이전 스코어 전환 스위치 (v1.29.0, #842)** — 설정 → 고급 설정 → *이전 쿼리 스코어*(Legacy query scorer)로 예전의 수동 선형 스코어를 실행합니다. 새 스코어가 기본값이며, 이 스위치가 되돌아가는 길입니다.
+- **🆕 답변 예산은 16,000 토큰이며, 소진되면 파이프라인이 알려줍니다 (v1.29.0, #852)** — 답이 예산에서 조용히 잘리지 않습니다.
+- **🆕 인용이 학술 형식으로 (v1.29.0, #857)** — 작성창이 내용에 따라 늘어나고, *기록 지우기*가 실제로 기록을 지웁니다.
 - **🪟 우측 도킹 사이드 패널** — Query Wiki가 중앙 팝업 대신 Copilot 스타일의 우측 사이드바 리프에서 열립니다 (v1.22.1+).
 - **🔍 Lint 상태 검사** — 단일 명령어로 감지: 중복, 데드 링크, 빈 페이지, 고아, 누락된 alias, 모순.
 - **⚡ Smart Fix All** — 원클릭 인과순서 수리: alias 채우기 → 중복 병합 → 데드 링크 수정 → 고아 연결 → 빈 페이지 확장, 단계별 보고서 포함.
@@ -231,13 +236,19 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 "Microsoft 창업자는 누구인가?"라고 질문하면, Query Wiki는 답변 생성 전에 5단계를 실행합니다:
 
-1. **Lex 빠른 경로** — 모든 Entity/Concept 제목 및 alias에 대한 직접 토큰 중복 체크. 무료, 즉시, 이후 모든 단계의 게이트 역할.
+1. **Lex 빠른 경로** — 모든 Entity/Concept의 제목, alias, 요약**그리고 본문**에 대해 BM25F로 채점하며, 필드 포화와 실제 문서 빈도 표 기반 IDF를 적용합니다. 무료, 즉시, 이후 모든 단계의 게이트 역할.
 2. **LLM 키워드 생성** — LLM이 쿼리로부터 8–12개의 다국어 키워드 생성 (동의어, 약어, 토큰 중복에 취약한 용어를 단일 LLM 호출로 처리).
 3. **로컬 부분문자열 스캔** — 생성된 각 키워드를 페이지 제목, alias, 본문 스니펫에 대해 로컬에서 재매칭. 추가 LLM 호출 없음, 노이즈 허용 재현율 보완.
 4. **LLM KB 폴백** — lex + 키워드 스캔의 신호가 약할 때, LLM이 전체 Wiki에 대해 top-N 후보를 한 번 의미적으로 재시드.
 5. **PPR 그래프 확장** — 후보 시드 집합에서 `[[wiki-link]]` 그래프 위 Personalized PageRank (Haveliwala 2002) 실행. 이것이 그래프 인지 멀티홉 컨텍스트를 제공합니다: "Bill Gates" → "Microsoft" → "경쟁사", 단순한 제목 일치가 아닌.
 
 캐스케이드는 충분한 신호를 반환한 단계에서 자동으로 절단됩니다 — 고정된 5단계 비용 없음; lex로 충분할 때는 LLM 호출 없음; 의미 폴백은 lex + 키워드 스캔만으로 충분하지 않을 때만 적용됩니다.
+
+### 질의 확장, 그리고 되돌리는 방법
+
+캐스케이드가 그래프 단계에 도달하면 시드를 고르기 전에 질의가 두 번 확장됩니다. 먼저 Wiki 자신의어로, 그다음 LLM이 제안한 단어로. 각 단계에는 가중치가 있으며, 얻는 이득은 가정하지 않고 본 프로젝트의 자체 Vault에서 **측정**합니다. 현재 릴리스가 작성한 두 Vault에서 확장 기여는 r@10 기준 각각 **+0.086**과 **+0.113**이고, 두 경우 모두 구간이 0을 포함하지 않습니다. 이 주장은 의도적으로 좁습니다. 가중치를 준 형태가 단순 결합보다 측정 가능하게 낫다는 것은 **보여주지 못했습니다**. 이전 스코어로 되돌리는 스위치가 그 자리에 있어, 결과가 나빠진 독자를 위한 것입니다.
+
+설정 → 고급 설정 → *이전 쿼리 스코어*(Legacy query scorer)로 예전의 수동 선형 스코어를 실행합니다. 새 스코어가 기본값이며, 이 스위치가 되돌리는 방법입니다.
 
 ### 규모에 맞는 Personalized PageRank
 

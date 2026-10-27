@@ -139,7 +139,19 @@ src/
 │   ├── link-retarget.ts        # Vault-wide link retarget for mergeDuplicates (#386, v1.26.0 PR #392 DocTpoint)
 │   ├── llm-task-usage.ts       # Per-step LLM call + wall-time ledger (PR #409, v1.26.1 eucher)
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
-│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
+│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragr
+│   ├── assembly.ts            # Deterministic seed assembly + tie-break rules (v1.29.0, #837)
+│   ├── citation-format.ts     # Academic citation rendering for query answers (v1.29.0, #857)
+│   ├── conversation-hash.ts   # Conversation-history fingerprint for the query cache key (v1.29.0)
+│   ├── model-id-filter.ts     # Namespaced model-id filter for the provider pickers (v1.29.0, #758)
+│   ├── query-expansion.ts     # Two-stage Rocchio expansion (v1.29.0, #855)
+│   ├── recall-fixtures.ts     # Retrieval recall fixtures (v1.29.0, #837)
+│   ├── recall-harness.ts      # Retrieval recall harness (v1.29.0, #837)
+│   ├── retrieval-profile.ts   # Per-task retrieval profile (v1.29.0)
+│   ├── retrieval-query.ts     # Query → retrieval terms (v1.29.0)
+│   ├── term-index.ts          # BM25F field terms + IDF over a document-frequency table (v1.29.0, #837)
+│   ├── term-index-cache.ts    # Per-session term-index cache (v1.29.0, #843)
+│   ├── user-ignore.ts         # Obsidian "Excluded files" predicate adapter (v1.29.0, #872)aphs + guardBodyRewrite)
 ├── wiki/                # Wiki engine modules
 │   ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer (v1.28.0, #603/#750)
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
@@ -151,8 +163,8 @@ src/
 │   │   ├── types.ts + state.ts                # type declarations + InternalView
 │   │   ├── QueryView-class.ts                 # ItemView (+ delegates renderers + pipeline)
 │   │   ├── SuggestSaveModal-class.ts          # post-query feedback Modal
-│   │   ├── renderers/                         # 6 pure-function modules
-│   │   └── pipeline/                          # 5 pure-function modules
+│   │   ├── renderers/                         # 7 pure-function modules
+│   │   └── pipeline/                          # 7 pure-function modules
 │   ├── source-analyzer.ts # Iterative batch extraction
 │   ├── page-factory/          # Entity/concept CRUD + merge (10 modules, v1.24.1 split)
 │   │   ├── index.ts                # Facade (preserves public API)
@@ -227,19 +239,28 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 4372 tests / 313 files; v1.28.0 MINOR 2026-10-04)
+└── __tests__/           # Unit tests (vitest, 5038 tests / 367 files; v1.29.0 MINOR 2026-10-26)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
 └── dev-instrument/     # UPSTREAM DEV-ONLY INSTRUMENT (v1.27.0, PR #511) — engine contributors only
     ├── run-instrument.mjs # Entry point: `node tools/dev-instrument/run-instrument.mjs <vault> <source>`
     ├── README.md        # Measurement-arm reference (WIKI_THINKING_MODE / WIKI_TEMP / WIKI_TOP_P)
     ├── tsconfig.json    # Separate tsconfig (@types/node@22)
-    └── src/
-        ├── engine-runner.ts     # Runs the real WikiEngine headless against real LLM spend
-        ├── measurement-arms.ts  # Environment-driven measurement arms (fail-fast validated)
-        ├── vault-fs.ts          # Node `fs/promises` vault adapter + link cache
-        ├── shim.ts              # Obsidian API shim (vault + app stubs)
-        └── exit-code.ts         # Exit-code mapping
+    ├── conversation-cases.json # Hand-written follow-up cases for run-conversation-eval
+    ├── stubs/           # Fixture stubs
+    ├── src/
+    │   ├── engine-runner.ts     # Runs the real WikiEngine headless against real LLM spend
+    │   ├── measurement-arms.ts  # Environment-driven measurement arms (fail-fast validated)
+    │   ├── vault-fs.ts          # Node `fs/promises` vault adapter + link cache
+    │   ├── shim.ts              # Obsidian API shim (vault + app stubs)
+    │   ├── exit-code.ts         # Exit-code mapping
+    │   ├── graph-audit.ts       # Graph audit over a real vault (v1.29.0, #837)
+    │   ├── graph-audit-cli.ts   # CLI wrapper for graph-audit
+    │   ├── recall-diagnostic.ts # Per-query recall diagnostic (v1.29.0, #837)
+    │   └── recall-diagnostic-cli.ts # CLI wrapper for recall-diagnostic
+    └── run-*.mjs        # Measurement harnesses, one per question. v1.29.0 added the
+                         # context-cost, follow-up-rate, layered and expansion-strata arms
+                         # alongside the older retrieval/assembly/answer-path A/B arms.
 ```
 
 > **Note on `tools/`:** since v1.27.0 (PR #511) the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors. It runs the real `WikiEngine` against real LLM spend. It also keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
@@ -286,7 +307,7 @@ graph TD
     WikiEngine -->|write| Vault
     WikiEngine -->|headless measurement| devInstrument["tools/dev-instrument/ (v1.27.0 PR #511, dev-only)"]
 
-    QueryEngine -->|4-phase pipeline: read-index / select-seeds / load-pages / assemble-context| Vault
+    QueryEngine -->|pipeline: retrieval-plan → select-seeds → load-pages → assemble-context| Vault
     QueryEngine -->|streaming + render| LLMClient
 
     lint("lint/controller.ts") -->|LLM scoring/synthesis/dedup/contradiction| llm-phases["lint/llm-phases/ (4 phase modules: scoring + synthesis + dedup + contradiction; analysis-phase removed v1.26.4 PR #494)"]
