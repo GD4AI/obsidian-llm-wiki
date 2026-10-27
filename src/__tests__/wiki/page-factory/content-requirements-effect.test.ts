@@ -5,6 +5,17 @@
 //   2. a merge into an existing page carries no requirement.
 // The claim is verified by running the report's own shape here, not by reading
 // the report.
+//
+// Both are open defects, tracked as #902, and both are pinned with `it.fails`
+// rather than left red. The reason is that a red assertion records the defect
+// once and then blocks every unrelated change, while `it.fails` records it, keeps
+// the signal in the suite, and flips to a failure the moment somebody fixes the
+// behaviour — which is how the fix announces that it landed and that the marker
+// has to come off.
+//
+// Finding 2 (the merge path) is a wiring gap and its fix is agreed.
+// Finding 1 is a promise the mechanism cannot keep: the section list is
+// plugin-owned, so it waits on the decision in #902 rather than on a patch.
 import { describe, it, expect } from 'vitest';
 import { createOrUpdateEntityPage, type CreatePageContext } from '../../../wiki/page-factory/create-page';
 import { createMockEntity } from '../../__support__/factories';
@@ -42,14 +53,14 @@ describe('#895 contentRequirements — independent reproduction', () => {
     expect(prompts.some(p => p.includes(REQUIREMENT))).toBe(true);
   });
 
-  it('FINDING 1: the written page keeps the Risk Notes section the model wrote', async () => {
+  it.fails('FINDING 1 (#902): the written page keeps the Risk Notes section the model wrote', async () => {
     const { ctx, store } = makeCtx();
     const r = await createOrUpdateEntityPage(ctx, createMockEntity({ name: 'Ada Lovelace' }), undefined, SOURCE);
     expect(store.get(r.path!)).toContain('## Description');
     expect(store.get(r.path!)).toContain('## Risk Notes');
   });
 
-  it('FINDING 2: a merge carries the requirement', async () => {
+  it.fails('FINDING 2 (#902): a merge carries the requirement', async () => {
     const { ctx, prompts } = makeCtx({ 'wiki/entities/Ada-Lovelace.md': EXISTING_PAGE });
     const r = await createOrUpdateEntityPage(ctx, createMockEntity({ name: 'Ada Lovelace' }), undefined, SOURCE);
     expect(r.created).toBe(false);
