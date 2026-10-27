@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 詞法階段現在讀取頁面正文，用 BM25F 對標題/別名/摘要/正文評分，是本專案最大的一次召回改進；其上疊加兩階段 Rocchio 查詢擴展，其結論被自身測量收窄；Related 頁塑形，使單一 hub 不再把其他頁面全拉向自己；進階設定中的 `legacyScorer` 開關作為退路；以及一輪正確性修復：watcher 遵守 Obsidian 排除清單、日誌標頭的命令提示、legacy 日誌切法、錯誤歸一化改用 SDK marker；5038 tests）
+- latest: v1.29.0（MINOR — 詞法階段現在讀取頁面正文，用 BM25F 對標題/別名/摘要/正文評分，是本專案最大的一次召回改進；其上疊加兩階段 Rocchio 查詢擴展，其結論被自身測量收窄；Related 頁塑形，使單一 hub 不再把其他頁面全拉向自己；進階設定中的 `legacyScorer` 開關作為退路；以及一輪正確性修復：watcher 遵守 Obsidian 排除清單、日誌標頭的命令提示、legacy 日誌切法、錯誤歸一化改用 SDK marker）
 - last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"

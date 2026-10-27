@@ -289,7 +289,7 @@ Sweep for A4: `k1=5 m1=10 k2=5 m2=10` is the best setting on both vaults. Averag
 
 **The single sentence that matters:** the star shape and the lexical-seed bottleneck survive the regime change and hold on `main`; the dead-related counts and the Related cap do not.
 
-**Latest shipped release:** **v1.29.0 MINOR** (2026-10-26, 5038 tests / 367 files — CHANGELOG §1.29.0). The merges below are unreleased work on `main` or the v1.30.0 milestone.
+**Latest shipped release:** **v1.29.0 MINOR** (2026-10-26, 5040 tests / 368 files — CHANGELOG §1.29.0). The merges below are unreleased work on `main` or the v1.30.0 milestone.
 
 **The #729 read-side track merged on 2026-10-14**, one day, six PRs. #837 read-side core + tools, #841 write-side shaping + hub-link distinctiveness, #842 the `legacyScorer` switch in 11 locales, #840 the docs, #843 a term-index cache, #844 its staleness fix. Gate 1 across the merge: 4709 tests / 334 files. What the merge bought, on the strict layer (pairs sharing under a third of their terms, different sources, truth edge removed): 0.45-0.48 at r@10 on test8 and 0.32-0.36 on test10, up from 0.000 for a lexical channel without the body. `self recall@10` is 1.000 in every arm on both vaults. **The write-side track is what remains**: the read side consumes signals the corpus carries, and where two pages share no link and no wording it has nothing to work with — unchanged by the merge, and a write-side problem.
 

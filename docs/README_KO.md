@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — 어휘 단계가 이제 페이지 본문을 읽고 제목/alias/요약/본문을 BM25F로 채점합니다. 이 프로젝트에서 가장 큰 검색 개선입니다. 그 위에 2단계 Rocchio 질의 확장이 올라가고, 그 주장은 자체 측정으로 좁혀졌습니다. 하나의 hub가 다른 페이지를 끌어당기지 않도록 Related 페이지를 다듬었고, 되돌리는 수단으로 고급 설정의 `legacyScorer` 스위치가 있습니다. 더불어 정확성 수정 한 묶음: watcher가 Obsidian 제외 목록을 준수, 로그 헤더의 명령 힌트, legacy 로그 자르기, 오류 정규화를 SDK marker 기준으로. 5038 tests)
+- latest: v1.29.0 (MINOR — 어휘 단계가 이제 페이지 본문을 읽고 제목/alias/요약/본문을 BM25F로 채점합니다. 이 프로젝트에서 가장 큰 검색 개선입니다. 그 위에 2단계 Rocchio 질의 확장이 올라가고, 그 주장은 자체 측정으로 좁혀졌습니다. 하나의 hub가 다른 페이지를 끌어당기지 않도록 Related 페이지를 다듬었고, 되돌리는 수단으로 고급 설정의 `legacyScorer` 스위치가 있습니다. 더불어 정확성 수정 한 묶음: watcher가 Obsidian 제외 목록을 준수, 로그 헤더의 명령 힌트, legacy 로그 자르기, 오류 정규화를 SDK marker 기준으로)
 - last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"

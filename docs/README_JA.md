@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 語彙段がページ本文を読み、タイトル/エイリアス/要約/本文を BM25F でスコアリングするようになりました。これは本プロジェクト最大の検索改善です。その上に二段階 Rocchio クエリ拡張が乗り、その主張は自身の計測によって狭められています。1つの hub が他ページを引き寄せない Related ページ整形。戻す手段として詳細設定の `legacyScorer` スイッチ。加えて正確性の一波：watcher が Obsidian の除外リストを守る、ログヘッダーのコマンドヒント、legacy ログ切り取り、エラー正規化を SDK marker 基準に。5038 tests）
+- latest: v1.29.0（MINOR — 語彙段がページ本文を読み、タイトル/エイリアス/要約/本文を BM25F でスコアリングするようになりました。これは本プロジェクト最大の検索改善です。その上に二段階 Rocchio クエリ拡張が乗り、その主張は自身の計測によって狭められています。1つの hub が他ページを引き寄せない Related ページ整形。戻す手段として詳細設定の `legacyScorer` スイッチ。加えて正確性の一波：watcher が Obsidian の除外リストを守る、ログヘッダーのコマンドヒント、legacy ログ切り取り、エラー正規化を SDK marker 基準に）
 - last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
 - search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 11 言語プラグイン", "Obsidian 16+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"

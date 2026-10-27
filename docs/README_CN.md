@@ -12,7 +12,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 词法阶段现在读取页面正文，用 BM25F 对标题/别名/摘要/正文打分，是本项目最大的一次召回改进；其上叠加两阶段 Rocchio 查询扩展，其结论被自身测量收窄；Related 页塑形，使单个 hub 不再把其他页面全拉向自己；高级设置中的 `legacyScorer` 开关作为退路；以及一轮正确性修复：watcher 遵守 Obsidian 排除列表、日志头部的命令提示、legacy 日志切法、错误归一化改用 SDK marker；5038 tests）
+- latest: v1.29.0（MINOR — 词法阶段现在读取页面正文，用 BM25F 对标题/别名/摘要/正文打分，是本项目最大的一次召回改进；其上叠加两阶段 Rocchio 查询扩展，其结论被自身测量收窄；Related 页塑形，使单个 hub 不再把其他页面全拉向自己；高级设置中的 `legacyScorer` 开关作为退路；以及一轮正确性修复：watcher 遵守 Obsidian 排除列表、日志头部的命令提示、legacy 日志切法、错误归一化改用 SDK marker）
 - last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"

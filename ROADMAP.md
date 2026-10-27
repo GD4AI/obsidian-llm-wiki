@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.29.0 MINOR (2026-10-26, 65 commits / 5038 tests). See [CHANGELOG.md §1.29.0](./CHANGELOG.md#1290---2026-10-26) for the canonical composition record. | **Updated:** 2026-10-26
+**Latest shipped:** v1.29.0 MINOR (2026-10-26, 68 commits / 5040 tests). See [CHANGELOG.md §1.29.0](./CHANGELOG.md#1290---2026-10-26) for the canonical composition record. | **Updated:** 2026-10-26
 **Next MINOR candidate:** **v1.30.0 MINOR**, opened 2026-10-26 with three items: **#895** (prompt customization, split out of #755 — held on a design question, see below), **#886** (the answer context's token ceiling), and **#781** (the M0 co-citation projection). #729 Phase 1 was v1.29.0's named head and **v1.29.0 shipped without it**; the ordering was **decided: direction A** — one measurement pass comes first, then M0. The measurement ran and narrowed the claim (CHANGELOG §1.29.0), and what it did NOT settle is the design question #781 implements, so #781 is the one item of the three still blocked on a decision rather than on code.
 
 **Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
