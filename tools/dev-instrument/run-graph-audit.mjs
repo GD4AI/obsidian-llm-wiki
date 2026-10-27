@@ -63,6 +63,7 @@ const { pathToFileURL } = await (async () => {
   if (!Platform.isDesktop) throw new Error('node:* is desktop-only');
   return import('node:url');
 })();
+// eslint-disable-next-line no-unsanitized/method -- OUT_PATH is a hardcoded local constant (the bundle this script just built), not user input
 const mod = await import(pathToFileURL(OUT_PATH).href);
 const code = await mod.main(process.argv.slice(2));
 process.exitCode = code;

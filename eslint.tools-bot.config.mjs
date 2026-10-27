@@ -65,9 +65,6 @@ export default [
       },
       globals: NODE_GLOBALS,
     },
-    plugins: {
-      "@typescript-eslint": tsplugin,
-    },
     rules: {
       ...tsplugin.configs.recommended.rules,
     },

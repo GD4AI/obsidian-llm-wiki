@@ -32,6 +32,9 @@ listed in alphabetical order by GitHub handle:
 - Matthew Harper (Indexed-Apogrypha) — source-slug fingerprint,
   pre-ingest requirements gate, Anthropic fallback fixes.
 - Roman Kuzmin (rkuzmin) — LM Studio no-key ingest (PR #272, #339).
+- weqoocu — machine-identifier entity-name guard, wired into the
+  normalisation path (PR #894), and the prompt-customization settings
+  `extractionFocus` / `contentRequirements` (PR #895).
 - Younian (YounianC, xiaochuanlu) — ingest status bar and Query Wiki side panel.
 
 ## Third-party components
