@@ -75,6 +75,26 @@ For each modified function, trace: **call-site audit** (`grep -rn "<fn>" src/`) 
 
 Deliverable: "None detected" or specific migration plan.
 
+#### Which of the three numbers moves
+
+Added 2026-10-27, when v1.29.0 raised the question of whether the next release should be 1.30.0 or 2.0.0. The answer is a rule, not a feeling about 30 being a large number — SemVer has no ceiling on the minor field.
+
+MAJOR means an incompatible change. This plugin ships no API that another plugin consumes; Obsidian loads `export default LLMWikiPlugin`, and `createLLMClient` is used by the in-repo `tools/` only. So the contracts that can break are four: `data.json`, the generated wiki files, the command and setting IDs, and the Obsidian version floor. `grep -i BREAKING CHANGELOG.md` returns nothing across 1100+ lines, and CHANGELOG §1.25.0 says "No breaking changes since v1.0.0".
+
+**Move to MAJOR only when one of these is true:**
+
+1. **Wiki file migration.** Existing pages must be rewritten before the new version reads them correctly — frontmatter shape, section labels, or folder layout.
+2. **A `data.json` field that cannot be defaulted.** A removed or renamed setting whose old value would be silently misread.
+3. **A command or setting ID rename.** It breaks hotkeys the user already bound.
+4. **A behaviour removed with no way back.** Taking out the escape hatch — `legacyScorer` is the current example — without a replacement.
+5. **The `minAppVersion` floor rises past a platform still supported.** A mobile floor bump is the usual shape.
+
+Otherwise the minor field moves for user-visible capability, and the patch field for everything else. A release whose content is "the same product, better retrieval" is a MINOR however large its diff is; a release that makes somebody rewrite their vault is a MAJOR however small its diff is.
+
+**`minAppVersion` is a real break and has never been labelled as one.** It rose five times (1.4.0, 1.7.10, 1.18.0, 1.25.2, and the 0.2.0 baseline), each shipped as MINOR or PATCH. A user on an older Obsidian simply cannot install the new version, which is a harder stop than most API changes. Any release that raises it now carries one line at the top of its CHANGELOG entry naming the new floor and who loses access — the version number does not have to change for that line to be required.
+
+The condition is a rule, so the number is decided by evidence rather than by the minor field reaching a value that feels large. As of 2026-10-27 no MAJOR trigger has ever fired, and the two shapes that would fire one are already visible: #873 (user-defined page-type taxonomy and folder layout) and #902's Option B (user-declared sections). Both change what an existing vault must look like, which is trigger 1.
+
 ### Gate 4: No Performance Regression
 
 Procedure: run `/review` on the change, then walk the dimensions below. On a regression, mitigate or escalate. If N/A, say so.
