@@ -5,7 +5,9 @@
  * Settings block:
  *
  *   - Advanced Settings Mode dropdown (default / custom)
+ *   - Max output tokens per call + Model context window (both modes, #904)
  *   - Disable Thinking toggle (only in custom mode)
+ *   - Thinking level dropdown (only in custom mode, hidden while thinking is off)
  *   - Per-step output mode / thinking spec (Issue #524, only in custom mode)
  *   - Three temperature / repetition penalty number inputs
  *   - Force PDF Support toggle (v1.25.0 PR3 universal escape hatch)
@@ -63,6 +65,7 @@ export function renderAdvancedSection(tab: LLMWikiSettingTab, containerEl: HTMLE
           tempSettings.advancedSettingsMode = value as 'default' | 'custom';
           if (value === 'default') {
             tempSettings.disableThinking = false;
+            tempSettings.thinkingEffort = 'default';
             tempSettings.extractionTemperature = undefined;
             tempSettings.chatTemperature = undefined;
             tempSettings.repetitionPenalty = undefined;
@@ -89,6 +92,48 @@ export function renderAdvancedSection(tab: LLMWikiSettingTab, containerEl: HTMLE
 
   if (tempSettings.advancedSettingsMode !== 'custom') return;
 
+  // Issue #904: the two token fields moved here from the Model section, and
+  // they render in BOTH modes — deliberately above the `custom` gate.
+  //
+  // Why both modes: `Max output tokens per call` was already visible to every
+  // local-model user before this change, so hiding it behind a second toggle
+  // would remove a control that fixed a real failure. Leaving it out of the
+  // reset block matters for the same reason — a declared ceiling is a fact
+  // about the user's model, not a sampling preference, and switching modes
+  // must not silently turn an 8K local budget back into a 128K request.
+  //
+  // Why here rather than under the model picker: reasoning tokens are paid
+  // from the same ceiling as the answer, so these two fields and
+  // `Thinking level` below are one decision and read better together.
+  const tokenOptions = [0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576];
+  const tokenLabels = ['Auto', '4K', '8K', '16K', '32K', '64K', '128K', '256K', '512K', '1M'];
+
+  new Setting(containerEl)
+    .setName(tab.getText('maxTokensPerCallName'))
+    .setDesc(tab.getText('maxTokensPerCallDesc'))
+    .addDropdown(dropdown => {
+      tokenOptions.forEach((val, idx) => {
+        dropdown.addOption(String(val), tokenLabels[idx]);
+      });
+      dropdown.setValue(String(tempSettings.maxTokensPerCall ?? 0));
+      dropdown.onChange((value) => {
+        tempSettings.maxTokensPerCall = parseInt(value);
+      });
+    });
+
+  new Setting(containerEl)
+    .setName(tab.getText('contextWindowName'))
+    .setDesc(tab.getText('contextWindowDesc'))
+    .addDropdown(dropdown => {
+      tokenOptions.forEach((val, idx) => {
+        dropdown.addOption(String(val), tokenLabels[idx]);
+      });
+      dropdown.setValue(String(tempSettings.contextWindow ?? 0));
+      dropdown.onChange((value) => {
+        tempSettings.contextWindow = parseInt(value);
+      });
+    });
+
   // Disable Thinking
   new Setting(containerEl)
     .setName(tab.getText('disableThinkingName'))
@@ -97,7 +142,38 @@ export function renderAdvancedSection(tab: LLMWikiSettingTab, containerEl: HTMLE
       .setValue(tempSettings.disableThinking === true)
       .onChange((value) => {
         tempSettings.disableThinking = value;
+        // Issue #904: the level control is a child of this toggle, so it must
+        // appear and disappear with it rather than sit there inert.
+        tab.display();
       }));
+
+  // Issue #904: global thinking level, shown only while thinking is allowed.
+  //
+  // Four options, no "off": the toggle above IS the off switch, and a second
+  // control for one state is how two sources of truth drift apart. The plugin
+  // sends one level and lets the AI SDK translate it per provider — the SDK
+  // knows each model's supported values and downgrades an unsupported one with
+  // a warning instead of failing the call.
+  if (tempSettings.disableThinking !== true) {
+    const effortOptions = [
+      { value: 'default', labelKey: 'thinkingEffortDefault' },
+      { value: 'low', labelKey: 'thinkingEffortLow' },
+      { value: 'medium', labelKey: 'thinkingEffortMedium' },
+      { value: 'high', labelKey: 'thinkingEffortHigh' },
+    ] as const;
+    new Setting(containerEl)
+      .setName(tab.getText('thinkingEffortName'))
+      .setDesc(tab.getText('thinkingEffortDesc'))
+      .addDropdown(dropdown => {
+        for (const option of effortOptions) {
+          dropdown.addOption(option.value, tab.getText(option.labelKey));
+        }
+        dropdown.setValue(tempSettings.thinkingEffort ?? 'default');
+        dropdown.onChange((value) => {
+          tempSettings.thinkingEffort = value as 'default' | 'low' | 'medium' | 'high';
+        });
+      });
+  }
 
   // Issue #524: per-step output mode / thinking (src/core/task-policy.ts).
   // The field existed since #490 but only data.json reached it; without a

@@ -133,7 +133,7 @@ describe('AnthropicSdkClient', () => {
   });
 
   describe('enableThinking behavior', () => {
-    it('does NOT send thinking field when enableThinking is undefined', async () => {
+    it('sends no reasoning field when neither the toggle nor a level is set', async () => {
       const client = new AnthropicSdkClient({ apiKey: 'sk-ant-test' });
       await client.createMessage({
         model: 'claude-sonnet-4-5',
@@ -142,10 +142,12 @@ describe('AnthropicSdkClient', () => {
       });
 
       const call = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
-      expect(call.providerOptions).toEqual({});
+      // Issue #904: the client no longer hand-builds providerOptions; silence
+      // is the absence of the field, which is byte-identical to pre-#904.
+      expect(call.reasoning).toBeUndefined();
     });
 
-    it('sends thinking: {type:"disabled"} when enableThinking is false (Anthropic)', async () => {
+    it('asks the SDK to disable reasoning when enableThinking is false', async () => {
       const client = new AnthropicSdkClient({ apiKey: 'sk-ant-test' });
       await client.createMessage({
         model: 'claude-sonnet-4-5',
@@ -155,9 +157,27 @@ describe('AnthropicSdkClient', () => {
       });
 
       const call = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
-      expect(call.providerOptions).toEqual({
-        anthropic: { thinking: { type: 'disabled' } },
+      // Issue #904: `reasoning: 'none'` replaces the hand-written
+      // `providerOptions.anthropic.thinking = { type: 'disabled' }`.
+      // @ai-sdk/anthropic turns it into `thinking: disabled` on models that
+      // accept that, and downgrades it to `effort: 'low'` with a compatibility
+      // warning on models that always think (Claude Opus 5.5), where the old
+      // hand-built field was a guaranteed 400.
+      expect(call.reasoning).toBe('none');
+    });
+
+    it('passes a named level straight through as `reasoning`', async () => {
+      const client = new AnthropicSdkClient({ apiKey: 'sk-ant-test' });
+      await client.createMessage({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: 'hi' }],
+        enableThinking: true,
+        reasoningEffort: 'medium',
       });
+
+      const call = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
+      expect(call.reasoning).toBe('medium');
     });
   });
 
@@ -310,12 +330,12 @@ describe('AnthropicSdkClient', () => {
       expect(parts[0].providerOptions).toEqual({
         anthropic: { cacheControl: { type: 'ephemeral' } },
       });
-      // Thinking control travels at the call.providerOptions level (existing
-      // path); cache_control travels on the user-message text part. They MUST
-      // NOT collide — both must be present at their canonical locations.
-      expect(call.providerOptions).toEqual({
-        anthropic: { thinking: { type: 'disabled' } },
-      });
+      // Thinking control now travels as the top-level `reasoning` field
+      // (Issue #904); cache_control stays on the user-message text part.
+      // They MUST NOT collide — both must be present at their canonical
+      // locations.
+      expect(call.reasoning).toBe('none');
+      expect(call.providerOptions).toBeUndefined();
     });
 
     it('omits system entirely when cacheBreakpoint is defined and system is empty (no stray empty block consumes a cache breakpoint)', async () => {

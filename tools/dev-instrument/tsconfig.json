@@ -9,6 +9,7 @@
   },
   "include": [
     "src/**/*.ts",
+    "stubs/**/*.ts",
     "../../src/__tests__/tools/dev-instrument/**/*.ts"
   ],
   "exclude": []

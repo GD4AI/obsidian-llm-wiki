@@ -3,7 +3,7 @@
 **Last Updated:** 2026-10-06
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.29.0 MINOR (2026-10-26, 5040 tests / 368 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
@@ -74,6 +74,26 @@ For each modified function, trace: **call-site audit** (`grep -rn "<fn>" src/`) 
 | Obsidian API | `manifest.json` | `minAppVersion` >= current |
 
 Deliverable: "None detected" or specific migration plan.
+
+#### Which of the three numbers moves
+
+Added 2026-10-27, when v1.29.0 raised the question of whether the next release should be 1.30.0 or 2.0.0. The answer is a rule, not a feeling about 30 being a large number — SemVer has no ceiling on the minor field.
+
+MAJOR means an incompatible change. This plugin ships no API that another plugin consumes; Obsidian loads `export default LLMWikiPlugin`, and `createLLMClient` is used by the in-repo `tools/` only. So the contracts that can break are four: `data.json`, the generated wiki files, the command and setting IDs, and the Obsidian version floor. `grep -i BREAKING CHANGELOG.md` returns nothing across 1100+ lines, and CHANGELOG §1.25.0 says "No breaking changes since v1.0.0".
+
+**Move to MAJOR only when one of these is true:**
+
+1. **Wiki file migration.** Existing pages must be rewritten before the new version reads them correctly — frontmatter shape, section labels, or folder layout.
+2. **A `data.json` field that cannot be defaulted.** A removed or renamed setting whose old value would be silently misread.
+3. **A command or setting ID rename.** It breaks hotkeys the user already bound.
+4. **A behaviour removed with no way back.** Taking out the escape hatch — `legacyScorer` is the current example — without a replacement.
+5. **The `minAppVersion` floor rises past a platform still supported.** A mobile floor bump is the usual shape.
+
+Otherwise the minor field moves for user-visible capability, and the patch field for everything else. A release whose content is "the same product, better retrieval" is a MINOR however large its diff is; a release that makes somebody rewrite their vault is a MAJOR however small its diff is.
+
+**`minAppVersion` is a real break and has never been labelled as one.** It rose five times (1.4.0, 1.7.10, 1.18.0, 1.25.2, and the 0.2.0 baseline), each shipped as MINOR or PATCH. A user on an older Obsidian simply cannot install the new version, which is a harder stop than most API changes. Any release that raises it now carries one line at the top of its CHANGELOG entry naming the new floor and who loses access — the version number does not have to change for that line to be required.
+
+The condition is a rule, so the number is decided by evidence rather than by the minor field reaching a value that feels large. As of 2026-10-27 no MAJOR trigger has ever fired, and the two shapes that would fire one are already visible: #873 (user-defined page-type taxonomy and folder layout) and #902's Option B (user-declared sections). Both change what an existing vault must look like, which is trigger 1.
 
 ### Gate 4: No Performance Regression
 
@@ -267,6 +287,8 @@ Obsidian Bot review remains a separate pipeline (not a GitHub status check); CI 
 
 Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI. The Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Five-Gate automated". `npm ci` is intentionally NOT used — the project pins `pnpm@10.14.0`, and pnpm `overrides` are flat, so npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`.
 
+**Dependency pins live in two files, and neither package manager reads the other's (Issue #907).** `package.json` → `overrides` is npm's home; `.github/workflows/release.yml` builds the released `main.js` from the npm tree. `pnpm-workspace.yaml` → `overrides` is pnpm's home — #557 (`bd992f8c`) moved pnpm settings out of `package.json` because pnpm ≥ 11 stopped reading the `pnpm` field, and Gate 1 runs on the pnpm tree. Adding `pnpm.overrides` back to `package.json` works on pnpm 10 and would break on 11; do not do it. A pin added to one side only is applied to one tree and silently absent from the other, in whichever direction is worse: yaml-only ships the vulnerable version, `package.json`-only leaves Gate 1 green on a tree that still has it. `src/__tests__/root/override-parity.test.ts` fails when the two maps differ, names the side you missed, and is the only enforcement — the yaml's "keep this list in step" comment is no longer the mechanism.
+
 ### Build modes
 
 - `pnpm build` — **production** build (console.debug stripped, no sourcemap). For release.
@@ -363,7 +385,7 @@ Dead code (exported symbols with zero production importers) has a **half-life of
 ### ⚠️ Settings panel scope rule (v1.26.0 Batch 2 lesson)
 
 Two settings panels:
-1. **LLM Advanced section** (`src/ui/settings-sections/advanced-section.ts`, gated by `advancedSettingsMode`) — `temperature`, `repetitionPenalty`, `forcePdfSupport`, `taskPolicies` (per-task output-mode/thinking spec, PR #525) ONLY.
+1. **LLM Advanced section** (`src/ui/settings-sections/advanced-section.ts`, gated by `advancedSettingsMode`) — `temperature`, `repetitionPenalty`, `forcePdfSupport`, `taskPolicies` (per-task output-mode/thinking spec, PR #525), `disableThinking`, `thinkingEffort`, `maxTokensPerCall` and `contextWindow` ONLY. The last four are the #904 group: thinking costs tokens, so the level and the ceiling that pays for it are one decision and sit together. `maxTokensPerCall` and `contextWindow` render in **both** modes, above the `custom` gate, because the output ceiling was already visible to local-model users before #904 and is not a sampling preference; switching modes must not hide it or reset it.
 2. **Bottom "Advanced settings" panel** (`src/ui/settings-sections/advanced-settings-section.ts`, gated by `showAdvancedSettings`) — lint dedup thresholds, `maxConversationHistory`, `writePdfMarkdownToVault`, `slugCase`, `createWelcomeNote`, `lintDedupIncludeSources`, all per-source-file/UI/storage toggles.
 
 **Hard rule:** when adding a setting toggle, decide FIRST which scope. LLM Advanced = LLM sampling + provider overrides ONLY. Everything else → bottom panel. Post-mortem: [[feedback_settings_panel_naming_collision]].

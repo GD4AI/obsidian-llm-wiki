@@ -167,9 +167,36 @@ export const SOURCE_ANALYZER_RETRY_MULTIPLIER = 3;
 
 /**
  * Maximum total tokens per LLM batch call.
- * Used for iterative source extraction and llm-client truncation retry cap.
+ * Used for iterative source extraction.
+ *
+ * Since Issue #904 this is a FLOOR, not the declared ceiling: extraction
+ * asks for the model's own output ceiling while reasoning is possible,
+ * because one ceiling pays for reasoning and answer together. Do not raise
+ * it to fix a reasoning-only failure — that only moves the wall.
  */
 export const MAX_TOKENS_BATCH = 16000;
+
+/**
+ * Output ceiling declared when the user chose Auto and the real limit is
+ * unknown (Issue #904). 128,000 is the modal current-generation limit:
+ * OpenAI GPT-6 and Anthropic Opus/Sonnet 5.5 both publish 128K, Gemini 3.5
+ * Flash publishes 65K. A declared ceiling that is too high costs nothing
+ * when unused; one that is too low costs the whole turn.
+ *
+ * This is a starting assumption, not a fact about any one model. The
+ * extraction path halves it and retries when a provider rejects the value.
+ */
+export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
+
+/**
+ * Ceiling for the truncation-retry double-up (Issue #904).
+ *
+ * Was borrowed from `MAX_TOKENS_BATCH`. Decoupled so that raising the
+ * extraction budget cannot silently raise this one, and vice versa: they
+ * answer different questions ("how much may one call declare" vs "how far
+ * may a retry grow a truncated response").
+ */
+export const TRUNCATION_RETRY_MAX_CAP = 16000;
 
 /**
  * Token budget for full page generation (entity/concept/source-summary).
