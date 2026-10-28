@@ -16,10 +16,13 @@ Task:
 1. **FIRST, check aliases:** Look at the \`aliases:\` listed after each page. If the dead link target matches any page's title OR any page's aliases (case-insensitive), that page IS the correct target — use action=correct
 2. If no alias match, search for semantic similarity (translations, abbreviations, alternative phrasings)
 3. If a matching page is found: output the correct [[entities/page-name|Display Name]] or [[concepts/page-name|Display Name]] link. The display name after | must NOT include folder prefixes like entities/ or concepts/
-4. If no match is found after checking BOTH aliases and semantic similarity: output a concise name suitable as a new page title
+4. If no match is found after checking BOTH aliases and semantic similarity, decide whether the target names a real thing at all. Two outcomes:
+   - It does: output a concise name suitable as a new page title, with action=create_stub.
+   - It does not: output action=leave, and say why in "reason". Leave a dead link rather than create a page for a name that is not a real thing. This is the case for a placeholder that no one will ever define ("Name", "Untitled", "Unknown Entity", "TBD"), a code identifier or documentation example quoted from a tool's manual ("MyFile", "foo_bar", "SOME_CONST"), and a name that appears only inside inline code or a quotation on the source page rather than as an actual reference. The judgement is yours and it is about meaning, not spelling — a single unusual word can name a real entity, and a familiar-looking one can be a placeholder.
+5. Casing is not evidence by itself: "Osteopontin" and "LinkedIn" are real names.
 
 Output JSON format:
-{"action": "correct|create_stub", "correct_link": "Corrected link (when action=correct)", "stub_title": "New page title (when action=create_stub)", "stub_type": "entity|concept", "reason": "Reason for judgment (one sentence)"}`,
+{"action": "correct|create_stub|leave", "correct_link": "Corrected link (when action=correct)", "stub_title": "New page title (when action=create_stub)", "stub_type": "entity|concept", "reason": "Reason for judgment (one sentence)"}`,
 
   fillEmptyPage: `You are a Wiki page expansion assistant. Generate content for the following under-populated Wiki page.
 

@@ -27,7 +27,7 @@
 // overlapping information; two targets with low mutual reachability
 // are providing distinct aspects.
 
-import { personalizedPageRank, type Graph, type PPROptions } from './monte-carlo-ppr';
+import { personalizedPageRank, seededRngFrom, type Graph, type PPROptions } from './monte-carlo-ppr';
 import { detectHubs } from './hub-detection';
 
 export type { Graph };
@@ -94,7 +94,15 @@ export function scoreHubLinkDistinctiveness(
   // of walks changes.
   const pprBySeed = new Map<string, ReadonlyMap<string, number>>();
   for (const u of relatedTargets) {
-    pprBySeed.set(u, personalizedPageRank(graph, u, options));
+    // The rng is seeded from the walk's own seed when the caller supplies
+    // none, so the same graph gives the same score every time. It used to be
+    // `Math.random`, so a page's distinctiveness — and with it the
+    // recommendation that can strip a link — was a different number on every
+    // run.
+    pprBySeed.set(u, personalizedPageRank(graph, u, {
+      ...options,
+      rng: options.rng ?? seededRngFrom(u, [u]),
+    }));
   }
   const redundancyByTarget = new Map<string, number>();
   for (const t of relatedTargets) {

@@ -30,8 +30,17 @@ import type { PageRef } from './ppr-cascade';
  * FNV-1a over a string. Fast, no dependency, and good enough for a cache key:
  * a collision means one stale rebuild served, not a wrong ranking computed
  * from the wrong table in a way a later signature cannot correct.
+ *
+ * The parameter is the smallest shape that carries what is hashed — `text` and
+ * the count — so callers holding a page shape of their own (`ExpansionPage`
+ * carries `key` where `PageRef` carries `path`) can sign their bodies with the
+ * same function instead of reimplementing it. That is the point: two caches
+ * that hash "the index plus the prose" must not hash it differently.
  */
-export function contentSignature(indexContent: string, pageRefs: readonly PageRef[]): string {
+export function contentSignature(
+  indexContent: string,
+  pageRefs: ReadonlyArray<{ text?: string }>,
+): string {
   let h = 0x811c9dc5;
   const mix = (s: string) => {
     for (let i = 0; i < s.length; i++) {

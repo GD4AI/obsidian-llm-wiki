@@ -39,6 +39,9 @@ vi.mock('obsidian', () => ({
     path = '';
     basename = '';
     extension = '';
+    // The real class always carries the file's stats. Issue #317's schema
+    // cache is keyed on `stat.mtime`, so the double has to have one.
+    stat = { ctime: 0, mtime: 0, size: 0 };
   },
   TFolder: class {
     path = '';

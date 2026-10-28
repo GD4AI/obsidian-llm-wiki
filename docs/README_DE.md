@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0 (MINOR — Analyse lokaler Markdown-Bild-Einbettungen beim Ingest, Request-Header pro Anbieter mit OpenCode-Preset und `(Responses)`-Variante, ein Desktop-`node:https`-Streaming-Fallback für blockierte Origins und ein einziges Tag-Vokabular für Einstellungen, Notiz-Tags und Seiten-Tags; dazu der Build-Fix, der zwei bereits ausgelieferte Funktionen im Release-Build tatsächlich zum Laufen bringt; 4372 tests)
-- last-updated: 2026-09-15
+- latest: v1.29.0 (MINOR — die lexikalische Stufe liest jetzt den Fließtext und bewertet Titel/Alias/Zusammenfassung/Fließtext mit BM25F, die größte Recall-Änderung des Projekts; darüber eine zweistufige Rocchio-Query-Erweiterung, deren Aussage durch die eigene Messung eingeengt wurde; Related-Seiten-Shaping, damit eine Hub-Seite nicht mehr alle anderen zu sich zieht; ein `legacyScorer`-Schalter in den erweiterten Einstellungen als Weg zurück; dazu eine Korrektheitswelle: der Watcher beachtet Obsidians Ausschlussliste, der Befehlshinweis im Log-Header, der Legacy-Log-Schnitt, und Fehlernormalisierung über den SDK-Marker)
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -100,12 +100,12 @@ Du schreibst Notizen. Sie liegen in Ordnern. Zusammenhänge zu finden bedeutet, 
 1. **Installieren.** Obsidian → Einstellungen → Community-Plugins → Durchsuchen → „Karpathy LLM Wiki" suchen → Installieren → Aktivieren. Oder besuche die [Community-Plugin-Seite](https://community.obsidian.md/plugins/karpathywiki) und klicke auf **Zu Obsidian hinzufügen**.
 2. **Provider konfigurieren.** Einstellungen → Karpathy LLM Wiki → Provider wählen (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) usw.) → API-Key eingeben (nicht nötig bei lokalen Anbietern) → **Test Connection** klicken → Speichern.
 3. **Eine Notiz ingestieren.** Zwei Wege:
-   - **⌨️ Tastatur:** `Cmd+P/Ctrl+P` → „Ingest single source" → eine beliebige Markdown- (oder PDF-, v1.25.0+) Datei wählen.
+   - **⌨️ Tastatur:** `Cmd+P/Ctrl+P` → „Einzelne Quelle aufnehmen" → eine beliebige Markdown- (oder PDF-, v1.25.0+) Datei wählen.
    - **🖱️ Toolbar-Symbol:** Klicke auf das **Sticker-Symbol** im linken Ribbon von Obsidian, um die aktuell geöffnete Notiz sofort aufzunehmen — kein Menü-Suchen.
    
    Deine ersten Wiki-Seiten erscheinen innerhalb von Sekunden in `wiki/sources/`, `wiki/entities/`, `wiki/concepts/`.
 4. **Wiki abfragen.** Zwei Wege:
-   - **⌨️ Tastatur:** `Cmd+P/Ctrl+P` → „Query wiki".
+   - **⌨️ Tastatur:** `Cmd+P/Ctrl+P` → „Wiki anfragen".
    - **🖱️ Toolbar-Symbol:** Klicke auf das **Sprechblasen-Symbol** im linken Ribbon von Obsidian.
    
    Ein rechts angedocktes Seitenpanel im Copilot-Stil öffnet sich, in dem du mit deinem Wiki chatten kannst. Antworten enthalten `[[wiki-links]]`, die zurück in deinen Wissensgraphen führen.
@@ -118,15 +118,15 @@ Das war's. Das Plugin ändert nichts an deinen ursprünglichen Notizen — es er
 
 | Befehl | Beschreibung |
 |---------|--------------|
-| **📥 Einzelne Quelle aufnehmen** | `Cmd+P/Ctrl+P` → „Ingest single source" — wähle eine Markdown- oder **PDF (v1.25.0+)**-Datei, erhalte Entity-/Concept-/Wiki-Seiten. *Oder: 🖱️ Sticker-Symbol im linken Ribbon auf der aktiven Notiz anklicken.* |
-| **📂 Aus Ordner aufnehmen** | `Cmd+P/Ctrl+P` → „Ingest from folder" — Batch-Aufnahme aller Notizen in einem Ordner, mit intelligentem Batch-Überspringen |
-| **📑 Mehrere Dateien aufnehmen** | `Cmd+P/Ctrl+P` → „Ingest multiple files" — wähle eine Teilmenge über eine zweigeteilte Dateibaumansicht (mit Live-Queue + pro-Datei-Abbruch) |
-| **🔍 Wiki abfragen** | `Cmd+P/Ctrl+P` → „Query wiki" — chatte mit deinem Wiki in einem rechts angedockten Seitenpanel; Antworten enthalten `[[wiki-links]]`. *Oder: 🖱️ Sprechblasen-Symbol im linken Ribbon anklicken.* |
-| **🛠️ Wiki linten** | `Cmd+P/Ctrl+P` → „Lint wiki" — vollständiger Gesundheitsscan: Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase, Widersprüche |
+| **📥 Einzelne Quelle aufnehmen** | `Cmd+P/Ctrl+P` → „Einzelne Quelle aufnehmen" — wähle eine Markdown- oder **PDF (v1.25.0+)**-Datei, erhalte Entity-/Concept-/Wiki-Seiten. *Oder: 🖱️ Sticker-Symbol im linken Ribbon auf der aktiven Notiz anklicken.* |
+| **📂 Aus Ordner aufnehmen** | `Cmd+P/Ctrl+P` → „Aus Ordner aufnehmen" — Batch-Aufnahme aller Notizen in einem Ordner, mit intelligentem Batch-Überspringen |
+| **📑 Mehrere Dateien aufnehmen** | `Cmd+P/Ctrl+P` → „Mehrere Dateien aufnehmen" — wähle eine Teilmenge über eine zweigeteilte Dateibaumansicht (mit Live-Queue + pro-Datei-Abbruch) |
+| **🔍 Wiki abfragen** | `Cmd+P/Ctrl+P` → „Wiki anfragen" — chatte mit deinem Wiki in einem rechts angedockten Seitenpanel; Antworten enthalten `[[wiki-links]]`. *Oder: 🖱️ Sprechblasen-Symbol im linken Ribbon anklicken.* |
+| **🛠️ Wiki linten** | `Cmd+P/Ctrl+P` → „Wiki prüfen" — vollständiger Gesundheitsscan: Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase, Widersprüche |
 | **⚡ Smart Fix All** | innerhalb des Lint-Modals — One-Click-Reparatur in kausaler Reihenfolge mit Phasenbericht |
-| **📋 Index neu generieren** | `Cmd+P/Ctrl+P` → „Regenerate index" — baue `wiki/index.md` mit aktuellen Seiten und Aliasen neu auf |
-| **⏹ Abbrechen** | `Cmd+P/Ctrl+P` → „Cancel current ingestion" oder auf die Statusleiste klicken — stoppt sauber an der nächsten Batch-Grenze |
-| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „View operation history" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
+| **📋 Index neu generieren** | `Cmd+P/Ctrl+P` → „Index neu generieren" — baue `wiki/index.md` mit aktuellen Seiten und Aliasen neu auf |
+| **⏹ Abbrechen** | `Cmd+P/Ctrl+P` → „Aktuelle Aufnahme abbrechen" oder auf die Statusleiste klicken — stoppt sauber an der nächsten Batch-Grenze |
+| **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „Ingestionsverlauf anzeigen" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Vorher | Nachher |
@@ -171,6 +171,11 @@ Fünf On-Ramps, pro Ingest umschaltbar:
 ### 💬 Abfrage & Wartung
 
 - **🧭 5-Stufen-PPR-Kaskade** — siehe [Wie die Suche funktioniert](#-wie-die-suche-funktioniert). Personalized PageRank über `[[wiki-link]]` liefert graph-bewussten Multi-Hop-Kontext.
+- **🆕 Lexikales Scoring, das den Fließtext liest (v1.29.0, #837)** — der Schnellpfad bewertet Titel, Aliasse, Zusammenfassung **und Fließtext** mit BM25F. Der längste Text einer Seite erreicht damit endlich den Scorer. Die größte Recall-Änderung, die dieses Projekt bisher gemacht hat.
+- **🆕 Related-Seiten-Shaping (v1.29.0, #841)** — eine Hub-Seite zieht nicht mehr alle anderen Seiten zu sich. Related-Listen werden bei jedem Schreiben aus den verbliebenen Namen neu berechnet, sortiert und begrenzt.
+- **🆕 Umschalter für den alten Scorer (v1.29.0, #842)** — Einstellungen → Erweitert → *Legacy query scorer* verwendet den bisherigen handgeschriebenen linearen Ranking-Algorithmus. Die neue Rangfolge ist der Standard; der Umschalter ist der Weg zurück.
+- **🆕 Das Antwortbudget liegt bei 16.000 Tokens, und die Pipeline sagt es, wenn es aufgebraucht ist (v1.29.0, #852)** — Antworten enden nicht mehr still an der Budgetgrenze.
+- **🆕 Zitate in akademischer Form (v1.29.0, #857)** — das Eingabefeld wächst mit dem Inhalt, und *Verlauf leeren* leert die Aufzeichnung tatsächlich.
 - **🪟 Rechts angedocktes Seitenpanel** — Query Wiki öffnet sich in einem Copilot-artigen rechten Sidebar-Blatt (v1.22.1+) statt einem zentrierten Modal.
 - **🔍 Lint-Gesundheitsscan** — ein einziger Befehl erfasst: Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase, Widersprüche.
 - **⚡ Smart Fix All** — One-Click-Reparatur in kausaler Reihenfolge: Aliase ergänzen → Duplikate zusammenführen → tote Links reparieren → verwaiste Seiten verlinken → leere Seiten erweitern, mit Phasenbericht.
@@ -235,13 +240,19 @@ Die meisten „KI-Suche"-Plugins fragmentieren deine Notizen in Chunks und bette
 
 Wenn du fragst „Wer hat Microsoft gegründet?", durchläuft Query Wiki fünf Stufen, bevor eine Antwort generiert wird:
 
-1. **Lex-Schnellpfad** — direkter Token-Überlappungs-Check gegen jeden Entity-/Concept-Titel und alle Aliase. Kostenlos, sofort und das Tor für alles, was danach kommt.
+1. **Lex-Schnellpfad** — BM25F über Titel, Aliasse, Zusammenfassung **und Fließtext** jeder Entity und jedes Concepts, mit Feldsättigung und IDF aus einer echten Dokumentfrequenztabelle. Kostenlos, sofort und das Tor für alles, was danach kommt.
 2. **LLM-Keyword-Generierung** — das LLM schlägt 8–12 sprachübergreifende Keywords aus deiner Abfrage vor (behandelt Synonyme, Abkürzungen und token-resistente Begriffe in einem LLM-Aufruf).
 3. **Lokaler Substring-Scan** — jedes generierte Keyword wird lokal erneut gegen Seitentitel, Aliase und Body-Ausschnitte gematcht. Kein zusätzlicher LLM-Aufruf; rundet die rauschtolerante Trefferquote ab.
 4. **LLM-KB-Fallback** — wenn Lex + Keyword-Scan schwache Signale liefern, führt das LLM einen semantischen Durchlauf gegen das gesamte Wiki durch, um die Top-N-Kandidaten neu zu seeden.
 5. **PPR-Graph-Expansion** — Personalized PageRank (Haveliwala 2002) über dem `[[wiki-link]]`-Graphen, startend von der Kandidaten-Seed-Menge. Dies liefert graph-bewussten Multi-Hop-Kontext: „Bill Gates" → „Microsoft" → „Wettbewerber", nicht nur wörtliche Titelüberlappung.
 
 Die Kaskade bricht ab, sobald die erreichte Stufe genug Signal geliefert hat — keine fixen 5-Stufen-Kosten; keine LLM-Aufrufe wenn Lex ausreicht; semantischer Fallback nur, wenn Lex + Keyword-Scan allein nicht reicht.
+
+### Query-Erweiterung — und ein Weg zurück
+
+Wenn die Kaskade die Graphstufe erreicht, wird die Query zweimal erweitert, bevor die Seeds gewählt werden: einmal mit den Begriffen des Wikis, dann mit vom LLM vorgeschlagenen Begriffen. Jeder Durchgang ist gewichtet, und der Zugewinn ist auf den eigenen Vaults dieses Projekts **gemessen** statt angenommen: Auf den beiden Vaults, die die aktuelle Version geschrieben hat, ist die Erweiterung r@10 jeweils **+0.086** und **+0.113** wert, und in beiden Fällen schließt das Intervall die Null nicht aus. Die Aussage ist bewusst eng gefasst: Die gewichtete Form ist **nicht** messbar besser als die einfache Verkettung, und der Schalter zurück auf den alten Scorer steht bereit — für Leser, deren Ergebnisse schlechter geworden sind.
+
+Einstellungen → Erweitert → *Legacy query scorer* verwendet den bisherigen handgeschriebenen linearen Ranking-Algorithmus. Die neue Rangfolge ist der Standard; der Umschalter ist der Weg zurück.
 
 ### Personalized PageRank in großem Maßstab
 
@@ -351,7 +362,7 @@ Verwende Grobe oder Minimale Extraktionsgranularität für Batch-Aufnahme. Smart
 
 ### Wie breche ich einen laufenden Vorgang ab?
 
-Klicke auf die Statusleiste (zeigt „Ingesting… click to cancel") oder `Cmd+P/Ctrl+P` → „Cancel current ingestion". Stoppt sauber an der nächsten Batch-Grenze.
+Klicke auf die Statusleiste (zeigt „Ingesting… click to cancel") oder `Cmd+P/Ctrl+P` → „Aktuelle Aufnahme abbrechen". Stoppt sauber an der nächsten Batch-Grenze.
 
 ### Wo bekomme ich Hilfe?
 

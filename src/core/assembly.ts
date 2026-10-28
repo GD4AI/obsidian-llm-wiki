@@ -243,11 +243,17 @@ export function assembleWithCoverage<T extends Tiered>(
   for (const c of candidates) {
     if (c.item.sourceSlug !== undefined) poolSources.add(c.item.sourceSlug);
   }
+  // Ties keep the ORDER THE FUSION PRODUCED. `maxFuse` resolves a tie by
+  // channel index — the lexical channel's pick comes first — and re-sorting
+  // by `item.key` here threw that decision away. Two pages the fusion scored
+  // exactly the same came out in dictionary order instead. Measured on eight
+  // scripts of the Obsidian help vault before this fix: self-retrieval MRR
+  // 0.785-0.830 instead of 1.000. `Array.prototype.sort` is stable, so
+  // dropping the comparison is all it takes.
   const remaining = [...candidates].sort(
     (a, b) =>
       (a.item.tier ?? 0) - (b.item.tier ?? 0)
-      || b.score - a.score
-      || (a.item.key < b.item.key ? -1 : a.item.key > b.item.key ? 1 : 0),
+      || b.score - a.score,
   );
   const taken = new Map<string, number>();
   const picked: AssemblyResult<T>['picked'] = [];

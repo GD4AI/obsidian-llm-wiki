@@ -597,9 +597,24 @@ export interface LLMWikiSettings {
    */
   createStubsForUnresolvableLinks?: boolean;
 
-  // Issue #75: cap max_tokens per LLM call. 0 = no cap.
-  // Recommended for local models with small context windows.
+  // Issue #75: cap max_tokens per LLM call. 0 = Auto.
+  // Issue #904: Auto used to mean "no cap". It now means "the model's own
+  // output ceiling", with 128,000 as the assumption when nothing is known
+  // (DEFAULT_MODEL_OUTPUT_TOKENS). A cap still wins over the default, so a
+  // local-model user who set 8192 keeps 8192.
   maxTokensPerCall: number;
+
+  // Issue #904: the model's context window, when the user knows it. 0 = Auto.
+  // Bounds the output ceiling — a request cannot emit more tokens than the
+  // window holds — so a 4K model never receives a 128K request. Unset in every
+  // existing data.json, which reads as Auto.
+  contextWindow?: number;
+
+  // Issue #904: global thinking level, the child of `disableThinking`.
+  // `default` sends nothing (pre-#904 behaviour). Named levels ride the
+  // existing `reasoning_effort` path. There is deliberately no `off` here:
+  // the toggle owns that, and two controls for one state is how they drift.
+  thinkingEffort?: 'default' | 'low' | 'medium' | 'high';
 
   // Issue #111: slug casing for generated filenames.
   // 'lower' preserves backwards-compatible all-lowercase filenames.
@@ -1022,7 +1037,6 @@ export interface LLMClient {
     onFinish?: (meta: LLMFinishMeta) => void;
   }): Promise<string>;
 
-  listModels?(): Promise<string[]>;
 }
 
 // Wiki output language options
@@ -1592,10 +1606,16 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // LLM readiness
   llmReady: false,
 
-  // Issue #75: cap max_tokens per LLM call. 0 = no cap (cloud default).
-  // Local model users can set this when the provider is Ollama, LM Studio,
-  // custom, or anthropic-compatible.
+  // Issue #75: cap max_tokens per LLM call. 0 = Auto (Issue #904: the
+  // model's own output ceiling, 128,000 when unknown).
   maxTokensPerCall: 0,
+
+  // Issue #904: 0 = Auto. Stored explicitly so the dropdown has a value; an
+  // absent field in older data.json reads the same way.
+  contextWindow: 0,
+
+  // Issue #904: default = send no reasoning field at all.
+  thinkingEffort: 'default',
 
   // v1.20.0: default false. The plugin does NOT send any thinking-control
   // field unless the user explicitly enables "Disable thinking" in Custom

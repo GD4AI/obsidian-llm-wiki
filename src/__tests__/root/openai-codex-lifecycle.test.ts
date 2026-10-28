@@ -11,7 +11,6 @@ vi.mock('../../llm-sdk/create-llm-client', () => ({
   createLLMClientFromSettingsSync: vi.fn(() => ({
     createMessage: vi.fn().mockResolvedValue('ok'),
     createMessageStream: vi.fn(),
-    listModels: vi.fn().mockResolvedValue([]),
   })),
   preloadLLMClientModules: vi.fn().mockResolvedValue(undefined),
 }));
@@ -146,7 +145,7 @@ describe('OpenAI Codex plugin lifecycle', () => {
   it('tests the curated Codex model through the authenticated client', async () => {
     const manager = new CodexAuthManager({ store: memoryCredentialStore(freshCredential()) });
     const createMessage = vi.fn().mockResolvedValue('ok');
-    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn(), listModels: vi.fn() });
+    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn() });
     const plugin = pluginWith(manager);
     const result = await plugin.testLLMConnection();
     expect(result.success).toBe(true);
@@ -156,7 +155,7 @@ describe('OpenAI Codex plugin lifecycle', () => {
     const manager = new CodexAuthManager({ store: memoryCredentialStore(freshCredential()) });
     const missing = Object.assign(new Error('The requested model does not exist'), { statusCode: 404 });
     const createMessage = vi.fn().mockRejectedValue(missing);
-    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn(), listModels: vi.fn() });
+    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn() });
     const plugin = pluginWith(manager);
     plugin.settings.model = 'missing-a';
     plugin.settings.openAICodexModels = [
@@ -173,7 +172,7 @@ describe('OpenAI Codex plugin lifecycle', () => {
     const manager = new CodexAuthManager({ store: memoryCredentialStore(freshCredential()) });
     const missing = Object.assign(new Error('The requested model does not exist'), { statusCode: 404 });
     const createMessage = vi.fn().mockRejectedValueOnce(missing).mockResolvedValueOnce('ok');
-    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn(), listModels: vi.fn() });
+    vi.mocked(createLLMClientFromSettingsSync).mockReturnValue({ createMessage, createMessageStream: vi.fn() });
     const plugin = pluginWith(manager);
     plugin.settings.model = 'unavailable-model';
     plugin.settings.openAICodexModels = [{ slug: 'unavailable-model', displayName: 'Unavailable', supportedReasoningLevels: [], additionalSpeedTiers: [], serviceTiers: [] }, { slug: 'working-model', displayName: 'Working', supportedReasoningLevels: [], additionalSpeedTiers: [], serviceTiers: [] }];
@@ -316,7 +315,7 @@ describe('OpenAI Codex plugin lifecycle', () => {
     const store = memoryCredentialStore(freshCredential());
     const manager = new CodexAuthManager({ store });
     const plugin = pluginWith(manager, provider);
-    const activeClient = { createMessage: vi.fn(), createMessageStream: vi.fn(), listModels: vi.fn() };
+    const activeClient = { createMessage: vi.fn(), createMessageStream: vi.fn() };
     plugin.settings.llmReady = true;
     plugin.settings.model = 'active-model';
     plugin.settings.availableModels = ['active-model'];

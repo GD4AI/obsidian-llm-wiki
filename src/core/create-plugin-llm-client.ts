@@ -66,5 +66,12 @@ export function createLLMClient(
     chatTemperature: settings.chatTemperature,
     repetitionPenalty: settings.repetitionPenalty,
     taskPolicies: settings.taskPolicies,
+    // Issue #904: without these two the wrapper's precedence chain resolves to
+    // `undefined` for every install, so the level setting would be a control
+    // that changes nothing and the toggle would stop being authoritative
+    // where the policy layer looks. Found by tracing the value from the
+    // settings object to the request rather than by trusting the type.
+    thinkingEffort: settings.thinkingEffort,
+    disableThinking: settings.disableThinking,
   });
 }

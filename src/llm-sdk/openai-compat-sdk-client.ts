@@ -206,7 +206,7 @@ export class OpenAICompatSdkClient implements LLMClient {
    *
    * `fetchFn` is the fetch adapter. Pass the streaming variant
    * (`streamFetchImpl`) for createMessageStream, the non-stream
-   * variant (`fetchImpl`) for createMessage / listModels. When
+   * variant (`fetchImpl`) for createMessage. When
    * omitted, defaults to streamFetchImpl — both are URL-based and
    * the streamFetchImpl's fallback handles CORS for cloud, so it's
    * safe to use for non-stream too (AI-SDK just doesn't iterate
@@ -1686,9 +1686,5 @@ export class OpenAICompatSdkClient implements LLMClient {
 
       throw mapAiSdkError(err);
     }
-  }
-
-  async listModels(): Promise<string[]> {
-    return [];
   }
 }

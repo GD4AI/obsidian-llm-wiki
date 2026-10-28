@@ -31,7 +31,7 @@ import { renderTemplate } from '../core/template-renderer';
 import { slugify, filterRedundantAliases, resolveMinAliasLength } from '../core/slug';
 import { shapeRelatedLists, kindOf } from '../core/related-shaping';
 import { withAbortSignal } from '../core/llm-abort';
-import { isIngestableSource } from '../core/folder-scope';
+import { isInSourceScope } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
 import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody, enforceFrontmatterConstraints } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
@@ -304,6 +304,12 @@ export class WikiEngine {
     this.logWriter = new LogWriter({
       wikiFolder: this.settings.wikiFolder,
       wikiLanguage: this.settings.wikiLanguage ?? '',
+      // Issue #793: the command palette is registered from the INTERFACE
+      // language, so the header quotes the command as it is registered there.
+      // With `language: en` and `wikiLanguage: de` the palette shows "View
+      // operation history", and a header that quoted the German name would
+      // point at a command the user cannot run.
+      commandName: (TEXTS[this.settings.language] || TEXTS.en).cmdViewHistory,
       readFile: (path: string) => this.tryReadFile(path),
       // #603 slice 2: the log declares its intent instead of inheriting the
       // full gate. `guard: false` — see `LOG_WRITE_INTENT`: the path-prefix
@@ -459,11 +465,14 @@ export class WikiEngine {
   /** Issue #137: get the current LLM client. All consumers (page-factory,
    * source-analyzer, conversation-ingestor, contradictions) get their client
    * via this getter, which forwards through the shared closure `() => this.llmClient`
-   * that main.ts updates via `initializeLLMClient()`. */
+   * that main.ts updates via `initializeLLMClient()`.
+   * Issue #703: wrapped with withAbortSignal like the ctx getter — without
+   * it the source-page generation call never receives the ingest abort
+   * signal and cancelIngestion() cannot abort it. */
   private get client(): LLMClient {
     const c = this.getLLMClient();
     if (!c) throw new Error('LLM Client not initialized');
-    return c;
+    return withAbortSignal(c, () => this.abortController?.signal);
   }
 
   private applySectionLabels(prompt: string): string {
@@ -1276,7 +1285,13 @@ export class WikiEngine {
         const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
         const configDir = this.app.vault.configDir;
         const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
-          .filter(f => folders.some(w => isIngestableSource(f.path, w, false, this.settings.wikiFolder, configDir)))
+          // Issue #872 — this list answers "which note names already exist?", not
+          // "which files may be ingested?". A file the user excluded from
+          // ingestion is still a note in the vault, and a link to it is still a
+          // true link, so the exclusion list must not remove it here. The
+          // function that answers the ingest question is a different one
+          // (`isIngestableSource`), and it consults the exclusion list.
+          .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
           .map(f => f.basename);
         const shaped = shapeRelatedLists(analysis, {
           resolve: name => {

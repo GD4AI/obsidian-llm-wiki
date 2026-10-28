@@ -94,15 +94,17 @@ describe('fixDeadLink — typed-output path (createMessageWithOutput)', () => {
     expect(out).toContain('corrected');
   });
 
-  it('falls to deterministic stub when result has no usable action (legacy path)', async () => {
+  it('leaves the dead link alone when result has no usable action (legacy path)', async () => {
     const createMessage = vi.fn(async () => JSON.stringify({}));
     const ctx = makeCtx({ createMessage } as unknown as LLMClient, SOURCE_CONTENT);
 
     const out = await fixDeadLink(ctx, 'wiki/MyPage.md', 'missing-target');
 
-    // `{}` → no 'correct'/'create_stub' action → deterministic fallback.
-    // With empty existingPages, no alias match → honest placeholder stub.
-    expect(out).toContain('stub');
+    // `{}` → no 'correct'/'create_stub'/'leave' action. #827 removed the
+    // deterministic fallback that used to invent a page here: the link stays dead,
+    // and the next lint run asks the model again rather than the code guessing.
+    expect(out).toContain('left as dead link');
+    expect(out).not.toContain('stub created');
     expect(createMessage).toHaveBeenCalledTimes(1);
   });
 

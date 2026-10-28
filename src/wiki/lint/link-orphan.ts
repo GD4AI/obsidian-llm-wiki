@@ -11,6 +11,8 @@ import {
   validateOrphanLinkTarget,
   buildOrphanLinkUpdate,
   normalizeOrphanPagePath,
+  orphanLinkSpellings,
+  retargetOrphanLinkTarget,
 } from '../../core/orphan-matcher';
 import { LinkOrphanSchema, type LinkOrphan } from '../../llm-sdk/output-schemas';
 
@@ -79,6 +81,9 @@ export async function linkOrphanPage(
 
   const linkedPages: string[] = [];
   const labels = getSectionLabels(ctx.settings);
+  // The spellings the orphan can be linked by. A link to the same page under
+  // any of them is the same link, and the label is only presentation.
+  const orphanSpellings = orphanLinkSpellings(orphanPath, ctx.settings.wikiFolder);
 
   for (const related of result.related_pages) {
     // Defense: normalize any hardcoded "wiki/" prefix from LLM response
@@ -90,13 +95,32 @@ export async function linkOrphanPage(
     const relatedContent = await ctx.tryReadFile(fullPath);
     if (!relatedContent) continue;
 
-    if (!validateOrphanLinkTarget(relatedContent, related.link_target)) {
+    // Issue #824's acceptance criterion is that the orphan gains an inbound link.
+    // The link's purpose is to make the orphan reachable, so the target is the
+    // orphan by definition. The model cannot know the orphan's real path — it
+    // sees the orphan's content and the index, never its file name — so it
+    // guesses one from the display name. The guess is a guess about a path, and
+    // it is replaced unconditionally: keeping it when it happens to name
+    // *another* existing page linked that page instead, left the orphan
+    // orphaned, and reported success while doing it.
+    const linkTarget = retargetOrphanLinkTarget(
+      related.link_target,
+      orphanPath,
+      ctx.settings.wikiFolder
+    );
+    // A `link_text` that already ends with the dead link would otherwise keep that
+    // link and gain the repaired one beside it, so the dead copy is replaced first.
+    const linkText = related.link_text.includes(related.link_target)
+      ? related.link_text.replace(related.link_target, linkTarget)
+      : related.link_text;
+
+    if (!validateOrphanLinkTarget(relatedContent, linkTarget, orphanSpellings)) {
       const updated = buildOrphanLinkUpdate(
         relatedContent,
         {
           pagePath: related.page_path,
-          linkText: related.link_text,
-          linkTarget: related.link_target,
+          linkText,
+          linkTarget,
         },
         labels.related_pages
       );

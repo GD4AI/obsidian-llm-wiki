@@ -4,6 +4,7 @@
 
 import { Notice, TFile } from 'obsidian';
 import { LintContext } from './types';
+import { canonicalPagePath } from './merge-duplicates';
 import { TEXTS } from '../../texts';
 import { PROMPTS } from '../../prompts';
 import { parseJsonResponse } from '../../core/json';
@@ -413,14 +414,31 @@ export async function runDuplicateMerges(
   let merged = 0;
   const results: string[] = [];
   const fixNotice = new Notice('', 0);
+  // Issue #826: a self-pair reaches this runner whenever the two paths the LLM
+  // returned normalise to one page. Merging it writes that page and then deletes
+  // the same path, so the pair is dropped here — before the progress notice and
+  // before the merge. `dedup-phase` filters the same case one layer up; this is
+  // the guard for every other producer of a duplicate list.
+  // Issue #826, second half: a repeated path is the easy self-pair and a missing
+  // `wiki/` prefix is the next one, but six spellings survived a string compare —
+  // `./`, a doubled slash, a dropped `.md`, and Unicode NFC/NFD. Compare resolved
+  // identity so those are dropped here instead of reaching `mergeDuplicatePages`,
+  // which refuses them but reports each one as a failure.
+  const selfPairs = duplicates.filter(d => canonicalPagePath(d.target) === canonicalPagePath(d.source));
+  const mergeable = duplicates.filter(d => canonicalPagePath(d.target) !== canonicalPagePath(d.source));
+  if (selfPairs.length > 0) {
+    console.warn(
+      `[DuplicateMerge] Skipped ${selfPairs.length} self-pair(s) — target and source resolve to the same page`
+    );
+  }
   // v1.25.10 PATCH Issue #367 P0-1 — see runEmptyPageFixes above.
   const concurrency = Math.max(1, ctx.settings.pageGenerationConcurrency ?? 1);
-  const totalBatches = Math.ceil(duplicates.length / concurrency);
-  console.debug(`[DuplicateMerge] Starting duplicate merges — ${duplicates.length} pairs, concurrency=${concurrency}, batches=${totalBatches}`);
+  const totalBatches = Math.ceil(mergeable.length / concurrency);
+  console.debug(`[DuplicateMerge] Starting duplicate merges — ${mergeable.length} pairs, concurrency=${concurrency}, batches=${totalBatches}`);
   try {
-    for (let i = 0; i < duplicates.length; i += concurrency) {
+    for (let i = 0; i < mergeable.length; i += concurrency) {
       checkCancelled(signal);
-      const batch = duplicates.slice(i, i + concurrency);
+      const batch = mergeable.slice(i, i + concurrency);
       const batchIdx = i;
       const batchResults = await Promise.allSettled(batch.map(async (d, idx) => {
         const currentIdx = batchIdx + idx;
@@ -428,7 +446,7 @@ export async function runDuplicateMerges(
         const targetRel = d.target.replace(ctx.settings.wikiFolder + '/', '').replace('.md', '');
         fixNotice.setMessage(t.lintMergeProgress
           .replace('{current}', String(currentIdx + 1))
-          .replace('{total}', String(duplicates.length))
+          .replace('{total}', String(mergeable.length))
           .replace('{source}', sourceRel)
           .replace('{target}', targetRel));
         console.debug(`lintFix: merge duplicates ${currentIdx + 1}/${duplicates.length}: ${d.source} → ${d.target}`);

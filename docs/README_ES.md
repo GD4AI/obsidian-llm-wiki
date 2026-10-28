@@ -12,8 +12,8 @@ Metadatos SEO (no visible para el usuario, parseado por rastreadores / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 idiomas) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0 (MINOR — análisis de imágenes Markdown locales incrustadas durante la ingesta, cabeceras de petición por proveedor con un preajuste OpenCode y una variante `(Responses)`, un repliegue de streaming `node:https` de escritorio para orígenes bloqueados, y un único vocabulario de etiquetas para ajustes, etiquetas de nota y de página; además del arreglo de build que hace funcionar de verdad dos funciones ya publicadas; 4372 tests)
-- last-updated: 2026-09-15
+- latest: v1.29.0 (MINOR — la etapa léxica ahora lee el cuerpo de las páginas y puntúa título/alias/resumen/cuerpo con BM25F, el mayor cambio de cobertura del proyecto; encima, una expansión de consulta Rocchio en dos etapas cuya afirmación quedó acotada por su propia medición; modelado de páginas Related para que una página hub no arrastre a todas las demás; un interruptor `legacyScorer` en los ajustes avanzados como vuelta atrás; además de una ola de correcciones: el watcher respeta la lista de exclusión de Obsidian, la pista del comando en la cabecera del registro, el corte legacy del registro, y la normalización de errores por marcador del SDK)
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki de Obsidian, RAG basado en grafos, RAG sin embeddings, recuperación con Personalized PageRank, segundo cerebro Obsidian
 - search-intents: "Obsidian RAG sin embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "recuperación de notas basada en grafo", "implementación Karpathy LLM Wiki", "auto-generación base de conocimiento Obsidian", "Obsidian graph view + IA", "plugin segundo cerebro Obsidian", "IA grafo enlaces notas Obsidian", "plugin Obsidian 11 idiomas", "plugin Obsidian 16 proveedores LLM", "RAG sin BD vectorial", "ingesta PDF Obsidian con IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingesta Word PPT Excel", "credenciales IAM Obsidian"
 - features: recuperación basada en grafos, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascada de selección de semillas de 5 etapas, detección de duplicados Tier 1/Tier 2, UI en 11 idiomas + salida wiki en 11 idiomas (independientes), 16+ proveedores LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingesta MinerU multi-formato (PDF + imágenes + Office), ingesta PDF (solo caché, rutas OCR), escaneo de salud lint, Smart Fix All, citas verbatim de página fuente, gate de candidatos de ingesta, UI taskPolicies por paso, integración con Graph View de Obsidian, arquitectura cero-embeddings cero-BD-vectorial, modo local-first
@@ -97,12 +97,12 @@ Escribes notas. Se quedan en carpetas. Encontrar relaciones significa recordar h
 1. **Instala.** Obsidian → Configuración → Plugins comunitarios → Examinar → busca "Karpathy LLM Wiki" → Instalar → Habilitar. O visita la [página del Plugin Comunitario](https://community.obsidian.md/plugins/karpathywiki) y haz clic en **Add to Obsidian**.
 2. **Configura un proveedor.** Abre Configuración → Karpathy LLM Wiki → elige un proveedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → introduce la clave API (no necesaria para local) → haz clic en **Test Connection** → Guardar.
 3. **Ingesta una nota.** Dos formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingest single source" → elige cualquier archivo Markdown (o **PDF**, v1.25.0+).
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Ingestar fuente individual" → elige cualquier archivo Markdown (o **PDF**, v1.25.0+).
    - **🖱️ Icono de la barra de herramientas:** Haz clic en el **icono de pegatina** en la cinta izquierda de Obsidian para ingerir al instante la nota actualmente abierta — sin buscar en menús.
    
    Tus primeras páginas wiki aparecen en `wiki/sources/`, `wiki/entities/`, `wiki/concepts/` en segundos.
 4. **Consulta tu wiki.** Dos formas:
-   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Query wiki".
+   - **⌨️ Teclado:** `Cmd+P/Ctrl+P` → "Consultar wiki".
    - **🖱️ Icono de la barra de herramientas:** Haz clic en el **icono de bocadillo de mensaje** en la cinta izquierda de Obsidian.
    
    Se abre un panel lateral derecho estilo Copilot en el que puedes chatear con tu wiki. Las respuestas llevan `[[wiki-links]]` que enlazan de vuelta a tu grafo de conocimiento.
@@ -115,15 +115,15 @@ Eso es todo. El plugin no modifica nada en tus notas originales — solo crea p�
 
 | Comando | Qué hace |
 |---------|----------|
-| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → "Ingest single source" — elige un archivo Markdown o **PDF (v1.25.0+)**, obtén páginas de entidades/conceptos/wiki. *O bien: 🖱️ haz clic en el icono de pegatina de la cinta izquierda sobre la nota activa.* |
-| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → "Ingest from folder" — ingesta por lotes cada nota de una carpeta, con salto inteligente de lotes |
-| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → "Ingest multiple files" — selecciona un subconjunto mediante un árbol de carpetas de dos paneles (con cola en vivo + cancelación por archivo) |
-| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → "Query wiki" — chatea con tu wiki en un panel lateral derecho; las respuestas llevan `[[wiki-links]]`. *O bien: 🖱️ haz clic en el icono de bocadillo de mensaje de la cinta izquierda.* |
-| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → "Lint wiki" — escaneo de salud completo: duplicados, enlaces rotos, páginas vacías, huérfanas, alias faltantes, contradicciones |
+| **📥 Ingest single source** | `Cmd+P/Ctrl+P` → "Ingestar fuente individual" — elige un archivo Markdown o **PDF (v1.25.0+)**, obtén páginas de entidades/conceptos/wiki. *O bien: 🖱️ haz clic en el icono de pegatina de la cinta izquierda sobre la nota activa.* |
+| **📂 Ingest from folder** | `Cmd+P/Ctrl+P` → "Ingestar desde carpeta" — ingesta por lotes cada nota de una carpeta, con salto inteligente de lotes |
+| **📑 Ingest multiple files** | `Cmd+P/Ctrl+P` → "Ingerir varios archivos" — selecciona un subconjunto mediante un árbol de carpetas de dos paneles (con cola en vivo + cancelación por archivo) |
+| **🔍 Query wiki** | `Cmd+P/Ctrl+P` → "Consultar wiki" — chatea con tu wiki en un panel lateral derecho; las respuestas llevan `[[wiki-links]]`. *O bien: 🖱️ haz clic en el icono de bocadillo de mensaje de la cinta izquierda.* |
+| **🛠️ Lint wiki** | `Cmd+P/Ctrl+P` → "Verificar wiki" — escaneo de salud completo: duplicados, enlaces rotos, páginas vacías, huérfanas, alias faltantes, contradicciones |
 | **⚡ Smart Fix All** | dentro del Modal Lint — reparación en orden causal con un clic e informe por fase |
-| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerate index" — reconstruye `wiki/index.md` con páginas y alias actuales |
-| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" o haz clic en la barra de estado — se detiene limpiamente en el próximo límite de lote |
-| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
+| **📋 Regenerate index** | `Cmd+P/Ctrl+P` → "Regenerar índice" — reconstruye `wiki/index.md` con páginas y alias actuales |
+| **⏹ Cancelar** | `Cmd+P/Ctrl+P` → "Cancelar ingesta actual" o haz clic en la barra de estado — se detiene limpiamente en el próximo límite de lote |
+| **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "Ver historial de ingesta" — interfaz buscable para ingestiones pasadas, informes Lint y ejecuciones de mantenimiento |
 
 ![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Antes | Después |
@@ -168,6 +168,11 @@ Cinco rutas de entrada, conmutable por ingesta:
 ### 💬 Consulta y mantenimiento
 
 - **🧭 Cascada PPR de 5 etapas** — consulta [Cómo funciona la recuperación](#-cómo-funciona-la-recuperación). Personalized PageRank sobre `[[wiki-link]]` proporciona contexto multi-hop consciente del grafo.
+- **🆕 Puntuación léxica que lee el cuerpo del texto (v1.29.0, #837)** — la ruta rápida puntúa con BM25F el título, los alias, el resumen **y el cuerpo** de cada entidad y concepto. El texto más largo de una página por fin llega al puntificador. Es el mayor cambio de cobertura que este proyecto ha hecho.
+- **🆕 Modelado de las páginas Related (v1.29.0, #841)** — una página hub ya no arrastra a todas las demás hacia sí. Las listas Related se recalculan en cada escritura a partir de los nombres que sobreviven, se ordenan y se limitan.
+- **🆕 Interruptor del puntificador anterior (v1.29.0, #842)** — Ajustes → Avanzado → *Legacy query scorer* ejecuta el clasificador lineal manual anterior. La nueva clasificación es la predeterminada; el interruptor es la vuelta atrás.
+- **🆕 El presupuesto de respuesta es de 16 000 tokens, y la canalización avisa cuando se agota (v1.29.0, #852)** — la respuesta ya no se corta en silencio en el límite.
+- **🆕 Citas en forma académica (v1.29.0, #857)** — el composer crece con el contenido, y *borrar historial* borra realmente el registro.
 - **🪟 Panel lateral acoplado a la derecha** — Query Wiki se abre en un panel lateral derecho estilo Copilot (v1.22.1+) en lugar de un modal centrado.
 - **🔍 Escaneo de salud Lint** — un solo comando detecta: duplicados, enlaces rotos, páginas vacías, huérfanas, alias faltantes, contradicciones.
 - **⚡ Smart Fix All** — reparación en orden causal con un clic: completar alias → fusionar duplicados → arreglar enlaces rotos → enlazar huérfanas → expandir páginas vacías, con informe por fase.
@@ -232,13 +237,19 @@ La mayoría de los plugins de "búsqueda AI" fragmentan tus notas en trozos y lo
 
 Cuando preguntas "Quién fundó Microsoft?", Query Wiki ejecuta cinco etapas antes de comenzar a generar cualquier respuesta:
 
-1. **Ruta rápida Lex** — superposición directa de tokens contra cada título de entidad/concepto y sus alias. Gratis, instantánea, y es el paso de control para todo lo que sigue.
+1. **Ruta rápida Lex** — BM25F sobre el título, los alias, el resumen **y el cuerpo** de cada entidad y concepto, con saturación por campo e IDF sobre una tabla real de frecuencia documental. Gratis, instantánea, y es el paso de control para todo lo que sigue.
 2. **Generación de palabras clave LLM** — el LLM propone de 8 a 12 palabras clave inter-idiomas a partir de tu consulta (maneja sinónimos, abreviaturas y términos resistentes a la superposición de tokens en una sola llamada LLM).
 3. **Escaneo local de subcadenas** — cada palabra clave generada se vuelve a cotejar localmente contra títulos de página, alias y fragmentos del cuerpo. Sin llamada LLM adicional; completa el recall tolerante al ruido.
 4. **Fallback LLM KB** — cuando lex + escaneo de palabras clave devuelven señales débiles, el LLM resiembra los N mejores candidatos contra el wiki completo en una pasada semántica.
 5. **Expansión de grafo PPR** — Personalized PageRank (Haveliwala 2002) sobre el grafo `[[wiki-link]]` partiendo del conjunto de semillas candidatas. Esto es lo que proporciona contexto multi-hop consciente del grafo: "Bill Gates" → "Microsoft" → "competidores", no solo superposición literal de títulos.
 
 La cascada se trunca en la etapa que devuelva suficiente señal — sin costo fijo de 5 etapas; sin llamadas LLM cuando lex es suficiente; fallback semántico solo cuando lex + escaneo de palabras clave por sí solos no bastan.
+
+### Expansión de la consulta, y una vuelta atrás
+
+Cuando la cascada llega a la etapa del grafo, la consulta se expande dos veces antes de elegir las semillas: primero con los términos del wiki y luego con los términos propuestos por el LLM. Cada pasada tiene peso, y la ganancia está **medida** en los vaults del propio proyecto en vez de supuesta: en los dos vaults que escribió la versión actual, la expansión vale **+0.086** y **+0.113** en r@10, y en ambos casos el intervalo excluye el cero. La afirmación es deliberadamente estrecha: la forma ponderada **no** es mediblemente mejor que la concatenación simple, y el interruptor que vuelve al puntuador anterior está ahí para quienes tengan peores resultados.
+
+Ajustes → Avanzado → *Legacy query scorer* ejecuta el clasificador lineal manual anterior. La nueva clasificación es la predeterminada; el interruptor es la vuelta atrás.
 
 ### Personalized PageRank a escala
 
@@ -350,7 +361,7 @@ Usa granularidad Gruesa o Mínima para ingesta por lotes. Smart Batch Skip detec
 
 ### Cómo cancelo una operación en curso?
 
-Haz clic en la barra de estado (muestra "Ingesting… click to cancel") o `Cmd+P/Ctrl+P` → "Cancel current ingestion". Se detiene limpiamente en el próximo límite de lote.
+Haz clic en la barra de estado (muestra "Ingesting… click to cancel") o `Cmd+P/Ctrl+P` → "Cancelar ingesta actual". Se detiene limpiamente en el próximo límite de lote.
 
 ### Dónde obtengo ayuda?
 

@@ -33,6 +33,26 @@ function graph(edges: Array<[string, string[]]>): Graph {
   };
 }
 
+describe('detectHubs — the PPR arm is a function, not a lottery', () => {
+  // Every test above supplies an `rng`, so the production default was never
+  // exercised: `personalizedPageRank` falls back to `Math.random`, and a
+  // hub's `pprScore` — and with it the composite score that decides whether
+  // the page is a hub — moved on every run. The lint reads that number and
+  // can strip a link because of it, so a finding that flickers is a finding
+  // that fires at random.
+  it('gives the same pprScore for the same graph when the caller supplies no rng', () => {
+    const g = graph([
+      ['Patient', ['CAD', 'MRI']],
+      ['CAD', ['Patient', 'MRI']],
+      ['MRI', ['Patient', 'CAD']],
+    ]);
+    const options = { minInDegree: 1, pprSeed: 'Patient', pprOptions: { numWalks: 200, maxSteps: 30 } };
+    const first = detectHubs(g, options);
+    const second = detectHubs(g, options);
+    expect(first.map(h => h.pprScore)).toEqual(second.map(h => h.pprScore));
+  });
+});
+
 describe('detectHubs — empty / trivial', () => {
   it('returns empty array for empty graph', () => {
     const g: Graph = { nodes: [], edges: new Map() };

@@ -3,7 +3,7 @@
 **Last Updated:** 2026-10-06
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.28.0 MINOR (2026-10-04, 4372 tests / 313 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.29.0 MINOR (2026-10-26, 5040 tests / 368 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
@@ -383,7 +383,7 @@ Dead code (exported symbols with zero production importers) has a **half-life of
 ### ⚠️ Settings panel scope rule (v1.26.0 Batch 2 lesson)
 
 Two settings panels:
-1. **LLM Advanced section** (`src/ui/settings-sections/advanced-section.ts`, gated by `advancedSettingsMode`) — `temperature`, `repetitionPenalty`, `forcePdfSupport`, `taskPolicies` (per-task output-mode/thinking spec, PR #525) ONLY.
+1. **LLM Advanced section** (`src/ui/settings-sections/advanced-section.ts`, gated by `advancedSettingsMode`) — `temperature`, `repetitionPenalty`, `forcePdfSupport`, `taskPolicies` (per-task output-mode/thinking spec, PR #525), `disableThinking`, `thinkingEffort`, `maxTokensPerCall` and `contextWindow` ONLY. The last four are the #904 group: thinking costs tokens, so the level and the ceiling that pays for it are one decision and sit together. `maxTokensPerCall` and `contextWindow` render in **both** modes, above the `custom` gate, because the output ceiling was already visible to local-model users before #904 and is not a sampling preference; switching modes must not hide it or reset it.
 2. **Bottom "Advanced settings" panel** (`src/ui/settings-sections/advanced-settings-section.ts`, gated by `showAdvancedSettings`) — lint dedup thresholds, `maxConversationHistory`, `writePdfMarkdownToVault`, `slugCase`, `createWelcomeNote`, `lintDedupIncludeSources`, all per-source-file/UI/storage toggles.
 
 **Hard rule:** when adding a setting toggle, decide FIRST which scope. LLM Advanced = LLM sampling + provider overrides ONLY. Everything else → bottom panel. Post-mortem: [[feedback_settings_panel_naming_collision]].

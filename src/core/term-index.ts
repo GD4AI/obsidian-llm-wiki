@@ -221,6 +221,45 @@ export function buildCorpusTerms(pages: readonly PageTerms[]): CorpusTerms {
 }
 
 /**
+ * Inverted index: term to the indices of the pages that carry it.
+ *
+ * Why. `bm25fScore` contributes zero for a page that contains none of the
+ * query's terms, but a full scan visits every page anyway. The index lets the
+ * scorer visit only pages that can score. The result is identical; only the
+ * work is smaller.
+ *
+ * A term appears once per page even when the page repeats it across fields:
+ * the index answers "which pages contain this term", not "how often".
+ */
+export interface InvertedIndex {
+  readonly termToPages: ReadonlyMap<string, readonly number[]>;
+}
+
+export function buildInvertedIndex(pages: readonly PageTerms[]): InvertedIndex {
+  const termToPages = new Map<string, number[]>();
+  const add = (key: string, i: number, seen: Set<string>) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const list = termToPages.get(key);
+    if (list) list.push(i);
+    else termToPages.set(key, [i]);
+  };
+  for (let i = 0; i < pages.length; i += 1) {
+    const seen = new Set<string>();
+    for (const field of FIELD_ORDER) {
+      const f = pages[i].fields[field];
+      for (const term of f.tf.keys()) add(term, i, seen);
+      // The scorer falls back to character trigrams for a term the corpus has
+      // never seen (`bm25fScore`'s `df === 0` branch). The index must offer
+      // those grams as candidates too, or a page that the scorer would match
+      // through its grams is skipped and the ranking changes.
+      for (const gram of f.gramTf.keys()) add(gram, i, seen);
+    }
+  }
+  return { termToPages };
+}
+
+/**
  * BM25F. Returns the query-independent denominator pieces per term so callers
  * can also ask for a per-term explanation (the diagnostic command needs it).
  *
@@ -332,8 +371,22 @@ function fieldLengthNorm(field: FieldName, length: number, corpus: CorpusTerms):
   return 1 - BM25_B + (BM25_B * length) / avg;
 }
 
+/**
+ * A query term with its own weight. A caller that mixes history into the
+ * query weights the history's words lower than the question's; the scorer
+ * does not know why, only by how much. Plain strings mean weight 1.
+ */
+export interface WeightedTerm {
+  readonly term: string;
+  readonly weight: number;
+}
+
+function asWeighted(terms: readonly (string | WeightedTerm)[]): WeightedTerm[] {
+  return terms.map(t => (typeof t === 'string' ? { term: t, weight: 1 } : t));
+}
+
 export function bm25fScore(
-  queryTerms: readonly string[],
+  queryTerms: readonly (string | WeightedTerm)[],
   page: PageTerms,
   corpus: CorpusTerms,
   weights: FieldWeights = DEFAULT_FIELD_WEIGHTS,
@@ -341,7 +394,16 @@ export function bm25fScore(
   b: number = BM25_B,
 ): number {
   let score = 0;
-  for (const term of new Set(queryTerms)) {
+  const weighted = asWeighted(queryTerms);
+  // A repeated query term is counted once (the query is a set of terms, not a
+  // bag). If the same term arrives with different weights the first wins —
+  // the caller that repeats a term is not asking for more of it.
+  const byTerm = new Map<string, number>();
+  for (const { term, weight } of weighted) {
+    if (!byTerm.has(term)) byTerm.set(term, weight);
+  }
+  for (const [term, termWeight] of byTerm) {
+    if (termWeight === 0) continue;
     const df = corpus.docFreq.get(term) ?? 0;
     if (df === 0) {
       // Unseen word (#819 review, fix D). Its trigrams stand in for it, and the
@@ -376,7 +438,7 @@ export function bm25fScore(
       // word under five characters cannot fall back at all; it still matches
       // exactly when it exists in the corpus.
       if (grams.length < 3 || matched < 2) continue;
-      score += acc / grams.length;
+      score += termWeight * (acc / grams.length);
       continue;
     }
     const idf = Math.log(1 + (corpus.docCount - df + 0.5) / (df + 0.5));
@@ -401,7 +463,10 @@ export function bm25fScore(
       weighted += weights[field] * (tf / (k1 * norm + tf));
     }
     if (weighted === 0) continue;
-    score += (idf * weighted) / (k1 + weighted);
+    // The caller's per-term weight scales the whole contribution. A history
+    // word at 0.3 is worth a third of the question's own word; the scorer
+    // does not know why, only by how much.
+    score += termWeight * (idf * weighted) / (k1 + weighted);
   }
   return score;
 }

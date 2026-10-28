@@ -42,6 +42,14 @@ export interface WrapperSettings {
    * step keeps today's behaviour — see src/core/task-policy.ts.
    */
   taskPolicies?: TaskPolicyMap;
+  /**
+   * Issue #904: global thinking level, the child of the `disableThinking`
+   * toggle. `default` (or absent) sends nothing. A per-task policy outranks
+   * it; the toggle outranks it too, because "off" is the stronger request.
+   */
+  thinkingEffort?: 'default' | 'low' | 'medium' | 'high';
+  /** Issue #904: the toggle itself, so this layer resolves the precedence. */
+  disableThinking?: boolean;
 }
 
 // Closed union for the [llm] debug-log breadcrumb. Stays narrow so a typo
@@ -72,11 +80,11 @@ type AdvancedSettingsOverlay = Partial<{
  * pattern silently mutated the caller's client reference) with
  * `Object.create(client)` + explicit override of `createMessage`.
  * spread `{ ...client }` is NOT used because `OpenAICompatSdkClient`
- * (and other implementations) define `createMessageStream` and
- * `listModels` as prototype methods — spread only captures own
+ * (and other implementations) define `createMessageStream` as a
+ * prototype method — spread only captures own
  * enumerable properties, which drops all prototype methods.
  * `Object.create(client)` preserves the prototype chain, so prototype
- * methods like `listModels` stay available; `createMessage`,
+ * methods stay available; `createMessage`,
  * `createMessageWithOutput`, and `createMessageStream` are explicitly
  * overridden below whenever the client implements them (Issue #451).
  */
@@ -86,8 +94,8 @@ export function wrapWithAdvancedSettings(
 ): LLMClient {
   const capTokens = settings.maxTokensPerCall > 0;
 
-  // Preserve prototype chain — Object.create inherits all prototype
-  // methods (listModels) from the original client.
+  // Preserve prototype chain — Object.create inherits the prototype
+  // methods from the original client.
   const wrapper = Object.create(client) as LLMClient;
   wrapper.createMessage = (params) => withTaskAccounting(params.task, async () => {
     logLlmCall(params.task, params.model, params.max_tokens, 'plain');
@@ -180,13 +188,32 @@ function applyTaskPolicy(
 }> {
   const policy = resolveTaskPolicy(settings.taskPolicies, task);
   const effort = thinkingEffort(policy.thinking);
+
+  // Issue #904: the global level sits under the per-task policy. It is only
+  // consulted when the policy did not name a step, and only when the toggle
+  // is not asking for silence — `disableThinking` is the stronger request and
+  // resolves first, in `isReasoningPossible` as well, so budget and wire agree.
+  const globalLevel = policy.thinking === 'default' && settings.disableThinking !== true
+    ? settings.thinkingEffort
+    : undefined;
+  const globalEffort: ThinkingEffort | undefined =
+    globalLevel === 'low' || globalLevel === 'medium' || globalLevel === 'high'
+      ? globalLevel
+      : undefined;
+
   return {
     ...(policy.outputMode !== 'default' ? { outputModeOverride: policy.outputMode } : {}),
-    ...(policy.thinking !== 'default' ? { enableThinking: policy.thinking !== 'off' } : {}),
+    ...(policy.thinking !== 'default'
+      ? { enableThinking: policy.thinking !== 'off' }
+      : settings.disableThinking === true
+        ? { enableThinking: false }
+        : globalEffort
+          ? { enableThinking: true }
+          : {}),
     // A named level is `on` plus a budget; it rides alongside enableThinking
     // rather than replacing it, because the suppression field and the effort
     // field are the same wire key and the client decides which value it takes.
-    ...(effort ? { reasoningEffort: effort } : {}),
+    ...(effort ? { reasoningEffort: effort } : globalEffort ? { reasoningEffort: globalEffort } : {}),
   };
 }
 

@@ -87,7 +87,15 @@ export const IT_TEXTS = {
 
     // Limite esecuzione LLM
     maxTokensPerCallName: 'Max token di output per chiamata',
-    maxTokensPerCallDesc: 'Limita quanti token il modello può generare in una singola risposta. Riduci se usi un modello locale con finestra di contesto piccola e vedi errori. Per i modelli cloud, mantieni il valore predefinito (0 = nessun limite).',
+    maxTokensPerCallDesc: 'Il limite che la richiesta dichiara, non un obiettivo: il modello si ferma quando ha finito. Auto usa il limite di output del modello stesso (128K se sconosciuto). Abbassalo solo se il provider rifiuta valori grandi o addebita i token riservati. NON è la finestra di contesto: i token di ragionamento vengono sottratti dallo stesso limite della risposta.',
+    contextWindowName: 'Finestra di contesto del modello',
+    contextWindowDesc: 'Quanti token il modello può contenere contemporaneamente, input e output insieme. Auto lascia invariato il batch attuale. Impostala solo se conosci il valore reale ed è piccolo (per esempio un modello locale da 8K), così il limite di output non supera mai la finestra.',
+    thinkingEffortName: 'Livello di ragionamento',
+    thinkingEffortDesc: 'Quanto può ragionare il modello. Default non invia alcun campo e lascia scegliere al modello. Un livello più alto può dare una risposta migliore e costa sempre più token e tempo. Ogni provider traduce il livello: lo stesso nome non indica la stessa quantità di ragionamento su modelli diversi.',
+    thinkingEffortDefault: 'Default (decide il provider)',
+    thinkingEffortLow: 'Basso',
+    thinkingEffortMedium: 'Medio',
+    thinkingEffortHigh: 'Alto',
 
     // Issue #111: maiuscole/minuscole slug
     slugCaseName: 'Maiuscole/minuscole nome file',
@@ -165,6 +173,7 @@ export const IT_TEXTS = {
 
     // Test Connessione
     testConnectionSuccessful: 'Connessione riuscita',
+    baseUrlUpdated: 'Base URL aggiornato a {url}',
     testConnectionFailed: 'Connessione fallita',
     testConnectionProvider: 'Provider: ',
     codexAuthRequired: 'Accedi al piano ChatGPT prima di verificare la connessione.',
@@ -421,6 +430,7 @@ export const IT_TEXTS = {
     watchModeAuto: 'Acquisizione automatica',
     autoWatchDebounceName: 'Ritardo debounce (secondi)',
     autoWatchDebounceDesc: 'Tempo di attesa prima di avviare l\'acquisizione dopo una modifica di file (1-60 secondi)',
+    autoWatchDebounceClamped: 'Valore fuori intervallo (1-60), impostato automaticamente a {}',
     periodicLintName: 'Lint periodico',
     periodicLintDesc: 'Esegui il lint LLM su pianificazione, solo quando i file sorgente sono cambiati dall\'ultimo controllo',
     periodicLintOff: 'Disattivato',
@@ -746,7 +756,7 @@ export const IT_TEXTS = {
     // v1.22.2: log.md header content (Operation History Panel hint)
     logHeaderTitle: 'Wiki Registro operazioni',
     logHeaderSubtitle: 'Ogni acquisizione, esecuzione lint e operazione di manutenzione viene registrata qui automaticamente. Per una migliore visualizzazione, usa il pannello **Cronologia operazioni**:',
-    logHeaderShortcut: 'Cmd+P → "Visualizza cronologia operazioni"',
+    logHeaderShortcut: (cmd: string) => `Cmd+P → "${cmd}"`,
     logHeaderSettingsShortcut: 'Oppure da Impostazioni → Manutenzione automatica → Cronologia operazioni',
     ingestionCreatedPages: '{count} pagina/e creata/e',
     ingestionUpdatedPages: '{count} pagina/e aggiornata/e',

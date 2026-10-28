@@ -72,6 +72,94 @@ describe('UI text parity across all locales', () => {
   });
 });
 
+/**
+ * The second half of parity: a key that EXISTS but holds the English text.
+ *
+ * The guard above cannot see this. `getText()` falls back to English for a
+ * MISSING key, so the fallback is caught; but a locale that copies the English
+ * string is not a fallback — it is a file that reads as English on purpose, and
+ * every check passes.
+ *
+ * That is not hypothetical. The prompt-customization feature (#895) shipped
+ * with 7 new keys held in English in eight of the eleven locales, and the
+ * `lintTagViolation*` cluster was already English in the same eight. A user in
+ * any of those languages read an English settings panel.
+ *
+ * THE THRESHOLD IS MEASURED, NOT GUESSED. At 30 characters, exactly five
+ * strings across all eleven locales are legitimately identical to English, and
+ * they are listed below with the reason for each. At 40 characters the count
+ * drops to zero — but 40 misses `Retag failed for {path}: {error}` (32 chars),
+ * which is one of the strings that actually shipped untranslated. So 30 is the
+ * threshold, with the exemptions that the measurement showed are needed.
+ *
+ * What 30 catches of the #895 gap: 5 of the 7 keys. The two it misses are
+ * `Prompt Customization` and `Content Requirements` — headings under 20
+ * characters, where an identical string is a weak signal rather than a proof.
+ */
+describe('untranslated-string guard', () => {
+  /** English strings of at least this length are expected to be translated. */
+  const TRANSLATED_MIN_LENGTH = 30;
+
+  /**
+   * Strings that are identical to English on purpose. Each entry says why,
+   * because an exemption without a reason is a hole with a comment.
+   */
+  const IDENTICAL_BY_DESIGN: Record<string, string> = {
+    // Format templates. The prose is a placeholder pattern; the wording lives
+    // in the substituted values, which are the user's own data.
+    ingestCreatingItem: 'format template: [{step}/{totalSteps}] {type}: {name}',
+    lintContradictionItem: 'format template: - [{status}] [[{page}]] — {claim}',
+    lintQuoteGroundingItem: 'format template: - [[{page}]]{sourceHint}: "{quote}"',
+    // Example lists for a free-text tag input. The examples are sample tag
+    // NAMES, not prose; a user typing `person` into a tag field is typing a
+    // tag, and the field's own label and description are translated.
+    customEntityTagsPlaceholder: 'example tag names, not prose',
+    customConceptTagsPlaceholder: 'example tag names, not prose',
+  };
+
+  it.each(LOCALES)('locale "%s" does not hold English prose in a translated field', (locale) => {
+    if (locale === 'en') return;
+    const texts = TEXTS[locale] as unknown as Record<string, string>;
+    const english = TEXTS.en as unknown as Record<string, string>;
+    const offenders = EN_KEYS.filter((key) => {
+      const source = english[key];
+      if (typeof source !== 'string' || source.length < TRANSLATED_MIN_LENGTH) return false;
+      if (key in IDENTICAL_BY_DESIGN) return false;
+      return texts[key] === source;
+    });
+    expect(
+      offenders,
+      `${locale} holds the English text for: ${offenders.join(', ')}`,
+    ).toEqual([]);
+  });
+
+  /**
+   * An exemption that is no longer needed is a dead entry.
+   *
+   * The rule is that AT LEAST ONE locale must still hold the string identical
+   * to English. A locale that localizes only punctuation is not a translation:
+   * `zh` writes `[{step}/{totalSteps}] {type}：{name}` with a full-width colon,
+   * so that value is not byte-identical to English while the string is still a
+   * format template. The exemption dies only when no locale holds it verbatim,
+   * and then it is removed by whoever translated it.
+   */
+  it('every exemption is still needed somewhere', () => {
+    const english = TEXTS.en as unknown as Record<string, string>;
+    for (const [key, reason] of Object.entries(IDENTICAL_BY_DESIGN)) {
+      expect(english[key], `exemption "${key}" (${reason}) names a key that does not exist`)
+        .toBeDefined();
+      const stillVerbatim = LOCALES.filter(
+        (locale) => locale !== 'en'
+          && (TEXTS[locale] as unknown as Record<string, string>)[key] === english[key],
+      );
+      expect(
+        stillVerbatim,
+        `exemption "${key}" (${reason}) is dead: every locale now translates it — remove the exemption`,
+      ).not.toEqual([]);
+    }
+  });
+});
+
 describe('Italian locale wiring', () => {
   it('exposes the Italian UI locale', () => {
     expect(TEXTS.it).toBeDefined();
@@ -293,5 +381,15 @@ describe('startupCheckDisableHint names the notice level setting in every locale
     const t = TEXTS[locale] as unknown as Record<string, string>;
     expect(t.startupCheckDisableHint).toContain(t.autoMaintainSection);
     expect(t.startupCheckDisableHint).toContain(t.startupCheckNoticeLevelName);
+  });
+});
+
+describe('autoWatchDebounceClamped states the debounce range in every locale', () => {
+  it.each(LOCALES)('locale "%s" states the debounce range its own description states', (locale) => {
+    const t = TEXTS[locale] as unknown as Record<string, string>;
+    const range = /(\d+\s*[-–〜]\s*\d+)/.exec(t.autoWatchDebounceDesc)?.[1];
+    expect(range).toBeTruthy();
+    expect(t.autoWatchDebounceClamped).toContain(range!);
+    expect(t.autoWatchDebounceClamped).toContain('{}');
   });
 });

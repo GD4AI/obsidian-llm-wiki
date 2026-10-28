@@ -15,6 +15,7 @@ import { isLocalNoKeyProvider } from '../core/local-no-key-provider';
 import { resolveProviderApiKey } from '../llm-sdk/provider-api-key-resolver';
 import type { LLMClient } from '../types';
 import { isIngestableSource } from '../core/folder-scope';
+import { makeUserIgnorePredicate } from '../core/user-ignore';
 import { localDateStamp } from '../core/format';
 
 export class AutoMaintainManager {
@@ -115,6 +116,13 @@ export class AutoMaintainManager {
   // would watch `wiki/` and feed the plugin its own generated pages (#502).
   private isWatched(path: string): boolean {
     if (this.settings.watchedFolders.length === 0) return false;
+    // Issue #872 — the watcher is the automatic path, and it was the one path
+    // that did not consult Obsidian's "Excluded files" list. The manual folder
+    // ingest asked Obsidian; the watcher did not, so a file the user had
+    // excluded was ingested anyway as soon as the change came from the
+    // watcher. The predicate is created once per call and asked per path; it
+    // holds no state, and a missing API yields "nothing is excluded".
+    const isUserIgnored = makeUserIgnorePredicate(this.app.metadataCache);
     return this.settings.watchedFolders.some(folder => {
       const trimmed = folder.replace(/\/+$/, '');
       return isIngestableSource(
@@ -123,6 +131,7 @@ export class AutoMaintainManager {
         trimmed.length === 0,
         this.settings.wikiFolder,
         this.app.vault.configDir,
+        isUserIgnored,
       );
     });
   }
@@ -458,9 +467,17 @@ export class AutoMaintainManager {
     try {
       const logPath = `${wikiFolder}/log.md`;
       const existingLog = await this.wikiEngine.tryReadFile(logPath);
-      const lang = this.settings.language;
-      if (existingLog && needsLogHeaderMigration(existingLog, lang)) {
-        const migrated = migrateLogHeader(existingLog, lang);
+      // Issue #793: two languages, not one. The header is written in the wiki's
+      // content language, because that is the language of the file; the command
+      // name comes from the interface language, because that is the language
+      // the command palette is registered in. `log-writer.ts:127` already splits
+      // them. A migration that did not would rewrite every engine-written header
+      // back into the interface language — and with #876's freshness check it
+      // would do so on every startup, not once.
+      const headerLang = this.settings.wikiLanguage ?? '';
+      const commandName = (TEXTS[this.settings.language] || TEXTS.en).cmdViewHistory;
+      if (existingLog && needsLogHeaderMigration(existingLog, headerLang, commandName)) {
+        const migrated = migrateLogHeader(existingLog, headerLang, commandName);
         if (migrated !== null && migrated !== existingLog) {
           await this.wikiEngine.createOrUpdateFile(logPath, migrated);
           console.debug(`[QuickFixes] Phase 4.5: log.md header migrated to v1.22.2 format`);

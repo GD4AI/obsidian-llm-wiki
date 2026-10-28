@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { LOG_LABELS, getLogLabels, logLabelLineRe } from '../../core/log-labels';
 import { WIKI_LANGUAGES } from '../../types';
 import { LogWriter } from '../../wiki/engine-internals/log-writer';
+import { TEXTS } from '../../texts';
 import { parseLogEntries } from '../../core/log-parser';
 import type { SourceAnalysis } from '../../types';
 
@@ -60,6 +61,7 @@ describe('writer and parser share the table', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: lang,
+      commandName: TEXTS[lang as keyof typeof TEXTS].cmdViewHistory,
       readFile: vi.fn().mockResolvedValue(''),
       writeFile: vi.fn(async (_p: string, c: string) => { written = c; }),
     });

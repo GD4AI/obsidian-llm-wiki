@@ -224,6 +224,29 @@ describe('scanDeadLinks', () => {
     expect(scanDeadLinks(pm, known, new Set(), 'wiki')).toHaveLength(0);
   });
 
+  // Issue #835's decision rests on this, so it is pinned rather than assumed.
+  //
+  // The retarget pass does NOT read Obsidian's `frontmatterLinks`, so a
+  // `sources:` entry that named a page a merge deletes is never rewritten. The
+  // decision was to leave it that way, and the justification is that the dead
+  // link stays VISIBLE: this scanner runs its regex over the whole file,
+  // frontmatter included, so the leftover entry is reported like any other
+  // dead link.
+  //
+  // If this test ever fails, that decision loses its justification and
+  // `collectResolvingReferences` has to grow the frontmatter read.
+  it('reports a frontmatter reference, which is what makes #835\'s decision safe', () => {
+    const pm = makePageMap(
+      'wiki/concepts/Test.md',
+      ['---', 'type: concept', 'sources:', '  - "[[entities/Gone-Away]]"', '---', '', 'Body.'].join('\n'),
+    );
+    const known = new Set<string>(['Test']);
+
+    const result = scanDeadLinks(pm, known, new Set(), 'wiki');
+    expect(result).toHaveLength(1);
+    expect(result[0].target).toBe('entities/Gone-Away');
+  });
+
   it('matches case-insensitively via knownLower', () => {
     const pm = makePageMap('wiki/concepts/Test.md', 'See [[KNOWNPAGE]]');
     const knownLower = new Set<string>(['knownpage']);

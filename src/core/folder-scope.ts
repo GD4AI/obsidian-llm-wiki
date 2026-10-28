@@ -77,8 +77,31 @@ export function isExcludedFromSourcePicker(
 }
 
 /**
+ * Whether a file lies in the source scope: inside a folder the user chose,
+ * and not the plugin's own output or configuration.
+ *
+ * This answers "is this file in the source area?" — a question about the
+ * folder boundary and the plugin's own directories. It does not consult
+ * Obsidian's "Excluded files" list, because that list is about ingest
+ * intent, not about what exists in the vault.
+ */
+export function isInSourceScope(
+  filePath: string,
+  folderPath: string,
+  isRoot: boolean,
+  wikiFolder: string,
+  configDir: string
+): boolean {
+  return (
+    isInFolderScope(filePath, folderPath, isRoot) &&
+    !isExcludedFromSourcePicker(filePath, wikiFolder, configDir)
+  );
+}
+
+/**
  * Whether a file may be COLLECTED as an ingest source, given the folder the
- * user chose. Combines the folder boundary with the picker's exclusion rule.
+ * user chose. Combines the folder boundary with the picker's exclusion rule
+ * and with Obsidian's own "Excluded files" list.
  *
  * Issue #502 — the folder picker applies `isExcludedFromSourcePicker` to the
  * folders it offers, which hides `wiki/`. It also offers the vault root, and
@@ -89,16 +112,29 @@ export function isExcludedFromSourcePicker(
  * The two file pickers (`FileSuggestModal`, `MultiFileSuggestModal`) already
  * filter the FILES they offer this way. This is the same rule for the folder
  * path, so all three entry points now agree on what counts as a source.
+ *
+ * Issue #872 — the exclusion predicate is REQUIRED, not optional. It was
+ * optional, and the automatic path (the watcher) called the function without
+ * it: the manual folder ingest honoured Obsidian's list, the watcher did not,
+ * and a file the user had excluded was ingested anyway whenever the change
+ * came from the watcher. An optional argument cannot distinguish "this caller
+ * does not exclude anything" from "this caller forgot", and the second is
+ * the one that ships the wrong behaviour.
  */
 export function isIngestableSource(
   filePath: string,
   folderPath: string,
   isRoot: boolean,
   wikiFolder: string,
-  configDir: string
+  configDir: string,
+  isUserIgnored: (path: string) => boolean
 ): boolean {
   return (
-    isInFolderScope(filePath, folderPath, isRoot) &&
-    !isExcludedFromSourcePicker(filePath, wikiFolder, configDir)
+    isInSourceScope(filePath, folderPath, isRoot, wikiFolder, configDir) &&
+    // Issue #503: Obsidian's own "Excluded files" list. Passed as a predicate so this
+    // file stays pure and IO-free — the undocumented API is adapted in one place
+    // (`core/user-ignore.ts`) rather than here, and the rule is testable without a
+    // vault.
+    !isUserIgnored(filePath)
   );
 }

@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { LogWriter } from '../../../wiki/engine-internals/log-writer';
+import { TEXTS } from '../../../texts';
 import type { SourceAnalysis } from '../../../types';
 
 function makeAnalysis(overrides: Partial<SourceAnalysis> = {}): SourceAnalysis {
@@ -36,6 +37,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -66,6 +68,7 @@ describe('LogWriter', () => {
       const writer = new LogWriter({
         wikiFolder: 'wiki',
         wikiLanguage: 'en',
+        commandName: TEXTS.en.cmdViewHistory,
         readFile: vi.fn().mockResolvedValue('# Wiki Operation Log\n'),
         writeFile,
       });
@@ -83,6 +86,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -100,6 +104,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -124,6 +129,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -145,6 +151,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -165,6 +172,7 @@ describe('LogWriter', () => {
     const writeFile = vi.fn().mockResolvedValue(undefined);
     const writer = new LogWriter({
       wikiFolder: 'wiki', wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile: vi.fn().mockResolvedValue('# Wiki Operation Log\n'), writeFile,
     });
 
@@ -184,6 +192,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -211,6 +220,7 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
@@ -231,10 +241,38 @@ describe('LogWriter', () => {
     const writer = new LogWriter({
       wikiFolder: 'wiki',
       wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
       readFile,
       writeFile,
     });
 
     await expect(writer.appendLintFix('op', 'details')).rejects.toThrow('disk full');
+  });
+});
+
+// Issue #793, second review: the log header's language and the command
+// palette's language are different settings. The palette is registered from
+// the INTERFACE language, so the header has to quote the command as it is
+// registered there — a wiki-language header quoting a wiki-language command
+// name points at a command the palette does not carry.
+describe('LogWriter names the command as the palette registers it (#793)', () => {
+  it('writes the registered command name even when the log language differs', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const readFile = vi.fn().mockResolvedValue(null);
+    const writer = new LogWriter({
+      wikiFolder: 'wiki',
+      wikiLanguage: 'de',
+      commandName: TEXTS.en.cmdViewHistory,
+      readFile,
+      writeFile,
+    });
+
+    await writer.appendLintFix('op', 'details');
+
+    const [, content] = writeFile.mock.calls[0] as [string, string];
+    expect(content).toContain(TEXTS.en.cmdViewHistory);
+    expect(content).not.toContain(TEXTS.de.cmdViewHistory);
+    // The rest of the header is still the log language's.
+    expect(content).toMatch(/# Wiki Betriebsprotokoll/);
   });
 });

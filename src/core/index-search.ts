@@ -34,19 +34,33 @@ export function parseIndexForPages(indexContent: string): Omit<PageRef, 'score'>
 
 export function localKeywordMatch(query: string, pages: Omit<PageRef, 'score'>[]): PageRef[] {
   const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
-  const scored: PageRef[] = [];
+  const scored: Array<Omit<PageRef, 'score'> & { score: number; keywordsFound: number }> = [];
   for (const page of pages) {
     let score = 0;
+    let keywordsFound = 0;
     const titleLower = page.title.toLowerCase();
     for (const kw of keywords) {
-      if (titleLower.includes(kw)) score += 3;
+      let hit = false;
+      if (titleLower.includes(kw)) { score += 3; hit = true; }
       for (const alias of page.aliases) {
-        if (alias.toLowerCase().includes(kw)) score += 2;
+        if (alias.toLowerCase().includes(kw)) { score += 2; hit = true; }
       }
+      if (hit) keywordsFound++;
     }
-    if (score > 0) scored.push({ ...page, score });
+    if (score > 0) scored.push({ ...page, score, keywordsFound });
   }
-  return scored.sort((a, b) => b.score - a.score);
+  // Ties break by breadth of match first and only then on a stable identity.
+  // The score alone left the order to the caller's array, so a page matched
+  // in one field and a page matched in two could swap places between runs
+  // that read the same index. Path-only would be the same defect in an
+  // alphabetical hat, so the breadth comes first.
+  scored.sort(
+    (a, b) =>
+      b.score - a.score
+      || b.keywordsFound - a.keywordsFound
+      || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
+  );
+  return scored;
 }
 
 export function matchExtractedToExisting(
