@@ -4,8 +4,15 @@ overrides:
   # Two advisories published 2026-10-03 made CI's `pnpm audit --audit-level high` step
   # fail on every PR, docs-only ones included. Both arrive through dev tooling and both
   # bumps are within the same minor line, so neither is a breaking change. #501 closed
-  # the previous HIGH the same way. Keep this list in step with `package.json`'s
-  # `overrides` — CI checks the npm-side lockfile against package.json.
+  # the previous HIGH the same way.
+  #
+  # THIS BLOCK AND `package.json`'s `overrides` ARE TWO HALVES OF ONE DECISION (#907).
+  # npm reads `package.json` → `overrides`; pnpm reads this file, because #557 moved
+  # pnpm settings out of `package.json` after pnpm ≥ 11 stopped reading that field.
+  # A pin in only one of them is applied to one dependency tree and silently absent
+  # from the other: this tree is what Gate 1 runs on, `package.json`'s is what the
+  # release workflow builds the shipped `main.js` from. Add pins to both, and let
+  # `src/__tests__/root/override-parity.test.ts` tell you when you missed one.
   brace-expansion: 5.0.12    # was 5.0.9; >=5.0.11 patches the recursion DoS advisories
   undici: 8.12.3             # was 8.10.2; >=8.12.2 patches GHSA-xjj6-f33q-929c (HIGH)
   # Published between main's 14:53 run on 2026-10-05 (audit green) and a PR run at 06:41 on
