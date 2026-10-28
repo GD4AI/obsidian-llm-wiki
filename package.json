@@ -1,6 +1,6 @@
 {
   "name": "karpathywiki",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=22"
@@ -40,14 +40,14 @@
     "@typescript-eslint/parser": "8.71.1",
     "ajv": "^8.20.0",
     "esbuild": "0.28.1",
-    "eslint": "10.10.0",
+    "eslint": "10.12.0",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "fast-uri": "^4.2.2",
     "jsdom": "^30.0.1",
     "obsidian": "1.12.3",
     "tslib": "2.8.1",
     "typescript": "5.9.3",
-    "vite": "^8.2.1",
+    "vite": "^8.3.5",
     "vitest": "5.0.0",
     "yaml": "^2.4.2"
   },

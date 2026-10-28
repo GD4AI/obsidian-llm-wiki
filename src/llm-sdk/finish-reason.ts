@@ -152,6 +152,17 @@ export async function extractResultReasoning(result: unknown): Promise<string> {
 type ReasoningOnlyCase = 'none' | 'inline' | 'empty';
 
 /**
+ * Marker carried by the reasoning-only error (Issue #904).
+ *
+ * Callers must not diagnose this failure by matching its text. The message
+ * says "output tokens", so a substring classifier looking for `token`
+ * concludes the context window is at fault and sends the user looking for a
+ * bigger context model — advice that cannot fix a reasoning runaway. The
+ * string survives only for humans reading a log.
+ */
+export const REASONING_ONLY_ERROR_CODE = 'REASONING_ONLY';
+
+/**
  * S143: the predicate of assertNotReasoningOnly, reusable BEFORE the
  * reasoning-channel prepend. When it holds, the reasoning is a runaway think
  * that never reached the answer — prepending it would hand 30K chars of
@@ -226,7 +237,7 @@ export function assertNotReasoningOnly(
   const kind = reasoningOnlyCase(text, raw, usage);
   if (kind === 'none') return;
   if (kind === 'inline') {
-    throw new Error(
+    throw reasoningOnlyError(
       'The model returned only its reasoning and no answer. Turn thinking off for '
       + 'this model (Settings → LLM Advanced Parameters → Disable thinking), or '
       + 'raise the token limit (max_tokens) so the answer fits after the reasoning.',
@@ -234,11 +245,21 @@ export function assertNotReasoningOnly(
   }
   const outputTokens = usage?.outputTokens ?? 0;
   const reasoningTokens = usage?.reasoningTokens;
-  throw new Error(
+  throw reasoningOnlyError(
     `The model returned empty content after spending ${reasoningTokens} of `
     + `${outputTokens} output tokens on reasoning. Disable thinking for this `
     + `model, or raise the token limit (max_tokens) so the answer fits after it.`,
   );
+}
+
+/**
+ * Same message, plus the marker callers can branch on. Kept as a helper so
+ * both throw sites carry the code and neither can forget it.
+ */
+function reasoningOnlyError(message: string): Error {
+  const error = new Error(message) as Error & { code: string };
+  error.code = REASONING_ONLY_ERROR_CODE;
+  return error;
 }
 
 /**

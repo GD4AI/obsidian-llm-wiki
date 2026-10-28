@@ -19,12 +19,14 @@ import { PROMPTS } from '../prompts';
 import { parseJsonResponse, parseJsonResult } from '../core/json';
 import { isCrossLanguage, normalizeSourceLanguage, getWikiLanguageName } from '../core/source-language';
 import { renderTemplate } from '../core/template-renderer';
+import { computeExtractionBudget, resolveOutputCeiling, isReasoningPossible } from '../core/output-budget';
+import { buildIngestErrorHint, namesOutputCeiling } from './ingest-error-hint';
 import { matchExtractedToExisting } from '../core/index-search';
 import { coerceToArray } from '../core/arrays';
 import { buildDomainContext } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
 import { activeVocabulary, domainVocabulary } from '../core/vocabulary';
 import { isBlankSource, extractBody } from '../core/frontmatter';
-import { MAX_TOKENS_BATCH, TOKENS_PER_ITEM_BUDGET, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
+import { TOKENS_PER_ITEM_BUDGET, MAX_TOKENS_BATCH, TOKENS_LEMMA_CLASSIFY, TOKENS_TYPE_REPAIR, SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../constants';
 import { getGranularityInstruction } from './system-prompts';
 import { getExtractionFocus, buildExtractionFocusSection } from '../core/prompt-focus';
 import { resolveModelForTask } from '../core/model-resolver';
@@ -95,6 +97,44 @@ function fillMentionsWithProvenance<T extends EntityInfo | ConceptInfo>(item: T,
   return { ...item, mentions_with_provenance: provenance, mentions_in_source: undefined };
 }
 
+// "Shadow source" guard (2026-09-15, live vault report): when the source note's
+// own filename is a machine identifier (a dinox UUID like
+// `01988c6e_86e9_7b79_83b5_c8c4b354fdc9`, an ob timestamp like `202511042307`),
+// the LLM sometimes extracts the source DOCUMENT ITSELF as an entity and lifts
+// the filename as its name. The result is an `entities/<uuid>.md` page whose
+// body merely re-narrates the source summary — a shadow of the sources/ page.
+// Names matching these machine shapes are never valid knowledge-item names, so
+// we drop them at normalization time. Semantic filenames are NOT affected: when
+// the source is `庆余年_8a53fa.md`, an extracted `庆余年` entity is legitimate
+// and passes through untouched.
+const MACHINE_UUID_RE = /^[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}$/i;
+// Pure-digit timestamps: YYYYMMDDHHmm (12) or YYYYMMDDHHmmss (14). Shorter runs
+// (years, counters) stay allowed — only the note-tool naming shapes are gated.
+const MACHINE_TIMESTAMP_RE = /^\d{12}$|^\d{14}$/;
+// Long pure-digit machine IDs (2026-09-18, live vault report): IM/voice-note
+// message IDs (`1921147873752416344`, 19 digits) and snowflake-style keys slip
+// past the 12/14-digit timestamp gate. Any run of >=13 digits — optionally with
+// a `_`/`.` + hex hash tail — is never a valid knowledge-item name. Phone-sized
+// runs (<=11 digits) and years stay allowed.
+const MACHINE_LONG_DIGIT_ID_RE = /^\d{13,}(?:[_.][0-9a-f]{4,})?$/i;
+
+export function isSourceSelfReference(name: string, sourcePath: string): boolean {
+  const n = name?.trim() ?? '';
+  if (!n) return false;
+  // Machine-identifier shapes, regardless of what the source file is called.
+  if (MACHINE_UUID_RE.test(n)) return true;
+  if (MACHINE_TIMESTAMP_RE.test(n)) return true;
+  if (MACHINE_LONG_DIGIT_ID_RE.test(n)) return true;
+  // Verbatim copy of the source basename INCLUDING a plugin-style hash suffix
+  // (`庆余年_8a53fa`) — a semantic name plus a 6+ hex-digit tail is never a
+  // natural entity name, so an exact-basename match in that shape means the
+  // model transcribed the filename. A bare semantic match (TNF-α from
+  // TNF-α.md) is a legitimate topical entity and must survive.
+  const base = (sourcePath.split('/').pop() || '').replace(/\.md$/i, '');
+  if (base && n === base && /[_.][0-9a-f]{6,}$/i.test(n)) return true;
+  return false;
+}
+
 export interface NormalizedBatch {
   entities: EntityInfo[];
   concepts: ConceptInfo[];
@@ -125,9 +165,11 @@ export function normalizeBatchResponse(
 
   const entities = coerceToArray<EntityInfo>(raw.entities)
     .filter(e => e?.name?.trim())
+    .filter(e => !isSourceSelfReference(e.name, sourcePath))
     .map(e => fillMentionsWithProvenance(e, sourcePath));
   const concepts = coerceToArray<ConceptInfo>(raw.concepts)
     .filter(c => c?.name?.trim())
+    .filter(c => !isSourceSelfReference(c.name, sourcePath))
     .map(c => fillMentionsWithProvenance(c, sourcePath));
 
   // Strip wiki-link formatting if LLM outputs [[path|name]] instead of plain name
@@ -239,13 +281,33 @@ export class SourceAnalyzer {
 
     const customTypeCaps = getCustomTypeCaps(this.ctx.settings);
 
-    // Dynamic max_tokens: scale with batch size to avoid truncation on large batches.
-    // Batch 1 with 50 items needs ~20K tokens; batch 2+ with dedup context may need more.
-    const baseMaxTokens = Math.max(MAX_TOKENS_BATCH, limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET);
-    // Allow truncation retry to grow up to N× the base cap.
-    const retryCap = baseMaxTokens * SOURCE_ANALYZER_RETRY_MULTIPLIER;
+    // Issue #904: one ceiling pays for reasoning and the answer together, so
+    // sizing it from the answer alone fails on any model that thinks. While
+    // reasoning is possible the request declares the model's own ceiling and
+    // lets the model stop early — a ceiling that is too high costs nothing
+    // when unused, one that is too low costs the whole batch. See
+    // core/output-budget.ts for the rule and the reasoning behind it.
+    const outputCeiling = resolveOutputCeiling(this.ctx.settings);
+    const reasoningPossible = isReasoningPossible(this.ctx.settings, 'extract');
+    // Issue #904: the ceiling is a starting assumption, not a fact. A provider
+    // whose real limit is below it answers with a 400 naming max_tokens, and a
+    // 400 is not an answer — so the first batch learns the limit by halving,
+    // at most twice, and the rest of the run uses what it learned. Bounded on
+    // purpose: a reply that keeps failing for another reason must reach the
+    // error classifier, not loop here.
+    let effectiveCeiling = outputCeiling;
+    let ceilingProbes = 0;
+    const baseMaxTokens = computeExtractionBudget({
+      taskNeed: limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET,
+      ceiling: outputCeiling,
+      reasoningPossible,
+    });
+    // Retry escalation may grow the budget, but never past the ceiling: a
+    // declared value above the model's limit is a 400, which is the failure
+    // this whole change exists to remove.
+    const retryCap = Math.min(baseMaxTokens * SOURCE_ANALYZER_RETRY_MULTIPLIER, outputCeiling);
 
-    console.debug(`[Batch limits] Initial size: ${limits.initialBatchSize}, Max batches: ${limits.maxBatches}, Max total: ${limits.maxTotalItems || 'none'}, baseMaxTokens: ${baseMaxTokens}, retryCap: ${retryCap}`);
+    console.debug(`[Batch limits] Initial size: ${limits.initialBatchSize}, Max batches: ${limits.maxBatches}, Max total: ${limits.maxTotalItems || 'none'}, baseMaxTokens: ${baseMaxTokens}, retryCap: ${retryCap}, ceiling: ${outputCeiling}, reasoningPossible: ${reasoningPossible}`);
 
     let currentBatchSize = limits.initialBatchSize;
     let batchSizeHalved = false;
@@ -340,6 +402,12 @@ export class SourceAnalyzer {
       domain_context: buildDomainContext(
         domainVocabulary(this.ctx.app, this.ctx.settings),
       ),
+    }, {
+      // Issue #904: this pass fills the static prefix on purpose and stops at
+      // `{{batch_context}}`; the per-batch pass below fills these three. Naming
+      // them keeps "not yet" from logging as "unknown", which is how three
+      // noise lines per ingest came to hide the warnings that matter.
+      defer: ['batch_context', 'granularity_instruction', 'batch_size'],
     });
     const batchMarker = '{{batch_context}}';
     const markerIdx = templateUntouched.indexOf(batchMarker);
@@ -421,9 +489,30 @@ export class SourceAnalyzer {
       try {
         const systemPrompt = await this.ctx.buildSystemPrompt('analyze');
         // Scale max_tokens with current batch size to avoid truncation.
+        // Recomputed per attempt from `effectiveCeiling`, so a ceiling the
+        // provider rejected is not sent again.
+        const batchAnswerNeed = currentBatchSize * TOKENS_PER_ITEM_BUDGET;
+        const normalBudget = computeExtractionBudget({
+          taskNeed: batchAnswerNeed,
+          ceiling: effectiveCeiling,
+          reasoningPossible,
+        });
+        // Escalation may only ADD room. When the first attempt already declares
+        // the ceiling there is nothing above it, and falling back to
+        // `answerNeed x 3` would shrink a budget that just proved too small.
+        const escalatedBudget = Math.min(
+          Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
+          effectiveCeiling,
+        );
         const batchMaxTokens = escalateMaxTokens
-          ? retryCap
-          : Math.max(baseMaxTokens, currentBatchSize * TOKENS_PER_ITEM_BUDGET);
+          ? Math.min(Math.max(normalBudget, escalatedBudget), effectiveCeiling)
+          : normalBudget;
+        // Same ceiling for the JSON-repair call: a repair cannot emit more
+        // than the provider accepts, whatever the parent call declared.
+        const repairCap = Math.min(
+          Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
+          effectiveCeiling,
+        );
         // v1.24.0 #208: route through resolveModelForTask so the debug
         // log reflects the ACTUAL model used (per-task override), not
         // the unified setting. Without this, e2e verification of
@@ -449,7 +538,7 @@ export class SourceAnalyzer {
           messages: [{ role: 'user' as const, content: finalPrompt }],
           response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
           cacheBreakpoint: staticPrefix.length,
-          maxTokensPerCall: retryCap,
+          maxTokensPerCall: repairCap,
           // Extraction never mentioned the thinking setting, so whatever the
           // server had been started with decided it and the setting meant
           // nothing here. Not the only such call site — the lint alias and tag
@@ -537,11 +626,11 @@ export class SourceAnalyzer {
             const repairArgs = {
               task: 'extract-retry' as const,
               model: resolveModelForTask(this.ctx.settings, 'ingest'),
-              max_tokens: retryCap, // Repair may need full output if original was truncated at retryCap
+              max_tokens: repairCap, // Repair may need full output if original was truncated at the ceiling
               system: await this.ctx.buildSystemPrompt('analyze'),
               messages: [{ role: 'user' as const, content: repairPrompt }],
               response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-              maxTokensPerCall: retryCap,
+              maxTokensPerCall: repairCap,
               // v1.26.0 Batch 7 follow-up (DocTpoint measurement, PR #411
               // review 2026-08-05 05:38 UTC): eucher's finding that the
               // repair callback did not propagate `disableThinking` is
@@ -723,26 +812,35 @@ export class SourceAnalyzer {
           const providerName = this.ctx.settings.provider;
           const modelName = this.ctx.settings.model;
           const errMsg = error instanceof Error ? error.message : String(error);
-          const lowerErr = errMsg.toLowerCase();
 
-          // Classify error by message content for targeted user guidance
-          let userHint: string;
-          if (lowerErr.includes('context') || lowerErr.includes('token') || lowerErr.includes('length') || lowerErr.includes('exceed')) {
-            userHint = 'The request was rejected because the source file is too large for this model\'s context window. ' +
-              'Try: (1) switch to a model with a larger context window (e.g. 1M tokens) in Settings, ' +
-              '(2) reduce the file size, or (3) use a provider that supports larger contexts.';
-          } else if (lowerErr.includes('max_tokens')) {
-            userHint = 'The model rejected the max_tokens value. Try reducing it in Settings → LLM Configuration → Context Window.';
-          } else if (lowerErr.includes('400')) {
-            userHint = 'The API returned a Bad Request error. Check that the model name is correct and supported by your provider.';
-          } else if (lowerErr.includes('401') || lowerErr.includes('403')) {
-            userHint = 'Authentication failed. Check your API key in Settings.';
-          } else if (lowerErr.includes('429')) {
-            userHint = 'Rate limit exceeded. Wait a moment and try again, or switch to a provider with higher limits.';
-          } else {
-            userHint = 'Check your network connection, API key, and provider URL in Settings. ' +
-              'If the error mentions SSL/TLS, try: (1) restart Obsidian, (2) check VPN/proxy settings, (3) verify the provider URL is correct.';
+          // Issue #904: learn the real output limit instead of assuming it.
+          // Only a rejection that names the output ceiling qualifies — a
+          // context-length complaint means the INPUT is too long, and halving
+          // the output budget would burn two calls for nothing.
+          if (
+            ceilingProbes < 2
+            && effectiveCeiling > MAX_TOKENS_BATCH
+            && namesOutputCeiling(errMsg)
+          ) {
+            const next = Math.max(MAX_TOKENS_BATCH, Math.floor(effectiveCeiling / 2));
+            if (next < effectiveCeiling) {
+              ceilingProbes++;
+              effectiveCeiling = next;
+              console.debug(
+                `[Batch ${batchNum + 1}] Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
+              );
+              batchNum--;
+              continue;
+            }
           }
+
+          // Classify error by message content for targeted user guidance.
+          // Issue #904 removed the inline chain: it tested `includes('token')`
+          // before anything else, and the reasoning guard's message contains
+          // "output tokens", so the user was told the file was too large for
+          // the context window. The ordering lives in ingest-error-hint.ts
+          // where it can be tested without building a client.
+          const userHint = buildIngestErrorHint(errMsg, error, { provider: providerName, model: modelName });
 
           throw new Error(
             `Failed to connect to ${providerName} API (model: ${modelName}): ${errMsg}. ${userHint}`

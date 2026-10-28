@@ -38,6 +38,18 @@ const context = await esbuild.context({
     ...builtinModules.map((module) => `node:${module}`)],
   format: 'cjs',
   target: 'es2018',
+  // esbuild writes ASCII-only output by default: every non-ASCII character
+  // becomes a `\uXXXX` escape. That is six bytes where UTF-8 needs two or
+  // three, and this plugin carries 11 UI locales inline — `src/texts/ru.ts`
+  // is 98 KB on disk and 205 KB in the bundle. `charset: 'utf8'` emits the
+  // characters as they are, which is the same JavaScript string value and so
+  // the same behaviour; it only changes the bytes on disk. Measured at
+  // 5,188,043 -> 4,864,406 bytes, and the reason it matters is not tidiness:
+  // Obsidian Sync Standard caps a single file at 5 MB
+  // (https://obsidian.md/help/sync/plans), so the ASCII-escaped bundle had
+  // crossed that cap. `src/__tests__/root/bundle-size.test.ts` holds the
+  // line.
+  charset: 'utf8',
   // Without this, esbuild defaults `platform` to 'browser', under which an
   // *external* dynamic import is assumed to be available natively and is left
   // in place. `node:module` is external (see above), so `await import(...)`

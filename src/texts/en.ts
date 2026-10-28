@@ -87,7 +87,9 @@ export const EN_TEXTS = {
 
     // LLM execution cap
     maxTokensPerCallName: 'Max output tokens per call',
-    maxTokensPerCallDesc: 'Cap how many tokens the model is allowed to generate in a single response. Lower this if you run a local model with a small context window and see errors. Leave at the default (0 = no cap) for cloud models.',
+    maxTokensPerCallDesc: 'The ceiling the request declares, not a target — the model stops when it is done. Auto declares the model\'s own output limit (128K when unknown). Lower it only if your provider rejects large values or you pay per reserved token. This is NOT the context window: reasoning tokens are subtracted from the same ceiling as the answer.',
+    contextWindowName: 'Model context window',
+    contextWindowDesc: 'How many tokens the model can hold at once, input and output together. Auto leaves batching unchanged. Set it when you know the real value and it is small (a local model with 8K, for example) so the output ceiling can never exceed what the window holds.',
 
     // Issue #111: slug casing
     slugCaseName: 'File Name Casing',
@@ -641,6 +643,12 @@ export const EN_TEXTS = {
     showAdvancedSettingsDesc: 'Turn on to reveal advanced settings below. Turning off hides them and resets them to defaults.',
     disableThinkingName: 'Disable thinking',
     disableThinkingDesc: 'Turn off the model\'s chain-of-thought / reasoning output in its response. Default off — the model decides whether to show reasoning, and that usually gives the best answer. Turn this on only if your provider dumps raw reasoning text into the response and you want a clean answer.',
+    thinkingEffortName: 'Thinking level',
+    thinkingEffortDesc: 'How much reasoning the model may do, for providers that expose such a control. Default sends nothing and lets the model choose. A higher level can produce a better answer and always costs more tokens and time. Providers translate the level themselves, so the same name may mean different amounts on different models.',
+    thinkingEffortDefault: 'Default (provider decides)',
+    thinkingEffortLow: 'Low',
+    thinkingEffortMedium: 'Medium',
+    thinkingEffortHigh: 'High',
     taskPoliciesPlaceholder: 'Example: extract=text:off',
     taskPoliciesName: 'Per-step output mode and thinking',
     taskPoliciesDesc: 'One entry per pipeline step, `step=mode:thinking`, comma-separated — e.g. `extract=text:off`. Modes: `-` (leave), `schema`, `json`, `text`; thinking: `-`, `off`, `on`, `low`, `medium`, `high`. Step names include extract, extract-retry, lemma-classify, merge-triage, source-stance, dedup, page-generate, related-page, lint-dedup — a misspelled name matches nothing. Leave blank for the built-in baseline (extraction in text mode). An entry that cannot be read is not saved.',
