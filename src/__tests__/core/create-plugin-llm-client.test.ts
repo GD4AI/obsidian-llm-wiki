@@ -102,3 +102,66 @@ describe('createLLMClient — Bedrock region forwarding (#425 prerequisite)', ()
     );
   });
 });
+
+// Issue #904: the wrapper resolves the thinking precedence from these two
+// fields. They are optional on both sides, so a type check cannot tell a
+// forwarded value from a forgotten one — the first version of this change read
+// `settings.thinkingEffort` in the wrapper and never passed it in, which would
+// have shipped a dropdown that changed nothing. This pins the forwarding.
+describe('createLLMClient — thinking settings reach the wrapper (#904)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('forwards thinkingEffort and disableThinking to the wrapped client', async () => {
+    const settings = {
+      provider: 'minimax',
+      apiKey: 'sk-test',
+      language: 'en',
+      maxTokensPerCall: 0,
+      thinkingEffort: 'high',
+      disableThinking: false,
+    } as unknown as LLMWikiSettings;
+
+    const client = createLLMClient(settings);
+    await client.createMessage({
+      model: 'test-model',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: 'hi' }],
+      task: 'extract',
+    });
+
+    const inner = vi.mocked(createLLMClientFromSettingsSync).mock.results[0]?.value as {
+      createMessage: { mock: { calls: Array<[Record<string, unknown>]> } };
+    };
+    const received = inner.createMessage.mock.calls[0][0];
+    expect(received.reasoningEffort).toBe('high');
+    expect(received.enableThinking).toBe(true);
+  });
+
+  it('lets the off toggle win even though a level is configured', async () => {
+    const settings = {
+      provider: 'minimax',
+      apiKey: 'sk-test',
+      language: 'en',
+      maxTokensPerCall: 0,
+      thinkingEffort: 'high',
+      disableThinking: true,
+    } as unknown as LLMWikiSettings;
+
+    const client = createLLMClient(settings);
+    await client.createMessage({
+      model: 'test-model',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: 'hi' }],
+      task: 'extract',
+    });
+
+    const inner = vi.mocked(createLLMClientFromSettingsSync).mock.results[0]?.value as {
+      createMessage: { mock: { calls: Array<[Record<string, unknown>]> } };
+    };
+    const received = inner.createMessage.mock.calls[0][0];
+    expect(received.enableThinking).toBe(false);
+    expect(received.reasoningEffort).toBeUndefined();
+  });
+});
