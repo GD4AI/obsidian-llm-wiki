@@ -1,6 +1,6 @@
 {
   "name": "karpathywiki",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=22"
@@ -47,7 +47,7 @@
     "obsidian": "1.12.3",
     "tslib": "2.8.1",
     "typescript": "5.9.3",
-    "vite": "^8.2.1",
+    "vite": "^8.3.5",
     "vitest": "5.0.5",
     "yaml": "^2.4.2"
   },
