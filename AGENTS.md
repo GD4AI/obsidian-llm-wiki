@@ -267,6 +267,8 @@ Obsidian Bot review remains a separate pipeline (not a GitHub status check); CI 
 
 Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI. The Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Five-Gate automated". `npm ci` is intentionally NOT used — the project pins `pnpm@10.14.0`, and pnpm `overrides` are flat, so npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`.
 
+**Dependency pins live in two files, and neither package manager reads the other's (Issue #907).** `package.json` → `overrides` is npm's home; `.github/workflows/release.yml` builds the released `main.js` from the npm tree. `pnpm-workspace.yaml` → `overrides` is pnpm's home — #557 (`bd992f8c`) moved pnpm settings out of `package.json` because pnpm ≥ 11 stopped reading the `pnpm` field, and Gate 1 runs on the pnpm tree. Adding `pnpm.overrides` back to `package.json` works on pnpm 10 and would break on 11; do not do it. A pin added to one side only is applied to one tree and silently absent from the other, in whichever direction is worse: yaml-only ships the vulnerable version, `package.json`-only leaves Gate 1 green on a tree that still has it. `src/__tests__/root/override-parity.test.ts` fails when the two maps differ, names the side you missed, and is the only enforcement — the yaml's "keep this list in step" comment is no longer the mechanism.
+
 ### Build modes
 
 - `pnpm build` — **production** build (console.debug stripped, no sourcemap). For release.
