@@ -9,7 +9,6 @@
  *   - Model Scope dropdown (unified vs per-task)
  *   - Unified model picker (rendered via tab.renderModelField)
  *   - Lint + Query model pickers (only in per-task mode)
- *   - Max Tokens Per Call dropdown (only for local-like providers)
  *
  * Why extracted:
  *   - 230 LOC of model-picker side effects with the most subtle
@@ -26,8 +25,9 @@
  *   - Fetch Models: uses fetchModelsWithFallback for all providers
  *     (Kimi Anthropic /v1 suffix case); only auto-picks the first
  *     model via setFieldValue (which triggers the cascade).
- *   - MaxTokens dropdown renders only for ollama/lmstudio/custom/
- *     anthropic-compatible (preserves native provider defaults).
+ *
+ * Issue #904 moved the output-token and context-window dropdowns to the LLM
+ * Advanced Parameters section.
  */
 
 import { Setting, Notice, requestUrl } from 'obsidian';
@@ -241,23 +241,10 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
     });
   }
 
-  // Max Tokens Per Call (local-like providers only)
-  const localLikeProviders = ['ollama', 'lmstudio', 'custom', 'anthropic-compatible'];
-  if (localLikeProviders.includes(tempSettings.provider)) {
-    const tokenOptions = [0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576];
-    const tokenLabels = ['0 (No limit)', '4K', '8K', '16K', '32K', '64K', '128K', '256K', '512K', '1M'];
-    const currentVal = tempSettings.maxTokensPerCall ?? 0;
-    new Setting(containerEl)
-      .setName(tab.getText('maxTokensPerCallName'))
-      .setDesc(tab.getText('maxTokensPerCallDesc'))
-      .addDropdown(dropdown => {
-        tokenOptions.forEach((val, idx) => {
-          dropdown.addOption(String(val), tokenLabels[idx]);
-        });
-        dropdown.setValue(String(currentVal));
-        dropdown.onChange((value) => {
-          tempSettings.maxTokensPerCall = parseInt(value);
-        });
-      });
-  }
+  // Issue #904 moved the output ceiling and the context window out of this
+  // section and into LLM Advanced Parameters, next to the thinking controls
+  // they interact with. They are model-capability overrides, not model
+  // selection, and reading them beside `Thinking level` is what makes the
+  // relationship visible: reasoning tokens are paid from the same ceiling as
+  // the answer, so the two settings are one decision.
 }

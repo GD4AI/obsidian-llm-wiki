@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createMockContext, createMockFile } from '../__support__/engine-context';
 import { SourceAnalyzer } from '../../wiki/source-analyzer';
 import { normalizeFinishReason } from '../../llm-sdk/finish-reason';
-import { SOURCE_ANALYZER_RETRY_MULTIPLIER } from '../../constants';
+import { SOURCE_ANALYZER_RETRY_MULTIPLIER, DEFAULT_MODEL_OUTPUT_TOKENS } from '../../constants';
 import type { LLMClient, LLMFinishReason } from '../../types';
 import { TFile } from 'obsidian';
 
@@ -78,9 +78,10 @@ function scriptedClient(replies: ScriptedReply[], opts: { repair?: (broken: stri
   return { client, prompts, repairPrompts, maxTokens };
 }
 
-function analyzerWith(client: LLMClient): SourceAnalyzer {
+function analyzerWith(client: LLMClient, settings?: Record<string, unknown>): SourceAnalyzer {
   const { ctx } = createMockContext({
     vaultFiles: { [TEST_PATH]: '# Protein misfolding\nA note with content to extract.' },
+    settings,
   });
   ctx.getClient = () => client;
   return new SourceAnalyzer(ctx);
@@ -124,6 +125,13 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
     // retry must offer more room — halving only lowers the item ceiling in
     // the prompt, which cannot shorten a think-phase that never reached the
     // items.
+    //
+    // Issue #904 changes what "more room" can mean. While reasoning is
+    // possible the first attempt already declares the model's own ceiling, so
+    // there is nothing left to grow into: escalation is clamped at the
+    // ceiling, and the halving path inside the same retry is what shortens
+    // the batch. Declaring more than the ceiling is a 400, which is the
+    // failure this whole change removes.
     const { client, maxTokens } = scriptedClient([
       { text: TRUNCATED, finishReason: 'length' },
       { text: VALID, finishReason: 'stop' },
@@ -133,7 +141,68 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
 
     expect(result).not.toBeNull();
     expect(maxTokens.length).toBeGreaterThanOrEqual(2);
+    // Escalation adds room, never removes it: the first attempt already
+    // declared the ceiling, so the retry cannot go higher and stays put.
+    expect(maxTokens[1]).toBeGreaterThanOrEqual(maxTokens[0]);
+    expect(maxTokens[1]).toBeLessThanOrEqual(DEFAULT_MODEL_OUTPUT_TOKENS);
+  });
+
+  it('still triples a narrow budget when thinking is off', async () => {
+    // The pre-#904 invariant survives where it still has room: a request that
+    // declares only the answer need can grow on retry.
+    const { client, maxTokens } = scriptedClient([
+      { text: TRUNCATED, finishReason: 'length' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+
+    const result = await run(analyzerWith(client, { disableThinking: true }));
+
+    expect(result).not.toBeNull();
+    expect(maxTokens.length).toBeGreaterThanOrEqual(2);
     expect(maxTokens[1]).toBe(maxTokens[0] * SOURCE_ANALYZER_RETRY_MULTIPLIER);
+  });
+
+  // Issue #904: the ceiling is a starting assumption. A provider whose real
+  // limit is lower answers with a 400 that names max_tokens, and a 400 is not
+  // an answer. The loop halves and retries instead of failing the ingest.
+  it('halves a rejected output ceiling and retries', async () => {
+    const { client, maxTokens } = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    let rejected = false;
+    const wrapped = Object.create(client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      if (!rejected) {
+        rejected = true;
+        throw new Error('Invalid value for max_tokens: must be less than or equal to 65536');
+      }
+      return client.createMessage(params);
+    };
+
+    const result = await run(analyzerWith(wrapped));
+
+    expect(rejected).toBe(true);
+    expect(result).not.toBeNull();
+    expect(maxTokens[0]).toBe(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+  });
+
+  it('does not halve the ceiling for a failure that does not name it', async () => {
+    // A context-length complaint means the INPUT is too long. Halving the
+    // output budget would burn two calls and still fail, so the first-batch
+    // error must reach the classifier instead.
+    const { client, maxTokens } = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    let attempts = 0;
+    const wrapped = Object.create(client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      attempts++;
+      if (attempts === 1) {
+        throw new Error('This model\'s maximum context length is 8192 tokens');
+      }
+      return client.createMessage(params);
+    };
+
+    await expect(run(analyzerWith(wrapped))).rejects.toThrow(/context window/);
+
+    expect(attempts).toBe(1);
+    expect(maxTokens).toHaveLength(0);
   });
 
   it('does not retry when the parse failed for a reason other than truncation', async () => {

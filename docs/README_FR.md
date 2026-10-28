@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — version localisé
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0 (MINOR — analyse des images Markdown locales intégrées lors de l'ingestion, en-têtes de requête par fournisseur avec un préréglage OpenCode et une variante `(Responses)`, un repli de streaming `node:https` sur desktop pour les origines bloquées, et un vocabulaire de tags unique pour les réglages, les tags de note et les tags de page ; plus le correctif de build qui fait réellement fonctionner deux fonctions déjà livrées ; 4372 tests)
-- last-updated: 2026-09-15
+- latest: v1.29.0 (MINOR — l'étape lexicale lit désormais le corps des pages et note titre/alias/résumé/corps avec BM25F, le plus grand gain de rappel du projet ; au-dessus, une expansion de requête Rocchio en deux étapes dont l'affirmation a été resserrée par sa propre mesure ; une mise en forme des pages Related pour qu'une page hub n'attire plus toutes les autres ; un interrupteur `legacyScorer` dans les paramètres avancés comme chemin de retour ; plus une vague de corrections : le watcher respecte la liste d'exclusion d'Obsidian, l'indication de commande dans l'en-tête du journal, la découpe legacy du journal, et la normalisation des erreurs par marqueur SDK )
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basé sur un graphe, RAG sans embedding, recherche Personalized PageRank, deuxième cerveau Obsidian
 - search-intents: "Obsidian RAG sans embeddings", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recherche par graphe de notes", "implémentation Karpathy LLM Wiki", "génération automatique de base de connaissances Obsidian", "Obsidian Graph View + IA", "plugin deuxième cerveau Obsidian", "Obsidian IA graphe de liens", "plugin Obsidian 11 langues", "plugin Obsidian 16 fournisseurs LLM", "RAG sans base vectorielle", "ingestion PDF Obsidian IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "ingestion Obsidian Word PPT Excel", "identifiants Obsidian IAM"
 - features: recherche par graphe, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascade seed-selection 5 étapes, détection de doublons Tier 1/Tier 2, 11 langues UI + 11 langues sortie wiki (indépendantes), 16+ fournisseurs LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingest MinerU multi-format (PDF + images + Office), ingestion PDF (cache uniquement, voies OCR), Lint health scan, Smart Fix All, citations verbatim des pages sources, porte candidats à l'ingest, UI taskPolicies par étape, intégration Obsidian Graph View, architecture zéro embedding zéro base vectorielle, mode local-first
@@ -170,6 +170,11 @@ Cinq points d'entrée, commutable par ingest :
 ### 💬 Requête et maintenance
 
 - **🧭 Cascade PPR en 5 étapes** — voir [Fonctionnement de la recherche](#-fonctionnement-de-la-recherche). Personalized PageRank sur le graphe `[[wiki-link]]` pour un contexte multi-hop conscient du graphe.
+- **🆕 Score lexical qui lit le corps du texte (v1.29.0, #837)** — le chemin rapide note le titre, les alias, le résumé **et le corps** de chaque entité et concept avec BM25F. Le texte le plus long d'une page atteint enfin le scoreur. C'est le plus grand gain de rappel que ce projet ait fait.
+- **🆕 Mise en forme des pages Related (v1.29.0, #841)** — une page hub n'attire plus toutes les autres vers elle. Les listes Related sont recalculées à chaque écriture à partir des noms survivants, classées et plafonnées.
+- **🆕 Bascule vers l'ancien scoreur (v1.29.0, #842)** — Paramètres → Avancé → *Legacy query scorer* utilise l'ancien classement linéaire écrit à la main. Le nouveau classement est le défaut ; cette bascule est le chemin de retour.
+- **🆕 Le budget de réponse est de 16 000 tokens, et le pipeline le dit quand il est épuisé (v1.29.0, #852)** — une réponse ne s'arrête plus en silence à la limite du budget.
+- **🆕 Citations en forme académique (v1.29.0, #857)** — le composeur grandit avec le contenu, et *effacer l'historique* efface réellement l'enregistrement.
 - **🪟 Panneau latéral ancré à droite** — Query Wiki s'ouvre dans un panneau latéral droit style Copilot (v1.22.1+) au lieu d'un modal centré.
 - **🔍 Lint — analyse de santé** — une seule commande détecte : doublons, liens morts, pages vides, orphelines, alias manquants, contradictions.
 - **⚡ Smart Fix All** — réparation en un clic par ordre causal : remplir les alias → fusionner les doublons → corriger les liens morts → relier les orphelines → développer les pages vides, avec rapport par phase.
@@ -232,13 +237,19 @@ La plupart des plugins de « recherche IA » fragmentent vos notes en morceaux e
 
 Quand vous demandez « Qui a fondé Microsoft ? », Query Wiki exécute cinq étapes avant toute génération de réponse :
 
-1. **Chemin rapide Lex** — chevauchement direct de tokens contre chaque titre d'entité/concept et alias. Gratuit, instantané, et l'étape de filtrage pour tout ce qui suit.
+1. **Chemin rapide Lex** — BM25F sur le titre, les alias, le résumé **et le corps** de chaque entité et concept, avec saturation par champ et IDF issu d'une vraie table de fréquence documentaire. Gratuit, instantané, et l'étape de filtrage pour tout ce qui suit.
 2. **Génération de mots-clés LLM** — le LLM propose 8 à 12 mots-clés inter-langues à partir de votre requête (gère les synonymes, abréviations et termes résistants au chevauchement de tokens en un seul appel LLM).
 3. **Scan local de sous-chaînes** — chaque mot-clé généré est re-matché localement contre les titres de pages, alias et extraits de corps. Aucun appel LLM supplémentaire ; complète le rappel tolérant au bruit.
 4. **Fallback LLM KB** — quand lex + scan de mots-clés renvoient des signaux faibles, le LLM ré-ensemence les N meilleurs candidats avec une passe sémantique sur l'ensemble du wiki.
 5. **Expansion de graphe PPR** — Personalized PageRank (Haveliwala 2002) sur le graphe `[[wiki-link]]` à partir de l'ensemble de graines candidates. C'est ce qui donne le contexte multi-hop conscient du graphe : « Bill Gates » → « Microsoft » → « concurrents », pas seulement un chevauchement littéral de titres.
 
 La cascade se tronque à l'étape qui a renvoyé suffisamment de signal — pas de coût fixe de 5 étapes ; pas d'appels LLM quand lex est suffisant ; le fallback sémantique n'est utilisé que lorsque lex + scan de mots-clés ne suffit pas.
+
+### Expansion de la requête, et un moyen de revenir en arrière
+
+Lorsque la cascade atteint l'étape du graphe, la requête est étendue deux fois avant le choix des graines : d'abord avec les termes du wiki, puis avec les termes proposés par le LLM. Chaque passage est pondéré, et le gain est **mesuré** sur les vaults du projet plutôt que supposé : sur les deux vaults écrits par la version actuelle, l'expansion vaut **+0.086** et **+0.113** en r@10, et dans les deux cas l'intervalle exclut zéro. La affirmation est volontairement étroite : la forme pondérée n'est **pas** mesurablement meilleure que la simple concaténation, et l'interrupteur qui relance l'ancien scoreur est là pour les lecteurs dont les résultats se sont dégradés.
+
+Paramètres → Avancé → *Legacy query scorer* utilise l'ancien classement linéaire écrit à la main. Le nouveau classement est le défaut ; l'interrupteur est le chemin de retour.
 
 ### Personalized PageRank à l'échelle
 

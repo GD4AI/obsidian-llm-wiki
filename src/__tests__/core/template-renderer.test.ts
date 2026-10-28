@@ -74,3 +74,34 @@ describe('renderTemplate', () => {
     ).toBe('{{b}}');
   });
 });
+
+// Issue #904: the source analyzer renders `PROMPTS.analyzeSource` TWICE. The
+// first pass fills the static prefix on purpose and leaves `{{batch_context}}`
+// to split the template in two; the second fills the rest per batch. That
+// deliberate deferral was indistinguishable from a typo, so every ingest
+// emitted three "unknown placeholder" lines and the real warnings drowned.
+describe('renderTemplate — deferred placeholders', () => {
+  it('leaves deferred placeholders unrendered without logging', () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const result = renderTemplate(
+      'A {{content}} B {{batch_context}} C',
+      { content: 'body' },
+      { defer: ['batch_context'] },
+    );
+    expect(result).toBe('A body B {{batch_context}} C');
+    expect(debug).not.toHaveBeenCalled();
+  });
+
+  it('still reports a genuinely unknown placeholder', () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    renderTemplate('{{batch_context}} {{typo_here}}', {}, { defer: ['batch_context'] });
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug).toHaveBeenCalledWith(expect.stringContaining('{{typo_here}}'));
+  });
+
+  it('treats a deferred name that also has a value as rendered', () => {
+    // Deferral must not shadow a supplied value; the second pass still has to
+    // be able to fill it if a caller passes both.
+    expect(renderTemplate('{{x}}', { x: 'v' }, { defer: ['x'] })).toBe('v');
+  });
+});

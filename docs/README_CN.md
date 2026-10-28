@@ -12,8 +12,8 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.28.0（MINOR — 摄入时分析本地 Markdown 图片嵌入、按服务商设置请求头并新增 OpenCode 预设与 `(Responses)` 变体、跨域受限时的桌面端 `node:https` 流式回退、设置/笔记标签/页面标签统一为一套词表；外加让两个已发布功能在正式构建中真正生效的构建修复；4372 tests）
-- last-updated: 2026-09-15
+- latest: v1.29.0（MINOR — 词法阶段现在读取页面正文，用 BM25F 对标题/别名/摘要/正文打分，是本项目最大的一次召回改进；其上叠加两阶段 Rocchio 查询扩展，其结论被自身测量收窄；Related 页塑形，使单个 hub 不再把其他页面全拉向自己；高级设置中的 `legacyScorer` 开关作为退路；以及一轮正确性修复：watcher 遵守 Obsidian 排除列表、日志头部的命令提示、legacy 日志切法、错误归一化改用 SDK marker）
+- last-updated: 2026-10-26
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
 - features: 基于图谱的检索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 级种子选择级联, Tier 1/Tier 2 重复检测, 11 语言界面 + 11 语言 Wiki 输出（独立设置）, 16+ LLM 提供商（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-兼容, Codex OAuth）,MinerU 多格式导入（PDF + 图像 + Office）, PDF 摄入（仅缓存、OCR 路径）, Lint 健康扫描, 一键智能修复, 源页原句引用, 摄入候选门, 按步骤任务策略 UI, Obsidian 图谱视图集成, 零嵌入零向量数据库架构, 本地优先模式
@@ -176,6 +176,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 ### 💬 查询与维护
 
 - **🧭 5 级 PPR 级联** — 见 [检索工作原理](#-检索工作原理)。`[[wiki-link]]` 图上的 Personalized PageRank 提供图感知的多跳上下文。
+- **🆕 正文感知的词法打分（v1.29.0，#837）** — 快速路径对标题、别名、摘要**与正文**做 BM25F 打分，页面上最长的文字终于能进入打分器。这是本项目做过的最大一次召回改进。
+- **🆕 Related 页塑形（v1.29.0，#841）** — 一个 hub 页不再把其他所有页面都拉向自己。Related 列表每次写入时按存活的名称重算、排序并封顶。
+- **🆕 旧版排序开关（v1.29.0，#842）** — 设置 → 高级设置 → *旧版查询评分器*（Legacy query scorer）改用此前的手工线性排序。新排序是默认值，这个开关是退路。
+- **🆕 答案预算提升到 16,000 token，管道会在用尽时明说（v1.29.0，#852）** — 答案不再在预算处静默截断。
+- **🆕 引用改为学术格式（v1.29.0，#857）** — 输入框随内容变高，*清空历史*会真正清掉记录。
 - **🪟 右侧停靠侧边栏** — 查询 Wiki 在 Copilot 风格的右侧侧边栏（v1.22.1+）中打开，而非居中弹窗。
 - **🔍 Lint 健康扫描** — 一条命令检测：重复页、断链、空洞页、孤立页、缺失别名、矛盾。
 - **⚡ 一键智能修复** — 按因果关系顺序修复：补全别名 → 合并重复 → 修复断链 → 链接孤立页 → 扩充空洞页，附带各阶段报告。
@@ -240,13 +245,19 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 当你在问"谁创立了微软？"时，查询 Wiki 在任何答案生成之前运行五个阶段：
 
-1. **Lex 快速路径** — 直接对每个实体/概念的标题和别名做 token 重叠匹配。免费、即时，也是后续所有阶段的把关者。
+1. **Lex 快速路径** — 对每个实体/概念的标题、别名、摘要**与正文**做 BM25F 打分，带字段饱和与基于真实文档频率表的 IDF。免费、即时，也是后续所有阶段的把关者。
 2. **LLM 关键词生成** — LLM 从你的查询中提出 8–12 个跨语言关键词（在一次 LLM 调用中处理同义词、缩写和 token 重叠不敏感的术语）。
 3. **本地子串扫描** — 每个生成的关键词在本地对页面标题、别名和正文片段重新匹配。无需额外 LLM 调用；补足噪声容忍的召回。
 4. **LLM KB 回退** — 当 lex + 关键词扫描返回的信号不足时，LLM 对 top-N 候选重新针对完整 Wiki 做一次语义筛选。
 5. **PPR 图扩展** — 在 `[[wiki-link]]` 图上从候选种子集运行 Personalized PageRank（Haveliwala 2002）。这是实现图感知多跳上下文的关键："比尔·盖茨" → "微软" → "竞争对手"，而不只是字面标题重叠。
 
 级联在任一阶段返回足够信号时截断——没有固定的 5 阶段开销，lex 足够时无需 LLM 调用；只有当 lex + 关键词扫描仍不够时，才会启动语义回退。
+
+### 查询扩展，以及一条退路
+
+当级联走到图扩展阶段时，查询会先扩展两次再选种子：一次用 Wiki 自己的词，一次用 LLM 提出的词。每一轮都带权重，而收益是在本项目自己的库上**量**出来的，不是假设：在当前版本写出的两个库上，扩展在 r@10 上分别值 **+0.086** 与 **+0.113**，两者的区间都不含零。这个结论刻意说得很窄：加权形式**并不**比简单拼接可测量地更好，而切换回旧排序器的开关就在那里，供结果变差的读者使用。
+
+设置 → 高级设置 → *旧版查询评分器*（Legacy query scorer）改用此前的手工线性排序。新排序是默认值，这个开关是退路。
 
 ### 规模化的 Personalized PageRank
 

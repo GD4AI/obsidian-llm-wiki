@@ -122,6 +122,7 @@ const pages = files.map((file) => {
   };
 });
 
+// eslint-disable-next-line no-unsanitized/method -- OUT_PATH is a hardcoded local constant (the bundle this script just built), not user input
 const { formatRecallDiagnostic, segment } = await import(OUT_PATH);
 
 const DEFAULT_QUERIES = queries.length > 0 ? queries : [
