@@ -46,8 +46,24 @@ function readPins(raw: unknown): Pins {
 }
 
 function npmPins(): Pins {
-  const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { overrides?: unknown };
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { overrides?: unknown; pnpm?: unknown; resolutions?: unknown };
   return readPins(pkg.overrides);
+}
+
+/**
+ * The two homes above are the two that work. Others exist and look plausible:
+ * `pnpm.overrides` was the documented place until pnpm 11 stopped reading it,
+ * and `resolutions` is the Yarn spelling. A pin written into either of those is
+ * invisible to the comparisons above — it would be applied to nothing, and the
+ * two tests that matter would report parity between the maps that do work.
+ */
+function thirdHomes(): string[] {
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { pnpm?: unknown; resolutions?: unknown };
+  const found: string[] = [];
+  const nested = pkg.pnpm as { overrides?: unknown } | undefined;
+  if (nested && typeof nested === 'object' && nested.overrides) found.push('package.json -> pnpm.overrides');
+  if (pkg.resolutions) found.push('package.json -> resolutions');
+  return found;
 }
 
 function pnpmPins(): Pins {
@@ -88,5 +104,17 @@ describe('dependency overrides are declared once per package manager, identicall
     // above pass while comparing nothing. This is the guard on the guard.
     expect(Object.keys(npmPins()).length).toBeGreaterThan(0);
     expect(Object.keys(pnpmPins()).length).toBeGreaterThan(0);
+  });
+
+  it('declares no pin in a field that no package manager reads', () => {
+    // `pnpm.overrides` stopped being read by pnpm 11; `resolutions` is Yarn's.
+    // Either one accepts a pin silently, applies it to nothing, and leaves the
+    // two real maps in perfect agreement — the exact failure this file exists
+    // to catch, one field to the left.
+    expect(
+      thirdHomes(),
+      'A pin under `pnpm.overrides` or `resolutions` is applied to no tree. Move it to '
+      + '`overrides` in package.json and pnpm-workspace.yaml.',
+    ).toEqual([]);
   });
 });
