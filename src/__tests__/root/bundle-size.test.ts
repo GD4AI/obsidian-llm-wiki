@@ -50,8 +50,24 @@ const bundle = readFileSync('main.js');
 const bundleBytes = bundle.length;
 const bundleText = bundle.toString('utf8');
 
+/**
+ * A `pnpm build:dev` artifact, not the shipped one.
+ *
+ * The dev build inlines a ~13 MB source map, so it is three to four times the
+ * production size and always over the cap. That is by design — the file is
+ * meant for the maintainer's own end-to-end run. Failing here would say "your
+ * debug build is too big", which is true, uninteresting, and would train the
+ * reader to ignore this guard.
+ *
+ * Detected by the inline source map rather than by size, so a production
+ * bundle that grows past the cap can never be mistaken for a dev build. The
+ * marker has to be searched for across the whole file: it sits at the START
+ * of a ~13 MB base64 payload, so the last kilobyte is payload only.
+ */
+const isDevBuild = bundleText.includes('sourceMappingURL=data:application/json');
+
 describe('shipped bundle size', () => {
-  it('stays under the Obsidian Sync Standard 5 MB per-file cap', () => {
+  it.skipIf(isDevBuild)('stays under the Obsidian Sync Standard 5 MB per-file cap', () => {
     expect(
       bundleBytes,
       `main.js is ${bundleBytes.toLocaleString('en-US')} bytes, at or over the ` +
@@ -67,7 +83,8 @@ describe('shipped bundle size', () => {
   it('decodes as clean UTF-8 with no replacement characters', () => {
     // A wrong `charset` setting, or a byte-level write under an assumption of
     // ASCII, would surface here as U+FFFD. The build is the only writer of
-    // main.js, so this is the place to notice.
+    // main.js, so this is the place to notice. Runs on dev builds too — a
+    // mangled encoding is a defect in both.
     expect(bundleText.includes('\uFFFD')).toBe(false);
   });
 });

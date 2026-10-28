@@ -42,6 +42,14 @@ export interface WrapperSettings {
    * step keeps today's behaviour — see src/core/task-policy.ts.
    */
   taskPolicies?: TaskPolicyMap;
+  /**
+   * Issue #904: global thinking level, the child of the `disableThinking`
+   * toggle. `default` (or absent) sends nothing. A per-task policy outranks
+   * it; the toggle outranks it too, because "off" is the stronger request.
+   */
+  thinkingEffort?: 'default' | 'low' | 'medium' | 'high';
+  /** Issue #904: the toggle itself, so this layer resolves the precedence. */
+  disableThinking?: boolean;
 }
 
 // Closed union for the [llm] debug-log breadcrumb. Stays narrow so a typo
@@ -180,13 +188,32 @@ function applyTaskPolicy(
 }> {
   const policy = resolveTaskPolicy(settings.taskPolicies, task);
   const effort = thinkingEffort(policy.thinking);
+
+  // Issue #904: the global level sits under the per-task policy. It is only
+  // consulted when the policy did not name a step, and only when the toggle
+  // is not asking for silence — `disableThinking` is the stronger request and
+  // resolves first, in `isReasoningPossible` as well, so budget and wire agree.
+  const globalLevel = policy.thinking === 'default' && settings.disableThinking !== true
+    ? settings.thinkingEffort
+    : undefined;
+  const globalEffort: ThinkingEffort | undefined =
+    globalLevel === 'low' || globalLevel === 'medium' || globalLevel === 'high'
+      ? globalLevel
+      : undefined;
+
   return {
     ...(policy.outputMode !== 'default' ? { outputModeOverride: policy.outputMode } : {}),
-    ...(policy.thinking !== 'default' ? { enableThinking: policy.thinking !== 'off' } : {}),
+    ...(policy.thinking !== 'default'
+      ? { enableThinking: policy.thinking !== 'off' }
+      : settings.disableThinking === true
+        ? { enableThinking: false }
+        : globalEffort
+          ? { enableThinking: true }
+          : {}),
     // A named level is `on` plus a budget; it rides alongside enableThinking
     // rather than replacing it, because the suppression field and the effort
     // field are the same wire key and the client decides which value it takes.
-    ...(effort ? { reasoningEffort: effort } : {}),
+    ...(effort ? { reasoningEffort: effort } : globalEffort ? { reasoningEffort: globalEffort } : {}),
   };
 }
 
