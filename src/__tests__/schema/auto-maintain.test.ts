@@ -224,3 +224,54 @@ describe('AutoMaintainManager.isWatched — the vault root', () => {
     }
   });
 });
+
+// Issue #872 — the automatic path did not consult Obsidian's "Excluded files"
+// list. The manual folder ingest asked Obsidian; the watcher did not, so a
+// file the user had excluded was ingested anyway as soon as the change came
+// from the watcher instead of from the command. This is the silent path: the
+// user is not there to notice, and the content goes to the provider.
+describe('AutoMaintainManager.isWatched — the user exclusion list (#872)', () => {
+  type WatchProbe = { isWatched: (path: string) => boolean };
+
+  function managerWithExclusion(excluded: string[]) {
+    const settings = {
+      language: 'en',
+      autoWatchMode: 'auto',
+      autoWatchDebounceMs: 0,
+      watchedFolders: ['Notizen'],
+      wikiFolder: 'wiki',
+    } as unknown as LLMWikiSettings;
+    const app = {
+      vault: { configDir: '.obsidian' },
+      metadataCache: {
+        isUserIgnored: (path: string) => excluded.includes(path),
+      },
+    } as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
+    const wikiEngine = {} as unknown as WikiEngine;
+    const plugin = {} as unknown as ConstructorParameters<typeof AutoMaintainManager>[3];
+    return new AutoMaintainManager(app, settings, wikiEngine, plugin) as unknown as WatchProbe;
+  }
+
+  it('does not watch a file Obsidian excludes', () => {
+    const mgr = managerWithExclusion(['Notizen/private.md']);
+    expect(mgr.isWatched('Notizen/private.md')).toBe(false);
+  });
+
+  it('still watches the files Obsidian does not exclude', () => {
+    const mgr = managerWithExclusion(['Notizen/private.md']);
+    expect(mgr.isWatched('Notizen/public.md')).toBe(true);
+  });
+
+  it('watches the file when Obsidian has no exclusion API at all', () => {
+    // An older Obsidian, or a test double. The method is missing, so there is
+    // no list to consult and nothing is excluded.
+    const settings = {
+      language: 'en',
+      watchedFolders: ['Notizen'],
+      wikiFolder: 'wiki',
+    } as unknown as LLMWikiSettings;
+    const app = { vault: { configDir: '.obsidian' } } as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
+    const mgr = new AutoMaintainManager(app, settings, {} as unknown as WikiEngine, {} as unknown as ConstructorParameters<typeof AutoMaintainManager>[3]) as unknown as WatchProbe;
+    expect(mgr.isWatched('Notizen/a.md')).toBe(true);
+  });
+});

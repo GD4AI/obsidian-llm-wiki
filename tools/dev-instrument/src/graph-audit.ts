@@ -264,7 +264,7 @@ export function graphAudit(
     let directedSum = 0;
     let undirectedSum = 0;
     let counted = 0;
-    for (const [source, own] of bySource) {
+    for (const [, own] of bySource) {
       const ownSet = new Set(own);
       const others = sourced.filter(p => !ownSet.has(p));
       if (others.length === 0) continue;

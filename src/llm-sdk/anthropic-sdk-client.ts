@@ -29,6 +29,7 @@ import {
   isUrlError,
 } from '../core/url-fallback';
 import { extractResultReasoning, reportFinish } from './finish-reason';
+import { resolveSdkReasoning } from './reasoning-level';
 import { buildSamplingArgs } from './sampling-args';
 import { wrapReasoningContent } from '../core/markdown';
 
@@ -143,6 +144,14 @@ export class AnthropicSdkClient implements LLMClient {
     // v1.23.0 P1.5: baseURLOverride lets the fallback retry path pass a
     // corrected URL (e.g., `/v1` appended for Kimi Coding Plan) without
     // mutating this.baseURL. Cached resolved URLs flow through this.
+    //
+    // The user's URL is forwarded UNCHANGED when nothing has been resolved.
+    // It must be: DeepSeek and MiniMax.chat serve their Anthropic skin at
+    // `/anthropic/messages` with no `/v1`, while z.ai and OpenRouter require
+    // `/v1` in the base the user types. A rule that guesses would break one
+    // family to help the other. What makes the difference is the URL fallback,
+    // and `isUrlError` is the gate it depends on — hardened 2026-10-15 to
+    // recognise a 404 that arrives without `instanceof Error` passing.
     const effectiveBaseURL = baseURLOverride ?? getCachedUrl(this.baseURL ?? '') ?? this.baseURL;
     const provider = createAnthropic({
       apiKey: this.apiKey,
@@ -183,7 +192,15 @@ export class AnthropicSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, enableThinking, cacheBreakpoint, onFinish, abortSignal } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, enableThinking, reasoningEffort, cacheBreakpoint, onFinish, abortSignal } = params;
+
+    // Issue #904: one level, translated by the SDK. `@ai-sdk/anthropic` owns
+    // the mapping AND the per-model downgrade — on a model that rejects
+    // `thinking: disabled` (Claude Opus 5.5) it converts `'none'` to
+    // `{ effort: 'low' }` with a compatibility warning instead of letting the
+    // request 400. Hand-writing `{ type: 'disabled' }` here, as this client
+    // did until now, produced that 400.
+    const reasoningLevel = resolveSdkReasoning({ enableThinking, reasoningEffort });
 
     // Issue #449 v1.26.4 PATCH follow-up: when cacheBreakpoint is defined,
     // split the FIRST user message's text content at the offset and attach
@@ -205,10 +222,7 @@ export class AnthropicSdkClient implements LLMClient {
         messages: messagesWithCacheControl,
         ...(abortSignal ? { abortSignal } : {}),
         maxOutputTokens: max_tokens,
-        providerOptions: this.buildProviderOptions({
-          enableThinking,
-          repetitionPenalty: repetition_penalty,
-        }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
+        ...(reasoningLevel ? { reasoning: reasoningLevel } : {}),
         ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
       });
       reportFinish(onFinish, result.finishReason);
@@ -234,10 +248,7 @@ export class AnthropicSdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages: messagesWithCacheControl,
           maxOutputTokens: max_tokens,
-          providerOptions: this.buildProviderOptions({
-            enableThinking,
-            repetitionPenalty: repetition_penalty,
-          }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
+          ...(reasoningLevel ? { reasoning: reasoningLevel } : {}),
           ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
         });
         reportFinish(onFinish, result.finishReason);
@@ -247,37 +258,18 @@ export class AnthropicSdkClient implements LLMClient {
     }
   }
 
-  /**
-   * Map AI-SDK options → Anthropic provider options.
-   *
-   * Anthropic thinking: AI-SDK exposes `providerOptions.anthropic.thinking`
-   * with `{type: 'enabled' | 'disabled', budgetTokens?: number}`.
-   * We map `enableThinking=false` → `{type: 'disabled'}` for parity
-   * with the OpenAI reasoningEffort='low' path.
-   *
-   * Issue #414: `repetitionPenalty` is intentionally NOT propagated
-   * here. Anthropic's Messages API has no `repetition_penalty` (only
-   * `temperature` / `top_p` / `top_k`); the AI SDK's `@ai-sdk/anthropic`
-   * zod schema also has no entry for it. Sending it would put an
-   * unknown field on the wire (Claude silently ignores unknown fields
-   * — same silent-no-op class as #414). The user's opt-in setting is
-   * honored by being dropped before emit, which matches the 10-locale
-   * i18n text ("cloud providers will silently ignore it"). A future
-   * Anthropic-side implementation could re-enable propagation by
-   * accepting a custom field name here.
-   */
-  private buildProviderOptions(opts: {
-    enableThinking?: boolean;
-    repetitionPenalty?: number;
-  }): Record<string, Record<string, unknown>> {
-    const anthropicOpts: Record<string, unknown> = {};
-
-    if (opts.enableThinking === false) {
-      anthropicOpts.thinking = { type: 'disabled' };
-    }
-
-    return Object.keys(anthropicOpts).length > 0 ? { anthropic: anthropicOpts } : {};
-  }
+  // Issue #904 REMOVED `buildProviderOptions` from this client. It existed to
+  // hand-translate `enableThinking` into `providerOptions.anthropic.thinking`,
+  // which duplicated a mapping `@ai-sdk/anthropic` already performs and got one
+  // case wrong: `{ type: 'disabled' }` is a 400 on any model that always thinks
+  // (Claude Opus 5.5), while the SDK's own path downgrades it to `effort: 'low'`
+  // with a compatibility warning. `reasoning` (see ./reasoning-level.ts) is the
+  // replacement, and it also knows each model's supported levels.
+  //
+  // `repetitionPenalty` is still NOT propagated: Anthropic's Messages API has
+  // no such field, and @ai-sdk/anthropic has no schema entry for it. Dropping
+  // it before emit is the honest behaviour, and it matches the i18n text
+  // ("cloud providers will silently ignore it").
 
   async createMessageStream(params: {
     model: string;
@@ -287,6 +279,8 @@ export class AnthropicSdkClient implements LLMClient {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     onChunk: (chunk: string) => void;
     enableThinking?: boolean;
+    /** Issue #904: named thinking level, translated by the SDK. */
+    reasoningEffort?: 'low' | 'medium' | 'high';
     temperature?: number;
     top_p?: number;
     // No `seed`. The Messages API has no such parameter, so a run against
@@ -296,7 +290,8 @@ export class AnthropicSdkClient implements LLMClient {
     /** Step label for per-task accounting (Issue #469). Not consumed here — forwarded for interface conformance. */
     task?: string;
   }): Promise<string> {
-    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, enableThinking, abortSignal } = params;
+    const { model, max_tokens, system, messages, onChunk, temperature, top_p, enableThinking, reasoningEffort, abortSignal } = params;
+    const reasoningLevel = resolveSdkReasoning({ enableThinking, reasoningEffort });
 
     // v1.23.0 P1.5: same URL fallback as createMessage, so streaming
     // (Query Wiki) is consistent with non-streaming (Ingest / Lint /
@@ -311,10 +306,7 @@ export class AnthropicSdkClient implements LLMClient {
         ...(system ? { system } : {}),
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         maxOutputTokens: max_tokens,
-        providerOptions: this.buildProviderOptions({
-          enableThinking,
-          repetitionPenalty: repetition_penalty,
-        }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
+        ...(reasoningLevel ? { reasoning: reasoningLevel } : {}),
         ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
       });
 
@@ -360,10 +352,7 @@ export class AnthropicSdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           maxOutputTokens: max_tokens,
-          providerOptions: this.buildProviderOptions({
-            enableThinking,
-            repetitionPenalty: repetition_penalty,
-          }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
+          ...(reasoningLevel ? { reasoning: reasoningLevel } : {}),
           ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
         });
 

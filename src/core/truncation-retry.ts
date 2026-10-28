@@ -15,9 +15,9 @@
  * dependency. Fully unit-testable.
  */
 
-import { MAX_TOKENS_BATCH } from '../constants';
+import { TRUNCATION_RETRY_MAX_CAP } from '../constants';
 
-const DEFAULT_MAX_CAP = MAX_TOKENS_BATCH; // 16000
+const DEFAULT_MAX_CAP = TRUNCATION_RETRY_MAX_CAP;
 
 export interface TruncationRetryOptions<T> {
   /** Function that performs the initial API call. */
@@ -33,7 +33,7 @@ export interface TruncationRetryOptions<T> {
   extractText: (response: T) => string;
   /** Returns the current max_tokens (used to compute retry value). */
   getMaxTokens: () => number;
-  /** Cap for the doubled max_tokens. Defaults to MAX_TOKENS_BATCH. */
+  /** Cap for the doubled max_tokens. Defaults to TRUNCATION_RETRY_MAX_CAP. */
   maxCap?: number;
   /** Label used in the warning log. */
   label: string;

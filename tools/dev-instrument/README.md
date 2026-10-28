@@ -83,10 +83,14 @@ per-task real-LLM cost without waiting for sibling repo sync.
 ## Bot compliance
 
 This directory passes `pnpm lint:tools-bot` with **0 `obsidianmd/*`
-findings**. The single local-only `no-unsanitized/method` warning on
-`run-instrument.mjs:97` (the dynamic import of the bundled output) is
-not in the Bot's `obsidianmd/recommended` ruleset and is therefore out
-of scope for submission review.
+findings and 0 errors**. Three local-only `no-unsanitized/method`
+findings remain — the dynamic imports of the bundled output in
+`run-instrument.mjs`, `run-graph-audit.mjs` and `run-recall-harness.mjs`.
+Each carries a one-line disable with its reason, because the argument is a
+hardcoded local constant rather than user input, and the rule is not in the
+Bot's `obsidianmd/recommended` ruleset. The nine remaining warnings are
+`no-unused-vars` on harness scaffolding, which the Bot does not scan in
+`.mjs` either.
 
 See issue [#507](https://github.com/GD4AI/obsidian-llm-wiki/issues/507)
 for the full migration plan.
@@ -97,6 +101,9 @@ for the full migration plan.
 tools/dev-instrument/
 ├── README.md                       # this file
 ├── run-instrument.mjs              # entry — bundles engine-runner.ts via esbuild
+├── run-context-cost.mjs            # the answer context's cost on a real vault
+├── run-conversation-eval.mjs       # conversation-history evaluation (three arms, one pipeline)
+├── conversation-cases.json         # the hand-written follow-up cases
 ├── tsconfig.json                   # ESNext + moduleResolution bundler
 ├── .gitignore                      # ignores dist/
 ├── src/
@@ -107,6 +114,73 @@ tools/dev-instrument/
 └── dist/                           # gitignored — esbuild bundle output
     └── run-instrument.mjs
 ```
+
+## The conversation evaluation
+
+`run-conversation-eval.mjs` measures the two conversation cases that the
+corpus-level r@10 numbers cannot see, because the question there is not a
+conversation. It runs three arms through the production pipeline —
+`planRetrieval` and `selectPprSeeds`, the same two functions `QueryView`
+calls — and reports a per-family verdict.
+
+```bash
+npx tsx tools/dev-instrument/run-conversation-eval.mjs <vault-dir> \
+  --cases tools/dev-instrument/conversation-cases.json --derive --limit 30
+```
+
+| arm | what it does | what it stands for |
+|---|---|---|
+| `none` | the history never reaches the query | the product without conversation history |
+| `concat` | the history is appended to the question | the behaviour before the history weighting |
+| `weighted` | the history is weighted at 0.3 | the production behaviour |
+
+Two families:
+
+- **topic-switch** — the question asks about a page and the history is about
+  other pages. The question's own page must stay at rank 1. Auto-derived
+  from the vault's own pages, with the history built from pages that share no
+  vocabulary with the question's.
+- **follow-up** — the question refers back to the history, so the words that
+  identify the page live in the history and not in the question. Hand-written,
+  in `conversation-cases.json`, because anaphora is not derivable from a link
+  graph.
+
+The verdict is the comparison, not any single number: when `weighted` and
+`concat` land on the same figure for a family, the weighting does not change
+that family's ranking. `--limit` applies **per family**, so two runs stay
+comparable.
+
+## `run-context-cost.mjs` — what one answer sends
+
+A second instrument, separate from the ingest one: it measures the **query**
+side, namely the context one answer carries.
+
+It runs the production path in the production order —
+`parseIndexForPages` → `buildGraphFromContent` → `selectPprSeeds` →
+`loadRelevantPagesForQuery` → `assembleWikiContext` — and re-implements
+nothing. The seed query is a real page's own title, sampled **equidistantly**
+over the page list, so the sample is not "whatever the index orders first".
+
+```bash
+npx tsx tools/dev-instrument/run-context-cost.mjs \
+  --vault "/path/to/Vault" --wiki-folder wiki --cases 30 --dump /tmp/ctx
+```
+
+- `--wiki-language` must match the vault's wiki language. A mismatch makes the
+  summary extractor find no section, every page falls back to the full-text
+  path, and the measurement becomes a different — and larger — one than
+  production.
+- `--dump <dir>` writes each case's assembled context to `<dir>/<n>.txt`.
+
+**Token counting is not in the script on purpose.** A tokenizer is a
+dependency the plugin does not have, and a per-character ratio is a different
+measurement than a token count — the ratio is per language and per provider.
+Dump the text and count it with the provider's own tokenizer (`tiktoken`'s
+`o200k_base` for OpenAI).
+
+The LLM client is not passed to `selectPprSeeds`, so this measures the
+lexical+PPR arm. The LLM arm picks a different seed set; the page count is
+the same cap either way.
 
 ## Migration from legacy `tools/llm-wiki-cli/`
 

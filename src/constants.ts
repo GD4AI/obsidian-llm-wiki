@@ -167,9 +167,36 @@ export const SOURCE_ANALYZER_RETRY_MULTIPLIER = 3;
 
 /**
  * Maximum total tokens per LLM batch call.
- * Used for iterative source extraction and llm-client truncation retry cap.
+ * Used for iterative source extraction.
+ *
+ * Since Issue #904 this is a FLOOR, not the declared ceiling: extraction
+ * asks for the model's own output ceiling while reasoning is possible,
+ * because one ceiling pays for reasoning and answer together. Do not raise
+ * it to fix a reasoning-only failure — that only moves the wall.
  */
 export const MAX_TOKENS_BATCH = 16000;
+
+/**
+ * Output ceiling declared when the user chose Auto and the real limit is
+ * unknown (Issue #904). 128,000 is the modal current-generation limit:
+ * OpenAI GPT-6 and Anthropic Opus/Sonnet 5.5 both publish 128K, Gemini 3.5
+ * Flash publishes 65K. A declared ceiling that is too high costs nothing
+ * when unused; one that is too low costs the whole turn.
+ *
+ * This is a starting assumption, not a fact about any one model. The
+ * extraction path halves it and retries when a provider rejects the value.
+ */
+export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
+
+/**
+ * Ceiling for the truncation-retry double-up (Issue #904).
+ *
+ * Was borrowed from `MAX_TOKENS_BATCH`. Decoupled so that raising the
+ * extraction budget cannot silently raise this one, and vice versa: they
+ * answer different questions ("how much may one call declare" vs "how far
+ * may a retry grow a truncated response").
+ */
+export const TRUNCATION_RETRY_MAX_CAP = 16000;
 
 /**
  * Token budget for full page generation (entity/concept/source-summary).
@@ -452,6 +479,23 @@ export const TOKENS_QUERY_PAGE_SELECT = 2000;
 export const TOKENS_QUERY_ANSWER = 16000;
 
 /**
+ * How many recent user turns the RETRIEVAL query carries.
+ *
+ * Separate from `maxConversationHistory`, which bounds what the ANSWER
+ * generator sees. Those two want different sizes. The answer wants the widest
+ * window a provider's prefix cache will hold; the retrieval wants only the
+ * turns that say what the user is looking for.
+ *
+ * Measured 2026-10-15 on 1,000 follow-up cases across both vaults: scoring the
+ * follow-up alone is 0.015-0.047 r@10 and scoring it with the recent turns is
+ * 0.49-0.67. The gain saturates fast and every turn past the useful ones adds
+ * vocabulary the query does not want — a hand pass with the full conversation
+ * in the query produced noise. 5 is the sliding window that keeps the topic
+ * without the transcript.
+ */
+export const RETRIEVAL_HISTORY_ROUNDS = 5;
+
+/**
  * Token budget for query suggest-save dedup check.
  *
  * v1.24.1 PATCH Phase 5.5.0: raised 300 → 2000. Same rationale.
@@ -495,6 +539,29 @@ export const TOKENS_SCHEMA_SUGGESTION = 4096;
  * Prevents merged multi-source pages from bloating the LLM context.
  */
 export const MAX_PAGE_CONTENT_CHARS = 12800;
+
+/**
+ * Total characters of MATCHED PARAGRAPHS across one retrieval, shared evenly
+ * across the retrieved pages.
+ *
+ * #855 fix 6. The retrieval scores the full body; the display shows one section
+ * (Description, else Definition). `extractMatchedParagraphs` closes that gap by
+ * appending the paragraphs the query actually matched. Each page's summary is
+ * already capped at `MAX_PAGE_CONTENT_CHARS / 3`, and the addition was capped
+ * the same way, so an entity page carried 8,532 characters instead of 4,266 —
+ * and with `RETRIEVAL_BUDGET` of 20 pages nothing bounded the total. Measured:
+ * 20 x 8,532 = 170,640 characters against `TOKENS_QUERY_ANSWER` of 16,000.
+ *
+ * This budget caps the ADDITION, not the page. The summary keeps the cap it has
+ * always had, so nothing that ships today gets smaller. At 20 pages it leaves
+ * 640 characters per page of matched prose, which is enough for the paragraph
+ * that earned the page and not enough for the whole body.
+ *
+ * Divided rather than spent in order: a page late in the ranked list is one of
+ * the pages the model needs, and a first-come budget starves exactly the
+ * lower-ranked results the retrieval worked to surface.
+ */
+export const MATCHED_PARAGRAPHS_TOTAL_CHARS = 12800;
 
 // ============================================================================
 // LLM Client Settings
