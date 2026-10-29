@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A Query Wiki failure before the answer phase is no longer silent (Issue #914).** `sendMessage` built the answer context before it entered its own `try`, so a throw in the retrieval phase rejected the promise. Neither call site had a handler, so the user saw no message at all — and the send button stayed in stop mode, which refused every later query in that view. The error boundary now opens above the context build, so the failure renders through the existing `llm-wiki-query-error` element, and the two `void this.sendMessage(...)` call sites carry a handler for anything raised before that boundary.
+- **The issue's premise was corrected before the fix shipped.** The retrieval-path LLM calls do not reach the throw site: `generateQueryKeywords` has its own `catch` that returns an empty keyword list, and `buildWikiContext` has its own `catch` that returns a context hint. A provider 429 during expansion therefore degrades to lexical retrieval and the query still runs. What reaches the throw site is a vault-read or graph-build failure — rarer, and previously invisible.
+
 ### Changed
 
 - **The query prompt constrains what the assistant may assert, not just how it links (Issue #908).** The prompt stated the link rule five times — about 700 characters — and said almost nothing about what the assistant may claim. Format errors are visible and cheap to correct; an invented number is invisible and gets acted on. The format section is now one rule plus two examples, and the instruction space it gave up pays for three clauses that were absent: exact values (the hedge preserved, no rounding, no unit conversion, no substituting a similar fact, and "no page gives a value" instead of an estimate), what counts as evidence (a quoted passage in `## Mentions in Source` is verbatim; every other section was condensed, so a value seen only in prose must be reported as unquoted, and two disagreeing pages are both reported rather than resolved), and three permitted ways to say the pages do not answer, with one forbidden one — the assistant sees the retrieved pages, not the wiki, so "the Wiki does not contain this" is a claim it cannot support.
