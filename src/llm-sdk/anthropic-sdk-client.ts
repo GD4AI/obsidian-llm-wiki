@@ -30,6 +30,8 @@ import {
 } from '../core/url-fallback';
 import { extractResultReasoning, reportFinish } from './finish-reason';
 import { resolveSdkReasoning } from './reasoning-level';
+import { withExplicitStreamFalse } from './explicit-stream-flag';
+import { assertNotEmptyAnswer } from './empty-answer';
 import { buildSamplingArgs } from './sampling-args';
 import { wrapReasoningContent } from '../core/markdown';
 
@@ -156,7 +158,11 @@ export class AnthropicSdkClient implements LLMClient {
     const provider = createAnthropic({
       apiKey: this.apiKey,
       ...(effectiveBaseURL ? { baseURL: effectiveBaseURL } : {}),
-      fetch: fetchFn as unknown as typeof fetch,
+      // Issue #916: a non-streaming request must say so on the wire. The SDK
+      // omits `stream` (correct — the default is `false`), but a gateway that
+      // reads `body.stream !== false` treats the absent field as a request
+      // for a stream. The streaming path already sends `stream: true`.
+      fetch: withExplicitStreamFalse(fetchFn) as typeof fetch,
     });
     return provider(modelId);
   }
@@ -192,7 +198,7 @@ export class AnthropicSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, system, messages, temperature, top_p, enableThinking, reasoningEffort, cacheBreakpoint, onFinish, abortSignal } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, enableThinking, reasoningEffort, cacheBreakpoint, onFinish, abortSignal, allowEmptyResponse } = params;
 
     // Issue #904: one level, translated by the SDK. `@ai-sdk/anthropic` owns
     // the mapping AND the per-model downgrade — on a model that rejects
@@ -226,6 +232,9 @@ export class AnthropicSdkClient implements LLMClient {
         ...buildSamplingArgs({ temperature, top_p, abortSignal }, { withSeed: false }),
       });
       reportFinish(onFinish, result.finishReason);
+      // Issue #916: an answer that arrives empty must say so rather than
+      // render as a blank pane.
+      if (!allowEmptyResponse) assertNotEmptyAnswer(result.text, 'the provider');
       return result.text;
     } catch (err) {
       // v1.23.0 P1.5: URL fallback for custom baseURLs (Kimi / z.ai / GLM).
@@ -334,6 +343,9 @@ export class AnthropicSdkClient implements LLMClient {
       if (reasoningContent) {
         fullText = wrapReasoningContent(reasoningContent, fullText);
       }
+      // Issue #916: a stream that ended with no text and no exception used to
+      // render as a blank answer.
+      assertNotEmptyAnswer(fullText, 'the streamed answer');
       return fullText;
     } catch (err) {
       // URL fallback for streaming — same logic as createMessage.

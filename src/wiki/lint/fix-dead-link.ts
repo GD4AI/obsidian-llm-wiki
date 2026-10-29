@@ -272,6 +272,11 @@ export async function fixDeadLink(
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       ...(disableThinking ? { enableThinking: false } : {}),
+      // Issue #916: an empty response here means "this backend rejected the
+      // JSON mode", and the code below retries without it. The clients raise
+      // on an empty answer by default, so this probe has to ask for the empty
+      // string back.
+      allowEmptyResponse: true,
     });
 
     if (!response) {
