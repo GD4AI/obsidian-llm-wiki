@@ -125,54 +125,108 @@ describe('dependency overrides are declared once per package manager, identicall
  * The two declarations being equal (above) says nothing about whether npm
  * actually applied either one. `package-lock.json` is what the shipped
  * artifact is built from: the community store scanner rebuilds each release
- * with `npm ci` + `npm run build` and byte-diffs the result against the
- * published asset, so the lockfile — not `node_modules`, and not pnpm's
- * resolution — decides what ships.
+ * The lockfile is what the release build resolves against: `release.yml`
+ * installs the npm tree, and `.npmrc` exists because a lockfile resolved
+ * against the wrong registry produced a `main.js` whose hash differed from the
+ * published one. So the pin has to be visible in `package-lock.json`, not only
+ * in the two `overrides` maps.
  *
  * Nothing checked that before this block. `scripts/check-lockfile-sync.mjs`
  * compares the four dependency sections of `packages[""]` and does not read
  * `overrides` at all, which was verified by mutation on 2026-10-29: setting
  * `node_modules/undici` back to 8.10.2 in the lockfile while the pin says
  * 8.12.3 still printed `lockfile-sync: package-lock.json matches package.json`.
- * So changing a pin without regenerating the lockfile shipped the vulnerable
- * version and failed nothing.
+ * So a pin that never reached the lockfile failed nothing.
  *
- * This block is offline and exact: it reads versions the lockfile recorded, and
+ * **What this block does NOT claim.** `release.yml` runs `npm install`, which
+ * reconciles `package.json` into the lockfile, so the release build would pick
+ * up a new pin even from a stale lockfile. The harm this prevents is the
+ * committed lockfile disagreeing with the pins — which is what makes a frozen
+ * install reproducible, and what the store scanner rebuilds from.
+ *
+ * This block is offline and exact: it reads what the lockfile recorded, and
  * needs no registry.
  */
-describe('every pin is applied by the tree that ships', () => {
-  type LockEntry = { version?: string };
+describe('every pin is applied by the npm tree', () => {
+  type LockEntry = { version?: string; resolved?: string; dev?: boolean };
 
-  function shippedVersions(pkg: string): string[] {
-    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
-      packages?: Record<string, LockEntry>;
-    };
-    const paths = Object.keys(lock.packages ?? {}).filter(
-      (path) => path === `node_modules/${pkg}` || path.endsWith(`/node_modules/${pkg}`),
+  /**
+   * Parse once. Six pins against a 6,800-line JSON is six parses otherwise,
+   * and a per-pin read is how a reviewer ends up not trusting a cost note.
+   */
+  const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
+    packages?: Record<string, LockEntry>;
+  };
+  const entries = Object.entries(lock.packages ?? {});
+
+  /** Every `packages` key that installs `pkg`: the top level plus nested copies. */
+  function pathsFor(pkg: string): Array<[string, LockEntry]> {
+    return entries.filter(
+      ([path]) => path === `node_modules/${pkg}` || path.endsWith(`/node_modules/${pkg}`),
     );
-    return [...new Set(paths.map((path) => lock.packages?.[path]?.version ?? '?'))].sort();
   }
 
-  it('resolves each pinned package to exactly the pinned version', () => {
+  it('installs each pinned package once, at the pinned version', () => {
     const pins = npmPins();
     const wrong = Object.entries(pins)
-      .map(([name, want]) => ({ package: name, pinned: want, inLockfile: shippedVersions(name) }))
-      .filter((row) => row.inLockfile.length !== 1 || row.inLockfile[0] !== row.pinned);
+      .map(([name, want]) => {
+        const found = pathsFor(name);
+        return {
+          package: name,
+          pinned: want,
+          // Versions are listed WITHOUT deduping: two copies at the same version
+          // are still two module instances, and that is the failure mode this
+          // condition exists for. `new Set` here would hide it — this repo's own
+          // lockfile has `@eslint/core` 0.17.0 under two different parents.
+          copies: found.length,
+          versions: found.map(([, entry]) => entry.version ?? '?').sort(),
+        };
+      })
+      .filter((row) => row.copies !== 1 || row.versions[0] !== row.pinned);
 
     expect(
       wrong,
-      'The shipped tree must resolve every pinned package to its pin, in one copy. '
-      + 'Two copies means npm could not collapse the graph — the duplicate-class problem '
-      + 'that made `instanceof` stop matching across AI SDK copies. No copy, or the wrong '
-      + 'version, means the pin was never applied: regenerate package-lock.json with '
+      'The npm tree must install every pinned package exactly once, at its pin. '
+      + '`copies > 1` means npm could not collapse the graph — the duplicate-class '
+      + 'problem that made `instanceof` stop matching across AI SDK copies, and it is two '
+      + 'copies even when both are the same version. `copies === 0` or a different '
+      + 'version means the pin never reached this lockfile: regenerate it with '
       + '`npm install --legacy-peer-deps --package-lock-only`.',
     ).toEqual([]);
   });
 
-  it('is not vacuous — the lockfile is readable and the pins are non-empty', () => {
-    // A rename of `packages` or of an override key would make the test above
-    // compare two empty lists and pass.
-    expect(Object.keys(npmPins()).length).toBeGreaterThan(0);
-    expect(shippedVersions(Object.keys(npmPins())[0])).not.toHaveLength(0);
+  it('resolves each pin to a tarball of that version, not only a version field', () => {
+    // `version` is one field in a record the build trusts three of. A hand-edited
+    // version with an untouched `resolved` would satisfy the test above while the
+    // tarball it installs is the old one, so the URL has to agree.
+    const pins = npmPins();
+    const mismatched = Object.entries(pins)
+      .flatMap(([name, want]) =>
+        pathsFor(name)
+          .filter(([, entry]) => {
+            const resolved = entry.resolved ?? '';
+            // `resolved` is absent for a link/bundled entry; only judge what has one.
+            return resolved !== '' && !resolved.endsWith(`-${want}.tgz`);
+          })
+          .map(([path, entry]) => ({ package: name, pinned: want, path, resolved: entry.resolved })),
+    );
+
+    expect(
+      mismatched,
+      'A pinned entry must resolve to the tarball for the pinned version. A `version` '
+      + 'that says one thing while `resolved` points at another installs the old bytes '
+      + 'and passes a version-only check.',
+    ).toEqual([]);
+  });
+
+  it('is not vacuous — the lockfile parses and reads as a lockfile', () => {
+    // A renamed `packages` gives `pathsFor` an empty result for every pin, which
+    // the first test already catches — so this guards the readable-lockfile
+    // premise rather than duplicating the assertion. The threshold is loose on
+    // purpose: it should notice a truncated or wrong-format file, not fail on
+    // a dependency removal. This tree carries 436 entries at lockfileVersion 3.
+    expect(entries.length).toBeGreaterThan(100);
+    expect(entries.some(([path]) => path === 'node_modules/typescript')).toBe(true);
+    expect(lock.packages?.['']).toBeDefined();
   });
 });
