@@ -40,6 +40,9 @@ import {
   isUrlError,
 } from '../core/url-fallback';
 import { extractResultReasoning, reportFinish } from './finish-reason';
+import { bodyExcerpt, describeUnreadableBody } from './unreadable-body';
+import { withExplicitStreamFalse } from './explicit-stream-flag';
+import { assertNotEmptyAnswer } from './empty-answer';
 import { buildSamplingArgs } from './sampling-args';
 import { ReasoningStripProber } from './reasoning-strip-probe';
 
@@ -127,7 +130,14 @@ export class OpenAISdkClient implements LLMClient {
    */
   private withRequestHeaders(fetchFn: unknown): unknown {
     const headers = this.headers;
-    if (!headers || Object.keys(headers).length === 0) return fetchFn;
+    // Issue #916: a non-streaming request must say so on the wire. The SDK
+    // omits `stream` (correct — OpenAI's default is `false`), but a gateway
+    // that reads `body.stream !== false` treats the absent field as a request
+    // for a stream and answers with an event stream, which the SDK then
+    // fails to parse as JSON. The streaming path already sends `stream: true`
+    // and is left alone by the wrapper.
+    const withStreamFlag = withExplicitStreamFalse(fetchFn);
+    if (!headers || Object.keys(headers).length === 0) return withStreamFlag;
     return async (url: unknown, init?: { headers?: unknown }) => {
       const merged = new Headers(init?.headers as HeadersInit);
       for (const [name, value] of Object.entries(headers)) {
@@ -135,7 +145,7 @@ export class OpenAISdkClient implements LLMClient {
         if (value === '') merged.delete(name);
         else merged.set(name, value);
       }
-      const inner = fetchFn as (u: unknown, i?: unknown) => Promise<unknown>;
+      const inner = withStreamFlag as (u: unknown, i?: unknown) => Promise<unknown>;
       return inner(url, { ...(init ?? {}), headers: merged });
     };
   }
@@ -178,7 +188,7 @@ export class OpenAISdkClient implements LLMClient {
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
     // Type-safe params destructure (LLMClient.createMessage signature).
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, response_format, onFinish, abortSignal } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, response_format, onFinish, abortSignal, allowEmptyResponse } = params;
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
@@ -244,6 +254,9 @@ export class OpenAISdkClient implements LLMClient {
           ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
         });
         reportFinish(onFinish, result.finishReason, result.usage);
+        // Issue #916: an answer that arrives empty must say so rather than
+        // render as a blank pane.
+        if (!allowEmptyResponse) assertNotEmptyAnswer(result.text, 'the provider');
         return result.text;
       }
 
@@ -479,6 +492,9 @@ export class OpenAISdkClient implements LLMClient {
         fullText = wrapReasoningContent(reasoningContent, fullText);
       }
 
+      // Issue #916: a stream that ended with no text and no exception used to
+      // render as a blank answer.
+      assertNotEmptyAnswer(fullText, 'the streamed answer');
       return fullText;
     } catch (err) {
       // v1.23.0 P1.5: URL fallback for streaming path (Query Wiki)
@@ -603,8 +619,27 @@ export function mapAiSdkError(err: unknown): Error {
     // APICallError.message is "Provider returned error [status]: message"
     // We rebuild it to match the v1.22.5 format exactly:
     //   "status <code>: <provider message>"
-    const providerMsg = extractProviderMessage(err);
+    //
+    // Issue #916: a 2xx here does not mean the provider failed. The SDK
+    // wraps a body it could not parse in an APICallError carrying the HTTP
+    // status, so a request that succeeded arrives as an error with a 200.
+    // Formatting that as `status 200: {the whole body}` reads as a
+    // contradiction and pastes hundreds of characters of raw response into
+    // the UI. The 4xx and 5xx format is unchanged — `core/url-fallback.ts`
+    // parses `status 404: ...` to find a working base URL.
     const code = err.statusCode ?? 0;
+    if (code >= 200 && code < 300) {
+      const body = err.responseBody ?? '';
+      const enriched = new Error(
+        `HTTP ${code}: the request succeeded but the response body could not be read. `
+        + `${describeUnreadableBody(body)} `
+        + `Body starts: ${bodyExcerpt(body)}`,
+      );
+      (enriched as Error & { statusCode?: number; responseBody?: string }).statusCode = code;
+      (enriched as Error & { statusCode?: number; responseBody?: string }).responseBody = body;
+      return enriched;
+    }
+    const providerMsg = extractProviderMessage(err);
     const enriched = new Error(`status ${code}${providerMsg ? `: ${providerMsg}` : ''}`);
     // Attach useful properties for any code that reads them.
     (enriched as Error & { statusCode?: number; responseBody?: string }).statusCode = code;
