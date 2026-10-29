@@ -545,11 +545,12 @@ export class QueryView extends ItemView {
     const foundPrefix = texts.queryPhaseFoundPages.split('{count}')[0];
 
     // Issue #914: the answer phase used to open its `try` BELOW the context
-    // build, so a throw in the retrieval phase rejected the promise. The
-    // rejection had no handler at either call site, so the user saw nothing —
-    // and `isStreaming` was never reset, which left the pane refusing every
-    // later query. The timer is declared here so the catch below can stop it
-    // even when the failure happened before the timer started.
+    // build. `buildWikiContext` has its own `catch` and returns a hint string,
+    // so it does not reject — the boundary here is defence in depth for that
+    // call, and the reachable hazard is the DOM setup ABOVE it, which is
+    // handled by `reportQueryFailure` at both call sites. The timer is declared
+    // here so the catch below can stop it even when the failure happened
+    // before the timer started.
     let timerInterval: number | null = null;
     const cleanupTimer = () => {
       if (timerInterval !== null) {
@@ -569,7 +570,7 @@ export class QueryView extends ItemView {
       });
 
       if (this.aborted) {
-        statusIndicator.remove();
+        cleanupTimer();
         this.finishGeneration(texts as unknown as Record<string, string>);
         return;
       }
@@ -817,15 +818,29 @@ export class QueryView extends ItemView {
   /**
    * Issue #914: the last-resort handler for a failure raised BEFORE
    * `sendMessage` opens its error boundary — the DOM setup at the top of the
-   * method. Nothing can be rendered into the answer body at that point, so
-   * the failure is reported as a Notice instead of becoming an unhandled
+   * method. Nothing can be rendered into the answer body at that point, so the
+   * failure is reported as a Notice instead of becoming an unhandled
    * rejection, which the user reads as "nothing happened".
+   *
+   * **Releasing the pane is the part that matters.** `sendMessage` sets
+   * `isStreaming = true` before that DOM setup and early-returns while it is
+   * true, so a throw in the setup left the view refusing every later query
+   * until it was reopened. `finishGeneration` is the one path that restores
+   * the button and the input state, so it runs here too. `isStreaming` is
+   * cleared first and unconditionally, because it is the invariant; the rest
+   * of `finishGeneration` is cosmetic and is allowed to fail.
    */
   private reportQueryFailure(error: unknown): void {
     console.error('QueryView.sendMessage failed outside its error boundary:', error);
+    const texts = TEXTS[this.plugin.settings.language] ?? TEXTS.en;
     const message = error instanceof Error ? error.message : String(error);
-    const prefix = TEXTS[this.plugin.settings.language].queryModalErrorPrefix;
-    new Notice(prefix + message, NOTICE_ERROR);
+    new Notice(texts.queryModalErrorPrefix + message, NOTICE_ERROR);
+    this.isStreaming = false;
+    try {
+      this.finishGeneration(texts as unknown as Record<string, string>);
+    } catch (restoreError) {
+      console.error('QueryView could not restore the pane after a failed send:', restoreError);
+    }
   }
 
   stopGeneration() {

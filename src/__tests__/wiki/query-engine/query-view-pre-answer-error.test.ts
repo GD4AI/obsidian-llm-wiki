@@ -1,36 +1,34 @@
 // Issue #914 — a Query Wiki failure BEFORE the answer phase is silent.
 //
-// The diagnosis in the issue was read off the control flow, and the control
-// flow is as described: `sendMessage` builds the answer context at
-// `QueryView-class.ts:545` and only enters its own `try` at `:577`, so a
-// throw in between rejects the promise. Both call sites
-// (`:301`, `:332`) say `void this.sendMessage(...)` — no handler — so the
-// rejection is unhandled.
+// The issue's diagnosis was read off the control flow, and the control flow is
+// as described: `sendMessage` builds the answer context, then enters its own
+// `try`. Both call sites said `void this.sendMessage(...)` — no handler — so a
+// rejection in between was unhandled.
 //
-// Two consequences, and the second is the one a user actually feels:
+// **The reachable defect is narrower than the issue says, and it is not a
+// provider error.** Two `catch` blocks sit between the LLM calls and the
+// boundary: `generateQueryKeywords` (`pipeline/query-keywords.ts:206`) returns
+// an empty keyword list, and `buildWikiContext` returns
+// `wikiContextErrorHint` — its `try` covers every `await`, so it does not
+// reject. A provider 429 therefore degrades to lexical retrieval and the query
+// still runs, and no vault-read or graph-build failure reaches the boundary
+// either.
 //
-//   1. No error element is rendered. The answer body stays empty.
-//   2. `this.isStreaming` is never reset, because the reset lives in
-//      `finishGeneration`, which sits after the `try`. The send button
-//      stays in stop mode, and `sendMessage` early-returns on
-//      `this.isStreaming` — so the pane is dead until the view is reopened.
+// What CAN still throw is the DOM setup at the top of `sendMessage`, and that
+// path has the consequence worth fixing: `this.isStreaming` is set to `true`
+// before the setup and is only reset by `finishGeneration`, which sits after
+// the boundary. So a throw there left the view refusing every later query —
+// `sendMessage` early-returns while `isStreaming` is true — until it was
+// reopened. The tests below drive that path by making a pre-boundary helper
+// throw.
 //
-// This test drives the real `sendMessage` and asserts the user-visible
-// outcome: an element with class `llm-wiki-query-error`, and a pane that
-// accepts the next query.
-//
-// One correction to the issue's premise, recorded here so it is not lost:
-// the retrieval-path LLM calls do NOT reach `:545`. `generateQueryKeywords`
-// has its own `try`/`catch` (`pipeline/query-keywords.ts:206`) that returns
-// an empty keyword list, and `buildWikiContext` has its own `catch`
-// (`:1357`) that returns `wikiContextErrorHint`. So a provider 429 during
-// expansion degrades to lexical retrieval and the query still runs. What
-// reaches `:545` is a vault-read or graph-build failure — rarer, and worse,
-// because nothing catches it.
+// The boundary move itself is defence in depth: it is free, and it stops a
+// future edit from re-creating the original hole.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
 import { installObsidianDomHelpers } from '../../__support__/dom-helpers';
 import { QueryView } from '../../../wiki/query-engine';
+import { Notice } from 'obsidian';
 
 // The `obsidian` module ships types only, so the import graph cannot be
 // loaded under the jsdom environment — Vite's import analysis fails on it
@@ -65,6 +63,7 @@ type ViewInternals = {
   pendingInput: string;
   accumulatedResponse: string;
   currentResponseDiv: unknown;
+  _streamRafHandle: number | null;
   inputArea: HTMLTextAreaElement;
   sendBtn: HTMLButtonElement;
   historyContainer: HTMLElement;
@@ -83,6 +82,12 @@ interface TestOptions {
   contextError?: Error;
   /** Thrown by both answer-phase calls. */
   answerError?: Error;
+  /**
+   * Thrown by a helper that runs BEFORE the error boundary — the DOM setup.
+   * This is the path a real vault can reach, because `buildWikiContext` has
+   * its own `catch` and does not reject.
+   */
+  setupError?: Error;
 }
 
 /**
@@ -122,6 +127,7 @@ function makeView(options: TestOptions): QueryView {
   view.pendingInput = '';
   view.accumulatedResponse = '';
   view.currentResponseDiv = null;
+  view._streamRafHandle = null;
 
   // eslint-disable-next-line obsidianmd/no-global-this
   const doc = globalThis.document;
@@ -134,7 +140,11 @@ function makeView(options: TestOptions): QueryView {
   view.buildWikiContext = options.contextError
     ? vi.fn().mockRejectedValue(options.contextError)
     : vi.fn().mockResolvedValue('WIKI CONTEXT');
-  view.renderHistoryMessage = vi.fn();
+  // `renderHistoryMessage` is the first thing `sendMessage` calls after it sets
+  // `isStreaming`, so making it throw exercises the pre-boundary path.
+  view.renderHistoryMessage = options.setupError
+    ? vi.fn(() => { throw options.setupError; })
+    : vi.fn();
   view.scrollToBottom = vi.fn();
   view.limitHistory = vi.fn();
   view.scrollToStartOfCurrentTurn = vi.fn();
@@ -161,6 +171,15 @@ describe('QueryView — a failure before the answer phase must reach the user (#
     expect(el?.textContent ?? '').toContain('vault read failed');
   });
 
+  it('renders exactly one error element, so the user does not see it twice', async () => {
+    const view = makeView({ contextError: new Error('vault read failed') });
+
+    await view.sendMessage('what is the retention curve?');
+
+    const container = (view as unknown as ViewInternals).historyContainer;
+    expect(container.querySelectorAll('.llm-wiki-query-error')).toHaveLength(1);
+  });
+
   it('releases the pane, so the next query is not refused', async () => {
     const view = makeView({ contextError: new Error('vault read failed') });
 
@@ -171,12 +190,10 @@ describe('QueryView — a failure before the answer phase must reach the user (#
     expect((view as unknown as ViewInternals).isStreaming).toBe(false);
   });
 
-  it('does not reject the promise, so the caller has nothing to swallow', async () => {
+  it('resolves rather than rejecting, so a caller has nothing to swallow', async () => {
     const view = makeView({ contextError: new Error('vault read failed') });
 
-    await expect(
-      view.sendMessage('what is the retention curve?'),
-    ).resolves.not.toThrow();
+    await expect(view.sendMessage('what is the retention curve?')).resolves.toBeUndefined();
   });
 
   it('keeps the send button usable after the failure', async () => {
@@ -187,6 +204,58 @@ describe('QueryView — a failure before the answer phase must reach the user (#
     const btn = (view as unknown as ViewInternals).sendBtn;
     expect(btn.textContent).not.toContain('Stop');
     expect(btn.className).toContain('llm-wiki-query-send-btn');
+  });
+
+  // The cases below cover the one path a real vault can reach: a throw in the
+  // DOM setup, above the boundary. `sendMessage` rejects there — it has no
+  // `catch` above the setup, by design — so the release comes from the
+  // `.catch()` handler at the call site, which calls `reportQueryFailure`.
+  // That handler's wiring is asserted structurally in `query-view-wiring.test.ts`;
+  // its behaviour is asserted here, called directly, because the alternative
+  // is to fake the whole `onOpen()` scaffolding and then test the fake.
+
+  it('rejects when a pre-boundary helper throws, so the caller must handle it', async () => {
+    const view = makeView({ setupError: new Error('history render failed') });
+
+    await expect(
+      view.sendMessage('what is the retention curve?'),
+    ).rejects.toThrow('history render failed');
+  });
+
+  it('reportQueryFailure releases the pane', async () => {
+    const view = makeView({ setupError: new Error('history render failed') });
+    (view as unknown as ViewInternals).isStreaming = true;
+
+    (view as unknown as { reportQueryFailure: (e: unknown) => void })
+      .reportQueryFailure(new Error('history render failed'));
+
+    // Without this the view refuses every later query until it is reopened.
+    expect((view as unknown as ViewInternals).isStreaming).toBe(false);
+  });
+
+  it('reportQueryFailure restores the send button', async () => {
+    const view = makeView({ setupError: new Error('history render failed') });
+    (view as unknown as ViewInternals).isStreaming = true;
+
+    (view as unknown as { reportQueryFailure: (e: unknown) => void })
+      .reportQueryFailure(new Error('history render failed'));
+
+    const btn = (view as unknown as ViewInternals).sendBtn;
+    expect(btn.textContent).not.toContain('Stop');
+    expect(btn.className).toContain('llm-wiki-query-send-btn');
+  });
+
+  it('reportQueryFailure states the reason in a Notice, because there is no answer body yet', async () => {
+    const noticeMock = Notice as unknown as { instances: Array<{ message: string }> };
+    const before = noticeMock.instances.length;
+    const view = makeView({ setupError: new Error('history render failed') });
+
+    (view as unknown as { reportQueryFailure: (e: unknown) => void })
+      .reportQueryFailure(new Error('history render failed'));
+
+    expect(noticeMock.instances.length).toBeGreaterThan(before);
+    expect(noticeMock.instances[noticeMock.instances.length - 1].message)
+      .toContain('history render failed');
   });
 
   it('still renders the error when the ANSWER phase fails (regression guard)', async () => {
