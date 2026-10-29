@@ -118,3 +118,61 @@ describe('dependency overrides are declared once per package manager, identicall
     ).toEqual([]);
   });
 });
+
+/**
+ * A pin is only a pin once the shipped tree resolves to it.
+ *
+ * The two declarations being equal (above) says nothing about whether npm
+ * actually applied either one. `package-lock.json` is what the shipped
+ * artifact is built from: the community store scanner rebuilds each release
+ * with `npm ci` + `npm run build` and byte-diffs the result against the
+ * published asset, so the lockfile — not `node_modules`, and not pnpm's
+ * resolution — decides what ships.
+ *
+ * Nothing checked that before this block. `scripts/check-lockfile-sync.mjs`
+ * compares the four dependency sections of `packages[""]` and does not read
+ * `overrides` at all, which was verified by mutation on 2026-10-29: setting
+ * `node_modules/undici` back to 8.10.2 in the lockfile while the pin says
+ * 8.12.3 still printed `lockfile-sync: package-lock.json matches package.json`.
+ * So changing a pin without regenerating the lockfile shipped the vulnerable
+ * version and failed nothing.
+ *
+ * This block is offline and exact: it reads versions the lockfile recorded, and
+ * needs no registry.
+ */
+describe('every pin is applied by the tree that ships', () => {
+  type LockEntry = { version?: string };
+
+  function shippedVersions(pkg: string): string[] {
+    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
+      packages?: Record<string, LockEntry>;
+    };
+    const paths = Object.keys(lock.packages ?? {}).filter(
+      (path) => path === `node_modules/${pkg}` || path.endsWith(`/node_modules/${pkg}`),
+    );
+    return [...new Set(paths.map((path) => lock.packages?.[path]?.version ?? '?'))].sort();
+  }
+
+  it('resolves each pinned package to exactly the pinned version', () => {
+    const pins = npmPins();
+    const wrong = Object.entries(pins)
+      .map(([name, want]) => ({ package: name, pinned: want, inLockfile: shippedVersions(name) }))
+      .filter((row) => row.inLockfile.length !== 1 || row.inLockfile[0] !== row.pinned);
+
+    expect(
+      wrong,
+      'The shipped tree must resolve every pinned package to its pin, in one copy. '
+      + 'Two copies means npm could not collapse the graph — the duplicate-class problem '
+      + 'that made `instanceof` stop matching across AI SDK copies. No copy, or the wrong '
+      + 'version, means the pin was never applied: regenerate package-lock.json with '
+      + '`npm install --legacy-peer-deps --package-lock-only`.',
+    ).toEqual([]);
+  });
+
+  it('is not vacuous — the lockfile is readable and the pins are non-empty', () => {
+    // A rename of `packages` or of an override key would make the test above
+    // compare two empty lists and pass.
+    expect(Object.keys(npmPins()).length).toBeGreaterThan(0);
+    expect(shippedVersions(Object.keys(npmPins())[0])).not.toHaveLength(0);
+  });
+});
