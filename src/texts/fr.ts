@@ -394,6 +394,15 @@ export const FR_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Tag en double ignoré',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Personnalisation du prompt',
+    extractionFocusName: 'Priorité d\'extraction',
+    extractionFocusDesc: 'Texte libre ajouté au prompt d\'extraction : quelles entités et concepts du domaine ce wiki doit prioriser. Ne modifie ni le protocole JSON ni les règles de tags. Vide = désactivé. 4000 caractères max.',
+    extractionFocusPlaceholder: 'ex. Priorité : personnages principaux et boss ; modes de jeu et cartes ; armes et paliers d\'équipement ; mécaniques du passe de combat de la saison',
+    contentRequirementsName: 'Exigences de contenu',
+    contentRequirementsDesc: 'Texte libre ajouté aux prompts de génération de pages : insistance expressive, structure, aspects à couvrir impérativement. Les règles de citation et d\'anti-hallucination restent gérées par le système. Vide = désactivé. 4000 caractères max.',
+    contentRequirementsPlaceholder: 'ex. Citer l\'épisode ou le chapitre source quand il est connu ; noter « selon la rumeur » / « présumé » pour leséments sans source ; garder une section « Notes de risque » si elle s\'applique',
+
     // Ingestion Acceleration
     accelerationSectionTitle: 'Accélération de l\'import',
     pageGenerationConcurrencyName: 'Parallélisme LLM',

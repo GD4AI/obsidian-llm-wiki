@@ -112,6 +112,7 @@ describe('TASK_SECTIONS delivery matrix (#491 — oversight reading)', () => {
       'Concept Page Template',
       'Naming Conventions',
       'Date Fields',
+      'Content Rules',
       'Classification Rules',
       'Multi-Source Merge Rules',
     ]);

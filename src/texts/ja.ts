@@ -392,6 +392,15 @@ export const JA_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: '重複タグをスキップしました',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'プロンプトのカスタマイズ',
+    extractionFocusName: '抽出の重点',
+    extractionFocusDesc: '抽出プロンプトに追記される自由テキスト：この Wiki が優先すべき領域のエンティティ／概念を指定します。JSON プロトコルやタグ規則は変更しません。空欄 = 無効。上限 4000 文字。',
+    extractionFocusPlaceholder: '例：重点：主人公とボス、ゲームモードとマップ、武器と装備のティア、戦闘パス（H）',
+    contentRequirementsName: '内容生成の要件',
+    contentRequirementsDesc: 'ページ生成プロンプトに追記される自由テキスト：表現の重点・構成・必ず扱うべき観点を指定します。引用・統合・Hallucination 防止の規則はシステム管理のため変更されません。空欄 = 無効。上限 4000 文字。',
+    contentRequirementsPlaceholder: '例：既知であれば出典の巻／章を明記する。出典のない設定には「伝承」「推測」と書く。リスクが伴う内容には「リスクメモ」節を置く。',
+
     // Ingestion Acceleration
     accelerationSectionTitle: '取り込み高速化',
     pageGenerationConcurrencyName: 'LLM 並列度',

@@ -394,6 +394,15 @@ export const DE_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Doppeltes Tag übersprungen',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Prompt-Anpassung',
+    extractionFocusName: 'Extraktionsschwerpunkt',
+    extractionFocusDesc: 'Freitext, der an den Extraktions-Prompt angehängt wird: welche Domänen-Entitäten und -Konzepte dieses Wiki priorisieren soll. Das JSON-Protokoll und die Tag-Regeln bleiben unverändert. Leer = aus. Max. 4000 Zeichen.',
+    extractionFocusPlaceholder: 'z. B. Schwerpunkt: Hauptfiguren und Bosse; Spielmodi und Karten; Waffen und Ausrüstungsstufen; Battle-Pass-Mechaniken der Saison',
+    contentRequirementsName: 'Inhaltsanforderungen',
+    contentRequirementsDesc: 'Freitext, der an die Seitenerzeugungs-Prompts angehängt wird: Ausdrucksschwerpunkt, Struktur, zwingend zu behandelnde Aspekte. Zitier- und Anti-Halluzinations-Regeln bleiben systemverwaltet. Leer = aus. Max. 4000 Zeichen.',
+    contentRequirementsPlaceholder: 'z. B. Quelle (Folge/Kapitel) angeben, wenn bekannt; Überliefertes ohne Beleg als "berichtet"/"vermutet" kennzeichnen; Risiken in einem eigenen Abschnitt "Risikohinweise" führen',
+
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aufnahmen-Beschleunigung',
     pageGenerationConcurrencyName: 'LLM-Parallelität',

@@ -403,6 +403,15 @@ export const IT_TEXTS = {
     customConceptTagsPlaceholder: 'teoria, metodo, campo, fenomeno, termine',
     chipDuplicateHint: 'Tag duplicato ignorato',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Personalizzazione del prompt',
+    extractionFocusName: 'Priorità di estrazione',
+    extractionFocusDesc: 'Testo libero aggiunto al prompt di estrazione: quali entità e concetti del dominio questo wiki deve privilegiare. Non modifica il protocollo JSON né le regole sui tag. Vuoto = disattivato. Max 4000 caratteri.',
+    extractionFocusPlaceholder: 'es. Priorità: personaggi principali e boss; modalità di gioco e mappe; armi e livelli di equipaggiamento; meccaniche del battle pass stagionale',
+    contentRequirementsName: 'Requisiti di contenuto',
+    contentRequirementsDesc: 'Testo libero aggiunto ai prompt di generazione delle pagine: enfasi espressiva, struttura, aspetti da coprire necessariamente. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
+    contentRequirementsPlaceholder: 'es. Cita l\'episodio o il capitolo di origine quando noto; usa "si dice"/"presunto" per ciò che non ha fonte; mantieni una sezione "Note di rischio" dove applicabile',
+
     // Accelerazione Acquisizione
     accelerationSectionTitle: 'Accelerazione acquisizione',
     pageGenerationConcurrencyName: 'Concorrenza LLM',

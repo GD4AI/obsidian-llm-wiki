@@ -37,6 +37,10 @@ import { NOTICE_NORMAL, NOTICE_ERROR, NOTICE_SHORT, CUSTOM_LIMIT_MAX, CUSTOM_LIM
 import { HistoryModal } from '../history-modal';
 import { TagChipInputComponent } from '../tag-chip-input';
 import { setSettingsVisible } from '../settings-helpers';
+import { clampPromptFocusText } from '../../core/prompt-focus';
+
+/** How long to wait after a keystroke before rewriting the schema file. */
+const WRITE_DEBOUNCE_MS = 800;
 
 export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -52,6 +56,80 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
       .setPlaceholder(tab.getText('wikiFolderPlaceholder'))
       .setValue(tempSettings.wikiFolder)
       .onChange((value) => { tempSettings.wikiFolder = value; }));
+
+  // v1.27.3: the two free-text hints live in the SCHEMA, and this edits them.
+  //
+  // They were settings until 2026-10-30. `schema/config.md` already owns both
+  // texts — `## Content Rules` carries the plugin's own rules and `TASK_SECTIONS`
+  // routes it to analyze / entity / concept / merge — so a settings copy was a
+  // second store for one instruction, with no precedence rule between the two
+  // blocks the model receives. See the decision comment on PR #895 and
+  // `core/prompt-focus.ts` for the test that decides which layer a value
+  // belongs to.
+  //
+  // The textarea is a VIEW of a schema section, not a field in `data.json`.
+  // Reads go through `readSection`, which returns the raw file rather than the
+  // LLM-sanitized body, so saving cannot silently drop a legacy baked tag enum.
+  //
+  // The per-topic override layer is still absent; it becomes natural under this
+  // shape (one section per topic, selected by folder) and is recorded as #896.
+  {
+    new Setting(containerEl)
+      .setName(tab.getText('promptFocusSectionName'))
+      .setHeading();
+
+    const schemaSections: Array<{ heading: string; name: string; desc: string; placeholder: string }> = [
+      {
+        heading: 'Extraction Focus',
+        name: tab.getText('extractionFocusName'),
+        desc: tab.getText('extractionFocusDesc'),
+        placeholder: tab.getText('extractionFocusPlaceholder'),
+      },
+      {
+        heading: 'Content Rules',
+        name: tab.getText('contentRequirementsName'),
+        desc: tab.getText('contentRequirementsDesc'),
+        placeholder: tab.getText('contentRequirementsPlaceholder'),
+      },
+    ];
+
+    const rows = schemaSections.map(({ heading, name, desc, placeholder }) => {
+      let seeded = false;
+      let pending: number | null = null;
+      const flush = (value: string): void => {
+        if (pending !== null) { window.clearTimeout(pending); pending = null; }
+        void tab.plugin.schemaManager.writeSection(heading, clampPromptFocusText(value));
+      };
+
+      const setting = new Setting(containerEl).setName(name).setDesc(desc);
+      setting.addTextArea(text => {
+        text.setPlaceholder(placeholder);
+        text.inputEl.rows = 4;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+        // Seed asynchronously: the schema is a file, and `display()` is synchronous.
+        void tab.plugin.schemaManager.readSection(heading).then((current) => {
+          text.setValue(current);
+          seeded = true;
+        });
+        text.onChange((value) => {
+          // `setValue` does not fire onChange in Obsidian, but a stale seed
+          // arriving after the user has typed would otherwise overwrite the
+          // file with the seed's own text.
+          if (!seeded) return;
+          if (pending !== null) window.clearTimeout(pending);
+          pending = window.setTimeout(() => { pending = null; flush(value); }, WRITE_DEBOUNCE_MS);
+        });
+        // A field the user leaves is written at once, so closing the settings
+        // tab inside the debounce window cannot lose the edit.
+        text.inputEl.addEventListener('blur', () => {
+          if (pending !== null) flush(text.inputEl.value);
+        });
+      });
+      return setting;
+    });
+
+    setSettingsVisible(rows, true);
+  }
 
   let mineruTokenSetting: Setting | null = null;
   new Setting(containerEl)

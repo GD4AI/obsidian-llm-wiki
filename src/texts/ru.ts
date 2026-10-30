@@ -415,6 +415,15 @@ export const RU_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Дублирующий тег пропущен',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Настройка промпта',
+    extractionFocusName: 'Приоритет извлечения',
+    extractionFocusDesc: 'Свободный текст, добавляемый к промпту извлечения: какие доменные сущности и концепции этому вики нужно считать приоритетными. Протокол JSON и правила тегов не меняются. Пусто = выключено. Не более 4000 символов.',
+    extractionFocusPlaceholder: 'напр. Приоритет: главные персонажи и боссы; игровые режимы и карты; оружие и уровни снаряжения; механики сезонного боевого пропуска',
+    contentRequirementsName: 'Требования к содержанию',
+    contentRequirementsDesc: 'Свободный текст, добавляемый к промптам генерации страниц: выразительный акцент, структура, обязательные аспекты. Правила цитирования и защиты от галлюцинаций остаются системными. Пусто = выключено. Не более 4000 символов.',
+    contentRequirementsPlaceholder: 'напр. Указывай серию или главу источника, если она известна; для сведений без источника пиши «по слухам»/«предположительно»; там, где уместно, добавляй раздел «Заметки о рисках»',
+
     // Ускорение импорта
     accelerationSectionTitle: 'Ускорение импорта',
     pageGenerationConcurrencyName: 'Параллелизм LLM',
