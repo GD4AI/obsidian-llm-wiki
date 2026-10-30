@@ -25,6 +25,7 @@ import { formatPageRefSummary } from '../../core/ppr-cascade';
 import { buildTurnIndicator, observeVisibleTurn, updateActiveDot } from '../turn-indicator';
 import { TOKENS_QUERY_ANSWER, TOKENS_QUERY_SAVE_DEDUP, NOTICE_BRIEF, NOTICE_SHORT, NOTICE_NORMAL, NOTICE_ERROR, CUSTOM_QUERY_INSTRUCTIONS_MAX_CHARS, RETRIEVAL_HISTORY_ROUNDS } from '../../constants';
 import { capMaxTokens } from '../../core/token-cap';
+import { fitPagesToBudget, estimateTokens, DEFAULT_CONTEXT_BUDGET_TOKENS } from '../../core/context-budget';
 import { getSectionLabels } from '../system-prompts';
 
 import { extractThinkingPanel } from './renderers/thinking-extract';
@@ -49,7 +50,7 @@ import { ExpansionTermsCache } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { planRetrieval } from './pipeline/retrieval-plan';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
-import { loadRelevantPagesForQuery } from './pipeline/load-pages';
+import { loadRelevantPagesForQuery, loadRelevantPagesForQueryWithPaths } from './pipeline/load-pages';
 import {
   assembleWikiContext,
   emptyWikiHint,
@@ -1311,7 +1312,7 @@ export class QueryView extends ItemView {
           }
         : null;
 
-      const rawLoadedPages = await loadRelevantPagesForQuery(
+      const loadedPagesForQuery = await loadRelevantPagesForQueryWithPaths(
         relevantPages,
         wikiFolder,
         reader,
@@ -1322,6 +1323,7 @@ export class QueryView extends ItemView {
         // this argument left the extractor with `[]` and the fix unreachable.
         this._lastRetrievalTerms,
       );
+      const rawLoadedPages = loadedPagesForQuery.map((page) => page.body);
       console.debug('[Step 3] Pages loaded:', rawLoadedPages.length);
 
       console.debug('[Step 3] Graph shared from engine:', graph.nodes.length, 'nodes,', graph.edges.size, 'edges');
@@ -1337,21 +1339,78 @@ export class QueryView extends ItemView {
       // (2137 nodes → ~70K tokens of index text). Optionally pass a
       // compact page summary list (path + title + aliases) so the
       // chat LLM can see what pages exist even if not retrieved.
-      const pageSummaryHint = indexResult.pageRefs.length > 0
-        ? indexResult.pageRefs.slice(0, 50).map(p => formatPageRefSummary(p)).join('\n')
-        : undefined;
-      const wikiContext = assembleWikiContext({
+      const pageSummaryHint = indexResult.pageRefs.length > 0 ? indexResult.pageRefs.slice(0, 50).map(p => formatPageRefSummary(p)).join('\n') : undefined;
+
+      // What the non-page part of the context costs. Assembling once with an
+      // empty body list is the only way to measure it without duplicating the
+      // template: the hint, the language directive, the instructions and the
+      // retrieval note are all inside `assembleWikiContext`, and a hard-coded
+      // reserve would go stale the first time somebody added a line.
+      const assembleInput = {
         pageSummaryHint,
-        pageBodies: rawLoadedPages,
         armLabel: seedResult.armLabel,
         llmAugmented: seedResult.llmAugmented,
         pureLLM: seedResult.pureLLM,
-        matchesCount: relevantPages.length,
         wikiFolder,
         wikiLanguage: this.plugin.settings.wikiLanguage,
-      });
+      } as const;
+      const reserveTokens = estimateTokens(
+        assembleWikiContext({ ...assembleInput, pageBodies: [], matchesCount: 0 }),
+      );
+
+      // Issue #880 — the context has a token budget, expressed in the unit the
+      // model is limited by. `RETRIEVAL_BUDGET` is a page count and each page
+      // carries its own character cap, so nothing bounded the total: measured
+      // on the production vault, 27 of 30 answers exceeded an 8k window while
+      // the budget read "20 of 20". The cut is from the tail, and the order is
+      // the rank order this line receives — the coverage pass already chose
+      // WHICH pages.
+      //
+      // The budget covers the WHOLE wiki context, so the reserve is subtracted
+      // before any page is admitted. The first version spent the whole budget
+      // on bodies and left 20 of 30 answers over the very limit it reported.
+      const budget = fitPagesToBudget(
+        rawLoadedPages,
+        this.plugin.settings.queryContextBudgetTokens ?? DEFAULT_CONTEXT_BUDGET_TOKENS,
+        reserveTokens,
+      );
+      // Issue #880 review follow-up (DocTpoint, 2026-10-27): the retrieval
+      // label and the "Found {count}" status were written above, before the
+      // cut, so they kept naming every page retrieval selected — an answer
+      // built from 6 pages showed 20. A reader checking where an answer came
+      // from was shown sources the model never received. Rewrite the label
+      // with what was actually sent.
+      if (this._lastRetrieval) {
+        this._lastRetrieval = {
+          ...this._lastRetrieval,
+          count: budget.keptCount,
+          // The budget works on BODIES, and the loader skips a page it cannot
+          // read — so `budget.keptIndexes` indexes `loadedPagesForQuery`, which
+          // is the list the bodies came from. That is why the pairing exists.
+          topPaths: budget.keptIndexes.map((i) => loadedPagesForQuery[i]?.path ?? '').filter(Boolean),
+        };
+      }
+      if (budget.dropped > 0 || budget.overBudgetSinglePage) {
+        console.debug(
+          `[Step 3] Token budget: ${budget.keptCount} of ${budget.totalCount} pages, ~${budget.estimatedTokens} tokens total`
+          + (budget.overBudgetSinglePage ? ' — one page alone exceeds the budget and is kept anyway' : ''),
+        );
+      }
 
       console.debug('[Step 4] Wiki context built');
+      const wikiContext = assembleWikiContext({
+        ...assembleInput,
+        pageBodies: budget.kept,
+        // Issue #880 review follow-up (DocTpoint, 2026-10-27): this used to be
+        // `budget.keptCount`, which is 0 only when `rawLoadedPages` is empty —
+        // the loader skips a page it cannot read, e.g. after a rename with a
+        // stale index. The note then told the model "No relevant pages found,
+        // answer from general knowledge" while `pureLLM` stayed false, so no
+        // verification banner appeared: the failure mode the floor comment
+        // calls the worse one. `relevantPages.length` keeps the note honest,
+        // and the cut cannot take it to 0 on its own.
+        matchesCount: relevantPages.length,
+      });
       console.debug('[Step 4] Context length:', wikiContext.length);
       return wikiContext;
     } catch (error) {

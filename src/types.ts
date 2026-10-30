@@ -604,6 +604,23 @@ export interface LLMWikiSettings {
   // local-model user who set 8192 keeps 8192.
   maxTokensPerCall: number;
 
+  /**
+   * Issue #880 — the ceiling on the answer context, in TOKENS.
+   *
+   * Before this, `RETRIEVAL_BUDGET` (20) bounded the number of PAGES and each
+   * page carried its own character cap, so the total had no ceiling at all:
+   * 20 x 12,800 characters is the worst case, and measured on the production
+   * vault 27 of 30 answers exceeded an 8k window while the budget still read
+   * "20 of 20". Pages are dropped from the tail until this ceiling is met.
+   *
+   * `0` disables the ceiling, which is what a user on a very large window may
+   * want and what keeps every pre-#880 behaviour reachable.
+   *
+   * Optional so a settings object written before this field existed still
+   * type-checks; the read site falls back to the default.
+   */
+  queryContextBudgetTokens?: number;
+
   // Issue #904: the model's context window, when the user knows it. 0 = Auto.
   // Bounds the output ceiling — a request cannot emit more tokens than the
   // window holds — so a 4K model never receives a 128K request. Unset in every
@@ -1609,6 +1626,13 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // Issue #75: cap max_tokens per LLM call. 0 = Auto (Issue #904: the
   // model's own output ceiling, 128,000 when unknown).
   maxTokensPerCall: 0,
+
+  // Issue #880: the answer context's ceiling in tokens. 8192 because that is
+  // the common floor a local runtime will serve, and because a single default
+  // needs one sentence in eleven locales rather than a rule the user has to
+  // understand. Deliberately conservative: the estimator over-counts tokens, so
+  // the cost of this number being low is a slightly shorter answer.
+  queryContextBudgetTokens: 8192,
 
   // Issue #904: 0 = Auto. Stored explicitly so the dropdown has a value; an
   // absent field in older data.json reads the same way.

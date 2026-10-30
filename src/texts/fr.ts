@@ -753,6 +753,9 @@ export const FR_TEXTS = {
     lintDedupIncludeSourcesDesc: 'Activé par défaut. Quand activé, les sources avec un corps identique sont signalées comme doublons pendant le lint. Désactivez si votre corpus de sources génère des faux positifs.',
     legacyScorerName: 'Ancien scoreur de requête',
     legacyScorerDesc: 'Désactivé par défaut. Quand activé, le classement des requêtes utilise l’ancien scoreur réglé à la main au lieu du nouveau BM25F. Activez si les résultats de recherche se sont dégradés après une mise à jour.',
+    // Issue #880: the answer context's token ceiling (bottom Advanced settings panel).
+    queryContextBudgetName: 'Budget de jetons du contexte',
+    queryContextBudgetDesc: 'Limite les pages wiki envoyées avec une réponse, en jetons. Désactivé = 0. 8K convient à la plupart des exécutions locales ; augmentez pour un grand modèle cloud. Les pages sont retirées en partant du rang le plus bas.',
     // Issue #514: opt-in candidate gate (bottom Advanced settings panel).
     skipMentionOnlyCandidatesName: 'Ignorer les candidats que la source ne fait que mentionner',
     skipMentionOnlyCandidatesDesc: 'Désactivé par défaut. Quand activé, une entité ou un concept extrait dont le nom n’apparaît pas dans le texte courant de la note — absent, ou seulement entre parenthèses, dans des énumérations ou de courts éléments de liste — ne reçoit ni page ni appel supplémentaire au modèle, et est retiré des listes de pages liées des autres candidats. Fonctionne pour les langues de wiki disposant d’un profil de frontières de mots (allemand mesuré ; anglais, français, espagnol, portugais, néerlandais estimés) ; pour les autres, l’ingestion signale une fois qu’elle ne peut pas s’appliquer. Laissez désactivé pour les coffres de type glossaire ou les notes en puces où chaque terme nommé doit devenir une page.',
