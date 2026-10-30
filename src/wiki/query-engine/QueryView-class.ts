@@ -298,7 +298,9 @@ export class QueryView extends ItemView {
         if (this.isStreaming) {
           this.stopGeneration();
         } else if (this.inputArea.value.trim()) {
-          void this.sendMessage(this.inputArea.value);
+          void this.sendMessage(this.inputArea.value).catch((error: unknown) => {
+            this.reportQueryFailure(error);
+          });
         }
       }
     });
@@ -329,7 +331,9 @@ export class QueryView extends ItemView {
       if (this.isStreaming) {
         this.stopGeneration();
       } else if (this.inputArea.value.trim()) {
-        void this.sendMessage(this.inputArea.value);
+        void this.sendMessage(this.inputArea.value).catch((error: unknown) => {
+          this.reportQueryFailure(error);
+        });
       }
     });
 
@@ -540,41 +544,52 @@ export class QueryView extends ItemView {
     let foundPagesInfo = '';
     const foundPrefix = texts.queryPhaseFoundPages.split('{count}')[0];
 
-    // Phase 1 & 2: Build wiki context (search → found → context ready)
-    const wikiContext = await this.buildWikiContext(userMessage, (phase: string) => {
-      if (phase.startsWith(foundPrefix)) {
-        foundPagesInfo = phase;
-      }
-      statusIndicator.setText(phase);
-    });
-
-    if (this.aborted) {
-      statusIndicator.remove();
-      this.finishGeneration(texts as unknown as Record<string, string>);
-      return;
-    }
-
-    // Phase 3: Generate response with elapsed timer
-    const conversationMessages = this.history.messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    const startTime = Date.now();
-    let statusTemplate = foundPagesInfo
-      ? `${foundPagesInfo}, ${texts.queryPhaseGenerating}`
-      : texts.queryPhaseGenerating;
-    const timerInterval = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      statusIndicator.setText(statusTemplate.replace('{time}', elapsed.toString()));
-    }, 1000);
-
+    // Issue #914: the answer phase used to open its `try` BELOW the context
+    // build. `buildWikiContext` has its own `catch` and returns a hint string,
+    // so it does not reject — the boundary here is defence in depth for that
+    // call, and the reachable hazard is the DOM setup ABOVE it, which is
+    // handled by `reportQueryFailure` at both call sites. The timer is declared
+    // here so the catch below can stop it even when the failure happened
+    // before the timer started.
+    let timerInterval: number | null = null;
     const cleanupTimer = () => {
-      window.clearInterval(timerInterval);
+      if (timerInterval !== null) {
+        window.clearInterval(timerInterval);
+        timerInterval = null;
+      }
       statusIndicator.remove();
     };
 
     try {
+      // Phase 1 & 2: Build wiki context (search → found → context ready)
+      const wikiContext = await this.buildWikiContext(userMessage, (phase: string) => {
+        if (phase.startsWith(foundPrefix)) {
+          foundPagesInfo = phase;
+        }
+        statusIndicator.setText(phase);
+      });
+
+      if (this.aborted) {
+        cleanupTimer();
+        this.finishGeneration(texts as unknown as Record<string, string>);
+        return;
+      }
+
+      // Phase 3: Generate response with elapsed timer
+      const conversationMessages = this.history.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      const startTime = Date.now();
+      let statusTemplate = foundPagesInfo
+        ? `${foundPagesInfo}, ${texts.queryPhaseGenerating}`
+        : texts.queryPhaseGenerating;
+      timerInterval = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        statusIndicator.setText(statusTemplate.replace('{time}', elapsed.toString()));
+      }, 1000);
+
       if (this.plugin.llmClient?.createMessageStream) {
         let fullResponse = '';
         // v1.24.0 #208: log resolved query model for e2e verification.
@@ -798,6 +813,34 @@ export class QueryView extends ItemView {
     }
 
     this.finishGeneration(texts as unknown as Record<string, string>);
+  }
+
+  /**
+   * Issue #914: the last-resort handler for a failure raised BEFORE
+   * `sendMessage` opens its error boundary — the DOM setup at the top of the
+   * method. Nothing can be rendered into the answer body at that point, so the
+   * failure is reported as a Notice instead of becoming an unhandled
+   * rejection, which the user reads as "nothing happened".
+   *
+   * **Releasing the pane is the part that matters.** `sendMessage` sets
+   * `isStreaming = true` before that DOM setup and early-returns while it is
+   * true, so a throw in the setup left the view refusing every later query
+   * until it was reopened. `finishGeneration` is the one path that restores
+   * the button and the input state, so it runs here too. `isStreaming` is
+   * cleared first and unconditionally, because it is the invariant; the rest
+   * of `finishGeneration` is cosmetic and is allowed to fail.
+   */
+  private reportQueryFailure(error: unknown): void {
+    console.error('QueryView.sendMessage failed outside its error boundary:', error);
+    const texts = TEXTS[this.plugin.settings.language] ?? TEXTS.en;
+    const message = error instanceof Error ? error.message : String(error);
+    new Notice(texts.queryModalErrorPrefix + message, NOTICE_ERROR);
+    this.isStreaming = false;
+    try {
+      this.finishGeneration(texts as unknown as Record<string, string>);
+    } catch (restoreError) {
+      console.error('QueryView could not restore the pane after a failed send:', restoreError);
+    }
   }
 
   stopGeneration() {
