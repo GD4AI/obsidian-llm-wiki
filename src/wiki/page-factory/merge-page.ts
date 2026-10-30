@@ -61,6 +61,7 @@ import { firstQuotesForPrompt, isConversationSource, mergeError } from './contex
 import { buildNoteExcerpt, renderNoteExcerptBlock } from './note-window';
 import { localDateStamp } from '../../core/format';
 import type { WikiPageRef } from '../../types';
+import { getContentRequirements, buildContentRequirementsSection } from '../../core/prompt-focus';
 
 /**
  * Minimal context contract required by mergePage / appendToReviewedPage.
@@ -310,6 +311,11 @@ export async function mergePage(
     const mergePrompt = pageType === 'entity' ? PROMPTS.mergeEntityPage : PROMPTS.mergeConceptPage;
 
     const prompt = renderTemplate(mergePrompt, {
+      // v1.27.3 issue #902 follow-up: the topic content requirements reach the
+      // CREATE path only, so a merge rewrote the page without them. The setting
+      // promises the requirement applies to what is written, and a merge is a
+      // write. Empty string when unconfigured, so the prompt is byte-identical.
+      content_requirements: buildContentRequirementsSection(getContentRequirements(ctx.settings)),
       existing_body: existingBody,
       new_source: sourceFile.basename,
       entity_summary: info.summary,
@@ -495,6 +501,7 @@ export async function appendToReviewedPage(
         })
       : '';
     const prompt = renderTemplate(PROMPTS.appendToReviewedPage, {
+      content_requirements: buildContentRequirementsSection(getContentRequirements(ctx.settings)),
       existing_body: existingBody,
       new_source: sourceFile.basename,
       entity_summary: info.summary,

@@ -111,6 +111,8 @@ Answer with JSON only:
 - Related concepts: {{related_concepts}}
 - Key details: {{key_details}}{{source_excerpt}}
 
+{{content_requirements}}
+
 **Integration Requirements:**
 1. STRUCTURE: Follow the schema sections exactly. If a section exists, update it; if missing, create it.
 2. DESCRIPTION: Integrate new facts naturally. When a verbatim excerpt block is present, it is the authoritative payload: integrate EVERY fact in it that concerns this page, not only the summary lines. Do NOT duplicate existing information.
@@ -148,6 +150,8 @@ Output ONLY the body content (no frontmatter):
 - Related entities: {{related_entities}}
 - Key details: {{key_details}}{{source_excerpt}}
 
+{{content_requirements}}
+
 **Integration Requirements:**
 1. STRUCTURE: Follow the schema sections exactly. Update existing, create missing.
 2. DESCRIPTION: Integrate new understanding coherently with existing. When a verbatim excerpt block is present, it is the authoritative payload: integrate EVERY fact in it that concerns this concept, not only the summary lines.
@@ -179,6 +183,8 @@ Output ONLY the body content (no frontmatter):
 **New Information from Source "{{new_source}}":**
 - Summary: {{entity_summary}}
 - Key details: {{key_details}}{{source_excerpt}}
+
+{{content_requirements}}
 
 **Task:**
 1. Compare new information against existing content
@@ -213,8 +219,10 @@ The new source file ("{{source_basename}}") provides additional information abou
 {{new_info}}
 
 Update the page by adding the new information without deleting existing content.
+{{content_requirements}}
 {{constraints}}
 Use wiki-link syntax [[page-name]].
+
 
 **Output Format:**
 Output ONLY the updated page BODY content (without frontmatter), no other text:

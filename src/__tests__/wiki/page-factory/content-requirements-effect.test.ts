@@ -60,10 +60,15 @@ describe('#895 contentRequirements — independent reproduction', () => {
     expect(store.get(r.path!)).toContain('## Risk Notes');
   });
 
-  it.fails('FINDING 2 (#902): a merge carries the requirement', async () => {
+  it('a merge carries the requirement', async () => {
     const { ctx, prompts } = makeCtx({ 'wiki/entities/Ada-Lovelace.md': EXISTING_PAGE });
     const r = await createOrUpdateEntityPage(ctx, createMockEntity({ name: 'Ada Lovelace' }), undefined, SOURCE);
     expect(r.created).toBe(false);
-    expect(prompts.map(p => p.includes(REQUIREMENT))).toEqual([true, true]);
+    // The merge runs two prompts: `mergeAnalysis` decides newPage / merge /
+    // append, and `mergeEntityPage` writes the body. **The requirement belongs
+    // to the write.** It is an instruction about how the page reads — cite the
+    // source, mark unsourced lore — and the structural decision does not depend
+    // on it, so adding it there would be noise in a prompt that returns JSON.
+    expect(prompts.map(p => p.includes(REQUIREMENT)), 'only the body rewrite').toEqual([false, true]);
   });
 });

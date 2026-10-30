@@ -35,6 +35,7 @@ import { getSectionLabels } from '../system-prompts';
 import { UNIVERSAL_LINK_CONSTRAINTS } from '../prompts/constraints';
 import { appendToReviewedPage, type MergeContext } from './merge-page';
 import { assembleFinalContent } from './mentions-integration';
+import { getContentRequirements, buildContentRequirementsSection } from '../../core/prompt-focus';
 
 /**
  * Minimal context contract required by `updateRelatedPage`. Mirrors the real
@@ -131,6 +132,7 @@ export async function updateRelatedPage(
   const promptBody = stripMentionsSection(existingBody, labels.mentions_in_source);
 
   const prompt = renderTemplate(PROMPTS.updateRelatedPage, {
+    content_requirements: buildContentRequirementsSection(getContentRequirements(ctx.settings)),
     page_name: pageName,
     existing_body: promptBody,
     source_basename: sourceFile.basename,
