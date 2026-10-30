@@ -634,6 +634,16 @@ export function mapAiSdkError(err: unknown): Error {
     // the UI. The 4xx and 5xx format is unchanged — `core/url-fallback.ts`
     // parses `status 404: ...` to find a working base URL.
     const code = err.statusCode ?? 0;
+    // A missing status is not "status 0". `APICallError` can carry no numeric
+    // status — an error raised before headers arrived, or a gateway that wraps
+    // its own error code in the message. Printing `status 0:` invents a fact and
+    // buries the provider's sentence behind a number that means nothing.
+    //
+    // Everything outside 2xx takes this branch, whatever the code: this is the
+    // pass-through path, and the provider's own text is what a user needs to
+    // read. `status <code>:` is kept for a real status because
+    // `core/url-fallback.ts` parses it to find a working base URL.
+    const prefix = err.statusCode === undefined ? '' : `status ${code}: `;
     if (code >= 200 && code < 300) {
       const body = err.responseBody ?? '';
       // A 2xx can still carry a provider error object: `{"error":{"message":…}}`
@@ -659,7 +669,7 @@ export function mapAiSdkError(err: unknown): Error {
       return enriched;
     }
     const providerMsg = extractProviderMessage(err);
-    const enriched = new Error(`status ${code}${providerMsg ? `: ${providerMsg}` : ''}`);
+    const enriched = new Error(`${prefix}${providerMsg}`);
     // Attach useful properties for any code that reads them.
     (enriched as Error & { statusCode?: number; responseBody?: string }).statusCode = code;
     (enriched as Error & { statusCode?: number; responseBody?: string }).responseBody = err.responseBody ?? '';
