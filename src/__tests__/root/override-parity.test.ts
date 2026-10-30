@@ -118,3 +118,103 @@ describe('dependency overrides are declared once per package manager, identicall
     ).toEqual([]);
   });
 });
+
+/**
+ * The two package managers must resolve the same version of every package that
+ * reaches `main.js`.
+ *
+ * Why this and not "the two builds are byte-identical" (issue #907, criterion
+ * 6 as first written): the artifacts differ by 7,049 bytes, and 7,037 of them
+ * are pnpm's virtual-store path embedded in esbuild's module comments and
+ * `__esm` keys (`node_modules/.pnpm/ai@7.0.142_zod@4.6.7/node_modules/...`
+ * against `node_modules/...`). That noise has no behaviour, so a byte compare
+ * can only ever answer the wrong question.
+ *
+ * What was left underneath it did have behaviour. On 2026-10-29 the two trees
+ * bundled **different versions of `eventsource-parser`** — 3.1.1 in the npm
+ * tree that ships, 3.1.0 in the pnpm tree every gate runs — and the difference
+ * was the event-id branch of the SSE parser. That is the AI SDK's SSE path,
+ * which is where #916 came from. The released code was never executed by a
+ * test.
+ *
+ * So the invariant is the versions, and the scope is the runtime closure: a
+ * devDependency cannot reach the bundle, and holding it to the same version
+ * would fail on tooling that legitimately drifts.
+ *
+ * Nothing here needs the network, `node_modules`, or a build.
+ */
+describe('both package managers resolve one version per runtime package', () => {
+  /** Semver strings from the npm lockfile, keyed by package name. */
+  function npmRuntimeVersions(): Map<string, Set<string>> {
+    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
+      packages?: Record<string, { version?: string; dev?: boolean }>;
+    };
+    const out = new Map<string, Set<string>>();
+    for (const [path, entry] of Object.entries(lock.packages ?? {})) {
+      if (entry.dev || !path.startsWith('node_modules/')) continue;
+      const name = path.split('node_modules/').at(-1) ?? '';
+      if (!out.has(name)) out.set(name, new Set());
+      out.get(name)?.add(entry.version ?? '?');
+    }
+    return out;
+  }
+
+  /**
+   * Version strings from pnpm's lockfile.
+   *
+   * The keys look like `  name@1.2.3:` and `  '@scope/name@1.2.3(peer@4.5.6):'`.
+   * The peer suffix is part of pnpm's instance key, not part of the version, so
+   * it is stripped — leaving it in makes every package with a peer dependency
+   * look like it differs when both trees agree.
+   */
+  function pnpmVersions(): Map<string, Set<string>> {
+    const text = readFileSync('pnpm-lock.yaml', 'utf8');
+    const out = new Map<string, Set<string>>();
+    for (const match of text.matchAll(/^ {2}'?(@?[^\s'@]+(?:\/[^\s'@]+)?)@([^\s:'(]+)/gm)) {
+      const [, name, version] = match;
+      if (version.startsWith('link:') || version.startsWith('file:')) continue;
+      if (!out.has(name)) out.set(name, new Set());
+      out.get(name)?.add(version);
+    }
+    return out;
+  }
+
+  it('names no runtime package at two different versions', () => {
+    const npm = npmRuntimeVersions();
+    const pnpm = pnpmVersions();
+    const skewed = [...npm.entries()]
+      .map(([name, versions]) => ({
+        package: name,
+        'package-lock.json (ships)': [...versions].sort(),
+        'pnpm-lock.yaml (gates run here)': [...(pnpm.get(name) ?? [])].sort(),
+      }))
+      .filter((row) => {
+        const a = row['package-lock.json (ships)'];
+        const b = row['pnpm-lock.yaml (gates run here)'];
+        return a.length !== 1 || b.length !== 1 || a[0] !== b[0];
+      });
+
+    expect(
+      skewed,
+      'A runtime package must resolve to ONE version in both lockfiles. When they differ, '
+      + 'the released main.js runs code no test executed — measured on 2026-10-29 with '
+      + 'eventsource-parser 3.1.1 shipping against 3.1.0 under test. Fix it with a pin in '
+      + 'BOTH override maps, not by regenerating one lockfile and hoping.',
+    ).toEqual([]);
+  });
+
+  it('is not vacuous — the two reads find the same set of runtime packages', () => {
+    // If either parser silently returned nothing, the test above would compare
+    // two empty maps and pass. The runtime closure is small (15 packages at the
+    // time of writing), so the guard is the overlap rather than a count.
+    const npm = npmRuntimeVersions();
+    const pnpm = pnpmVersions();
+    expect(npm.size).toBeGreaterThan(5);
+    expect(pnpm.size).toBeGreaterThan(5);
+    const shared = [...npm.keys()].filter((name) => pnpm.has(name));
+    expect(shared.length, 'the two lockfiles must agree on which packages exist').toBeGreaterThan(5);
+    // And the bundle's single largest dependency has to be among them, or the
+    // parser is reading the wrong section.
+    expect(shared).toContain('ai');
+  });
+});
