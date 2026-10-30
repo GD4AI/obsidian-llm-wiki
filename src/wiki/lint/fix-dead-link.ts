@@ -289,6 +289,11 @@ export async function fixDeadLink(
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
         ...(disableThinking ? { enableThinking: false } : {}),
+        // Issue #916, review follow-up: the JSON-mode probe above has this
+        // opt-out and the retry arm did not. The retry exists because the
+        // backend refused JSON mode, and an empty reply here means "no
+        // action" — the same contract, so it needs the same exemption.
+        allowEmptyResponse: true,
       });
     }
 

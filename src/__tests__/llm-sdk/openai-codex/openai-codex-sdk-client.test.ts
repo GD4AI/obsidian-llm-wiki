@@ -31,7 +31,10 @@ describe('OpenAICodexSdkClient', () => {
     const networkFetch = vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('connection lost'));
     vi.mocked(requestUrl).mockResolvedValue({ status: 200, headers: {}, arrayBuffer: new ArrayBuffer(0), json: {}, text: 'fallback response' });
     const client = new OpenAICodexSdkClient({ auth, sessionId: () => 'session-no-replay', version: '1.25.0' });
-    await expect(client.createMessage(messageParams())).resolves.toBe('');
+    // Issue #916: this reply carries no text, and the empty-answer guard now
+    // says so instead of resolving to `''`. What this case is actually about is
+    // the transport, so the assertions below are the point.
+    await expect(client.createMessage(messageParams())).rejects.toThrow(/empty/i);
     expect(networkFetch).not.toHaveBeenCalled();
     expect(requestUrl).toHaveBeenCalledOnce();
     networkFetch.mockRestore();

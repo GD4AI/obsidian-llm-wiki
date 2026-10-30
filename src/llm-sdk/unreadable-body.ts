@@ -30,7 +30,15 @@ export function describeUnreadableBody(body: string): string {
       + 'non-streaming request with a stream produces this; the request needs "stream": false.';
   }
 
-  return 'The body is not JSON.';
+  // A body that IS valid JSON is not "not JSON". Naming the real problem saves
+  // the reader from concluding the gateway mangled the encoding when it
+  // actually answered something the SDK did not recognise as a completion.
+  try {
+    JSON.parse(trimmed);
+    return 'The body is JSON, but not a completion response this client recognises.';
+  } catch {
+    return 'The body is not JSON.';
+  }
 }
 
 /** A short excerpt of the body, for identifying which response it was. */

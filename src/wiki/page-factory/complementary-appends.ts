@@ -251,6 +251,11 @@ export async function callPerSectionAppend(
       // leak verbatim into the wiki body (E2E 2026-08-25). Pinned
       // unconditionally, not gated on settings.disableThinking.
       enableThinking: false as const,
+      // Issue #916, review follow-up: this call site treats an empty reply as
+      // NO_NEW_CONTENT, which is a normal outcome — the prompt even asks for
+      // it. Without the opt-out the new empty-answer guard would throw into
+      // the catch below and log a warning per section on a healthy run.
+      allowEmptyResponse: true,
     });
     // This is the one raw-prose writer that does NOT go through
     // cleanMarkdownResponse (the fragment must not lose its head the way a

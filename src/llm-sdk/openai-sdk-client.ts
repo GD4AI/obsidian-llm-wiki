@@ -225,6 +225,12 @@ export class OpenAISdkClient implements LLMClient {
         // Top-level repetition_penalty is non-standard for OpenAI; pass via providerOptions.
       });
       reportFinish(onFinish, result.finishReason, result.usage);
+      // Issue #916: an answer that arrives empty must say so rather than
+      // render as a blank pane. This is the PRIMARY return; the URL-fallback
+      // arm below has its own guard, and review of the first version found
+      // that only that one had been wired — so `openai` still returned `''`
+      // on the ordinary path.
+      if (!allowEmptyResponse) assertNotEmptyAnswer(result.text, 'the provider');
       return result.text;
     } catch (err) {
       // v1.23.0 P1.5: URL fallback for custom baseURLs (Kimi / z.ai / GLM).
@@ -630,6 +636,19 @@ export function mapAiSdkError(err: unknown): Error {
     const code = err.statusCode ?? 0;
     if (code >= 200 && code < 300) {
       const body = err.responseBody ?? '';
+      // A 2xx can still carry a provider error object: `{"error":{"message":…}}`
+      // with a 200 status is how several gateways say no. That is not an
+      // unreadable body, it is a readable one that reports a failure, and the
+      // message the provider wrote is more useful than an excerpt of its JSON.
+      // `extractProviderMessage` falls back to the raw body, so it is only
+      // consulted when it found a message of its own.
+      const nestedMsg = providerMessageFromBody(body);
+      if (nestedMsg) {
+        const enriched = new Error(`HTTP ${code}: the provider reported an error: ${nestedMsg}`);
+        (enriched as Error & { statusCode?: number; responseBody?: string }).statusCode = code;
+        (enriched as Error & { statusCode?: number; responseBody?: string }).responseBody = body;
+        return enriched;
+      }
       const enriched = new Error(
         `HTTP ${code}: the request succeeded but the response body could not be read. `
         + `${describeUnreadableBody(body)} `
@@ -671,7 +690,20 @@ function extractProviderMessage(err: APICallError): string {
   const body = err.responseBody;
   if (!body) return err.message;
 
-  // Try JSON parse
+  const nested = providerMessageFromBody(body);
+  if (nested) return nested;
+  return body;
+}
+
+/**
+ * The provider's own message, or `''` when the body carries none.
+ *
+ * Split out from `extractProviderMessage` because that one falls back to the
+ * raw body — which is right for a 4xx whose body IS the message, and wrong for
+ * a 2xx, where a body with no `error` object is simply unreadable text.
+ */
+function providerMessageFromBody(body: string): string {
+  if (!body) return '';
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>;
     // OpenAI / Anthropic / Gemini all nest under `error.message` or `error.error.message`
@@ -681,7 +713,7 @@ function extractProviderMessage(err: APICallError): string {
       if (errorObj.error && typeof errorObj.error.message === 'string') return errorObj.error.message;
     }
   } catch {
-    // Not JSON — fall through to raw body
+    // Not JSON — no nested message to find.
   }
-  return body;
+  return '';
 }
