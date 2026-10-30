@@ -935,6 +935,17 @@ export interface LLMClient {
     reasoningEffort?: 'low' | 'medium' | 'high';
     temperature?: number;       // Issue #128: per-request sampling temperature
     /**
+     * Issue #916: accept an empty answer instead of raising.
+     *
+     * An empty answer is never useful, so the clients raise on it by default
+     * — an empty response used to render as a blank pane with no error
+     * anywhere. One call site has a different contract: `lint/fix-dead-link.ts`
+     * probes with `response_format: json_object`, and an empty response there
+     * means "this backend rejected the JSON mode", so it retries without it.
+     * That probe needs the empty string back, so it sets this.
+     */
+    allowEmptyResponse?: boolean;
+    /**
      * Nucleus sampling. Travels with `temperature` because a preset is a pair:
      * sending one and leaving the other to the server compares two halves of
      * two different presets, which is not a comparison of anything.
