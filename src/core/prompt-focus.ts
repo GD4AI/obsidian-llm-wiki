@@ -1,24 +1,30 @@
-// v1.27.3: prompt customization — WeKnora-style "Wiki extraction focus" and
-// "Wiki content requirements".
+// v1.27.3 prompt customization — the two free-text hints live in the SCHEMA.
 //
-// Two free-text fields, read from settings on every prompt build. Empty means
-// the prompt is byte-identical to what it was before this feature, which is
-// what keeps the prefix cache intact for every vault that never configures it.
+// **They are not settings.** `## Extraction Focus` and `## Content Rules` are
+// sections of `schema/config.md`, and `TASK_SECTIONS` routes them to the tasks
+// that need them:
 //
-// Both fields are PROMPT HINTS injected as extra sections; they never
-// replace system-owned contracts (JSON protocol, classification rules,
-// tag vocabulary, citation/merge/anti-hallucination rules).
+//   analyze (extraction)            <- Content Rules, Extraction Focus
+//   entity / concept (generation)   <- Content Rules
+//   merge                           <- Content Rules
 //
-// The per-topic layer (a `wikiTopics` entry overriding the global value) is not
-// here. It shipped ahead of the picker that would write it, so it could never
-// resolve: nothing in the settings UI creates a topic, and `activeTopicId` had
-// no reader. It is recorded as an issue rather than carried as a branch that
-// cannot run.
+// A settings copy of the same text was rejected on 2026-10-30: it would be a
+// second store for one instruction, with no precedence rule between the two
+// blocks the model receives. `AGENTS.md` §"Schema 三层分离" states the rule —
+// layer 1 is "page templates, content rules, naming conventions, merge
+// policies" — and the test that applies it is: **a value the engine only
+// forwards to the model is domain knowledge, and belongs to the schema; a value
+// the engine parses, validates or branches on is a runtime parameter, and
+// belongs to Settings.** Tag vocabulary is validated at write time, so it is a
+// setting. This text is forwarded verbatim, so it is not.
+//
+// What survives here is the input guard the Settings editor still needs.
+//
+// The per-topic layer recorded as issue #896 becomes natural under this shape:
+// one schema section per topic, selected by folder, reusing `TASK_SECTIONS`
+// rather than a second settings store.
 
-import { LLMWikiSettings } from '../types';
-
-/** Cap both fields: WeKnora uses 4000 chars; keep the same ceiling so a
- *  runaway paste cannot bloat every batch prompt. */
+/** Cap one section's text: 4000 chars keeps a runaway paste out of every prompt. */
 export const PROMPT_FOCUS_MAX_CHARS = 4000;
 
 export function clampPromptFocusText(raw: string | undefined): string {
@@ -27,49 +33,4 @@ export function clampPromptFocusText(raw: string | undefined): string {
   return text.length > PROMPT_FOCUS_MAX_CHARS
     ? text.slice(0, PROMPT_FOCUS_MAX_CHARS)
     : text;
-}
-
-/**
- * Effective extraction focus: the global setting, or '' when unset. Empty
- * string = inject nothing (byte-identical prompts).
- */
-export function getExtractionFocus(settings: LLMWikiSettings): string {
-  return clampPromptFocusText(settings.extractionFocus);
-}
-
-/**
- * Effective content requirements: the global setting, or '' when unset.
- */
-export function getContentRequirements(settings: LLMWikiSettings): string {
-  return clampPromptFocusText(settings.contentRequirements);
-}
-
-/**
- * Rendered extraction-focus section appended to the Extraction Scope
- * block of the analyzeSource prompt. Empty input → empty output.
- */
-export function buildExtractionFocusSection(focus: string): string {
-  const text = clampPromptFocusText(focus);
-  if (!text) return '';
-  return [
-    '**Topic Extraction Focus (user-configured for this wiki):**',
-    'Prioritize recognizing the following domain entities and concepts. This narrows what you look for — it does NOT change the JSON protocol, the classification rules, or the allowed tag vocabulary above.',
-    '',
-    text,
-  ].join('\n');
-}
-
-/**
- * Rendered content-requirements section appended to entity/concept
- * page-generation prompts. Empty input → empty output.
- */
-export function buildContentRequirementsSection(requirements: string): string {
-  const text = clampPromptFocusText(requirements);
-  if (!text) return '';
-  return [
-    '**Topic Content Requirements (user-configured for this wiki):**',
-    'Follow these expressive requirements when writing the page. They control emphasis and structure only — the citation format, wiki-link rules, merge strategy and objectivity requirements above remain binding.',
-    '',
-    text,
-  ].join('\n');
 }
