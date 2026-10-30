@@ -100,6 +100,35 @@ describe('OpenAISdkClient', () => {
       expect(text).toBe('hello from openai');
     });
 
+    // Issue #916, review follow-up. The empty-answer guard was first wired into
+    // the URL-fallback arm only, so this provider still returned `''` on the
+    // ordinary path — and no test noticed, because the end-to-end case covers
+    // `OpenAICompatSdkClient`. This case is the one that would have caught it.
+    it('raises on an empty answer from the primary path', async () => {
+      mockGenerateText.mockResolvedValue(makeGenerateTextResult(''));
+      const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
+
+      await expect(client.createMessage({
+        model: 'gpt-4.1',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: 'hi' }],
+      })).rejects.toThrow(/empty/i);
+    });
+
+    it('returns the empty string when the caller opted in with allowEmptyResponse', async () => {
+      // The lint probes need this: an empty reply there means "no action", not a
+      // failure. `src/wiki/lint/fix-dead-link.ts` is the documented caller.
+      mockGenerateText.mockResolvedValue(makeGenerateTextResult(''));
+      const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
+
+      await expect(client.createMessage({
+        model: 'gpt-4.1',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: 'hi' }],
+        allowEmptyResponse: true,
+      })).resolves.toBe('');
+    });
+
     it('forwards model + max_tokens to AI-SDK', async () => {
       const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
       await client.createMessage({
