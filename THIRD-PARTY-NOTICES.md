@@ -406,7 +406,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-## eventsource-parser 3.1.0
+## eventsource-parser 3.1.1
 
 Declared licence: MIT
 
