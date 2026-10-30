@@ -138,6 +138,43 @@ describe('fitPagesToBudget', () => {
     expect(r.keptCount).toBe(0);
     expect(r.estimatedTokens).toBe(0);
   });
+
+  // Issue #880 review (DocTpoint, 2026-10-27): the retrieval label named every
+  // page retrieval selected, including the ones this function dropped — an
+  // answer built from 6 pages showed 20. The caller can only fix that if it
+  // learns WHICH bodies were kept, and a body carries no path, so the indexes
+  // have to come from here.
+  describe('keptIndexes', () => {
+    it('names the positions kept, not the count', () => {
+      const bodies = [cjk(10), cjk(10), cjk(10)];
+      // Two fit, the third does not.
+      const twoThirds = Math.ceil(fitPagesToBudget(bodies, 1e9).estimatedTokens * (2 / 3));
+      const r = fitPagesToBudget(bodies, twoThirds);
+
+      expect(r.keptCount).toBe(2);
+      expect(r.keptIndexes).toEqual([0, 1]);
+    });
+
+    it('is the same length as kept and in the same order', () => {
+      const bodies = [cjk(5), cjk(5), cjk(5), cjk(5)];
+      const r = fitPagesToBudget(bodies, 1e9);
+
+      expect(r.keptIndexes).toHaveLength(r.kept.length);
+      expect(r.keptIndexes.map((i) => bodies[i])).toEqual(r.kept);
+    });
+
+    it('covers every body when the budget is not applied', () => {
+      const bodies = [cjk(5), cjk(5)];
+      const r = fitPagesToBudget(bodies, 0);
+
+      expect(r.budgetApplied).toBe(false);
+      expect(r.keptIndexes).toEqual([0, 1]);
+    });
+
+    it('is empty for an empty input, so the caller cannot fabricate a page', () => {
+      expect(fitPagesToBudget([], 1000).keptIndexes).toEqual([]);
+    });
+  });
 });
 
 describe('the default', () => {

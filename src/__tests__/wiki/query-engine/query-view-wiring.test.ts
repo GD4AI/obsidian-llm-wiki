@@ -73,10 +73,15 @@ describe('production wiring — QueryView', () => {
     expect(call(src, 'selectPprSeeds')).toMatch(/\n\s*plan\.gateQuery,\s*\n/);
   });
 
-  it('passes queryTerms to loadRelevantPagesForQuery at BOTH call sites', () => {
+  it('passes queryTerms to the page loader at BOTH call sites', () => {
     // #855 fix 6. `queryTerms` is optional; a call site that omits it gets
     // `[]` back and the matched paragraphs silently become ''.
-    const calls = src.match(/loadRelevantPagesForQuery\([\s\S]*?\);/g) ?? [];
+    //
+    // Issue #880 review: the answer path now calls the `...WithPaths` variant,
+    // because the retrieval label has to know which pages survived the token
+    // budget and a body carries no path. Both variants take the same argument,
+    // so the contract is the same and the pattern accepts either name.
+    const calls = src.match(/loadRelevantPagesForQuery(?:WithPaths)?\([\s\S]*?\);/g) ?? [];
     expect(calls.length).toBeGreaterThanOrEqual(2);
     for (const c of calls) {
       expect(c, 'a call site omits queryTerms').toMatch(/_lastRetrievalTerms/);
@@ -97,5 +102,33 @@ describe('production wiring — QueryView', () => {
     // And the tables must be the FULL tier, not the name tier: the answer path
     // is the one that reads the body.
     expect(seeds).toMatch(/getFull\(/);
+  });
+
+  it('reports the pages that survived the budget, not the pages retrieval chose (#880)', () => {
+    // DocTpoint, 2026-10-27: the label was built from `relevantPages`, decided
+    // BEFORE `fitPagesToBudget` cuts the tail. An answer built from 6 pages
+    // showed 20, so a reader checking where an answer came from was shown
+    // sources the model never received.
+    const labelWrites: string[] = src.match(/_lastRetrieval = \{[\s\S]*?\};/g) ?? [];
+    const afterBudget = labelWrites.find((block) => block.includes('keptIndexes'));
+    expect(afterBudget, 'the label must be rewritten with the kept pages').toBeDefined();
+
+    // And the paths have to come from the loader's pairing: a body is anonymous
+    // markdown, so an index into `kept` does not name a page.
+    expect(src).toMatch(/loadRelevantPagesForQueryWithPaths\(/);
+    expect(src).toMatch(/budget\.keptIndexes\.map\(\(i\) => loadedPagesForQuery\[i\]/);
+  });
+
+  it('keeps matchesCount on what retrieval found, not on what survived (#880)', () => {
+    // `assembleWikiContext` turns `matchesCount === 0` into "No relevant pages
+    // found, answer from general knowledge". `budget.keptCount` is 0 whenever
+    // `rawLoadedPages` is empty — the loader skips a page it cannot read, e.g.
+    // after a rename with a stale index — which tells the model it had no pages
+    // while `pureLLM` stays false and no verification banner appears. The cut
+    // alone cannot take the count to 0, so the pre-cut count is the honest one.
+    const finalAssemble = src.slice(src.lastIndexOf('assembleWikiContext({'));
+    expect(finalAssemble).toMatch(/matchesCount: relevantPages\.length/);
+    expect(finalAssemble, 'keptCount is 0 when every page failed to load')
+      .not.toMatch(/matchesCount: budget\.keptCount/);
   });
 });

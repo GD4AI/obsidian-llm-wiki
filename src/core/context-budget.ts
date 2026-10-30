@@ -121,6 +121,15 @@ export function estimateTokens(text: string): number {
 export interface FitResult {
   /** The bodies to send, in the order they arrived. */
   kept: string[];
+  /**
+   * Indexes of the kept bodies in the array that was passed in.
+   *
+   * Same length and same order as `kept`. The caller needs them to report
+   * WHICH pages were sent: a retrieval label built from the pre-cut list names
+   * pages the model never received (issue #880 review, DocTpoint 2026-10-27).
+   * Deriving that from the bodies is not possible — a body carries no path.
+   */
+  keptIndexes: number[];
   keptCount: number;
   totalCount: number;
   dropped: number;
@@ -177,6 +186,7 @@ export function fitPagesToBudget(
   if (total === 0) {
     return {
       kept: [],
+      keptIndexes: [],
       keptCount: 0,
       totalCount: 0,
       dropped: 0,
@@ -190,6 +200,7 @@ export function fitPagesToBudget(
     const estimated = bodies.reduce((sum, b) => sum + estimateTokens(b), 0);
     return {
       kept: [...bodies],
+      keptIndexes: bodies.map((_, i) => i),
       keptCount: total,
       totalCount: total,
       dropped: 0,
@@ -200,17 +211,21 @@ export function fitPagesToBudget(
   }
 
   const kept: string[] = [];
+  const keptIndexes: number[] = [];
   let used = 0;
-  for (const body of bodies) {
+  for (let i = 0; i < bodies.length; i += 1) {
+    const body = bodies[i];
     const cost = estimateTokens(body);
     if (kept.length > 0 && used + cost > bodyBudget) break;
     kept.push(body);
+    keptIndexes.push(i);
     used += cost;
   }
 
   const overBudgetSinglePage = kept.length === 1 && used > bodyBudget;
   return {
     kept,
+    keptIndexes,
     keptCount: kept.length,
     totalCount: total,
     dropped: total - kept.length,

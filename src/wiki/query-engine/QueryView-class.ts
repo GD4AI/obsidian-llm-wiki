@@ -50,7 +50,7 @@ import { ExpansionTermsCache } from '../../core/query-expansion';
 import { selectPprSeeds } from './pipeline/select-seeds';
 import { planRetrieval } from './pipeline/retrieval-plan';
 import { selectSeedsWithLLM } from './pipeline/seed-selector';
-import { loadRelevantPagesForQuery } from './pipeline/load-pages';
+import { loadRelevantPagesForQuery, loadRelevantPagesForQueryWithPaths } from './pipeline/load-pages';
 import {
   assembleWikiContext,
   emptyWikiHint,
@@ -1312,7 +1312,7 @@ export class QueryView extends ItemView {
           }
         : null;
 
-      const rawLoadedPages = await loadRelevantPagesForQuery(
+      const loadedPagesForQuery = await loadRelevantPagesForQueryWithPaths(
         relevantPages,
         wikiFolder,
         reader,
@@ -1323,6 +1323,7 @@ export class QueryView extends ItemView {
         // this argument left the extractor with `[]` and the fix unreachable.
         this._lastRetrievalTerms,
       );
+      const rawLoadedPages = loadedPagesForQuery.map((page) => page.body);
       console.debug('[Step 3] Pages loaded:', rawLoadedPages.length);
 
       console.debug('[Step 3] Graph shared from engine:', graph.nodes.length, 'nodes,', graph.edges.size, 'edges');
@@ -1373,6 +1374,22 @@ export class QueryView extends ItemView {
         this.plugin.settings.queryContextBudgetTokens ?? DEFAULT_CONTEXT_BUDGET_TOKENS,
         reserveTokens,
       );
+      // Issue #880 review follow-up (DocTpoint, 2026-10-27): the retrieval
+      // label and the "Found {count}" status were written above, before the
+      // cut, so they kept naming every page retrieval selected — an answer
+      // built from 6 pages showed 20. A reader checking where an answer came
+      // from was shown sources the model never received. Rewrite the label
+      // with what was actually sent.
+      if (this._lastRetrieval) {
+        this._lastRetrieval = {
+          ...this._lastRetrieval,
+          count: budget.keptCount,
+          // The budget works on BODIES, and the loader skips a page it cannot
+          // read — so `budget.keptIndexes` indexes `loadedPagesForQuery`, which
+          // is the list the bodies came from. That is why the pairing exists.
+          topPaths: budget.keptIndexes.map((i) => loadedPagesForQuery[i]?.path ?? '').filter(Boolean),
+        };
+      }
       if (budget.dropped > 0 || budget.overBudgetSinglePage) {
         console.debug(
           `[Step 3] Token budget: ${budget.keptCount} of ${budget.totalCount} pages, ~${budget.estimatedTokens} tokens total`
@@ -1384,7 +1401,15 @@ export class QueryView extends ItemView {
       const wikiContext = assembleWikiContext({
         ...assembleInput,
         pageBodies: budget.kept,
-        matchesCount: budget.keptCount,
+        // Issue #880 review follow-up (DocTpoint, 2026-10-27): this used to be
+        // `budget.keptCount`, which is 0 only when `rawLoadedPages` is empty —
+        // the loader skips a page it cannot read, e.g. after a rename with a
+        // stale index. The note then told the model "No relevant pages found,
+        // answer from general knowledge" while `pureLLM` stayed false, so no
+        // verification banner appeared: the failure mode the floor comment
+        // calls the worse one. `relevantPages.length` keeps the note honest,
+        // and the cut cannot take it to 0 on its own.
+        matchesCount: relevantPages.length,
       });
       console.debug('[Step 4] Context length:', wikiContext.length);
       return wikiContext;
