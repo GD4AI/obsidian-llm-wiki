@@ -162,24 +162,23 @@ The **idempotency** requirement is worth naming separately because it is not a d
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
+### The refactor track — recorded 2026-11-01
+
+Approved as a plan, not started. The plan, the re-measured baseline, the frozen area and the stop
+conditions are in **#925**; scope is one issue per layer: **#926** snapshot, **#927** ratchet,
+**#928** subtraction, **#929** types, **#930** settings tab, **#931** `core/` layering, **#932** long
+functions, **#933** settings inventory. Nothing starts before #886, #895 and #924 land.
+
 ### The next-work order — 2026-10-16, re-ranked
 
-**Superseded 2026-10-29** by [the ROI order below](#the-next-work-order--2026-10-29-re-ranked-by-ROI). This section keeps the record of what that sweep decided, because two of its rows were decided on a measurement and are still load-bearing. The heading keeps its original text deliberately: the 2026-10-17 status was first written into it, and that broke the anchor MEMORY links to — twice in one day, because a second rename followed. **A heading that another document links to is an address; status belongs in the body.**
+**Superseded 2026-10-29** by [the ROI order below](#the-next-work-order--2026-10-29-re-ranked-by-ROI). This section keeps the record of what that sweep decided, because two of its rows were decided on a measurement and are still load-bearing. The heading keeps its original text deliberately: the 2026-10-17 status was first written into it, and that broke the anchor MEMORY links to — twice in one day, because a second rename followed. **A heading that another document links to is an address; status belongs in the body.** A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
 
-A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
-
-**Closed by that sweep, and now shipped:** #830 + #831 were superseded by #859 (`fded549f`) — neither was mergeable as it stood, both also downgraded `@typescript-eslint/*` from 8.71.1 to 8.59.1, a type-compatible revert of #834 that Gate 1 would not have caught; #816's claim was false so #860 (`2ff5eb40`) added the entry and the issue stays open because the migration itself is 31 errors across 14 files; the CHANGELOG was backfilled by #862 (`8934c8f9`), because `v1.28.0`'s release was 37 PRs behind and the file is what release notes are cut from; #503 was implemented by #519 (`3928eed2`); the dead `listModels()` went with #878 (`0d80ffb7`), and `CODEX_MODELS` survives because `openai-codex-model-policy.ts:22` still consumes it; and #781's residual sites went with #878 (`83b8f73f`) — four sites, not three.
-
-| Rank | Work | Why here | Cost |
-|---|---|---|---|
-| 1 | **#755** rebase and scope | @weqoocu's two prompt-level settings are CONFLICTING, and need a rebase plus one decision: whether the prompt should carry them at all | Needs the contributor |
-| 3 | **The real-question benchmark** | The largest evidence gap in the project. 20–30 real questions with hand-labelled answer pages, in a fixture that is synthetic and runs by default | Medium |
-| 4 | **The lint-fix batch**, per the plan above | The highest correctness ROI of anything here — #826 alone is silent data loss — sequenced after the routine items by the maintainer's call | One PR, four commits |
-| 6 | **The E1 escalation gate** | A decision, not a fix. It needs the `coverage` and `lexCount` distributions before anyone can choose | Diagnosis, then a call |
+Its two surviving rows carry forward rather than as a table: **the real-question benchmark** (20–30 real questions with
+hand-labelled answer pages, in a synthetic fixture that runs by default — the largest evidence gap here, medium cost) and
+**the E1 escalation gate** (a decision, not a fix; it needs the `coverage` and `lexCount` distributions before anyone can
+choose). The #755 row is #895 in the table above; the lint-fix batch shipped 2026-10-22.
 
 **The token ceiling was measured, and the number that matters is the after-state.** On the two vaults that describe the current write path, answers over an 8k window went from 9/30 to **0/30** (test8) and 27/30 to **0/30** (test10), with p50 falling 7,067 → 5,332 and 11,015 → 5,873. The third vault on disk was written by an earlier release and is deliberately not quoted as evidence.
-
-**Withdrawn: the write-side `source:` marker work.** The production vault's 25.1 % marker coverage was reported as a write-side defect, and work was queued against it. It is the age of that corpus. `test10` is the control: regenerated through the same production `IndexGenerator` it reaches 96.6 %, and its only 12 unmarked pages are its 12 `sources/` notes, which cannot link to themselves. `test8` reaches 85.5 %, and its 17 non-source gaps are pages whose `sources:` frontmatter points at an entity or concept page rather than a source note — `parseSourceSlug` reads `[[sources/<slug>]]`, so there is no slug to derive and declining is correct. The production vault's pages were written by an older release that never recorded that link. **"Unmarked" has three causes and only one is a defect, and that one only occurs in a corpus the current plugin did not write.**
 
 **Reclassified: #781 is held, not rejected.** It was called "denied by measurement". That was wrong, and it was wrong in the expensive direction — closing it would have discarded unfinished work on the strength of a claim nobody checked. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and **that measurement has never run.** DocTpoint's `CHANGES_REQUESTED` says so in his own words: "I am marking this as 'Request changes' so that it does not merge before #729 has an answer. This is a statement about the order of the steps, not about your code."
 
