@@ -40,7 +40,7 @@
     "@typescript-eslint/parser": "8.71.1",
     "ajv": "^8.20.0",
     "esbuild": "0.28.1",
-    "eslint": "10.12.0",
+    "eslint": "10.13.0",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "fast-uri": "^4.2.2",
     "jsdom": "^30.0.1",
@@ -48,7 +48,7 @@
     "tslib": "2.8.1",
     "typescript": "5.9.3",
     "vite": "^8.3.5",
-    "vitest": "5.0.0",
+    "vitest": "5.0.5",
     "yaml": "^2.4.2"
   },
   "overrides": {
@@ -56,7 +56,8 @@
     "undici": "8.12.3",
     "source-map-js": "1.2.2",
     "@ai-sdk/provider": "4.0.28",
-    "@ai-sdk/provider-utils": "5.0.61"
+    "@ai-sdk/provider-utils": "5.0.61",
+    "eventsource-parser": "3.1.1"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.65",

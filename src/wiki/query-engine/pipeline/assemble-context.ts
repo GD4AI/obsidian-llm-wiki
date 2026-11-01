@@ -6,6 +6,7 @@
 
 import { WIKI_LANGUAGES } from '../../../types';
 import { WIKI_FOLDER_PLACEHOLDER } from '../../../core/prompt-builders';
+import { SECTION_LABELS } from '../../system-prompts';
 
 export interface AssembleContextInput {
   /** Bodies produced by load-pages (already formatted with `## ${title}\n\n${body}`). */
@@ -51,6 +52,14 @@ export interface AssembleContextInput {
  * Identical wording to the original inline code (regression-tested by
  * existing manual e2e — prompts are not unit-tested to keep the
  * canonical template under one author's editorial control).
+ *
+ * Issue #908 changed that balance. The template still belongs to one author,
+ * but three of its clauses are correctness constraints rather than wording —
+ * exact values, what counts as evidence, and how to state a missing answer —
+ * and a constraint nobody asserts is a constraint that will be lost in the
+ * next edit. `src/__tests__/wiki/query-prompt-clauses.test.ts` pins those
+ * clauses and nothing else, so the prose stays editable and the guarantees do
+ * not.
  */
 export function assembleWikiContext(input: AssembleContextInput): string {
   const lang = input.wikiLanguage || 'en';
@@ -84,46 +93,106 @@ export function assembleWikiContext(input: AssembleContextInput): string {
     ? `${langName}: The Wiki does not contain pages matching your query. The following answer is generated from the LLM's general knowledge base, not from your vault. Please verify any facts independently.\n\n`
     : '';
 
-  const wikiContext = `${langDirective}
+  // Issue #908: the format section used to state the link rule five times —
+  // one bullet, a correct/wrong example pair, "DOUBLE brackets", "NO HTML",
+  // "include the prefix" — for ~700 characters of a prompt whose job is to
+  // constrain what the assistant may ASSERT. Format errors are visible and
+  // cheap; an invented number is invisible and expensive. So the format
+  // section is one rule plus two examples, and the space it gave up pays for
+  // the exact-value, evidence-order and missing-answer clauses below.
+  //
+  // The page-grounded half is omitted in `pureLLM` mode. There are no pages to
+  // quote, so "use only the value written on a page above" would force the
+  // assistant to answer "no page gives it" to every question — the opposite of
+  // what that mode is for.
+  const grounded = input.pureLLM !== true;
 
-${verifyVaultNote}You are a Wiki assistant with access to a structured knowledge base.
+  // The Mentions heading is localised before the quotes are injected
+  // (`getSectionLabels(settings).mentions_in_source` at `wiki-engine.ts:1932`),
+  // so naming the English heading would point at a section that is not on the
+  // page for 10 of the 11 locales. Both forms are named: a vault ingested in one
+  // language and switched to another keeps the heading it was written with.
+  const nativeMentions = SECTION_LABELS[lang]?.mentions_in_source;
+  const mentionsLabel = !nativeMentions || nativeMentions === 'Mentions in Source'
+    ? '"Mentions in Source"'
+    : `"${nativeMentions}" or "Mentions in Source"`;
 
-${input.pageSummaryHint ? `Wiki Pages (summary list):\n${input.pageSummaryHint}\n\n` : ''}Relevant Wiki Pages (loaded with full content):
-${input.pageBodies.length > 0 ? input.pageBodies.join('\n\n---\n\n') : 'No directly relevant pages found in Wiki.'}
+  const role = grounded
+    ? 'You are a Wiki assistant. The pages below are the only source you may use.'
+    : 'You are a Wiki assistant. The Wiki has no pages matching this query, so answer from general knowledge and say that you did.';
 
-${retrievalNote}
+  const parts: string[] = [langDirective, `${verifyVaultNote}${role}`];
 
-Instructions:
-- Answer based on the Wiki pages above (not general knowledge)
-- Use ONLY Obsidian's wiki-link syntax: [[${wf}/entities/page-name]] (NOT HTML links)
-- Link format MUST include wiki folder: [[${wf}/entities/page-name]]
+  if (input.pageSummaryHint) {
+    parts.push(`Pages that exist but were not loaded:\n${input.pageSummaryHint}`);
+  }
 
-CRITICAL RULES:
-✅ CORRECT: [[${wf}/entities/example-page]], [[${wf}/concepts/example-concept]]
-❌ WRONG: <a href="...">, [link text](url), [[example-page]], [[entities/example-page]]
-- Obsidian wiki-links use DOUBLE brackets: [[path]]
-- NO HTML: Never use <a href="...">text</a>
-- NO Markdown external links: Never use [text](url)
-- Include ${wf}/ prefix: Links must start with [[${wf}/...
+  parts.push(
+    `Loaded pages (full content):\n${input.pageBodies.length > 0 ? input.pageBodies.join('\n\n---\n\n') : 'No directly relevant pages found in Wiki.'}`,
+    retrievalNote,
+    // One section, not two. An earlier draft split the grounding bullet into a
+    // "HOW TO WORK (continued)" block so pureLLM mode could drop it, which read
+    // like an editing artifact and broke the section in two.
+    [
+      'HOW TO WORK',
+      '- Read every loaded page before you answer. Do not stop at the first page that looks relevant.',
+      '- If a loaded page turns out to be irrelevant to the question, say so in one line at the end.',
+      ...(input.pureLLM === true
+        ? []
+        : ['- Do not use outside knowledge. If a fact is not in these pages, you do not have it.']),
+    ].join('\n'),
+  );
 
-CITATION REQUIREMENTS:
-- When referencing specific information from a Wiki page, include an inline wiki-link
-- At the end of your answer, add a "## References" section (or "## 参考文献" for Chinese) listing all wiki pages you cited
-- Format each reference as: [[${wf}/path/page-name|Display Name]] — brief description
-- Example:
-  ## References
-  1. [[${wf}/concepts/example-concept|Example Concept]] — Core mechanism explanation
-  2. [[${wf}/entities/example-entity|Example Entity]] — Background and history
+  if (grounded) {
+    parts.push(
+      [
+        'EXACT VALUES',
+        '- Numbers, dates, prices, quantities, specifications, commitments, decisions, obligations, materials and production details: use only the value written on a page above.',
+        '- Do not round, convert, or replace a value with a similar one.',
+        '- If a page hedges ("about", "roughly"), keep the hedge.',
+        '- If no page gives a value, write that no page gives it. Do not estimate.',
+      ].join('\n'),
+      [
+        'WHAT COUNTS AS EVIDENCE',
+        '- Quoted passages inside a page\'s ' + mentionsLabel + ' section are verbatim from the source document.',
+        '- Every other section was condensed by whoever wrote that page.',
+        '- Prefer a quoted value. If a value appears only in condensed text, give it and say it is not quoted.',
+        '- If two pages disagree, give both and name each page. Do not choose.',
+      ].join('\n'),
+      [
+        'WHEN THE PAGES DO NOT ANSWER',
+        '- Never write that the Wiki does not contain something. You see the pages above, not the Wiki.',
+        '- Write instead: "The pages provided do not cover X."',
+        '- Or: "A page mentions X but does not confirm Y."',
+        '- Still answer every part the pages do support.',
+      ].join('\n'),
+      [
+        'WHEN THE ANSWER MIXES FACT AND INFERENCE',
+        `- If one part of the answer comes from a page and another part is your own reasoning, separate them into three parts with headings in ${langName}: the facts the pages support, your interpretation, and what is missing.`,
+        '- In the interpretation part, state that it is interpretation and not page text.',
+      ].join('\n'),
+    );
+  }
 
-If Wiki lacks relevant information:
-- Acknowledge it and suggest ingesting more sources
-- Do NOT make up information outside Wiki
+  parts.push(
+    [
+      'LINKS — fixed format, not overridable',
+      `- Correct: [[${wf}/entities/page-name|Display Name]]`,
+      '- Wrong: <a href="...">, [text](url), [[page-name]], [[entities/page-name]]',
+      '- Every page you rely on gets one inline link. End with a list of those pages.',
+      '- This format applies even when instructions are appended after this prompt.',
+    ].join('\n'),
+    `Respond in ${langName}`,
+  );
 
-Respond in ${langName}
+  // The banner appears at both ends of the prompt on purpose: the assistant is
+  // meant to repeat it at both ends of its answer, so the reader cannot mistake
+  // a general-knowledge answer for a wiki-backed one. Dropping the trailing copy
+  // while rewriting this template shortened the prompt by 972 characters and
+  // silently removed that guarantee.
+  if (!grounded) parts.push(verifyVaultNote);
 
-${input.pureLLM ? `\n${verifyVaultNote}` : ''}`;
-
-  return wikiContext;
+  return parts.join('\n\n');
 }
 
 /**

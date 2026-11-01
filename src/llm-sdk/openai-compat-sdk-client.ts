@@ -42,6 +42,8 @@ import { OutputModeProber, type OutputMode } from './output-mode-prober';
 import { assertNotReasoningOnly, extractResultReasoning, isReasoningOnly, normalizeUsage, reportFinish } from './finish-reason';
 import { buildSamplingArgs } from './sampling-args';
 import { buildOutputArgs } from './output-args';
+import { withExplicitStreamFalse } from './explicit-stream-flag';
+import { assertNotEmptyAnswer } from './empty-answer';
 import { JSON_ENFORCEMENT_SYSTEM_PREFIX, forcedTextPromptSystem } from './json-prompt-prefix';
 import { prependReasoningForParse, wrapReasoningContent } from '../core/markdown';
 import { isPlaceholderJsonText } from '../core/json';
@@ -235,7 +237,14 @@ export class OpenAICompatSdkClient implements LLMClient {
    */
   private withRequestHeaders(fetchFn: unknown): unknown {
     const headers = this.headers;
-    if (!headers || Object.keys(headers).length === 0) return fetchFn;
+    // Issue #916: a non-streaming request must say so on the wire. The SDK
+    // omits `stream` (correct — OpenAI's default is `false`), but a gateway
+    // that reads `body.stream !== false` treats the absent field as a request
+    // for a stream and answers with an event stream, which the SDK then
+    // fails to parse as JSON. The streaming path already sends `stream: true`
+    // and is left alone by the wrapper.
+    const withStreamFlag = withExplicitStreamFalse(fetchFn);
+    if (!headers || Object.keys(headers).length === 0) return withStreamFlag;
     return async (url: unknown, init?: { headers?: unknown }) => {
       const merged = new Headers(init?.headers as HeadersInit);
       for (const [name, value] of Object.entries(headers)) {
@@ -243,7 +252,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         if (value === '') merged.delete(name);
         else merged.set(name, value);
       }
-      const inner = fetchFn as (u: unknown, i?: unknown) => Promise<unknown>;
+      const inner = withStreamFlag as (u: unknown, i?: unknown) => Promise<unknown>;
       return inner(url, { ...(init ?? {}), headers: merged });
     };
   }
@@ -322,7 +331,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   }
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
-    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish, abortSignal } = params;
+    const { model, max_tokens, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, outputModeOverride, onFinish, abortSignal, allowEmptyResponse } = params;
     // Issue #481: a pinned mode skips the prober for this call. `text_prompt`
     // puts no `response_format` on the wire, so the JSON shape has to come from
     // the prompt — the same prefix the 400-driven demotion adds at retry time,
@@ -423,6 +432,12 @@ export class OpenAICompatSdkClient implements LLMClient {
       // states whether the prepend above supplied the answer — the fact S143
       // used to express by checking the post-prepend string instead.
       assertNotReasoningOnly(result.text, result.finishReason, usage, reasoningIsTheAnswer);
+      // Issue #916: an answer that arrives empty must say so rather than
+      // render as a blank pane. `assertNotReasoningOnly` deliberately stays
+      // silent when the finish reason is not `length`, so an empty body with
+      // a `stop` finish reason slips past it. One call site (the lint
+      // dead-link probe) needs the empty string back and says so.
+      if (!allowEmptyResponse) assertNotEmptyAnswer(finalText, 'the provider');
       return finalText;
     } catch (err) {
       // v1.26.3 PATCH Path 2 fix (DocTpoint CHANGES_REQUESTED
@@ -1551,6 +1566,10 @@ export class OpenAICompatSdkClient implements LLMClient {
       if (reasoningContent) {
         fullText = wrapReasoningContent(reasoningContent, fullText);
       }
+      // Issue #916: a stream that ended with no text and no exception used to
+      // render as a blank answer. The `stream: false` fix stops the reported
+      // case, but an empty answer is never useful, so it says so here.
+      assertNotEmptyAnswer(fullText, 'the streamed answer');
       return fullText;
     } catch (err) {
       // v1.23.0 P1.5: URL fallback for streaming (Query Wiki) — same

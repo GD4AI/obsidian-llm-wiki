@@ -131,4 +131,26 @@ describe('production wiring — QueryView', () => {
     expect(finalAssemble, 'keptCount is 0 when every page failed to load')
       .not.toMatch(/matchesCount: budget\.keptCount/);
   });
+
+  // From main (#919). Both sides added tests at the end of this block, so the
+  // resolution is both, not one — the two assert different invariants on the
+  // same file and neither subsumes the other.
+  it('attaches a handler to every sendMessage call site (#914)', () => {
+    // `sendMessage` can reject: a throw in its DOM setup sits above its own
+    // error boundary, and `reportQueryFailure` only runs from the `.catch()`
+    // here. A `void this.sendMessage(...)` with no handler is an unhandled
+    // rejection, which the user reads as "nothing happened" — and it leaves
+    // `isStreaming` set, so the pane refuses every later query.
+    //
+    // Structural rather than behavioural on purpose: the behaviour of
+    // `reportQueryFailure` is covered in `query-view-pre-answer-error.test.ts`,
+    // and driving the real handlers would mean rebuilding `onOpen()`. What
+    // this can catch is the failure a refactor causes — a third call site, or
+    // a handler that gets dropped from one of the two.
+    const callSites = src.match(/void this\.sendMessage\([^;]*;/g) ?? [];
+    expect(callSites.length, 'sendMessage must be called from the two handlers').toBe(2);
+    for (const site of callSites) {
+      expect(site, `call site without a rejection handler: ${site}`).toMatch(/\.catch\(/);
+    }
+  });
 });

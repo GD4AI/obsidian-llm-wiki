@@ -142,6 +142,13 @@ export async function mergeDuplicatePages(
         ),
         messages: [{ role: 'user', content: prompt }],
         ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+        // Issue #916, review follow-up: `if (!mergedBody)` below already treats
+        // an empty reply as "use the programmatic merge" and says so with a
+        // warning. Without this opt-out the new empty-answer guard throws into
+        // the catch at the bottom of this block, which reports the same
+        // fallback as `LLM merge failed` — an error for a normal outcome, and
+        // a wrong cause.
+        allowEmptyResponse: true,
       });
 
       const cleaned = cleanMarkdownResponse(mergedContent);
