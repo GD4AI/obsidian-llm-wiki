@@ -159,6 +159,21 @@ export function extractSectionBody(raw: string, heading: string): string {
 }
 
 /**
+ * The 0-based line index of a `## Heading` line, or -1 when the file has none.
+ *
+ * The Settings panel shows two textareas whose content is a section of this
+ * file, and each carries a button that opens the file. Opening it at line 0
+ * makes the reader search for the section they just clicked, so the line is
+ * computed here — with the other functions that know this file's layout, and
+ * away from the UI so it can be tested without an editor.
+ */
+export function findHeadingLine(raw: string, heading: string): number {
+  const target = `## ${heading}`;
+  const lines = raw.split('\n');
+  return lines.findIndex((line) => line.trim() === target);
+}
+
+/**
  * The same file with one section's body swapped. Everything outside the section
  * — frontmatter, other sections, their order and their blank lines — is
  * preserved, because the user's schema is their document, not our template.

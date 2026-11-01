@@ -408,12 +408,13 @@ export const EN_TEXTS = {
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
     promptFocusSectionName: 'Prompt Customization',
+    promptFocusOpenSchema: 'Go to schema',
     extractionFocusName: 'Extraction Focus',
     extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
-    extractionFocusPlaceholder: 'e.g. Focus on: main characters and bosses; game modes and maps; weapons and equipment tiers; season battle-pass mechanics',
+    extractionFocusPlaceholder: 'e.g. skip passing mentions; every person who is quoted gets a page',
     contentRequirementsName: 'Content Requirements',
     contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. Cite the source episode/chapter when known; use "reportedly/inferred" for unsourced lore; keep a Risk Notes section where applicable',
+    contentRequirementsPlaceholder: 'e.g. end every page with an "Open questions" line; keep sections under 150 words',
     // Ingestion Acceleration
     accelerationSectionTitle: 'Ingestion Acceleration',
     pageGenerationConcurrencyName: 'LLM Concurrency',

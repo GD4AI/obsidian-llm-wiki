@@ -395,12 +395,13 @@ export const ZH_TEXTS = {
 
     // v1.27.3: 专题级提示词定制（提取重点 + 内容生成要求）
     promptFocusSectionName: '提示词定制',
+    promptFocusOpenSchema: '跳转到 Schema',
     extractionFocusName: '提取重点',
     extractionFocusDesc: '追加到提取提示词的自由文本：说明本知识库应重点识别的领域实体/概念。不改变 JSON 协议与标签规则。留空 = 关闭。上限 4000 字。',
-    extractionFocusPlaceholder: '例如：重点识别：干员与Boss、游戏模式与地图、武器与装备品阶、赛季通行证机制',
+    extractionFocusPlaceholder: '例如：跳过顺带提到的内容；每个被引用的人都单独成页',
     contentRequirementsName: '内容生成要求',
     contentRequirementsDesc: '追加到页面生成提示词的自由文本：控制表达重点、结构与必须覆盖的方面。引用、合并与防幻觉规则由系统固定，不会被覆盖。留空 = 关闭。上限 4000 字。',
-    contentRequirementsPlaceholder: '例如：引用尽量标注来源（卷号/章节）；无明确出处的设定使用"据传/推测/可能"等模糊表达；涉及风险的内容附"风险提示"小节',
+    contentRequirementsPlaceholder: '例如：每页结尾加一行「待确认」；每节不超过 150 字',
     // 摄入加速
     accelerationSectionTitle: '摄入加速',
     pageGenerationConcurrencyName: 'LLM 并发度',

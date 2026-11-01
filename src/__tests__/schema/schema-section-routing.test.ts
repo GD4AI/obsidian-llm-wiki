@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDefaultSchemaBody,
   extractSectionBody,
+  findHeadingLine,
   replaceSectionBody,
 } from '../../schema/schema-manager';
 import { readFileSync } from 'node:fs';
@@ -157,5 +158,32 @@ Focus on people.
     const next = replaceSectionBody('# Wiki Schema\n\n## Content Rules\n- a\n', 'Extraction Focus', 'People.');
     expect(extractSectionBody(next, 'Extraction Focus')).toBe('People.');
     expect(extractSectionBody(next, 'Content Rules')).toBe('- a');
+  });
+});
+
+describe('findHeadingLine — where the "go to schema" button lands', () => {
+  const BODY = '# Wiki Schema\n\nIntro.\n\n## Content Rules\n- a\n\n## Extraction Focus\n';
+
+  it('finds the 0-based line of a heading', () => {
+    // The button exists so a reader does not have to search for the section
+    // whose textarea they just clicked. Line 0 would defeat it.
+    expect(findHeadingLine(BODY, 'Content Rules')).toBe(4);
+    expect(findHeadingLine(BODY, 'Extraction Focus')).toBe(7);
+  });
+
+  it('returns -1 for a heading the file does not have', () => {
+    // A vault whose schema predates `## Additional Content Rules`. The caller
+    // opens the file but does not move the caret, which is better than jumping
+    // to a line that does not hold the section.
+    expect(findHeadingLine(BODY, 'Additional Content Rules')).toBe(-1);
+  });
+
+  it('does not match a heading that merely contains the name', () => {
+    const longer = '## Content Rules Extended\n';
+    expect(findHeadingLine(longer, 'Content Rules')).toBe(-1);
+  });
+
+  it('tolerates trailing whitespace on the heading line', () => {
+    expect(findHeadingLine('## Extraction Focus   \n', 'Extraction Focus')).toBe(0);
   });
 });

@@ -393,12 +393,13 @@ export const ZH_HANT_TEXTS = {
 
     // v1.27.3: 專題級提示詞定製（提取重點 + 內容生成要求）
     promptFocusSectionName: '提示詞定製',
+    promptFocusOpenSchema: '跳轉到 Schema',
     extractionFocusName: '提取重點',
     extractionFocusDesc: '附加到提取提示詞的自由文字：說明本知識庫應重點識別的領域實體/概念。不改變 JSON 協定與標籤規則。留空 = 關閉。上限 4000 字。',
-    extractionFocusPlaceholder: '例如：重點識別：主要角色與Boss、遊戲模式與地圖、武器與裝備品階、賽季通行證機制',
+    extractionFocusPlaceholder: '例如：跳過順帶一提的內容；每位被引用的人都單獨成頁',
     contentRequirementsName: '內容生成要求',
     contentRequirementsDesc: '附加到頁面生成提示詞的自由文字：控制表達重點、結構與必須覆蓋的方面。引用、合併與防幻覺規則由系統固定，不會被覆蓋。留空 = 關閉。上限 4000 字。',
-    contentRequirementsPlaceholder: '例如：引用儘量標註來源（卷號/章節）；無明確出處的設定使用「據傳/推測/可能」等模糊表達；涉及風險的內容附「風險提示」小節',
+    contentRequirementsPlaceholder: '例如：每頁結尾加一行「待確認事項」；每節不超過 150 字',
 
     // 摄入加速
     accelerationSectionTitle: '攝入加速',

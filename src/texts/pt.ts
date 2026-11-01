@@ -396,12 +396,13 @@ export const PT_TEXTS = {
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
     promptFocusSectionName: 'Personalização do prompt',
+    promptFocusOpenSchema: 'Ir para o esquema',
     extractionFocusName: 'Prioridade de extração',
     extractionFocusDesc: 'Texto livre anexado ao prompt de extração: quais entidades e conceitos do domínio este wiki deve priorizar. Não altera o protocolo JSON nem as regras de tags. Vazio = desativado. Máx. 4000 caracteres.',
-    extractionFocusPlaceholder: 'ex. Prioridade: personagens principais e chefes; modos de jogo e mapas; armas e níveis de equipamento; mecânicas do passe de batalha da temporada',
+    extractionFocusPlaceholder: 'ex. ignorar menções de passagem; cada pessoa citada tem sua página',
     contentRequirementsName: 'Requisitos de conteúdo',
     contentRequirementsDesc: 'Texto livre anexado aos prompts de geração de páginas: ênfase expressiva, estrutura, aspectos que precisam ser cobertos. As regras de citação e anti-alucinação continuam sob controle do sistema. Vazio = desativado. Máx. 4000 caracteres.',
-    contentRequirementsPlaceholder: 'ex. Cite o episódio ou o capítulo de origem quando conhecido; use "diz-se"/"presume-se" para o que não tem fonte; mantenha uma seção "Notas de risco" quando se aplicar',
+    contentRequirementsPlaceholder: 'ex. terminar cada página com uma linha «Questões em aberto»; seções com menos de 150 palavras',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aceleração da ingestão',

@@ -405,12 +405,13 @@ export const IT_TEXTS = {
 
     // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
     promptFocusSectionName: 'Personalizzazione del prompt',
+    promptFocusOpenSchema: 'Vai allo schema',
     extractionFocusName: 'Priorità di estrazione',
     extractionFocusDesc: 'Testo libero aggiunto al prompt di estrazione: quali entità e concetti del dominio questo wiki deve privilegiare. Non modifica il protocollo JSON né le regole sui tag. Vuoto = disattivato. Max 4000 caratteri.',
-    extractionFocusPlaceholder: 'es. Priorità: personaggi principali e boss; modalità di gioco e mappe; armi e livelli di equipaggiamento; meccaniche del battle pass stagionale',
+    extractionFocusPlaceholder: 'es. saltare i riferimenti di passaggio; ogni persona citata ha una pagina',
     contentRequirementsName: 'Requisiti di contenuto',
     contentRequirementsDesc: 'Testo libero aggiunto ai prompt di generazione delle pagine: enfasi espressiva, struttura, aspetti da coprire necessariamente. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
-    contentRequirementsPlaceholder: 'es. Cita l\'episodio o il capitolo di origine quando noto; usa "si dice"/"presunto" per ciò che non ha fonte; mantieni una sezione "Note di rischio" dove applicabile',
+    contentRequirementsPlaceholder: 'es. chiudere ogni pagina con una riga «Domande aperte»; sezioni sotto le 150 parole',
 
     // Accelerazione Acquisizione
     accelerationSectionTitle: 'Accelerazione acquisizione',

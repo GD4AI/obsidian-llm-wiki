@@ -30,7 +30,7 @@
  * that defeats the purpose of extraction.
  */
 
-import { Setting, Notice, TFile, BaseComponent } from 'obsidian';
+import { Setting, Notice, TFile, BaseComponent, MarkdownView } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 import { VALID_ENTITY_TAGS, VALID_CONCEPT_TAGS } from '../../types';
 import { NOTICE_NORMAL, NOTICE_ERROR, NOTICE_SHORT, CUSTOM_LIMIT_MAX, CUSTOM_LIMIT_MIN, MINERU_API_TOKEN_SECRET_ID } from '../../constants';
@@ -38,6 +38,7 @@ import { HistoryModal } from '../history-modal';
 import { TagChipInputComponent } from '../tag-chip-input';
 import { setSettingsVisible } from '../settings-helpers';
 import { clampPromptFocusText } from '../../core/prompt-focus';
+import { findHeadingLine } from '../../schema/schema-manager';
 
 /** How long to wait after a keystroke before rewriting the schema file. */
 const WRITE_DEBOUNCE_MS = 800;
@@ -119,14 +120,15 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
       // `classList.add` rather than Obsidian's `addClass` sugar: the element is a
       // real `HTMLDivElement`, and the standard API is what a test double can provide.
       setting.settingEl.classList.add('llm-wiki-prompt-focus-setting');
-      // The box names its own source. A button labelled with the path is
-      // language-neutral, so it needs no entry in eleven locales, and it says
-      // exactly what it opens.
+      // A path as a button label reads as a value, not an action. The label is a
+      // verb now, and the tooltip carries the path so the target is still named.
+      // Opening at line 0 would make the reader search for the section they just
+      // clicked, so the caret lands on the heading.
       setting.addButton(button => button
-        .setButtonText(schemaRelPath)
-        .setTooltip(`Open ${heading}`)
+        .setButtonText(tab.getText('promptFocusOpenSchema'))
+        .setTooltip(schemaRelPath)
         .onClick(() => {
-          void tab.app.workspace.openLinkText(schemaFilePath, '', false);
+          void openSchemaAt(tab, schemaFilePath, heading);
         }));
       setting.addTextArea(text => {
         text.setPlaceholder(placeholder);
@@ -155,6 +157,33 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
     });
 
     setSettingsVisible(rows, true);
+  }
+
+  /**
+   * Open the schema file and put the caret on the section this row edits.
+   *
+   * Both halves can fail without being errors: the file may not exist yet on a
+   * fresh vault, and the leaf may open a view that is not a Markdown editor. In
+   * either case the plain open still happens, so the button never does nothing.
+   */
+  async function openSchemaAt(
+    tab: LLMWikiSettingTab,
+    path: string,
+    heading: string,
+  ): Promise<void> {
+    const file = tab.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) {
+      void tab.app.workspace.openLinkText(path, '', false);
+      return;
+    }
+    const leaf = tab.app.workspace.getLeaf(false);
+    await leaf.openFile(file);
+    const view = leaf.view;
+    if (!(view instanceof MarkdownView)) return;
+    const line = findHeadingLine(view.editor.getValue(), heading);
+    if (line < 0) return;
+    view.editor.setCursor({ line, ch: 0 });
+    view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
   }
 
   let mineruTokenSetting: Setting | null = null;
