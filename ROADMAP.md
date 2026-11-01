@@ -87,7 +87,7 @@ before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINO
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
 | **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The three directions are set out in §"#729 — the three directions" below | **A — chosen 2026-10-05**; the objection was answered 2026-10-28 and @DocTpoint is reviewing it |
-| **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled. The tie-break defect it carries is located (`ppr-cascade.ts:146`, `:348`, `:581` sort by score alone), and the "A" concentration is explained by the same code — see §"#729" | Do not merge until #729 concludes |
+| **#781** | #729 Phase 1 (the co-citation projection) | **Held, and its own debts are now named.** `co-citation.ts` still breaks ties by path, so the projection decides by the alphabet; it has no strength floor (one shared target is enough) and no damping by target popularity — a single hub produced 16.5 % of all candidate pairs. Those three go on the branch whichever direction wins, because they are M0's prerequisites. The block is #729: the pass cannot run until @DocTpoint accepts or amends the decision rule posted 2026-11-01 | Do not merge until #729 concludes |
 | **#755** | Extraction focus and content-requirement settings, from @weqoocu | Split: the prompt-customisation half shipped as **#895** (green, awaiting review); the `wikiTopics` picker is **#896** and the merge path is **#902** | Merge #895 first; #896 and #902 are small once it lands |
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note. `decideSourceLemma` is a pure function, so the opt-out is one setting plus one union member | **Accepted** — answered 2026-10-28; implement |
 | **#785** | "Full Reindex" request | Two requests bundled: re-extract with current settings (accepted) and "clear everything" (declined — no undo, and a partial failure leaves nothing) | Implement the re-extract half; keep the clear-out half declined |
@@ -107,10 +107,8 @@ Tier 0 is work that is already done and waiting for a merge decision, so its eff
 
 | Tier | Item | Impact | Certainty | Effort | Why here |
 |---|---|---|---|---|---|
-| **0** | **#886** (PR) — the answer context's token ceiling | 27 of 30 answers exceeded an 8k window while the budget read "20 of 20" | High — measured on the production path | Done | Conflicts with main; awaiting @DocTpoint on point 1, awaiting review |
-| **0** | **#895** (PR) — extraction focus and content requirements | Two prompt-level settings; unblocks #896 and #902 | High | Done | Green, awaiting review |
 | **1** | **#907 — two items left after criterion 6 shipped** | `npm ci` fails in this repo on a `@types/node` peer range, and `package-lock.json` carries 313 `registry.npmmirror.com` URLs that `.npmrc` did not prevent. Criterion 6 itself shipped as #921 + #920 | High — both measured here | Small, two records |
-| **1** | **#567** — raising `customEntityLimit`/`customConceptLimit` reduces extraction | A user turns a limit up and gets less out | High — @DocTpoint endorsed the ceiling-only reading and measured it | **Tiny** | Answered 2026-10-28; only the code is missing |
+| **2** | **#880 (reopened) — the request has no ceiling, only its wiki part does** | #886 shipped a budget over `assembleWikiContext`; history, custom instructions and the answer budget are outside it, so "the answer fits" is still unenforced | High — measured on the same vault | Medium, it is a budgeting decision |
 | **2** | **#891** — align the four AI SDK packages so one provider-utils copy is bundled | `instanceof` across copies silently disabled the whole error normalisation once already (#892) | High | Medium-high | Bigger than #914 and the same family of defect |
 | **2** | **#915** — math in answers does not render | Anyone reading a paper hits it; the same renderer serves generated pages | High | Medium | Needs a normaliser plus one prompt line |
 | **2** | **#677** — a classification move makes untouched notes read as edited | Data-integrity perception on the write path | Medium | Medium | Read before scheduling |
@@ -120,7 +118,13 @@ Tier 0 is work that is already done and waiting for a merge decision, so its eff
 | **4** | **#468** — Anthropic `createMessageStream` lacks `cacheBreakpoint` parity | **Zero today.** The plumbing is one call, but no caller sets a breakpoint on the stream path, and the query path's system prompt carries page bodies that change every query, so a cache would miss every time | High | Tiny | It needs a design decision — what the cacheable prefix is — not code |
 | **4** | #112 #142 #168 #184 #220 #285 #295 #326 #330 #358 #479 #480 #791 #787 #816 #822 #911 #91 | Community requests and research threads | Varies | Varies | Answered where a decision was owed; the rest wait on a design conversation |
 
-**Two open questions the maintainer has not answered yet, and both are recorded on their own issues:** #908's acceptance criterion 5 says the base prompt "must not hardcode English section headings", while the shipped code names the native heading first and the English one as a fallback for a vault whose pages were written before a language switch. The criterion's premise was that the prompt is localised; it is not — it is English with a `Respond in {language}` directive — so the criterion is what needs rewording, not the code. And #916's report is now answered on the issue, with the gateway-side defects named as the gateway's.
+**Both questions this section was waiting on are answered, and neither needed a code change.** #908's criterion 5 asked the
+prompt not to hardcode English headings while the renderer names the native heading first and English as the fallback; the
+criterion was reworded and the issue closed with the six forms the renderer matches. #916's report shipped as #917 — the
+gateway defects stay named as the gateway's, and the plugin now sends `stream: false` explicitly.
+
+**Next up, 2026-11-01:** the table above in order, with the refactor track's #926/#927 ahead of its own later items
+because every other item in that track depends on them. #781 stays held until #729's decision rule is answered.
 
 ### ROI order — the lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
