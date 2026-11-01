@@ -87,7 +87,7 @@ before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINO
 | # | What it is | Why it is waiting | Recommendation |
 |---|---|---|---|
 | **#729** | Cross-source relations — the design record is **proposed**, and @DocTpoint's objection is unresolved | **The ordering itself is contested**: the measured loss is at the reader's *lexical seed stage*, and a denser graph cannot repair a wrong seed. The three directions are set out in §"#729 — the three directions" below | **A — chosen 2026-10-05**; the objection was answered 2026-10-28 and @DocTpoint is reviewing it |
-| **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled. The tie-break defect it carries is located (`ppr-cascade.ts:146`, `:348`, `:581` sort by score alone), and the "A" concentration is still unexplained | Do not merge until #729 concludes |
+| **#781** | #729 Phase 1 (the co-citation projection) | **Held** — it implements a design that is not settled. The tie-break defect it carries is located (`ppr-cascade.ts:146`, `:348`, `:581` sort by score alone), and the "A" concentration is explained by the same code — see §"#729" | Do not merge until #729 concludes |
 | **#755** | Extraction focus and content-requirement settings, from @weqoocu | Split: the prompt-customisation half shipped as **#895** (green, awaiting review); the `wikiTopics` picker is **#896** and the merge path is **#902** | Merge #895 first; #896 and #902 are small once it lands |
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note. `decideSourceLemma` is a pure function, so the opt-out is one setting plus one union member | **Accepted** — answered 2026-10-28; implement |
 | **#785** | "Full Reindex" request | Two requests bundled: re-extract with current settings (accepted) and "clear everything" (declined — no undo, and a partial failure leaves nothing) | Implement the re-extract half; keep the clear-out half declined |
@@ -212,8 +212,8 @@ there. @DocTpoint's four conditions decide whether the result may be trusted. If
 **M0 is built after that run** — and not in the shape #781 carries today. The dissent's second finding is a defect in the mechanism as written, and the defect is worse than
 stated: `ppr-cascade.ts:146`, `:348` and `:581` each sort by score alone, so **there is no tie-break, and the cut falls back to the caller's array order**. A whole Chinese
 clause becomes one token (`ppr-cascade.ts:235`, the whitespace-split branch), every non-matching page scores zero, and the top-k cut then lands inside a tied group ordered by
-that pool. 80 % of the top-3 cuts fall inside such a group. The dissent's other number — titles beginning with "A" are 9.1 % of pages but 17.1 % of chosen entries — this
-mechanism does not explain, so that observation still needs its own check. That is a change to make on #781. It is also why A reads "measure, then M0" rather than "merge M0 now".
+that pool. 80 % of the top-3 cuts fall inside such a group. The "A" concentration is the same defect seen from the other side: `coCitationCandidates`
+(`src/core/co-citation.ts`) breaks the tie by path, so a cut inside a tie is decided by the alphabet. That is 9.1 % of pages against 17.1 % of chosen entries. That is a change to make on #781. It is also why A reads "measure, then M0" rather than "merge M0 now".
 
 **A second defect makes the run unreadable until it is fixed.** `monte-carlo-ppr.ts:53` defaults `rng` to `Math.random`, over `DEFAULT_NUM_WALKS = 3000`, so the graph arm is
 an estimate rather than a function: a rerun moves the numbers. Five runs per arm cannot separate two arms under that variance. Seeding the rng from the query hash is a
