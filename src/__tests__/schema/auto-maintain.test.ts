@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TFile } from 'obsidian'; // mocked in setup.ts
 import { AutoMaintainManager } from '../../schema/auto-maintain';
 import type { WikiEngine } from '../../wiki/wiki-engine';
@@ -273,5 +273,33 @@ describe('AutoMaintainManager.isWatched — the user exclusion list (#872)', () 
     const app = { vault: { configDir: '.obsidian' } } as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
     const mgr = new AutoMaintainManager(app, settings, {} as unknown as WikiEngine, {} as unknown as ConstructorParameters<typeof AutoMaintainManager>[3]) as unknown as WatchProbe;
     expect(mgr.isWatched('Notizen/a.md')).toBe(true);
+  });
+});
+
+describe('AutoMaintainManager.stop and the periodic lint timer', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('replaces the timer on a settings save, and turning lint off stops it', async () => {
+    vi.useFakeTimers();
+    const day = 24 * 60 * 60 * 1000;
+    const settings = { language: 'en', watchedFolders: [], periodicLint: 'daily' } as unknown as LLMWikiSettings;
+    const app = {} as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
+    const plugin = { registerInterval: (id: number) => id } as unknown as ConstructorParameters<typeof AutoMaintainManager>[3];
+    const lint = vi.fn(async () => undefined);
+    const mgr = new AutoMaintainManager(app, settings, {} as WikiEngine, plugin, lint);
+
+    mgr.schedulePeriodicLint();
+    mgr.stop();
+    mgr.schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(day);
+    expect(lint).toHaveBeenCalledTimes(1);
+
+    settings.periodicLint = 'off';
+    mgr.stop();
+    mgr.schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(day);
+    expect(lint).toHaveBeenCalledTimes(1);
   });
 });

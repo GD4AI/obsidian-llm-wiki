@@ -416,16 +416,7 @@ the AGENTS.md copy is the one the release skill reads.
   pnpm >= 11 no longer reads it, Issue #556) — npm `overrides` has different
   semantics, so `package.json` keeps the top-level key with the same flat
   values to keep both lockfiles aligned.
-- **`package-lock.json` is load-bearing — do NOT delete it.** Its real
-  justification is release reproducibility, not Dependabot: Obsidian's own
-  pipeline runs `npm install` and compares the `main.js` it builds against the
-  released artifact, and a resolution difference demotes the review score.
-  `.npmrc` records that post-mortem (v1.25.1 Phase E) and
-  `.github/workflows/release.yml` depends on the same tree (`cache: 'npm'`,
-  `npm install --legacy-peer-deps` → `npm run build`). The gate's own header
-  comment still justifies itself with Dependabot advisories, which is now
-  obsolete — GitHub has supported pnpm for the dependency graph and alerts
-  since 2023-08-02 — so do not read that comment as the reason the file exists.
+- **`package-lock.json` is load-bearing — do NOT delete it.** **Verified here:** `.github/workflows/release.yml` builds the released `main.js` from the npm tree (`npm install --legacy-peer-deps` → `npm run build`), and `.npmrc` records that a mirror-resolved lockfile produced a `main.js` whose hash differed from the published asset. **Second-hand:** that the community store scanner rebuilds each release with `npm ci` + `npm run build` and byte-diffs it — reported by `alas-poor-ophelia/carrel` 0.10.3, `chrisurf/obsidian-voice` #74 and `polleoai/athena` 1.8.1, with no first-party source. Issue #907's Option B proposed deleting this file and is **rejected** either way: without it npm re-resolves, which is the problem `.npmrc` exists for. The correction is on the issue.
 - **Dependabot cannot update both lockfiles, and never will.** This repo
   declares `packageManager: pnpm@10.14.0` plus a `pnpm-workspace.yaml`, so its
   npm ecosystem resolves to pnpm and every PR it opens changes exactly
