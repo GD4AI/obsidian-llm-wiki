@@ -71,6 +71,14 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
   // Reads go through `readSection`, which returns the raw file rather than the
   // LLM-sanitized body, so saving cannot silently drop a legacy baked tag enum.
   //
+  // **A view that edits must cover only what the user owns.** The first version
+  // pointed one box at `## Content Rules`, which holds the plugin's own
+  // guarantees (verbatim quotes, output language, name language, bidirectional
+  // links). A user could not tell whose text it was, and deleting a line
+  // silently removed a guarantee. So `## Content Rules` left the panel and the
+  // user's own text lives in `## Additional Content Rules`, empty by default —
+  // empty means "no additional rules", which is safe to leave alone.
+  //
   // The per-topic override layer is still absent; it becomes natural under this
   // shape (one section per topic, selected by folder) and is recorded as #896.
   {
@@ -86,12 +94,15 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
         placeholder: tab.getText('extractionFocusPlaceholder'),
       },
       {
-        heading: 'Content Rules',
+        heading: 'Additional Content Rules',
         name: tab.getText('contentRequirementsName'),
         desc: tab.getText('contentRequirementsDesc'),
         placeholder: tab.getText('contentRequirementsPlaceholder'),
       },
     ];
+
+    const schemaFilePath = tab.plugin.schemaManager.getSchemaFilePath();
+    const schemaRelPath = schemaFilePath.split('/').slice(-2).join('/');
 
     const rows = schemaSections.map(({ heading, name, desc, placeholder }) => {
       let seeded = false;
@@ -102,9 +113,24 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
       };
 
       const setting = new Setting(containerEl).setName(name).setDesc(desc);
+      // A `width: 100%` textarea inside a `setting-item-control` stays narrow,
+      // because the control is a flex box sized to its content. The row has to
+      // stack before the box can use the panel width.
+      // `classList.add` rather than Obsidian's `addClass` sugar: the element is a
+      // real `HTMLDivElement`, and the standard API is what a test double can provide.
+      setting.settingEl.classList.add('llm-wiki-prompt-focus-setting');
+      // The box names its own source. A button labelled with the path is
+      // language-neutral, so it needs no entry in eleven locales, and it says
+      // exactly what it opens.
+      setting.addButton(button => button
+        .setButtonText(schemaRelPath)
+        .setTooltip(`Open ${heading}`)
+        .onClick(() => {
+          void tab.app.workspace.openLinkText(schemaFilePath, '', false);
+        }));
       setting.addTextArea(text => {
         text.setPlaceholder(placeholder);
-        text.inputEl.rows = 4;
+        text.inputEl.rows = 6;
         text.inputEl.classList.add('llm-wiki-prompt-focus-input');
         // Seed asynchronously: the schema is a file, and `display()` is synchronous.
         void tab.plugin.schemaManager.readSection(heading).then((current) => {

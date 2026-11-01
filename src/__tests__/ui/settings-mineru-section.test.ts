@@ -28,7 +28,10 @@ vi.mock('obsidian', () => {
     }
   }
   class SettingMock {
-    settingEl = { style: { display: '' } };
+    // The real `Setting.settingEl` is an `HTMLDivElement`. The prompt-focus rows
+    // stack the row so the textarea can use the panel width, which needs the
+    // element's class surface.
+    settingEl = { style: { display: '' }, classList: { add: vi.fn(), remove: vi.fn(), contains: () => false } };
     constructor(_container: HTMLElement) {}
     setName(value: string): this { currentName = value; return this; }
     setDesc(): this { return this; }
@@ -60,11 +63,18 @@ describe('MinerU settings', () => {
     const setSecret = vi.fn();
     const tab = {
       tempSettings: { ...DEFAULT_SETTINGS, markdownConversionBackend: 'mineru' },
-      app: { secretStorage: { getSecret, setSecret } },
+      app: { secretStorage: { getSecret, setSecret }, workspace: { openLinkText: () => undefined } },
       getText: (key: string) => key,
-      // The prompt-focus rows read their text from the Schema file, so a tab
-      // without a schema manager would throw before this test reaches MinerU.
-      plugin: { schemaManager: { readSection: async () => '', writeSection: async () => {} } },
+      // The prompt-focus rows read their text from the Schema file and offer a
+      // button that opens it, so a tab without those would throw before this
+      // test reaches MinerU.
+      plugin: {
+        schemaManager: {
+          readSection: async () => '',
+          writeSection: async () => {},
+          getSchemaFilePath: () => 'wiki/schema/config.md',
+        },
+      },
     } as unknown as LLMWikiSettingTab;
 
     renderWikiConfigSection(tab, {} as HTMLElement);

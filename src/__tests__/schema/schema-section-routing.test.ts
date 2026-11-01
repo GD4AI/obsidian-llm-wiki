@@ -52,6 +52,35 @@ describe('the Schema is the only home for the two hints', () => {
     expect(types).not.toContain('contentRequirements');
   });
 
+  // The Settings panel is a view of the file, and a view that edits must cover
+  // only what the user owns. `## Content Rules` holds the plugin's guarantees, so
+  // the panel does not show it; the user's own text lives in
+  // `## Additional Content Rules`, which is empty until they write something.
+  describe('the panel edits the user sections, not the plugin ones', () => {
+    it('ships the two user sections empty, so the boxes start blank', () => {
+      const body = buildDefaultSchemaBody();
+      expect(extractSectionBody(body, 'Extraction Focus')).toBe('');
+      expect(extractSectionBody(body, 'Additional Content Rules')).toBe('');
+    });
+
+    it('keeps the plugin guarantees in Content Rules and points at the user section', () => {
+      const body = buildDefaultSchemaBody();
+      const rules = extractSectionBody(body, 'Content Rules');
+      expect(rules).toContain('VERBATIM');
+      expect(rules).toContain('Additional Content Rules');
+    });
+
+    it('routes the user section to every task that receives the plugin rules', () => {
+      // If these ever diverge, a rule the user wrote for merges silently stops
+      // reaching merges — the FINDING 2 shape that opened #895.
+      const routes = taskSections();
+      for (const task of ['analyze', 'entity', 'concept', 'merge', 'full']) {
+        expect(routes[task], `${task} must receive both rule sections`)
+          .toEqual(expect.arrayContaining(['Content Rules', 'Additional Content Rules']));
+      }
+    });
+  });
+
   it('routes Content Rules to every task that writes or reads a page body', () => {
     const routes = taskSections();
     for (const task of ['analyze', 'entity', 'concept', 'merge']) {

@@ -125,10 +125,10 @@ export { VALID_ENTITY_TAGS, VALID_CONCEPT_TAGS, DEFAULT_ENTITY_TAG, DEFAULT_CONC
 // threaded into five merge templates and four were missed. Here the fix is one
 // entry per task, and the routing table is the only place that decides.
 const TASK_SECTIONS: Record<SchemaTask, string[]> = {
-  analyze: ['Wiki Structure', 'Classification Rules', 'Naming Conventions', 'Content Rules', 'Extraction Focus'],
+  analyze: ['Wiki Structure', 'Classification Rules', 'Naming Conventions', 'Content Rules', 'Additional Content Rules', 'Extraction Focus'],
   summary: ['Wiki Structure', 'Classification Rules', 'Source Page Template', 'Mentions Format'],
-  entity: ['Entity Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules'],
-  concept: ['Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules'],
+  entity: ['Entity Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules', 'Additional Content Rules'],
+  concept: ['Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules', 'Additional Content Rules'],
   related: ['Naming Conventions', 'Classification Rules'],
   conversation: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules'],
   // 'index' has a single caller: the semantic dedup in
@@ -138,8 +138,8 @@ const TASK_SECTIONS: Record<SchemaTask, string[]> = {
   // decision, and this is the only way they reach it.
   index: ['Wiki Structure', 'Classification Rules'],
   lint: ['Maintenance Policies'],
-  merge: ['Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Multi-Source Merge Rules', 'Date Fields', 'Content Rules'],
-  full: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Maintenance Policies', 'Content Rules', 'Extraction Focus'],
+  merge: ['Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Multi-Source Merge Rules', 'Date Fields', 'Content Rules', 'Additional Content Rules'],
+  full: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Maintenance Policies', 'Content Rules', 'Additional Content Rules', 'Extraction Focus'],
 };
 
 /**
@@ -274,17 +274,17 @@ Rules:
 - Multiple quotes from the same source go in the same block, separated by newlines
 
 ## Content Rules
-Rules every page follows when it is written or rewritten. Add your own lines here;
-the entries above are the plugin's defaults.
+Rules every page follows when it is written or rewritten. These are the plugin's own guarantees —
+the Settings panel does not edit this section. Add your own lines in **Additional Content Rules**
+below this section.
 - mentions_in_source MUST be VERBATIM quotes — never paraphrase or translate
 - Summaries/descriptions should use the wiki output language
 - Entity/concept names must match the source file's original language exactly
 - All pages must include bidirectional links where relevant
 
+## Additional Content Rules
+
 ## Extraction Focus
-Narrow which subjects become pages. Name the topics you want recognised; subjects
-outside this list are less likely to be extracted. This changes what is found in your
-sources, not how pages are written. Empty means extract everything a source supports.
 
 ## Classification Rules
 - **type field:** entity | concept | source — the page category
@@ -337,6 +337,18 @@ export class SchemaManager {
     return `${this.settings.wikiFolder}/${SCHEMA_FILENAME}`;
   }
 
+  /**
+   * The vault path of the schema file.
+   *
+   * Public because the Settings panel shows two textareas whose content is this
+   * file, and a view should be able to name its source and open it. Kept as a
+   * wrapper rather than widening `getSchemaPath` so the private name keeps its
+   * meaning inside this class.
+   */
+  getSchemaFilePath(): string {
+    return this.getSchemaPath();
+  }
+
   private getSuggestionsPath(): string {
     return `${this.settings.wikiFolder}/${SUGGESTIONS_FILENAME}`;
   }
@@ -371,12 +383,18 @@ ${selectedBody}
   }
 
   private selectSections(body: string, task: SchemaTask): string {
+    // `full` returns the file unfiltered, and a test names that intent. It is not
+    // reached by the production callers, which all pass a task.
     if (task === 'full') return body;
 
     const wanted = TASK_SECTIONS[task];
     const sections = this.parseSections(body);
 
-    const selected = sections.filter(s => wanted.includes(s.heading));
+    // An empty section contributes nothing, so it is dropped rather than sent as
+    // a heading with no body. Two sections are empty by default now —
+    // `## Additional Content Rules` and `## Extraction Focus` — and "empty means
+    // nothing" has to hold for the prompt too, not only for the Settings panel.
+    const selected = sections.filter((s) => s.content.trim() !== '' && wanted.includes(s.heading));
     return selected.map(s => `## ${s.heading}\n${s.content}`).join('\n\n');
   }
 
