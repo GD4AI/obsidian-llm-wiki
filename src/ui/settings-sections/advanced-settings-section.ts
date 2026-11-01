@@ -14,6 +14,9 @@
  *       - Write PDF Markdown to Vault toggle (moved from Wiki Configuration)
  *       - Slug Case dropdown (moved from Wiki Configuration)
  *       - First-run Welcome note toggle (moved from Auto Maintenance)
+ *       - Prompt customization (extraction focus + additional content rules),
+ *         moved here from Wiki Configuration on 2026-11-01 — content policy,
+ *         not LLM sampling, so it is the bottom panel's business
  *
  * Why separate from Auto Maintenance / Wiki Configuration:
  *   - Auto Maintenance is daily-driver config (watch, periodic lint, smart
@@ -32,10 +35,13 @@
  * close — it is a permanent first-run behavior, only its UI home moved.
  */
 
-import { Notice, Setting } from 'obsidian';
+import { Notice, Setting, MarkdownView, TFile } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 import { MIN_ALIAS_LENGTH, MIN_ALIAS_LENGTH_MIN, MIN_ALIAS_LENGTH_MAX, NOTICE_SHORT } from '../../constants';
 import { renderNumberInput } from './shared-inputs';
+import { clampPromptFocusText } from '../../core/prompt-focus';
+import { findHeadingLine } from '../../schema/schema-manager';
+import { setSettingsVisible } from '../settings-helpers';
 
 export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -236,4 +242,140 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
     .addToggle(toggle => toggle
       .setValue(tempSettings.lintDedupIncludeSources !== false)
       .onChange((value) => { tempSettings.lintDedupIncludeSources = value; }));
+
+  // v1.27.3: the two free-text hints live in the SCHEMA, and this edits them.
+  //
+  // **It sits in this panel, not in Wiki Configuration.** The panel-scope rule
+  // in AGENTS.md puts LLM sampling in the LLM Advanced section and every other
+  // power-user setting here; prompt content is policy, not sampling. Off by
+  // default, like everything else behind `showAdvancedSettings`.
+  //
+  // They were settings until 2026-10-30. `schema/config.md` already owns both
+  // texts — `## Content Rules` carries the plugin's own rules and `TASK_SECTIONS`
+  // routes it to analyze / entity / concept / merge — so a settings copy was a
+  // second store for one instruction, with no precedence rule between the two
+  // blocks the model receives. See the decision comment on PR #895 and
+  // `core/prompt-focus.ts` for the test that decides which layer a value
+  // belongs to.
+  //
+  // The textarea is a VIEW of a schema section, not a field in `data.json`.
+  // Reads go through `readSection`, which returns the raw file rather than the
+  // LLM-sanitized body, so saving cannot silently drop a legacy baked tag enum.
+  //
+  // **A view that edits must cover only what the user owns.** The first version
+  // pointed one box at `## Content Rules`, which holds the plugin's own
+  // guarantees (verbatim quotes, output language, name language, bidirectional
+  // links). A user could not tell whose text it was, and deleting a line
+  // silently removed a guarantee. So `## Content Rules` left the panel and the
+  // user's own text lives in `## Additional Content Rules`, empty by default —
+  // empty means "no additional rules", which is safe to leave alone.
+  //
+  // The per-topic override layer is still absent; it becomes natural under this
+  // shape (one section per topic, selected by folder) and is recorded as #896.
+  {
+    new Setting(containerEl)
+      .setName(tab.getText('promptFocusSectionName'))
+      .setHeading();
+
+    const schemaSections: Array<{ heading: string; name: string; desc: string; placeholder: string }> = [
+      {
+        heading: 'Extraction Focus',
+        name: tab.getText('extractionFocusName'),
+        desc: tab.getText('extractionFocusDesc'),
+        placeholder: tab.getText('extractionFocusPlaceholder'),
+      },
+      {
+        heading: 'Additional Content Rules',
+        name: tab.getText('contentRequirementsName'),
+        desc: tab.getText('contentRequirementsDesc'),
+        placeholder: tab.getText('contentRequirementsPlaceholder'),
+      },
+    ];
+
+    const schemaFilePath = tab.plugin.schemaManager.getSchemaFilePath();
+    const schemaRelPath = schemaFilePath.split('/').slice(-2).join('/');
+
+    const rows = schemaSections.map(({ heading, name, desc, placeholder }) => {
+      let seeded = false;
+      let pending: number | null = null;
+      const flush = (value: string): void => {
+        if (pending !== null) { window.clearTimeout(pending); pending = null; }
+        void tab.plugin.schemaManager.writeSection(heading, clampPromptFocusText(value));
+      };
+
+      const setting = new Setting(containerEl).setName(name).setDesc(desc);
+      // A `width: 100%` textarea inside a `setting-item-control` stays narrow,
+      // because the control is a flex box sized to its content. The row has to
+      // stack before the box can use the panel width.
+      // `classList.add` rather than Obsidian's `addClass` sugar: the element is a
+      // real `HTMLDivElement`, and the standard API is what a test double can provide.
+      setting.settingEl.classList.add('llm-wiki-prompt-focus-setting');
+      // A path as a button label reads as a value, not an action. The label is a
+      // verb now, and the tooltip carries the path so the target is still named.
+      // Opening at line 0 would make the reader search for the section they just
+      // clicked, so the caret lands on the heading.
+      setting.addButton(button => button
+        .setButtonText(tab.getText('promptFocusOpenSchema'))
+        .setTooltip(schemaRelPath)
+        .onClick(() => {
+          void openSchemaAt(tab, schemaFilePath, heading);
+        }));
+      setting.addTextArea(text => {
+        text.setPlaceholder(placeholder);
+        text.inputEl.rows = 6;
+        text.inputEl.classList.add('llm-wiki-prompt-focus-input');
+        // Seed asynchronously: the schema is a file, and `display()` is synchronous.
+        void tab.plugin.schemaManager.readSection(heading).then((current) => {
+          text.setValue(current);
+          seeded = true;
+        });
+        text.onChange((value) => {
+          // `setValue` does not fire onChange in Obsidian, but a stale seed
+          // arriving after the user has typed would otherwise overwrite the
+          // file with the seed's own text.
+          if (!seeded) return;
+          if (pending !== null) window.clearTimeout(pending);
+          pending = window.setTimeout(() => { pending = null; flush(value); }, WRITE_DEBOUNCE_MS);
+        });
+        // A field the user leaves is written at once, so closing the settings
+        // tab inside the debounce window cannot lose the edit.
+        text.inputEl.addEventListener('blur', () => {
+          if (pending !== null) flush(text.inputEl.value);
+        });
+      });
+      return setting;
+    });
+
+    setSettingsVisible(rows, true);
+  }
+}
+
+/** How long to wait after a keystroke before rewriting the schema file. */
+const WRITE_DEBOUNCE_MS = 800;
+
+/**
+ * Open the schema file and put the caret on the section this row edits.
+ *
+ * Both halves can fail without being errors: the file may not exist yet on a
+ * fresh vault, and the leaf may open a view that is not a Markdown editor. In
+ * either case the plain open still happens, so the button never does nothing.
+ */
+async function openSchemaAt(
+tab: LLMWikiSettingTab,
+path: string,
+heading: string,
+): Promise<void> {
+  const file = tab.app.vault.getAbstractFileByPath(path);
+  if (!(file instanceof TFile)) {
+    void tab.app.workspace.openLinkText(path, '', false);
+    return;
+  }
+  const leaf = tab.app.workspace.getLeaf(false);
+  await leaf.openFile(file);
+  const view = leaf.view;
+  if (!(view instanceof MarkdownView)) return;
+  const line = findHeadingLine(view.editor.getValue(), heading);
+  if (line < 0) return;
+  view.editor.setCursor({ line, ch: 0 });
+  view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
 }

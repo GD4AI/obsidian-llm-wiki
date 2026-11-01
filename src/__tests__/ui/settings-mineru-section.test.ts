@@ -65,16 +65,10 @@ describe('MinerU settings', () => {
       tempSettings: { ...DEFAULT_SETTINGS, markdownConversionBackend: 'mineru' },
       app: { secretStorage: { getSecret, setSecret }, workspace: { openLinkText: () => undefined } },
       getText: (key: string) => key,
-      // The prompt-focus rows read their text from the Schema file and offer a
-      // button that opens it, so a tab without those would throw before this
-      // test reaches MinerU.
-      plugin: {
-        schemaManager: {
-          readSection: async () => '',
-          writeSection: async () => {},
-          getSchemaFilePath: () => 'wiki/schema/config.md',
-        },
-      },
+      // The prompt-focus rows moved to the Advanced panel, so this section no
+      // longer touches the schema manager. Kept as a minimal stub so a future
+      // move back does not turn this test into a puzzle.
+      plugin: { schemaManager: {} },
     } as unknown as LLMWikiSettingTab;
 
     renderWikiConfigSection(tab, {} as HTMLElement);
