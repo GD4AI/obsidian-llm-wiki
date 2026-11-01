@@ -7,7 +7,14 @@ const controls = vi.hoisted(() => new Map<string, { inputEl: { type: string }; c
 vi.mock('obsidian', () => {
   let currentName = '';
   class ControlMock {
-    inputEl = { type: '', min: '', max: '', classList: { add: vi.fn() } };
+    // The real `TextComponent.inputEl` is a `<textarea>`, so it carries the
+    // DOM listener surface. The prompt-focus rows attach a `blur` listener to
+    // flush a debounced Schema write, so the double needs one too.
+    inputEl = {
+      type: '', min: '', max: '', value: '',
+      classList: { add: vi.fn() },
+      addEventListener: vi.fn(),
+    };
     addOption(): this { return this; }
     setValue(): this { return this; }
     setPlaceholder(): this { return this; }
@@ -21,13 +28,17 @@ vi.mock('obsidian', () => {
     }
   }
   class SettingMock {
-    settingEl = { style: { display: '' } };
+    // The real `Setting.settingEl` is an `HTMLDivElement`. The prompt-focus rows
+    // stack the row so the textarea can use the panel width, which needs the
+    // element's class surface.
+    settingEl = { style: { display: '' }, classList: { add: vi.fn(), remove: vi.fn(), contains: () => false } };
     constructor(_container: HTMLElement) {}
     setName(value: string): this { currentName = value; return this; }
     setDesc(): this { return this; }
     setHeading(): this { return this; }
     addDropdown(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addText(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
+    addTextArea(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addToggle(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addButton(callback: (control: ControlMock) => void): this { callback(new ControlMock()); return this; }
     addComponent(callback: (element: HTMLElement) => unknown): this { callback({} as HTMLElement); return this; }
@@ -52,8 +63,12 @@ describe('MinerU settings', () => {
     const setSecret = vi.fn();
     const tab = {
       tempSettings: { ...DEFAULT_SETTINGS, markdownConversionBackend: 'mineru' },
-      app: { secretStorage: { getSecret, setSecret } },
+      app: { secretStorage: { getSecret, setSecret }, workspace: { openLinkText: () => undefined } },
       getText: (key: string) => key,
+      // The prompt-focus rows moved to the Advanced panel, so this section no
+      // longer touches the schema manager. Kept as a minimal stub so a future
+      // move back does not turn this test into a puzzle.
+      plugin: { schemaManager: {} },
     } as unknown as LLMWikiSettingTab;
 
     renderWikiConfigSection(tab, {} as HTMLElement);

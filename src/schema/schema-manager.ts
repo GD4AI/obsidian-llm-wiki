@@ -119,11 +119,16 @@ export { VALID_ENTITY_TAGS, VALID_CONCEPT_TAGS, DEFAULT_ENTITY_TAG, DEFAULT_CONC
 //
 // Date Fields' programmatic-fill half is engine fact (#328 layer 3); moving
 // it to runtime injection wholesale remains future work.
+// `Content Rules` reaches `merge` and `full` as of 2026-10-30. It did not
+// before, and that was the same defect KvikullSigurdur reported as "a merge does
+// not carry the content requirements" — the settings copy of the text was
+// threaded into five merge templates and four were missed. Here the fix is one
+// entry per task, and the routing table is the only place that decides.
 const TASK_SECTIONS: Record<SchemaTask, string[]> = {
-  analyze: ['Wiki Structure', 'Classification Rules', 'Naming Conventions', 'Content Rules'],
+  analyze: ['Wiki Structure', 'Classification Rules', 'Naming Conventions', 'Content Rules', 'Additional Content Rules', 'Extraction Focus'],
   summary: ['Wiki Structure', 'Classification Rules', 'Source Page Template', 'Mentions Format'],
-  entity: ['Entity Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules'],
-  concept: ['Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules'],
+  entity: ['Entity Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules', 'Additional Content Rules'],
+  concept: ['Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Mentions Format', 'Content Rules', 'Additional Content Rules'],
   related: ['Naming Conventions', 'Classification Rules'],
   conversation: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules'],
   // 'index' has a single caller: the semantic dedup in
@@ -133,9 +138,67 @@ const TASK_SECTIONS: Record<SchemaTask, string[]> = {
   // decision, and this is the only way they reach it.
   index: ['Wiki Structure', 'Classification Rules'],
   lint: ['Maintenance Policies'],
-  merge: ['Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Multi-Source Merge Rules', 'Date Fields'],
-  full: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Maintenance Policies'],
+  merge: ['Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Multi-Source Merge Rules', 'Date Fields', 'Content Rules', 'Additional Content Rules'],
+  full: ['Wiki Structure', 'Entity Page Template', 'Concept Page Template', 'Naming Conventions', 'Classification Rules', 'Maintenance Policies', 'Content Rules', 'Additional Content Rules', 'Extraction Focus'],
 };
+
+/**
+ * The body of one `## Heading` section, without the heading and without the
+ * trailing blank line that separates it from the next section.
+ */
+export function extractSectionBody(raw: string, heading: string): string {
+  const lines = raw.split('\n');
+  const target = `## ${heading}`;
+  const start = lines.findIndex((line) => line.trim() === target);
+  if (start === -1) return '';
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s/.test(lines[i])) { end = i; break; }
+  }
+  return lines.slice(start + 1, end).join('\n').trim();
+}
+
+/**
+ * The 0-based line index of a `## Heading` line, or -1 when the file has none.
+ *
+ * The Settings panel shows two textareas whose content is a section of this
+ * file, and each carries a button that opens the file. Opening it at line 0
+ * makes the reader search for the section they just clicked, so the line is
+ * computed here — with the other functions that know this file's layout, and
+ * away from the UI so it can be tested without an editor.
+ */
+export function findHeadingLine(raw: string, heading: string): number {
+  const target = `## ${heading}`;
+  const lines = raw.split('\n');
+  return lines.findIndex((line) => line.trim() === target);
+}
+
+/**
+ * The same file with one section's body swapped. Everything outside the section
+ * — frontmatter, other sections, their order and their blank lines — is
+ * preserved, because the user's schema is their document, not our template.
+ */
+export function replaceSectionBody(raw: string, heading: string, content: string): string {
+  const lines = raw.split('\n');
+  const target = `## ${heading}`;
+  const body = content.trim() === '' ? [] : content.trim().split('\n');
+  const start = lines.findIndex((line) => line.trim() === target);
+
+  if (start === -1) {
+    const tail = raw.endsWith('\n') ? raw : `${raw}\n`;
+    return `${tail}\n${target}\n${body.length > 0 ? `${body.join('\n')}\n` : ''}`;
+  }
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s/.test(lines[i])) { end = i; break; }
+  }
+
+  // One blank line between the section and whatever follows it, which is how
+  // every section in the default body is separated.
+  const replacement = body.length > 0 ? [target, ...body, ''] : [target, ''];
+  return [...lines.slice(0, start), ...replacement, ...lines.slice(end)].join('\n');
+}
 
 export function buildDefaultSchemaBody(_settings?: LLMWikiSettings): string {
   // Issue #328 Phase 1: tag vocabulary is Settings-driven and is injected
@@ -226,10 +289,17 @@ Rules:
 - Multiple quotes from the same source go in the same block, separated by newlines
 
 ## Content Rules
+Rules every page follows when it is written or rewritten. These are the plugin's own guarantees —
+the Settings panel does not edit this section. Add your own lines in **Additional Content Rules**
+below this section.
 - mentions_in_source MUST be VERBATIM quotes — never paraphrase or translate
 - Summaries/descriptions should use the wiki output language
 - Entity/concept names must match the source file's original language exactly
 - All pages must include bidirectional links where relevant
+
+## Additional Content Rules
+
+## Extraction Focus
 
 ## Classification Rules
 - **type field:** entity | concept | source — the page category
@@ -282,6 +352,18 @@ export class SchemaManager {
     return `${this.settings.wikiFolder}/${SCHEMA_FILENAME}`;
   }
 
+  /**
+   * The vault path of the schema file.
+   *
+   * Public because the Settings panel shows two textareas whose content is this
+   * file, and a view should be able to name its source and open it. Kept as a
+   * wrapper rather than widening `getSchemaPath` so the private name keeps its
+   * meaning inside this class.
+   */
+  getSchemaFilePath(): string {
+    return this.getSchemaPath();
+  }
+
   private getSuggestionsPath(): string {
     return `${this.settings.wikiFolder}/${SUGGESTIONS_FILENAME}`;
   }
@@ -316,12 +398,18 @@ ${selectedBody}
   }
 
   private selectSections(body: string, task: SchemaTask): string {
+    // `full` returns the file unfiltered, and a test names that intent. It is not
+    // reached by the production callers, which all pass a task.
     if (task === 'full') return body;
 
     const wanted = TASK_SECTIONS[task];
     const sections = this.parseSections(body);
 
-    const selected = sections.filter(s => wanted.includes(s.heading));
+    // An empty section contributes nothing, so it is dropped rather than sent as
+    // a heading with no body. Two sections are empty by default now —
+    // `## Additional Content Rules` and `## Extraction Focus` — and "empty means
+    // nothing" has to hold for the prompt too, not only for the Settings panel.
+    const selected = sections.filter((s) => s.content.trim() !== '' && wanted.includes(s.heading));
     return selected.map(s => `## ${s.heading}\n${s.content}`).join('\n\n');
   }
 
@@ -347,6 +435,41 @@ ${selectedBody}
     }
 
     return result;
+  }
+
+  /**
+   * Read one `## Heading` section from the schema file, as the user wrote it.
+   *
+   * **This reads the raw file, not `loadSchema()`.** `loadSchema` sanitizes the
+   * body before the LLM sees it (`stripLegacyBakedTagEnum`), which is right for
+   * a prompt and wrong for an editor: a textarea seeded from the sanitized text
+   * would silently delete a legacy baked enum the moment the user saved.
+   */
+  async readSection(heading: string): Promise<string> {
+    const file = this.app.vault.getAbstractFileByPath(this.getSchemaPath());
+    if (!(file instanceof TFile)) return '';
+    let raw: string;
+    try {
+      raw = await this.app.vault.read(file);
+    } catch {
+      return '';
+    }
+    return extractSectionBody(raw, heading);
+  }
+
+  /**
+   * Replace one `## Heading` section's body, leaving every other byte alone.
+   *
+   * The whole file is rewritten through `vault.process`, which is atomic, so a
+   * concurrent edit elsewhere in the file is not clobbered by a stale read.
+   * A heading that does not exist yet is appended, which is what lets an older
+   * vault gain `## Extraction Focus` without a migration.
+   */
+  async writeSection(heading: string, content: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(this.getSchemaPath());
+    if (!(file instanceof TFile)) return;
+    await this.app.vault.process(file, (current) => replaceSectionBody(current, heading, content));
+    this.invalidateCache();
   }
 
   async loadSchema(): Promise<WikiSchema | null> {

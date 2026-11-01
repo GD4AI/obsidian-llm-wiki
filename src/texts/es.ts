@@ -394,6 +394,16 @@ export const ES_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Etiqueta duplicada omitida',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Personalización del prompt',
+    promptFocusOpenSchema: 'Ir al esquema',
+    extractionFocusName: 'Prioridad de extracción',
+    extractionFocusDesc: 'Texto libre que se añade al prompt de extracción: qué entidades y conceptos del dominio debe priorizar este wiki. No cambia el protocolo JSON ni las reglas de etiquetas. Vacío = desactivado. Máx. 4000 caracteres.',
+    extractionFocusPlaceholder: 'p. ej. omitir menciones de pasada; cada persona citada tiene su página',
+    contentRequirementsName: 'Requisitos de contenido',
+    contentRequirementsDesc: 'Texto libre que se añade a los prompts de generación de páginas: énfasis expresivo, estructura, aspectos que deben cubrirse. Las reglas de cita y anti-alucinación siguen bajo control del sistema. Vacío = desactivado. Máx. 4000 caracteres.',
+    contentRequirementsPlaceholder: 'p. ej. cerrar cada página con una línea «Cuestiones abiertas»; secciones de menos de 150 palabras',
+
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aceleración de ingestión',
     pageGenerationConcurrencyName: 'Concurrencia LLM',

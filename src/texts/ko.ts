@@ -393,6 +393,16 @@ export const KO_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: '중복 태그 건너뜀',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: '프롬프트 사용자 지정',
+    promptFocusOpenSchema: '스키마로 이동',
+    extractionFocusName: '추출 초점',
+    extractionFocusDesc: '추출 프롬프트에 덧붙이는 자유 텍스트: 이 위키가 우선해야 할 도메인 엔티티·개념을 지정합니다. JSON 프로토콜과 태그 규칙은 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
+    extractionFocusPlaceholder: '예: 스쳐 가는 언급은 건너뛰기. 인용된 인물은 모두 별도 페이지로',
+    contentRequirementsName: '내용 요구사항',
+    contentRequirementsDesc: '페이지 생성 프롬프트에 덧붙이는 자유 텍스트: 표현의 초점, 구성, 반드시 다뤄야 할 aspects를 지정합니다. 인용과 환각 방지 규칙은 시스템 소유이므로 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
+    contentRequirementsPlaceholder: '예: 모든 페이지 끝에 "미해결 질문" 한 줄 두기. 각 절은 150단어 이내로',
+
     // Ingestion Acceleration
     accelerationSectionTitle: '수집 가속화',
     pageGenerationConcurrencyName: 'LLM 동시성',

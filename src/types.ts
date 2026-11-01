@@ -288,6 +288,7 @@ export interface LLMWikiSettings {
    *  (Anthropic Vision + OpenAI Vision support images natively). */
   markdownConversionBackend?: 'native' | 'mineru';
   wikiFolder: string;
+  /**
   /** UI language — the locale the settings panel and modals render in. Keyed
    *  off the TEXTS barrel (11 locales) so adding a locale updates this type. */
   language: keyof typeof TEXTS;

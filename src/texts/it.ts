@@ -403,6 +403,16 @@ export const IT_TEXTS = {
     customConceptTagsPlaceholder: 'teoria, metodo, campo, fenomeno, termine',
     chipDuplicateHint: 'Tag duplicato ignorato',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Personalizzazione del prompt',
+    promptFocusOpenSchema: 'Vai allo schema',
+    extractionFocusName: 'Priorità di estrazione',
+    extractionFocusDesc: 'Testo libero aggiunto al prompt di estrazione: quali entità e concetti del dominio questo wiki deve privilegiare. Non modifica il protocollo JSON né le regole sui tag. Vuoto = disattivato. Max 4000 caratteri.',
+    extractionFocusPlaceholder: 'es. saltare i riferimenti di passaggio; ogni persona citata ha una pagina',
+    contentRequirementsName: 'Requisiti di contenuto',
+    contentRequirementsDesc: 'Testo libero aggiunto ai prompt di generazione delle pagine: enfasi espressiva, struttura, aspetti da coprire necessariamente. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
+    contentRequirementsPlaceholder: 'es. chiudere ogni pagina con una riga «Domande aperte»; sezioni sotto le 150 parole',
+
     // Accelerazione Acquisizione
     accelerationSectionTitle: 'Accelerazione acquisizione',
     pageGenerationConcurrencyName: 'Concorrenza LLM',

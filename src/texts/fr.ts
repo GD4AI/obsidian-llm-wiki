@@ -394,6 +394,16 @@ export const FR_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: 'Tag en double ignoré',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'Personnalisation du prompt',
+    promptFocusOpenSchema: 'Aller au schéma',
+    extractionFocusName: 'Priorité d\'extraction',
+    extractionFocusDesc: 'Texte libre ajouté au prompt d\'extraction : quelles entités et concepts du domaine ce wiki doit prioriser. Ne modifie ni le protocole JSON ni les règles de tags. Vide = désactivé. 4000 caractères max.',
+    extractionFocusPlaceholder: 'ex. ignorer les mentions en passant ; chaque personne citée a sa page',
+    contentRequirementsName: 'Exigences de contenu',
+    contentRequirementsDesc: 'Texte libre ajouté aux prompts de génération de pages : insistance expressive, structure, aspects à couvrir impérativement. Les règles de citation et d\'anti-hallucination restent gérées par le système. Vide = désactivé. 4000 caractères max.',
+    contentRequirementsPlaceholder: 'ex. terminer chaque page par une ligne « Questions ouvertes » ; sections de moins de 150 mots',
+
     // Ingestion Acceleration
     accelerationSectionTitle: 'Accélération de l\'import',
     pageGenerationConcurrencyName: 'Parallélisme LLM',

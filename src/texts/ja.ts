@@ -392,6 +392,16 @@ export const JA_TEXTS = {
     customConceptTagsPlaceholder: 'theory, method, field, phenomenon, term',
     chipDuplicateHint: '重複タグをスキップしました',
 
+    // v1.27.3: topic-scoped prompt customization (extraction focus + content requirements)
+    promptFocusSectionName: 'プロンプトのカスタマイズ',
+    promptFocusOpenSchema: 'スキーマを開く',
+    extractionFocusName: '抽出の重点',
+    extractionFocusDesc: '抽出プロンプトに追記される自由テキスト：この Wiki が優先すべき領域のエンティティ／概念を指定します。JSON プロトコルやタグ規則は変更しません。空欄 = 無効。上限 4000 文字。',
+    extractionFocusPlaceholder: '例：通り一遍の言及は除く。引用されている人物は必ず1ページにする',
+    contentRequirementsName: '内容生成の要件',
+    contentRequirementsDesc: 'ページ生成プロンプトに追記される自由テキスト：表現の重点・構成・必ず扱うべき観点を指定します。引用・統合・Hallucination 防止の規則はシステム管理のため変更されません。空欄 = 無効。上限 4000 文字。',
+    contentRequirementsPlaceholder: '例：各ページの末尾に「未解決の点」を1行置く。1節は150語以内に収める',
+
     // Ingestion Acceleration
     accelerationSectionTitle: '取り込み高速化',
     pageGenerationConcurrencyName: 'LLM 並列度',

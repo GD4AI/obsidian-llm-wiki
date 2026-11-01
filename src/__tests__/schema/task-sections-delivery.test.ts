@@ -22,6 +22,8 @@ const ALL_SECTIONS = [
   'Date Fields',
   'Mentions Format',
   'Content Rules',
+  'Additional Content Rules',
+  'Extraction Focus',
   'Classification Rules',
   'Multi-Source Merge Rules',
   'Maintenance Policies',
@@ -69,6 +71,7 @@ describe('TASK_SECTIONS delivery matrix (#491 — oversight reading)', () => {
       'Naming Conventions',
       'Mentions Format',
       'Content Rules',
+      'Additional Content Rules',
       'Classification Rules',
     ]);
   });
@@ -80,6 +83,7 @@ describe('TASK_SECTIONS delivery matrix (#491 — oversight reading)', () => {
       'Naming Conventions',
       'Mentions Format',
       'Content Rules',
+      'Additional Content Rules',
       'Classification Rules',
     ]);
   });
@@ -90,6 +94,8 @@ describe('TASK_SECTIONS delivery matrix (#491 — oversight reading)', () => {
       'Wiki Structure',
       'Naming Conventions',
       'Content Rules',
+      'Additional Content Rules',
+      'Extraction Focus',
       'Classification Rules',
     ]);
   });
@@ -112,6 +118,8 @@ describe('TASK_SECTIONS delivery matrix (#491 — oversight reading)', () => {
       'Concept Page Template',
       'Naming Conventions',
       'Date Fields',
+      'Content Rules',
+      'Additional Content Rules',
       'Classification Rules',
       'Multi-Source Merge Rules',
     ]);
