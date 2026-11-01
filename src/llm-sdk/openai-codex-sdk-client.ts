@@ -8,6 +8,7 @@ import { normalizeCodexRequest } from './openai-codex/request-adapter';
 import { wrapReasoningContent } from '../core/markdown';
 import { extractResultReasoning } from './finish-reason';
 import { forcedTextPromptSystem } from './json-prompt-prefix';
+import { assertNotEmptyAnswer } from './empty-answer';
 
 type CodexAuth = Pick<CodexAuthManager, 'getAccess' | 'refreshAfterUnauthorized'>;
 type CodexFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -142,6 +143,10 @@ export class OpenAICodexSdkClient implements LLMClient {
       let text = '';
       for await (const chunk of result.textStream) text += chunk;
       if (streamError !== undefined) throw streamError instanceof Error ? streamError : new Error(typeof streamError === 'string' ? streamError : 'Codex stream failed');
+      // Issue #916: this is the fourth LLMClient, and review of the first
+      // version found it was the one still returning `''` — so the blank-pane
+      // symptom the issue reports survived on `provider: 'openai-codex'`.
+      if (!params.allowEmptyResponse) assertNotEmptyAnswer(text, 'the provider');
       return text;
     } catch (error) {
       throw mapAiSdkError(error);
@@ -170,6 +175,7 @@ export class OpenAICodexSdkClient implements LLMClient {
       if (reasoningContent) {
         text = wrapReasoningContent(reasoningContent, text);
       }
+      assertNotEmptyAnswer(text, 'the streamed answer');
       return text;
     } catch (error) {
       throw mapAiSdkError(error);

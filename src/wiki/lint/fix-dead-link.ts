@@ -272,6 +272,11 @@ export async function fixDeadLink(
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       ...(disableThinking ? { enableThinking: false } : {}),
+      // Issue #916: an empty response here means "this backend rejected the
+      // JSON mode", and the code below retries without it. The clients raise
+      // on an empty answer by default, so this probe has to ask for the empty
+      // string back.
+      allowEmptyResponse: true,
     });
 
     if (!response) {
@@ -284,6 +289,11 @@ export async function fixDeadLink(
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
         ...(disableThinking ? { enableThinking: false } : {}),
+        // Issue #916, review follow-up: the JSON-mode probe above has this
+        // opt-out and the retry arm did not. The retry exists because the
+        // backend refused JSON mode, and an empty reply here means "no
+        // action" — the same contract, so it needs the same exemption.
+        allowEmptyResponse: true,
       });
     }
 

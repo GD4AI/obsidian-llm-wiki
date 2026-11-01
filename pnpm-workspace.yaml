@@ -27,3 +27,9 @@ overrides:
   # a transitive resolution this plugin owns because it is the only consumer.
   '@ai-sdk/provider': 4.0.28
   '@ai-sdk/provider-utils': 5.0.61
+  # `ai@7.0.142` -> `@ai-sdk/provider-utils` -> `eventsource-parser: ^3.0.8`. The two lockfiles
+  # resolved it differently — pnpm 3.1.0, npm 3.1.1 — so the released `main.js` carried a
+  # different SSE parser than every gate ran against (issue #907, measured 2026-10-29).
+  # It is the only runtime-package skew between the two trees. Both versions satisfy the
+  # declared range, so pinning to the newer one breaks nothing.
+  eventsource-parser: 3.1.1
