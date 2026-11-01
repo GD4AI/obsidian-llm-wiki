@@ -305,7 +305,10 @@ export class AutoMaintainManager {
   }
 
   clearPeriodicLint(): void {
-    // registerInterval handles cleanup; we just track state
+    if (this.lintIntervalId !== null) {
+      window.clearInterval(this.lintIntervalId);
+      this.lintIntervalId = null;
+    }
     this.lintScheduled = false;
     console.debug('AutoMaintain: Periodic lint cleared');
   }
