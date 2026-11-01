@@ -53,6 +53,10 @@ export interface HarnessOptions {
   /** Invoked before every stubbed LLM call with the 0-based call index.
    *  Throwing here simulates the SDK propagating an abort/failure mid-run. */
   beforeLLMCall?: (callIndex: number) => void;
+  /** Answers per task instead of from the `llmResponses` queue. The golden net
+   *  (#926) needs this: a queue makes the snapshot depend on how many calls
+   *  happened, and every other assertion here already reads `llmRequests`. */
+  llmClient?: LLMClient;
 }
 
 function mkFile(path: string): TFile {
@@ -143,7 +147,7 @@ export function createWikiEngineHarness(opts: HarnessOptions = {}): WikiEngineHa
   const engine = new WikiEngine(
     app,
     { ...DEFAULT_SETTINGS, ...opts.settings },
-    () => client,
+    () => opts.llmClient ?? client,
     schemaManager,
     (path: string) => { writtenPaths.push(path); }, // onFileWrite
     // v1.25.0 PR3 follow-up #7 (Bug C): capture progress messages so tests
