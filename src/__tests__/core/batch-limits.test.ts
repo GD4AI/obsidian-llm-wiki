@@ -87,8 +87,71 @@ describe('Batch Limits — Pure Functions', () => {
 
     it('custom granularity stays conservative for small caps (5+5)', () => {
       const result = calculateBatchLimits(100000, 'custom', { entityCap: 5, conceptCap: 5 });
-      // totalCap = 10 → not > 10 threshold, stays at default config.initialBatchSize: 5
-      expect(result.initialBatchSize).toBe(5);
+      // #567 changed this from `toBe(5)`. The ceiling is 10, so a round asking
+      // for 10 cannot over-generate; what the old assertion protected was "do
+      // not ask for 50 when the user keeps 10", and that is what is kept.
+      expect(result.initialBatchSize).toBeLessThanOrEqual(10);
+      expect(result.initialBatchSize).toBeLessThan(50);
+    });
+
+    // Issue #567. The setting reads as a ceiling, and since v1.18.2 it is one:
+    // the extraction is hard-sliced to it. But the same number was also the
+    // per-round ask, and `detectConvergence` divides the yield by the ask. So a
+    // generous ceiling made every round ask for more, every yield ratio lower,
+    // and the note stopped sooner — raising a limit produced less output.
+    //
+    // The reading confirmed with @DocTpoint on 2026-08-28 is ceiling-only: the
+    // ask comes from the text, the cap stays a cap. These tests are written from
+    // that contract, not from the current formula.
+    describe('#567 — the ceiling must not size the ask', () => {
+      it('asks for the same amount whatever the ceiling is', () => {
+        // The reported defect in one assertion. Between 11 and 50 the ask WAS
+        // the ceiling, so this equality could not hold.
+        const small = calculateBatchLimits(6800, 'custom', { entityCap: 15, conceptCap: 15 });
+        const large = calculateBatchLimits(6800, 'custom', { entityCap: 50, conceptCap: 50 });
+
+        expect(small.initialBatchSize).toBe(large.initialBatchSize);
+      });
+
+      it('sizes the ask from the content, so a longer note asks for more', () => {
+        const short = calculateBatchLimits(3000, 'custom', { entityCap: 20, conceptCap: 20 });
+        const long = calculateBatchLimits(20000, 'custom', { entityCap: 20, conceptCap: 20 });
+
+        expect(long.initialBatchSize).toBeGreaterThan(short.initialBatchSize);
+      });
+
+      it('never asks for more than the ceiling, because the excess is sliced away', () => {
+        // Asking for 50 when the ceiling is 10 can only produce items that get
+        // dropped at the hard slice. Clamping down is the safe direction; it is
+        // the growth with the ceiling that was the defect.
+        const tiny = calculateBatchLimits(60000, 'custom', { entityCap: 5, conceptCap: 5 });
+
+        expect(tiny.initialBatchSize).toBeLessThanOrEqual(10);
+      });
+
+      it('still raises the round budget when the ceiling rises', () => {
+        // This is the benefit the cap-derived ask was introduced for: without
+        // it, custom mode maxed out at 15 items whatever the user set. It has to
+        // survive the fix, or the fix trades one wrong behaviour for another.
+        const small = calculateBatchLimits(6800, 'custom', { entityCap: 5, conceptCap: 5 });
+        const large = calculateBatchLimits(6800, 'custom', { entityCap: 100, conceptCap: 100 });
+
+        expect(large.maxBatches).toBeGreaterThan(small.maxBatches);
+      });
+
+      it('keeps the ask inside the configured bounds at both extremes', () => {
+        const tinyNote = calculateBatchLimits(100, 'custom', { entityCap: 100, conceptCap: 100 });
+        const hugeNote = calculateBatchLimits(2_000_000, 'custom', { entityCap: 300, conceptCap: 300 });
+
+        expect(tinyNote.initialBatchSize).toBeGreaterThanOrEqual(5);
+        expect(hugeNote.initialBatchSize).toBeLessThanOrEqual(50);
+      });
+
+      it('leaves the non-custom granularities alone', () => {
+        // The coupling only ever existed in the custom branch.
+        expect(calculateBatchLimits(6800, 'standard').initialBatchSize).toBe(20);
+        expect(calculateBatchLimits(6800, 'fine').initialBatchSize).toBe(30);
+      });
     });
 
     it('custom granularity with only entity cap set uses default for missing concept cap', () => {

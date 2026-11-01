@@ -53,16 +53,30 @@ export function calculateBatchLimits(
 ): BatchLimits {
   const config = { ...(GRANULARITY_CONFIG[granularity] || GRANULARITY_CONFIG.standard) };
 
-  // Custom granularity: scale batch parameters to match user's caps.
-  // Without this, custom (initialBatchSize:5, maxBatchesBase:1) maxes at 15 items
-  // regardless of customEntityLimit/customConceptLimit settings.
+  // Custom granularity: the ceiling must not size the ask (Issue #567).
+  //
+  // The caps read as ceilings, and since v1.18.2 they are one — the extraction
+  // is hard-sliced to them. But this block used to make the ceiling the per-round
+  // ask too, and `detectConvergence` divides the yield by the ask. So raising a
+  // limit lowered every yield ratio, and a note stopped sooner: the user asked
+  // for more and got less. Measured on 20 notes at 15+15 against 50+50.
+  //
+  // The contract confirmed with @DocTpoint on 2026-08-28 is ceiling-only: size
+  // the ask from the text, keep the cap a cap. Two bounds, and neither grows with
+  // the ceiling — `contentLength` decides the ask, and the ceiling only clamps it
+  // down, because asking for more than you will keep wastes the round.
+  //
+  // `maxBatchesBase` still comes from the ceiling, and that part has to stay: the
+  // static `custom` config (ask 5, one round) maxed out at 15 items whatever the
+  // user set, which is why this block existed at all.
   if (granularity === 'custom' && customLimits) {
     const totalCap = (customLimits.entityCap ?? MIN_BATCH_SIZE) + (customLimits.conceptCap ?? MIN_BATCH_SIZE);
-    if (totalCap > 10) {
-      // Scale batch size to totalCap (capped at CUSTOM_BATCH_SIZE_MAX, floored at MIN_BATCH_SIZE)
-      config.initialBatchSize = Math.min(CUSTOM_BATCH_SIZE_MAX, Math.max(MIN_BATCH_SIZE, totalCap));
-      config.maxBatchesBase = Math.max(1, Math.ceil(totalCap / config.initialBatchSize));
-    }
+    const contentAsk = Math.ceil(contentLength / BATCH_CHARS_PER_ITEM);
+    config.initialBatchSize = Math.max(
+      MIN_BATCH_SIZE,
+      Math.min(CUSTOM_BATCH_SIZE_MAX, contentAsk, totalCap),
+    );
+    config.maxBatchesBase = Math.max(1, Math.ceil(totalCap / config.initialBatchSize));
   }
 
   // Auto-downgrade maxTotalItems for short content to avoid "hard digging"
