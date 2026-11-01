@@ -38,14 +38,46 @@ export async function loadRelevantPagesForQuery(
   wikiFolder: string,
   reader: PageReader,
   sectionLabels: SectionLabelsLike | null,
+  queryTerms?: readonly string[],
+): Promise<string[]> {
+  const loaded = await loadRelevantPagesForQueryWithPaths(
+    pageTitles, wikiFolder, reader, sectionLabels, queryTerms,
+  );
+  return loaded.map((page) => page.body);
+}
+
+/** A loaded page and the path it came from. */
+export interface LoadedPageForQuery {
+  /** The path as it went into the wiki context, without the wiki folder. */
+  path: string;
+  /** The rendered `## Title` block that is concatenated into the context. */
+  body: string;
+}
+
+/**
+ * The same load, keeping the path of each page.
+ *
+ * Issue #880 review (DocTpoint, 2026-10-27): the retrieval label is built from
+ * the pages retrieval SELECTED, but the token budget drops some of them, so the
+ * label named pages the model never received. Recovering the paths from the
+ * bodies is not possible — a body is anonymous markdown — and the loader skips
+ * unreadable pages, so the index in `bodies` is not the index in
+ * `pageTitles` either. The pairing has to be produced where the path is known,
+ * which is here.
+ */
+export async function loadRelevantPagesForQueryWithPaths(
+  pageTitles: string[],
+  wikiFolder: string,
+  reader: PageReader,
+  sectionLabels: SectionLabelsLike | null,
   /** The query's terms. When given, the paragraphs that matched ride along
    *  with the summary so the model can see why the page was retrieved. The
    *  retrieval scores the full body and the display shows one section; the
    *  two units must agree or the model is reading the right page for a
    *  reason it cannot see. */
   queryTerms?: readonly string[],
-): Promise<string[]> {
-  const pages: string[] = [];
+): Promise<LoadedPageForQuery[]> {
+  const pages: LoadedPageForQuery[] = [];
   const wikiPrefix = wikiFolder + '/';
 
   // The matched-paragraph budget is shared across the whole retrieval. One page
@@ -125,7 +157,7 @@ ${matched}` : summary;
         : content;
     }
 
-    pages.push(`## ${displayTitle}\n\n${body}`);
+    pages.push({ path: normalizedTitle, body: `## ${displayTitle}\n\n${body}` });
   }
 
   return pages;
