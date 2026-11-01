@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "typecheck:tools": "tsc -p tools/dev-instrument/tsconfig.json --noEmit",
-    "gate:1": "pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm css-lint"
+    "gate:1": "pnpm lint && pnpm arch-check && pnpm typecheck && pnpm build && pnpm test && pnpm css-lint",
+    "arch-check": "node scripts/arch-check.mjs"
   },
   "keywords": [
     "obsidian",
