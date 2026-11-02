@@ -126,9 +126,10 @@ gateway defects stay named as the gateway's, and the plugin now sends `stream: f
 **Next up, 2026-11-01:** the table above in order, with the refactor track's #926/#927 ahead of its own later items
 because every other item in that track depends on them. #781 stays held until #729's decision rule is answered.
 
-### ROI order — the lint-fix correctness family (2026-10-12) — shipped 2026-10-22
+### The lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
-Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, plus #676, which the same family produced. **All of it shipped as PR #864** (merged `3136bfb35e`; 23 files, 348 test files, 4839 tests): #826, #824 and #827 closed by it, #825's stale half fixed with its frontmatter clause left open. The ROI table, the batch plan, and what executing it taught are in the PR thread and in [MEMORY §"Lessons learned"](./MEMORY.md#lessons-learned-from-session-memory); the user-facing entries are in the CHANGELOG. What is left is small, and it is here:
+Six reports from @konstantinopolka against 1.28.0 on ~1,000-page vaults, plus #676. All shipped as PR **#864** (nine commits,
+4839 tests): #826, #824 and #827 closed, #825's stale half fixed. History lives in `CHANGELOG.md`; what follows is what is left.
 
 | Left | What | Where it belongs |
 |---|---|---|
@@ -136,21 +137,9 @@ Six reports from @konstantinopolka against plugin 1.28.0 on ~1,000-page vaults, 
 | The `merged` count | it still increments for a pair whose source was kept, and it reaches the user through `t.lintMergeComplete`, so the count can exceed the pages actually merged | **#835**, with #825's frontmatter clause — correcting it needs a structured outcome from `mergeDuplicatePages` rather than a match on the message text, and the match on the message text is the fragile coupling this whole family is about |
 | #827's declined clause | a name appearing only inside a quote is not treated as fiction, because `"[[X]]"` is a real link in Obsidian | on the record, not on the roadmap |
 
-**The idempotency requirement is worth naming separately because it is not a detail of #825.** Keeping a source makes the merge re-entrant, so the fallback append had to become a containment check on `## From <title>` in the same change. A fix that keeps a page and then re-merges it on every run trades one silent deletion for slow unbounded growth — both failures of the same kind.
-
-**Status 2026-10-17: three of the four shipped on `fix/lint-dead-link-family`, and #827 waits on a decision.** #826, #824 and #825 each landed as their own commit with their own RED test and their own Gate 1. Four things came out of executing the plan rather than reading it — the plan's row for #823 was already merged in #833 and was not available work; the row for #826 described the fix rather than the defect (`normalizeLLMPath` ran after the filter, so the two paths were never compared); the row for #824 named a cause that was not the cause (the duplicate comes from `link_text` already ending with the link, not from the substring rule); and forcing `stale > 0` in a test takes the recorded **position**, not the `original` text, because the replacement is computed by substituting into `original` and a corrupted `original` makes it a no-op. The lessons are in MEMORY and the detail is in the PR thread.
-
-**One residual from seq 4 is deliberately left visible.** `runDuplicateMerges` still increments `merged` for a pair whose source was kept, and `merged` reaches the user through `t.lintMergeComplete`, so the count can exceed the number of pages actually merged. Correcting it needs a structured outcome from `mergeDuplicatePages` rather than a match on the message text — the same fragile coupling as the sentinel. File it with #825's frontmatter half under the `#835` decision rather than patching the string.
-
-**Status 2026-10-18: the review found one blocking point in #824, and it was mine.** The review probed the case where the model's guess names a *different page that exists*. The old code kept the guess, because the resolver it asked was "does this target name some page?" — not "does this target name the orphan?". The orphan gained no inbound link, the run reported that it had linked it, and the next lint reported the orphan again: the loop #824 describes, with a success message on top. The fix is to stop asking the wrong question: the link's purpose is to make the orphan reachable, so the target is the orphan by definition, and the resolver is deleted with it. The duplicate check moved from string comparison to **target identity**, because a page linked under a different label is the same page, and the label is presentation. Two remarks from the same review were answered rather than coded, and both are on the record in the PR thread: **#825's write order** is kept deliberately (reordering would make links point at a target that still holds its pre-merge content, so a failed write would leave the answer behind the merge), and **#827's unstored decision** is not persisted, because persisting it changes what the next run is allowed to do.
-
-**Status: all four shipped, plus five follow-ups the plan did not name — PR #864, nine commits, CI Gate 1 green.** The paragraph above says #827 "waits on a decision" and that was true when written; the decision was made and the row was wrong. What executing the rest of it changed:
-
-- **Seq 3's row named a fix that was rejected, and the real defect is one layer below the fixer.** "Three rules: generic word, code identifier, inline-code-or-quote-only" is an English word list of about 70 entries, and the project ships 11 locales — so the rule would silently disable in 10 of them. Replaced by the model deciding (`action=leave` in `prompts/fixes.ts`), because "is this name real" is a question about meaning (`Osteopontin`, `LinkedIn` are real; `Name` is not) and a spelling list cannot answer it. The deeper finding: `scanDeadLinks` and `scanOrphans` ran their link regex over **raw page text**, so a `[[link]]` inside inline code or a fenced block was reported dead and the fixer then created a page for `Name` or `MyFile`. The reporter's placeholder pages came mostly from example text. Both scanners now mask code regions (`maskCodeRegions`). **Quotation is deliberately not masked** — `"[[X]]"` is a real link in Obsidian, and a test asserts that boundary rather than leaving it to be rediscovered. A rejected-approach note: I first declined an inline-code rule because it "needs a new position contract between scanner and fixer". False — masking needs only the page's text, and that wrong call bought two patches at the wrong layer.
-- **Seq 1 needed identity, not string equality.** "Two guards, and one already exists one layer down" understated it. Measured by calling the production function: a string compare catches the literally repeated path and the missing `wiki/` prefix, and lets **six** spellings through — `./`, a doubled slash, a dropped `.md`, and Unicode NFC/NFD in both directions. NFC/NFD is the dangerous one, and the reason is an asymmetry: `tryReadFile` (`wiki-engine.ts:2209`) normalises the path and scans directories while `deleteFile` (`:2178`) uses an exact key, so one spelling reads the page and the other deletes it. `canonicalPagePath` folds all six; `mergeDuplicatePages` refuses on a match and `runDuplicateMerges` drops those pairs before they arrive.
-- **A defect the plan could not have seen: the log could say `merged` with the source still on disk.** The same asymmetry, opposite direction. `mergeDuplicatePages` now reads the source back and says so when it survived. `deleteFile` returning `boolean` is the better shape and is a separate change, because every caller and every mock would have to follow it.
-- **Two test doubles were more forgiving than production, which is why both defects stayed hidden.** `createMergeCtx`'s `deleteFile` recorded a delete without performing one — the read-back check above was unwritable until that was fixed. And `link-vault.ts` already skipped fenced links, which is why the link-retarget tests never surfaced the scanner bug. **A lenient double hides exactly the defect you are looking for.**
-
+Four lessons outlived the family: **seq 3 named a fix that was rejected, and the real defect sat one layer below the fixer**; **seq 1
+needed identity, not string equality**; **the log could say `merged` with the source still on disk**; **two test doubles forgave what
+production does not, which is why both defects stayed hidden**. Idempotency is the fifth, and it is a rule: keeping a source must not rewrite it.
 **What is still open, in the order it should be taken.** Three of the four rows now meet the issue's own acceptance criteria and say `Closes`; #824's target is rebuilt from the orphan's own path rather than skipped, #827's stub pages no longer return as findings, and #826 compares identity. **#827 has one clause declined on the record** — a name appearing only inside a quote is not treated as fiction, because `"[[X]]"` is a real link in Obsidian. #825 stays `Refs`, because its frontmatter clause reopens #386. Left: `deleteFile`'s return type (`boolean` rather than `void`), and the `merged` count that still increments for a kept-source pair — the latter stays filed under `#835`, per the residual note above, because it needs a structured outcome rather than a match on the message text.
 
 The **idempotency** requirement is worth naming separately because it is not a detail of #825: keeping a source makes the merge re-entrant, so the fallback append had to become a containment check on `## From <title>` in the same change. A fix that keeps a page and then re-merges it on every run trades one silent deletion for slow unbounded growth — both failures of the same kind.
@@ -170,14 +159,9 @@ conditions are in **#925**; scope is one issue per layer: **#926** snapshot, **#
 **#928** subtraction, **#929** types, **#930** settings tab, **#931** `core/` layering, **#932** long
 functions, **#933** settings inventory. Nothing starts before #886, #895 and #924 land.
 
-### The next-work order — 2026-10-16, re-ranked
-
-**Superseded 2026-10-29** by [the ROI order below](#the-next-work-order--2026-10-29-re-ranked-by-ROI). This section keeps the record of what that sweep decided, because two of its rows were decided on a measurement and are still load-bearing. The heading keeps its original text deliberately: the 2026-10-17 status was first written into it, and that broke the anchor MEMORY links to — twice in one day, because a second rename followed. **A heading that another document links to is an address; status belongs in the body.** A full sweep of ROADMAP, MEMORY, the code, 37 open issues, 6 open PRs and 3 milestones produced this order. The maintainer's call on 2026-10-16 was to run the routine items before the lint-fix batch, so the batch is no longer first despite carrying the highest correctness ROI in the repo.
-
-Its two surviving rows carry forward rather than as a table: **the real-question benchmark** (20–30 real questions with
-hand-labelled answer pages, in a synthetic fixture that runs by default — the largest evidence gap here, medium cost) and
-**the E1 escalation gate** (a decision, not a fix; it needs the `coverage` and `lexCount` distributions before anyone can
-choose). The #755 row is #895 in the table above; the lint-fix batch shipped 2026-10-22.
+**Two rows survived the superseded 2026-10-16 order, recorded here so they are not lost**: the real-question benchmark (20 hand-labelled
+answer pages in a synthetic fixture that runs by default — the largest evidence gap the project has), and the E1 escalation gate (a decision,
+not a fix; it needs the `coverage` and `lexCount` distributions before there is a rule to apply).
 
 **The token ceiling was measured, and the number that matters is the after-state.** On the two vaults that describe the current write path, answers over an 8k window went from 9/30 to **0/30** (test8) and 27/30 to **0/30** (test10), with p50 falling 7,067 → 5,332 and 11,015 → 5,873. The third vault on disk was written by an earlier release and is deliberately not quoted as evidence.
 
@@ -231,8 +215,24 @@ choice. Then five arms, all with the same model, the same character budget, thin
 | **C′** | C plus the two fixes | the fixes, apart from the budget |
 | **E** | C′ plus a reserved cross-source budget, applied by hand | the proposal itself |
 
-The metric is recall@K plus **the cross-source share of the loaded pages**, which the tie-break finding predicts sits near zero. `n >= 20` multi-source questions, with a CJK
-subset, because the tokenizer defect is worst in Chinese but is not Chinese-only. The dissent's four conditions for trusting the run apply unchanged.
+**The decision rule is pre-registered here, before any number exists, and it is @DocTpoint's form with his four clauses.**
+It is a rule and not a preference: the run cannot be read afterwards in whichever direction it lands.
+
+| # | Criterion | Pass |
+|---|---|---|
+| 1 | Recall@K, **paired**, E against C′ | E higher on ≥ 15 of 20, **ties counted as not higher** |
+| 2 | Blind preference, E against C′ | E chosen on ≥ 15 of 20 |
+| 3 | Cross-source share of the loaded pages, median | E ≥ 3× C′ **and ≥ 1 cross-source page per answer** |
+
+**15, not 13.** 13 of 20 gives p = 0.263 two-sided, so it decides nothing; the smallest count under 0.05 is 15 (0.041),
+and 16 gives 0.012. Recomputed here rather than taken on trust.
+**Criterion 3 needs the floor** because `3 × 0 = 0`, and **criterion 1 needs the tie rule** because Recall@K with the same K on the
+same question often ties: "higher" silently means "higher or equal" unless it is said. Ties count as not higher.
+**Rejection is criterion 3 failing**, even when 1 and 2 pass: if C′ already reaches E's cross-source share the reserved budget added
+nothing. **The rater is named here too**: a model that wrote neither answer, fixed name and prompt recorded with this table, forced
+choice, arms labelled `X`/`Y` in random order, no retrieval label and no citation list.
+`n >= 20` multi-source questions, with a CJK subset, because the tokenizer defect is worst in Chinese but is not Chinese-only.
+The dissent's four conditions for trusting the run apply unchanged.
 
 **The work splits in two.** The automatable half is a synthetic corpus with known ground truth — N sources against M entities, cross-source links placed by hand — run through
 the pipeline deterministically, reporting recall@K and the cross-source share per arm. It is reproducible and needs nobody. The half that decides is the real vault against a
