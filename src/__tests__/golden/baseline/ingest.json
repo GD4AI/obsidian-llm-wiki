@@ -1,0 +1,259 @@
+{
+	"taskSequence": [
+		"extract",
+		"extract",
+		"source-page",
+		"page-generate",
+		"page-generate",
+		"page-generate",
+		"extract",
+		"extract",
+		"source-page",
+		"merge-triage",
+		"merge-body",
+		"merge-triage",
+		"merge-body",
+		"merge-triage",
+		"merge-body",
+		"extract",
+		"extract",
+		"source-page",
+		"merge-triage",
+		"merge-body",
+		"merge-triage",
+		"merge-body",
+		"merge-triage",
+		"merge-body"
+	],
+	"written": [
+		{
+			"path": "wiki/concepts/gamma.md",
+			"frontmatterKeys": [
+				"created",
+				"generation_complete",
+				"sources",
+				"tags",
+				"updated"
+			],
+			"type": null,
+			"tags": [
+				"term"
+			],
+			"headings": [
+				"# PAGE",
+				"## Related Concepts",
+				"## Related Entities"
+			],
+			"links": [
+				"entities/alpha",
+				"entities/beta",
+				"sources/contradiction_2c40ba",
+				"sources/long_428adb"
+			]
+		},
+		{
+			"path": "wiki/entities/alpha.md",
+			"frontmatterKeys": [
+				"created",
+				"generation_complete",
+				"sources",
+				"tags",
+				"updated"
+			],
+			"type": null,
+			"tags": [
+				"person"
+			],
+			"headings": [
+				"# PAGE",
+				"## Related Entities",
+				"## Related Concepts"
+			],
+			"links": [
+				"concepts/gamma",
+				"entities/beta",
+				"sources/contradiction_2c40ba",
+				"sources/long_428adb"
+			]
+		},
+		{
+			"path": "wiki/entities/beta.md",
+			"frontmatterKeys": [
+				"created",
+				"generation_complete",
+				"sources",
+				"tags",
+				"updated"
+			],
+			"type": null,
+			"tags": [
+				"person"
+			],
+			"headings": [
+				"# PAGE",
+				"## Related Entities",
+				"## Related Concepts"
+			],
+			"links": [
+				"concepts/gamma",
+				"entities/alpha",
+				"sources/contradiction_2c40ba",
+				"sources/long_428adb"
+			]
+		},
+		{
+			"path": "wiki/index.md",
+			"frontmatterKeys": [],
+			"type": null,
+			"tags": [],
+			"headings": [
+				"# Wiki Index",
+				"## Entities",
+				"## Concepts",
+				"## Sources"
+			],
+			"links": [
+				"concepts/gamma",
+				"entities/alpha",
+				"entities/beta",
+				"sources/contradiction_2c40ba",
+				"sources/long_428adb",
+				"sources/short_6401dc"
+			]
+		},
+		{
+			"path": "wiki/log.md",
+			"frontmatterKeys": [],
+			"type": null,
+			"tags": [],
+			"headings": [
+				"# Wiki Operation Log",
+				"## [<date>] ingest | Short · mock-model · 32B",
+				"## [<date>] ingest | Long · mock-model · 38.8KB",
+				"## [<date>] ingest | Contradiction · mock-model · 37B"
+			],
+			"links": [
+				"concepts/gamma.md",
+				"entities/alpha.md",
+				"entities/beta.md",
+				"sources/contradiction_2c40ba.md",
+				"sources/long_428adb.md",
+				"sources/short_6401dc.md"
+			]
+		},
+		{
+			"path": "wiki/sources/contradiction_2c40ba.md",
+			"frontmatterKeys": [
+				"contentHash",
+				"created",
+				"generation_complete",
+				"source_file",
+				"tags",
+				"type",
+				"updated"
+			],
+			"type": "source",
+			"tags": [],
+			"headings": [
+				"# Contradiction - Summary",
+				"## Source",
+				"## Key points"
+			],
+			"links": [
+				"sources/contradiction.md"
+			]
+		},
+		{
+			"path": "wiki/sources/long_428adb.md",
+			"frontmatterKeys": [
+				"contentHash",
+				"created",
+				"generation_complete",
+				"source_file",
+				"tags",
+				"type",
+				"updated"
+			],
+			"type": "source",
+			"tags": [],
+			"headings": [
+				"# Long - Summary",
+				"## Source",
+				"## Key points"
+			],
+			"links": [
+				"sources/long.md"
+			]
+		},
+		{
+			"path": "wiki/sources/short_6401dc.md",
+			"frontmatterKeys": [
+				"contentHash",
+				"created",
+				"generation_complete",
+				"source_file",
+				"tags",
+				"type",
+				"updated"
+			],
+			"type": "source",
+			"tags": [],
+			"headings": [
+				"# Short - Summary",
+				"## Source",
+				"## Key points"
+			],
+			"links": [
+				"sources/short.md"
+			]
+		}
+	],
+	"report": {
+		"createdPages": 1,
+		"updatedPages": 3,
+		"entitiesCreated": 0,
+		"conceptsCreated": 0,
+		"contradictionsFound": 0,
+		"success": true,
+		"failedItems": 0,
+		"skipped": null
+	},
+	"progress": [
+		"Analyzing: short",
+		"Analyzing batch 1/3...",
+		"Analyzed batch 1, processing...",
+		"Analyzing batch 2/3 (2 entities, 1 concepts so far)...",
+		"Analyzed batch 2, processing...",
+		"Related lists: 6 sibling edges, 0 unanswered names, 0 tag values dropped",
+		"[1/6] Creating summary...",
+		"[2/6] Entity: Beta",
+		"[3/6] Concept: Gamma",
+		"[5/6] Generating index...",
+		"Analyzing: long",
+		"Analyzing batch 1/18...",
+		"Analyzed batch 1, processing...",
+		"Analyzing batch 2/18 (2 entities, 1 concepts so far)...",
+		"Analyzed batch 2, processing...",
+		"Related lists: 6 sibling edges, 0 unanswered names, 0 tag values dropped",
+		"[1/9] Creating summary...",
+		"[2/9] Entity: Beta",
+		"[3/9] Concept: Gamma",
+		"[5/9] Updating: alpha",
+		"[6/9] Updating: beta",
+		"[7/9] Updating: gamma",
+		"[8/9] Generating index...",
+		"Analyzing: contradiction",
+		"Analyzing batch 1/3...",
+		"Analyzed batch 1, processing...",
+		"Analyzing batch 2/3 (2 entities, 1 concepts so far)...",
+		"Analyzed batch 2, processing...",
+		"Related lists: 6 sibling edges, 0 unanswered names, 0 tag values dropped",
+		"[1/9] Creating summary...",
+		"[2/9] Entity: Beta",
+		"[3/9] Concept: Gamma",
+		"[5/9] Updating: alpha",
+		"[6/9] Updating: beta",
+		"[7/9] Updating: gamma",
+		"[8/9] Generating index..."
+	]
+}
