@@ -1,0 +1,11 @@
+{
+	"taskSequence": [
+		"lint-dedup"
+	],
+	"rewritten": [
+		"wiki/index.md",
+		"wiki/log.md"
+	],
+	"trashed": [],
+	"error": null
+}
