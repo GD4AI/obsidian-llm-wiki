@@ -54,6 +54,8 @@ const ANSWERS: Record<string, string> = {
 	'type-repair': JSON.stringify({ entities: [], concepts: [] }),
 	'lemma-classify': JSON.stringify({ kind: 'entity', confidence: 1 }),
 	'embedded-image-analysis': JSON.stringify({ description: 'IMAGE' }),
+	// Lint: an empty duplicate set, so the phase completes instead of throwing.
+	'lint-dedup': JSON.stringify({ groups: [] }),
 };
 
 export function createFakeClient(): FakeClient {
