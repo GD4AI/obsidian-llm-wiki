@@ -189,16 +189,6 @@ export const MAX_TOKENS_BATCH = 16000;
 export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
 
 /**
- * Ceiling for the truncation-retry double-up (Issue #904).
- *
- * Was borrowed from `MAX_TOKENS_BATCH`. Decoupled so that raising the
- * extraction budget cannot silently raise this one, and vice versa: they
- * answer different questions ("how much may one call declare" vs "how far
- * may a retry grow a truncated response").
- */
-export const TRUNCATION_RETRY_MAX_CAP = 16000;
-
-/**
  * Token budget for full page generation (entity/concept/source-summary).
  * The LLM is asked to produce a complete wiki page with all sections.
  */
