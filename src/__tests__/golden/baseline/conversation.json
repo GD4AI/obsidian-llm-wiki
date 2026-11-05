@@ -1,0 +1,31 @@
+{
+	"taskSequence": [
+		"conversation-save-dedup",
+		"conversation-extract",
+		"conversation-page"
+	],
+	"writes": [
+		{
+			"kind": "file",
+			"name": "wiki/sources/a-conversation-about-alpha.md"
+		},
+		{
+			"kind": "entity",
+			"name": "Alpha"
+		},
+		{
+			"kind": "entity",
+			"name": "Beta"
+		},
+		{
+			"kind": "concept",
+			"name": "Gamma"
+		}
+	],
+	"report": {
+		"entitiesCreated": 2,
+		"conceptsCreated": 1,
+		"success": true,
+		"failedItems": 0
+	}
+}
