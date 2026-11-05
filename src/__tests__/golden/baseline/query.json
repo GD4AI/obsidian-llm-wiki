@@ -1,0 +1,30 @@
+{
+	"queries": [
+		{
+			"query": "quantum",
+			"ranked": [
+				"wiki/concepts/entanglement",
+				"wiki/concepts/decoherence",
+				"wiki/concepts/quantum"
+			],
+			"count": 3
+		},
+		{
+			"query": "entanglement decoherence",
+			"ranked": [
+				"wiki/concepts/decoherence",
+				"wiki/concepts/entanglement",
+				"wiki/concepts/quantum"
+			],
+			"count": 3
+		},
+		{
+			"query": "語言模型",
+			"ranked": [
+				"wiki/concepts/language-model",
+				"wiki/concepts/quantum"
+			],
+			"count": 2
+		}
+	]
+}
