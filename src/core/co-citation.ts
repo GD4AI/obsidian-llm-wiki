@@ -38,6 +38,36 @@ export interface CoCitationOptions {
   exclude?: ReadonlySet<string>;
   /** Bound on the returned list. Absent means all of them, ranked. */
   limit?: number;
+  /**
+   * Shared targets a page needs before it is offered at all. Defaults to 2.
+   *
+   * One shared target is not a relation. On the 2,110-page vault the review
+   * measured, a single hub produced 16.5 % of all candidate pairs, and every one
+   * of those pairs had exactly one piece of evidence — the hub. A caller whose
+   * vault is too sparse to reach two can lower this, and then it has said so.
+   */
+  minShared?: number;
+}
+
+/** The floor. See `CoCitationOptions.minShared`. */
+const DEFAULT_MIN_SHARED = 2;
+
+/**
+ * How much one shared target says.
+ *
+ * A target cited by a hundred pages is weak evidence: "both cite Oxidative
+ * stress" is nearly true of the whole vault. A target cited by one other page is
+ * strong evidence. The weight falls off as `1 / (1 + incoming)`, so a target
+ * shared with one other page weighs about fifty times what a hub of a hundred
+ * weighs.
+ *
+ * The exact form is a choice, and the tests assert its **property** rather than
+ * its value: strictly decreasing in how many pages cite the target. Both the
+ * count and this weight are deterministic functions of the graph, so the ordering
+ * stays repeatable.
+ */
+function targetWeight(incoming: number): number {
+  return 1 / (1 + incoming);
 }
 
 /**
@@ -87,22 +117,43 @@ export function coCitationCandidates(
   const targets = graph.outgoing.get(self);
   if (!targets || targets.length === 0) return [];
 
+  const minShared = opts.minShared ?? DEFAULT_MIN_SHARED;
   const alreadyLinked = new Set(targets);
-  const shared = new Map<string, number>();
+  /** Per candidate: how many targets it shares, and how much they say. */
+  const shared = new Map<string, { count: number; weight: number }>();
   for (const target of targets) {
-    for (const source of graph.incoming.get(target) ?? []) {
+    const citing = graph.incoming.get(target) ?? [];
+    const weight = targetWeight(citing.length);
+    for (const source of citing) {
       if (source === self) continue;
       if (alreadyLinked.has(source)) continue;
       if (opts.exclude?.has(source)) continue;
-      shared.set(source, (shared.get(source) ?? 0) + 1);
+      const entry = shared.get(source);
+      if (entry) {
+        entry.count += 1;
+        entry.weight += weight;
+      } else {
+        shared.set(source, { count: 1, weight });
+      }
     }
   }
 
-  // Total order: shared count descending, then path ascending. Sorting on both
-  // keys — rather than relying on Map insertion order for equal counts — is what
-  // makes the result independent of how the graph was assembled.
+  // Total order, and each key earns its place:
+  //   1. how many targets are shared — the amount of evidence.
+  //   2. how much those targets say — the rarity. This is what replaces the
+  //      alphabetical tie-break: with it, an equal-score group is ordered by a
+  //      fact about the vault rather than by the first letter of a filename.
+  //   3. the path, as a **last resort only** — reached when two candidates share
+  //      the same count *and* the same weight, where any order is as good and the
+  //      only requirement is that it is the same one every run.
   const ranked = [...shared.entries()]
-    .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .filter(([, entry]) => entry.count >= minShared)
+    .sort(
+      (a, b) =>
+        b[1].count - a[1].count ||
+        b[1].weight - a[1].weight ||
+        (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0),
+    )
     .map(([path]) => path);
 
   return opts.limit === undefined ? ranked : ranked.slice(0, Math.max(0, opts.limit));

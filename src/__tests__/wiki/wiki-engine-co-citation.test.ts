@@ -38,8 +38,13 @@ describe('#729 Phase 1 — co-citation reaches a written page', () => {
       files: {
         [NOTE_PATH]: '# Quelle\n\nEin Satz ueber Alpha.\n',
         'wiki/concepts/Hub.md': '---\ntype: concept\n---\n# Hub\n',
-        'wiki/entities/Alpha.md': '---\ntype: entity\n---\n# Alpha\n\nSiehe [[concepts/Hub]].\n',
-        'wiki/entities/Beta.md': '---\ntype: entity\n---\n# Beta\n\nSiehe [[concepts/Hub]].\n',
+        'wiki/concepts/Spoke.md': '---\ntype: concept\n---\n# Spoke\n',
+        // Two shared targets, not one: the strength floor is two, because a pair
+        // whose entire evidence is one hub is not a relation. What this test is
+        // about is the path — graph built, provider resolved Alpha, Beta came
+        // back, link written — and that path is the same either way.
+        'wiki/entities/Alpha.md': '---\ntype: entity\n---\n# Alpha\n\nSiehe [[concepts/Hub]] und [[concepts/Spoke]].\n',
+        'wiki/entities/Beta.md': '---\ntype: entity\n---\n# Beta\n\nSiehe [[concepts/Hub]] und [[concepts/Spoke]].\n',
       },
       llmResponses: [ONLY_ALPHA],
       settings: { wikiLanguage: 'de', watchedFolders: ['Notizen'] },
