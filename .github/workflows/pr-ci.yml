@@ -78,7 +78,11 @@ jobs:
         # config) are the fix path; this gate only catches drift before merge.
         run: pnpm audit --audit-level high --ignore-registry-errors
 
-      - name: Five-Gate (lint + typecheck + build + test + css-lint)
+      # The job name is frozen: branch protection requires the status context
+      # `Gate 1 / Five-Gate` by that exact string (ruleset 16884813), so renaming
+      # it to match the six commands below would silently unrequire the check
+      # rather than tighten it. The name is history; the steps are the gate.
+      - name: Five-Gate (lint + arch-check + typecheck + build + test + css-lint)
         # Order is non-negotiable: `build` MUST run before `test`. The test
         # suite contains build-artifact verifications (e.g.
         # `src/__tests__/llm-sdk/openai-codex-loopback-flow.test.ts:39` reads
@@ -91,6 +95,7 @@ jobs:
         run: |
           set -e
           pnpm lint
+          pnpm arch-check
           pnpm typecheck
           pnpm build
           pnpm test

@@ -91,9 +91,7 @@ src/
 │   ├── node-https-fetch.ts     # Desktop `node:https` transport for origins that block the renderer (v1.28.0, #741)
 │   ├── vocabulary.ts           # One tag vocabulary read by the prompt, the gate, the lint and the retag paths (v1.28.0, #672)
 │   ├── diff.ts                 # LCS line-level diff (schema diff Modal, v1.22.0)
-│   ├── detail-renderer.ts      # Wiki page detail rendering
 │   ├── token-cap.ts            # max_tokens cap helper
-│   ├── truncation-retry.ts     # Shared truncation retry policy
 │   ├── batch-limits.ts         # Adaptive batch sizing
 │   ├── batch-merger.ts         # Multi-batch result merging
 │   ├── convergence-detector.ts # Early-stop on low-yield batches
@@ -139,7 +137,7 @@ src/
 │   ├── link-retarget.ts        # Vault-wide link retarget for mergeDuplicates (#386, v1.26.0 PR #392 DocTpoint)
 │   ├── llm-task-usage.ts       # Per-step LLM call + wall-time ledger (PR #409, v1.26.1 eucher)
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
-│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragr
+│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
 │   ├── assembly.ts            # Deterministic seed assembly + tie-break rules (v1.29.0, #837)
 │   ├── citation-format.ts     # Academic citation rendering for query answers (v1.29.0, #857)
 │   ├── conversation-hash.ts   # Conversation-history fingerprint for the query cache key (v1.29.0)
@@ -151,12 +149,14 @@ src/
 │   ├── retrieval-query.ts     # Query → retrieval terms (v1.29.0)
 │   ├── term-index.ts          # BM25F field terms + IDF over a document-frequency table (v1.29.0, #837)
 │   ├── term-index-cache.ts    # Per-session term-index cache (v1.29.0, #843)
-│   ├── user-ignore.ts         # Obsidian "Excluded files" predicate adapter (v1.29.0, #872)aphs + guardBodyRewrite)
+│   ├── user-ignore.ts         # Obsidian "Excluded files" predicate adapter (v1.29.0, #872)
 ├── wiki/                # Wiki engine modules
 │   ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer (v1.28.0, #603/#750)
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
 │   ├── graph-cache.ts   # (v1.25.1) `_cachedGraph` + invalidate logic
-│   ├── index-generation.ts # (v1.25.1) generateFlatIndex + helpers
+│   ├── index-generator.ts # (v1.25.1) generateFlatIndex + helpers
+│   ├── page-batch-runner.ts # Per-batch ingest runner
+│   ├── dedup-pages.ts   # Page-level dedup helpers
 │   ├── log-writer.ts    # (v1.25.1) updateLog + formatters
 │   ├── query-engine/    # Conversational query with streaming + thinking UI
 │   │   ├── index.ts                           # re-export shim
@@ -198,8 +198,6 @@ src/
 │   │   ├── merge-duplicates.ts   # Duplicate page merge (vault-wide link retarget, #386, v1.26.0 PR #392 DocTpoint)
 │   │   ├── fix-polluted-page.ts  # Polluted basename rename
 │   │   ├── llm-phases/
-│   │   │   ├── scoring-phase.ts     # PR #248
-│   │   │   ├── synthesis-phase.ts   # PR #248
 │   │   │   ├── dedup-phase.ts       # Lint dedup phase — inline retry/backoff/halving + force-disable thinking (v1.26.0 Batches 2+6+7)
 │   │   │   └── contradiction-phase.ts # Contradiction detection phase (v1.26.0)
 │   │   └── phases/
