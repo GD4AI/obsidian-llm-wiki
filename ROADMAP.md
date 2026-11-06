@@ -152,19 +152,19 @@ The **idempotency** requirement is worth naming separately because it is not a d
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The refactor track — recorded 2026-11-01, two items landed
+### The refactor track — recorded 2026-11-01, three items landed
 
 Plan, re-measured baseline, frozen area and stop conditions are in **#925**; one issue per layer.
-**Landed:** #927 the ratchet (`arch-check` joined `gate:1`; 5 cycles and 13 `core` → upper edges allowlisted, both
-lists may only shrink) and #926 the golden net — all four scenarios, ingest / lint / query / conversation, one
-baseline each. #928's first module is gone: `truncation-retry.ts` retried a truncated response with a **doubled**
-`max_tokens` while the product halves the batch, so it was dead code whose test asserted behaviour no user reaches.
-
-**Order changed by evidence:** #926 had to come before #928, because a subtraction without a net is a deletion
-verified by reading. Next: the rest of #928 (`hub-retirement.ts`, `detail-renderer.ts`, and the `ingest-stages.ts`
-judgement), then the two dev tools out of `src/`, then #929. Carried over from the superseded 2026-10-16 order: the
-real-question benchmark (20 hand-labelled answer pages in a synthetic fixture that runs by default — the largest
-evidence gap the project has), and the E1 escalation gate.
+**Landed:** #927 the ratchet (`arch-check` joined `gate:1`; 5 cycles and 13 `core` → upper edges allowlisted,
+both lists may only shrink) and #926 the golden net — all four scenarios, one baseline each. A subtraction
+without that net is a deletion verified by reading, which is why #926 came first.
+**#928 has one module left.** `truncation-retry.ts` doubled `max_tokens` while the product halves the batch —
+dead code whose test asserted behaviour no user reaches. `detail-renderer.ts` was a barrel one consumer read
+around. `hub-retirement.ts` was **wired, not deleted** (#954, PR #955): dead by the import test, alive by the
+waiting test — #215 carried a report-only wiring spec and a 2026-07-02 promise that was never filed.
+Next: the `ingest-stages.ts` judgement and the two dev tools out of `src/`, then #929. Carried over from the
+superseded 2026-10-16 order: the real-question benchmark (20 hand-labelled answer pages in a synthetic
+fixture that runs by default — the largest evidence gap), and the E1 escalation gate.
 
 **#781 is held, not rejected**, and the three debts its `CHANGES_REQUESTED` named are fixed: the tie-break is rarity-weighted,
 the strength floor is two shared targets, the hub problem shrinks twice. On two real vaults the "A" share went from 9.1 %
@@ -172,7 +172,7 @@ against a 17.1 % pull to 6.9 % against 5.1 % (test8) and 6.1 % against 6.2 % (te
 of candidate pairs. It merges when #729's measurement lands, which has still never run. Prerequisites in (**#878**).
 
 - **`hub-link-distinctiveness.ts` — live.** The lint scan runs it, and its PPR reached `Math.random` through `options.pprOptions ?? {}`. The distinctiveness is what the recommendation to strip a link is built from, so the number moved on every run.
-- **`hub-detection.ts` — guarded but unreachable in production.** `detectHubs` runs PPR only when `options.pprSeed` is set, and its one production caller (`scanHubLinkDensity`) passes `minInDegree` and `pprOptions` but no seed — so the hub's `pprScore` is never computed in production and that `Math.random` path was never taken. The guard is still right for the function's other callers; it is not a live defect.
+- **`hub-detection.ts` — guarded but unreachable in production.** `detectHubs` runs PPR only when `options.pprSeed` is set, and both production callers (`scanHubLinkDensity` and, since #955, `scanCrystallizedHubs`) pass `minInDegree` and no seed — so the hub's `pprScore` is never computed in production and that `Math.random` path was never taken. The guard is still right for the function's other callers; it is not a live defect.
 - **`ppr-cascade.ts` (`lexMatch`) — live.** The order decides the seed list (`lex.slice(0, 3)`), the score (`lexScoreOf` reads the position) and the rank (`mergeWithPPR` sets `rank: i + 1`).
 - **`index-search.ts` (`localKeywordMatch`) — guarded, and it changes no production behaviour.** Its only caller, `selectCandidateWindow`, turns the result into a `Map` from path to score, so the order is dropped; it then sorts by its own combined score with ties in the caller's pool order, and **that pool order is a documented contract** (ctime-ascending, for the dedup prompt's KV-prefix cache — a path-ascending change was tried and reverted on 2026-10-07). The function is now deterministic on its own; the window's order is not, and deliberately so.
 
