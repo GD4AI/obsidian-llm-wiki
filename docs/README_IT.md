@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — lo stadio lessicale ora legge il corpo delle pagine e valuta titolo/alias/sintesi/corpo con BM25F, il maggior cambiamento di copertura del progetto; sopra, un'espansione di query Rocchio in due fasi la cui affermazione è stata ristretta dalla propria misurazione; modellamento delle pagine Related perché una pagina hub non trascini più tutte le altre; un interruttore `legacyScorer` nelle impostazioni avanzate come via di ritorno; più un'ondata di correzioni: il watcher rispetta la lista di esclusione di Obsidian, il suggerimento del comando nell'intestazione del log, il taglio legacy del log, e la normalizzazione degli errori per marcatore SDK)
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0 (MINOR — lo stadio lessicale legge il corpo delle pagine e lo valuta con BM25F, più espansione Rocchio, modellamento delle pagine Related e l'interruttore `legacyScorer`)
+- last-updated: 2026-11-06
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basato su grafo, RAG senza embedding, recupero Personalized PageRank, secondo cervello Obsidian
 - search-intents: "Obsidian RAG senza embedding", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recupero note basato su grafo", "implementazione Karpathy LLM Wiki", "generazione automatica base di conoscenza Obsidian", "Obsidian Graph View + AI", "plugin second brain Obsidian", "grafo dei link tra note Obsidian AI", "plugin Obsidian 11 lingue", "plugin Obsidian 16 provider LLM", "RAG senza DB vettoriale", "Obsidian ingest PDF AI", "Obsidian Codex OAuth", "plugin Bedrock Obsidian", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingest Word PPT Excel", "credenziali IAM Obsidian"
 - features: recupero basato su grafo, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascata seed-selection a 5 stadi, rilevamento duplicati Tier 1/Tier 2, interfaccia 11 lingue + output wiki 11 lingue (indipendenti), 16+ provider LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingest MinerU multi-formato (PDF + immagini + Office), ingest PDF (cache-only, percorsi OCR), scansione salute lint, Smart Fix All, citazioni verbatim della pagina sorgente, gate candidati in ingest, UI taskPolicies per-step, integrazione Obsidian Graph View, architettura zero-embedding zero-vector-DB, modalità local-first
@@ -31,7 +33,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Punteggio perfetto nella revisione Obsidian • Recupero su grafo senza embedding • 11 lingue native • Ingest nativo di PDF + immagini + Office • Funziona con qualsiasi provider • Prima di tutto locale • Nessun backend • Conforme GDPR**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -39,9 +41,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [Sito ufficiale](https://llmwiki.greenerai.top/) | [Marketplace Obsidian](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Discussioni](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [Perché questo plugin?](#-perché-questo-plugin) | 🚀 [Avvio rapido](#-avvio-rapido) | ✨ [Funzionalità](#-funzionalità) | 🌐 [Ecosistema](#-ecosistema) | 🔍 [Come funziona il recupero](#-come-funziona-il-recupero) | 🤖 [Modelli](#-modelli) | ❓ [FAQ](#-faq)
+🤔 [Perché questo plugin?](#-perché-questo-plugin) | 🚀 [Avvio rapido](#-avvio-rapido) | ✨ [Funzionalità](#-funzionalità) | 🌐 [Ecosistema](#-ecosistema) | 🔍 [Come funziona il recupero](#-come-funziona-il-recupero) | 🤖 [Modelli](#-modelli) | ❓ [FAQ](#-faq) | 🎯 [Fa per me?](#-fa-per-me) | 🔒 [Privacy](#-privacy)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← Se questo plugin ti è stato utile, offrimi un caffè♥️ o lascia una stella🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki è gratuito, self-hosted e senza backend proprio. Se ti fa risparmiare tempo, un caffè mantiene il progetto — e una ⭐ aiuta altrettanto.
 
 ---
 
@@ -125,7 +129,7 @@ Questo è tutto. Il plugin non modifica nulla nelle tue note originali — crea 
 | **⏹ Annulla** | `Cmd+P/Ctrl+P` → "Annulla acquisizione corrente" o clicca sulla barra di stato — si ferma pulitamente al prossimo limite di lotto |
 | **📊 Cronologia ingestioni** | `Cmd+P/Ctrl+P` → "Visualizza cronologia acquisizioni" — interfaccia ricercabile per ingestioni passate, report lint ed esecuzioni di manutenzione |
 
-![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Prima | Dopo |
 |-------|------|
 | `notes/machine-learning.md` (un file piatto) | `wiki/concepts/supervised-learning.md` con `[[collegamenti bidirezionali]]`, alias, attribuzione della fonte e una voce in `wiki/index.md` |
@@ -181,13 +185,6 @@ Cinque percorsi, commutabili per ingest:
 - **🛡️ Portale di pre-ingest** — le note vuote / solo spazi / solo frontmatter vengono rifiutate prima di qualsiasi chiamata LLM; la deduplicazione per hash del contenuto rileva file identici attraverso i percorsi.
 - **🆕 Gate candidati in ingest (v1.27.0, #514 / PR #521)** — toggle opt-in (`skipMentionOnlyCandidates`, default disattivato, Impostazioni → Avanzate). Per le sorgenti la cui lingua ha un profilo misurato (de misurato; en/fr/es/pt/nl/ko stimato con casi limite fissati; soglie di script a caratteri per zh/ja non misurate), i candidati nominati solo dentro parentesi / enumerazioni / voci di elenchi brevi vengono potati prima che costino una pagina più chiamate di dedup e generazione. Le note cross-lingua non vengono filtrate; le lingue del wiki senza un profilo vengono segnalate una volta per ingest e non vengono mai saltate silenziosamente.
 - **🆕 Policy per-task (v1.27.0, #525 / #490)** — LLM Avanzate → campo Policy per-task; sovrascrivi l'impostazione per-step di modalità testo / thinking senza modifiche al codice. La baseline integrata resta intatta per gli step che non elenchi.
-
-### 🔒 Privacy
-
-- **🚫 Nessun backend, nessun tracciamento, nessuna analisi.** Funziona interamente dentro Obsidian. La rete è usata solo per comunicare con il provider LLM che configuri.
-- **📁 I file sorgente sono sola lettura.** Il plugin non modifica mai le tue note originali del vault — crea solo nuove pagine in `wiki/`.
-- **🦙 Modalità completamente locale.** Ollama, LM Studio o qualsiasi endpoint locale compatibile OpenAI → le tue note non lasciano mai la tua macchina.
-- **🔐 Permessi minimi.** Accesso ai file del vault per la gestione del wiki. Accesso agli appunti solo quando clicchi il pulsante "Copia" nel modale Query.
 
 ### 🦙 Locale prima di tutto
 
@@ -253,7 +250,7 @@ Impostazioni → Avanzate → *Legacy query scorer* esegue il vecchio ranking li
 
 Usiamo Monte Carlo PPR (Fogaras 2005) — 3.000 cammini casuali × 50 passi ciascuno — con la regola dead-end di Haveliwala 2002. Il costo è **O(K × L)** (K = cammini, L = passi per cammino), indipendente dal numero di pagine, quindi un vault di 2000 pagine vede la stessa latenza di espansione di uno di 200 pagine.
 
-**PPR @5 = 27,1% vs baseline pura kNN 24,1%** sul corpus di benchmark del progetto (l'unico benchmark di recupero pubblicato in questo spazio open-source LLM-Wiki).
+**PPR @5 = 27,1% vs baseline pura kNN 24,1%** sul corpus di benchmark del progetto (l'unico benchmark di recupero pubblicato in questo spazio open-source di plugin wiki).
 
 ### Perché niente embedding
 
@@ -382,7 +379,7 @@ Per la completa località dei dati, usa Ollama o LM Studio. Con un provider loca
 
 ## 💖 Supporto
 
-Se LLM-Wiki è diventato una parte significativa del tuo flusso di lavoro della conoscenza:
+Se Karpathy LLM Wiki è diventato una parte significativa del tuo flusso di lavoro della conoscenza:
 
 - ☕ **[Offrimi un caffè su Ko-fi](https://ko-fi.com/greenerdalii)** — supporto una tantum o mensile
 - 💳 **[Mancia tramite PayPal](https://paypal.me/greenerdalii)** — mancia una tantum
