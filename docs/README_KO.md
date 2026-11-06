@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — 어휘 단계가 이제 페이지 본문을 읽고 제목/alias/요약/본문을 BM25F로 채점합니다. 이 프로젝트에서 가장 큰 검색 개선입니다. 그 위에 2단계 Rocchio 질의 확장이 올라가고, 그 주장은 자체 측정으로 좁혀졌습니다. 하나의 hub가 다른 페이지를 끌어당기지 않도록 Related 페이지를 다듬었고, 되돌리는 수단으로 고급 설정의 `legacyScorer` 스위치가 있습니다. 더불어 정확성 수정 한 묶음: watcher가 Obsidian 제외 목록을 준수, 로그 헤더의 명령 힌트, legacy 로그 자르기, 오류 정규화를 SDK marker 기준으로)
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0 (MINOR — 어휘 단계가 페이지 본문을 읽고 BM25F로 채점하며, Rocchio 확장·Related 페이지 정리·`legacyScorer` 되돌림 경로 포함)
+- last-updated: 2026-11-06
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -30,7 +32,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Obsidian 공식 마켓 만점 평가 • 제로 임베딩 그래프 검색 • 11개 언어 네이티브 지원 • 네이티브 PDF + 이미지 + Office 수집 • 모든 LLM 공급업체 호환 • 로컬 우선 • 백엔드 없음 • GDPR 친화**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -38,9 +40,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [공식 사이트](https://llmwiki.greenerai.top/) | [옵시디언 마켓플레이스](https://community.obsidian.md/plugins/karpathywiki) | [블로그](https://llmwiki.greenerai.top/blog/) | [Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [이 플러그인이 필요한 이유?](#-이-플러그인이-필요한-이유) | 🚀 [빠른 시작](#-빠른-시작) | ✨ [주요 기능](#-주요-기능) | 🌐 [생태계](#-생태계) | 🔍 [검색 작동 방식](#-검색-작동-방식) | 🤖 [모델](#-모델) | ❓ [FAQ](#-faq)
+🤔 [이 플러그인이 필요한 이유?](#-이-플러그인이-필요한-이유) | 🚀 [빠른 시작](#-빠른-시작) | ✨ [주요 기능](#-주요-기능) | 🌐 [생태계](#-생태계) | 🔍 [검색 작동 방식](#-검색-작동-방식) | 🤖 [모델](#-모델) | ❓ [FAQ](#-faq) | 🎯 [이런 분들께 추천합니다](#-이런-분들께-추천합니다) | 🔒 [개인정보](#-개인정보)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← 이 플러그인이 도움이 되었다면, 커피 한 잔♥️ 사주시거나 별표🌟 하나 부탁드려요↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki는 무료이고, 직접 호스팅하며, 자체 백엔드가 없습니다. 시간을 아껴 주고 있다면 커피 한 잔이 유지보수에 힘이 됩니다 — ⭐도 똑같이 도움이 됩니다.
 
 ---
 
@@ -124,7 +128,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⏹ 작업 취소** | `Cmd+P/Ctrl+P` → "현재 수집 취소" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 중지 |
 | **📊 수집 기록** | `Cmd+P/Ctrl+P` → "수집 이력 보기" — 과거 수집, lint 보고서, 유지보수 실행을 검색 가능한 UI로 조회 |
 
-![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | 전 | 후 |
 |---|------|
 | `notes/machine-learning.md` (평범한 파일) | `wiki/concepts/supervised-learning.md` — `[[양방향 링크]]`, alias, 출처 정보, `wiki/index.md` 항목 포함 |
@@ -180,13 +184,6 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🛡️ 사전 수집 게이트** — 빈/공백/frontmatter 전용 노트는 LLM 호출 전에 거부됨; 콘텐츠 해시 중복 제거가 경로 간 동일 파일을 감지합니다.
 - **🆕 수집 후보 게이트 (v1.27.0, #514 / PR #521)** — 옵트인 토글 (`skipMentionOnlyCandidates`, 기본 꺼짐, 설정 → Advanced). 측정된 언어 프로파일이 있는 소스에 대해 (de 측정됨; en/fr/es/pt/nl/ko는 고정된 엣지 케이스로 추정됨; zh/ja 문자 스크립트 임계값은 미측정) 괄호 / 열거 / 짧은 목록 항목 안에서만 언급된 후보는 페이지 + dedup + 생성 호출 비용이 발생하기 전에 가지치기됩니다. 크로스 언어 노드는 게이트되지 않으며; 프로파일이 없는 wiki 언어는 수집당 한 번 보고하고 절대 자동으로 건너뛰지 않습니다.
 - **🆕 단계별 task policies (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies 필드; 코드 변경 없이 단계별 text-mode/thinking 설정을 오버라이드합니다. 나열하지 않은 단계의 기본 baseline은 그대로 유지됩니다.
-
-### 🔒 개인정보
-
-- **🚫 백엔드 없음, 추적 없음, 분석 없음.** 완전히 Obsidian 내부에서 실행됩니다. 네트워크는 설정한 LLM 공급자와의 통신에만 사용됩니다.
-- **📁 소스 파일은 읽기 전용입니다.** 플러그인은 원본 볼트 노트를 절대 수정하지 않습니다 — `wiki/` 아래에 새 페이지만 생성합니다.
-- **🦙 완전 로컬 모드.** Ollama, LM Studio, 또는 모든 로컬 OpenAI 호환 엔드포인트 → 노트가 기기를 떠나지 않습니다.
-- **🔐 최소 권한.** Wiki 관리를 위한 볼트 파일 접근. Query 모달의 "Copy" 버튼 클릭 시에만 클립보드 접근.
 
 ### 🦙 로컬 우선
 
@@ -254,7 +251,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 Monte Carlo PPR (Fogaras 2005)을 사용합니다 — 3,000개의 랜덤 워크 × 각 50단계, Haveliwala 2002의 데드엔드 규칙 적용. 비용은 **O(K × L)** (K = 워크 수, L = 워크당 단계 수)로 페이지 수와 무관하므로, 2000페이지 볼트에서도 200페이지 볼트와 동일한 확장 지연 시간을 보입니다.
 
-**PPR @5 = 27.1% vs 순수 kNN 기준 24.1%** (이 오픈소스 LLM-Wiki 분야에서 유일하게 공개된 검색 벤치마크).
+**PPR @5 = 27.1% vs 순수 kNN 기준 24.1%** (이 오픈소스 위키 플러그인 분야에서 유일하게 공개된 검색 벤치마크).
 
 ### 임베딩을 사용하지 않는 이유
 
@@ -381,7 +378,7 @@ Obsidian 커뮤니티 플러그인에서 설치 → 공급자 선택 → **Test 
 
 ## 💖 프로젝트 지원하기
 
-LLM-Wiki가 여러분의 지식 워크플로에서 중요한 부분이 되었다면:
+Karpathy LLM Wiki가 여러분의 지식 워크플로에서 중요한 부분이 되었다면:
 
 - ☕ **[Ko-fi에서 커피 한 잔 사기](https://ko-fi.com/greenerdalii)** — 일회성 또는 월간 지원
 - 💳 **[PayPal로 팁 보내기](https://paypal.me/greenerdalii)** — 일회성 팁

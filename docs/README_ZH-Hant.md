@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 詞法階段現在讀取頁面正文，用 BM25F 對標題/別名/摘要/正文評分，是本專案最大的一次召回改進；其上疊加兩階段 Rocchio 查詢擴展，其結論被自身測量收窄；Related 頁塑形，使單一 hub 不再把其他頁面全拉向自己；進階設定中的 `legacyScorer` 開關作為退路；以及一輪正確性修復：watcher 遵守 Obsidian 排除清單、日誌標頭的命令提示、legacy 日誌切法、錯誤歸一化改用 SDK marker）
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0（MINOR — 詞法階段讀取頁面正文並以 BM25F 評分，疊加兩階段 Rocchio 擴展、Related 頁塑形與 `legacyScorer` 退路）
+- last-updated: 2026-11-06
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -32,7 +34,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Obsidian 官方市集滿分評分 • 零嵌入圖譜檢索 • 11 種語言原生支援 • 原生 PDF + 圖片 + Office 擷取 • 相容所有 LLM 供應商 • 本機優先 • 無後端 • GDPR 友善**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -40,9 +42,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [官網](https://llmwiki.greenerai.top/) | [Obsidian 插件市集](https://community.obsidian.md/plugins/karpathywiki) | [部落格](https://llmwiki.greenerai.top/zh/blog/) | [討論區](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [爲什麼選擇這個外掛？](#-爲什麼選擇這個外掛) | 🚀 [快速開始](#-快速開始) | ✨ [核心特性](#-核心特性) | 🌐 [生態](#-生態) | 🔍 [檢索原理](#-檢索原理) | 🤖 [模型](#-模型) | ❓ [FAQ](#-常見問題-faq)
+🤔 [爲什麼選擇這個外掛？](#-爲什麼選擇這個外掛) | 🚀 [快速開始](#-快速開始) | ✨ [核心特性](#-核心特性) | 🌐 [生態](#-生態) | 🔍 [檢索原理](#-檢索原理) | 🤖 [模型](#-模型) | ❓ [FAQ](#-常見問題-faq) | 🎯 [適合我嗎？](#-適合我嗎) | 🔒 [隱私](#-隱私)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← 如果你覺得這個專案幫到你，歡迎請我喝杯咖啡♥️，或為專案點亮一顆星🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki 免費、自架、沒有自己的後端。如果它替你省下了時間，一杯咖啡能讓它繼續被維護 —— 點個 ⭐ 同樣有幫助。
 
 ---
 
@@ -126,7 +130,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⏹ 取消** | `Cmd+P/Ctrl+P` →「取消目前提取」或點擊狀態列 — 在下一批次邊界安全停止 |
 | **📊 檢視攝入歷史** | `Cmd+P/Ctrl+P` →「檢視攝入歷史」— 可搜尋 UI，瀏覽歷史攝入、Lint 報告和維護記錄 |
 
-![命令面板 — 所有 LLM Wiki 指令都位於 Obsidian 的命令面板中](/docs/assets/command-panel.png)
+![命令面板 — 所有 Karpathy LLM Wiki 指令都位於 Obsidian 的命令面板中](/docs/assets/command-panel.png)
 
 | 之前 | 之後 |
 |------|------|
@@ -184,14 +188,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🆕 攝入候選項閘門 (v1.27.0, #514 / PR #521)** — 需手動開啟的開關（`skipMentionOnlyCandidates`，預設關閉，位於 設定 → Advanced）。若來源語言已有實測輪廓（德文為實測；英/法/西/葡/荷/韓為估算並針對邊界情況做了固定處理；中文/日文的字符腳本門檻尚未實測），那些僅出現在括號、列舉或短列表項目中的候選項，會在耗費一個頁面外加去重與生成呼叫之前先被剪除。跨語言筆記不受此閘門限制；沒有語言輪廓的 Wiki 語言每次攝入僅回報一次，絕不靜默跳過。
 - **🆕 逐步驟任務策略 (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies 欄位，可在不改程式碼的情況下覆寫各步驟的文字模式／thinking 設定。你沒有列出的步驟，其內建基準值維持不變。
 
-### 🔒 隱私
-
-- **🚫 無後端、無追蹤、無分析。** 完全在 Obsidian 內部執行。網路僅用於與你設定的 LLM Provider 通訊。
-- **📁 來源檔案為唯讀。** 外掛從不修改你原始的 vault 筆記——只會在 `wiki/` 下建立新頁面。
-- **🦙 完全本地模式。** Ollama、LM Studio 或任何本地 OpenAI 相容端點 → 你的筆記永不離開你的機器。
-- **🔐 最小化權限。** Vault 檔案存取用於 Wiki 管理。剪貼簿存取僅在你於查詢 Modal 中點選「複製」按鈕時使用。
-
-### 🦙 本地優先
+### 🦙 本地優先### 🦙 本地優先
 
 - **🖥️ Ollama、LM Studio、OpenRouter、自訂端點** — 開箱即用。本地模型可用於查詢（較小的上下文窗口）；2000 頁 vault 的攝入通常需要長上下文雲端模型。
 - **📄 Apple Silicon 上 PDF OCR 路徑完全本機** — 請參閱上方 [文件 / PDF / 圖片擷取](#-文件--pdf--圖片擷取)。
@@ -253,7 +250,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 我們使用 Monte Carlo PPR（Fogaras 2005）——3,000 條隨機漫步 × 每條 50 步——搭配 Haveliwala 2002 的 dead-end 規則。成本為 **O(K × L)**（K = 漫步條數，L = 每條漫步的步數），與頁面數量無關，因此 2000 頁的 vault 與 200 頁的 vault 有相同的擴展延遲。
 
-**PPR @5 = 27.1% vs 純 kNN 基線 24.1%**——以專案自有基準語料庫測試（此開源 LLM-Wiki 領域唯一公開的檢索基準）。
+**PPR @5 = 27.1% vs 純 kNN 基線 24.1%**——以專案自有基準語料庫測試（此開源 wiki 外掛領域唯一公開的檢索基準）。
 
 ### 爲什麼不使用嵌入
 
@@ -382,7 +379,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ## 💖 支持專案
 
-如果 LLM-Wiki 已成為你知識工作流程中重要的一部分：
+如果 Karpathy LLM Wiki 已成為你知識工作流程中重要的一部分：
 
 - ☕ **[在 Ko-fi 上請我喝杯咖啡](https://ko-fi.com/greenerdalii)** — 一次性或月度支持
 - 💳 **[透過 PayPal 打賞](https://paypal.me/greenerdalii)** — 一次性打賞

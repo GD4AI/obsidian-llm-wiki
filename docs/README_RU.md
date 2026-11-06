@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — лексическая стадия теперь читает основной текст страниц и оценивает заголовок/псевдонимы/краткое описание/текст по BM25F, крупнейшее улучшение полноты в проекте; поверх него — двухступенчатое расширение запроса Rocchio, утверждение о котором сужено его собственным измерением; формирование списков Related, чтобы одна страница-хаб не стягивала все остальные; переключатель `legacyScorer` в расширенных настройках как обратный путь; плюс волна исправлений: watcher соблюдает список исключений Obsidian, подсказка команды в заголовке журнала, legacy-срез журнала, и нормализация ошибок по маркеру SDK)
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0 (MINOR — лексическая стадия читает основной текст страниц и оценивает его по BM25F, плюс расширение Rocchio, формирование Related и переключатель `legacyScorer`)
+- last-updated: 2026-11-06
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -32,7 +34,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Идеальная оценка обзора Obsidian • Графовый поиск без эмбеддингов • Родная поддержка 11 языков • Нативный импорт PDF + изображений + Office • Работает с любым провайдером • Локально-ориентированный • Без бэкенда • Соответствует GDPR**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/green-dalii)
 
@@ -40,9 +42,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [Официальный сайт](https://llmwiki.greenerai.top/) | [Маркетплейс Obsidian](https://community.obsidian.md/plugins/karpathywiki) | [Блог](https://llmwiki.greenerai.top/blog/) | [Обсуждения](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [Зачем этот плагин?](#-зачем-этот-плагин) | 🚀 [Быстрый старт](#-быстрый-старт) | ✨ [Возможности](#-возможности) | 🌐 [Экосистема](#-экосистема) | 🔍 [Как работает поиск](#-как-работает-поиск) | 🤖 [Модели](#-модели) | ❓ [FAQ](#-faq)
+🤔 [Зачем этот плагин?](#-зачем-этот-плагин) | 🚀 [Быстрый старт](#-быстрый-старт) | ✨ [Возможности](#-возможности) | 🌐 [Экосистема](#-экосистема) | 🔍 [Как работает поиск](#-как-работает-поиск) | 🤖 [Модели](#-модели) | ❓ [FAQ](#-faq) | 🎯 [Подходит ли он мне?](#-подходит-ли-он-мне) | 🔒 [Приватность](#-приватность)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← Если этот плагин помог вам, не стесняйтесь угостить меня кофе♥️ или поставить звёздочку🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki бесплатен, работает локально и не имеет своего бэкенда. Если он экономит вам время, чашка кофе поддерживает проект — и ⭐ помогает не меньше.
 
 ---
 
@@ -126,7 +130,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⏹ Отмена** | `Cmd+P/Ctrl+P` → «Отменить текущий импорт» или нажмите на строку статуса — останавливается чисто на границе следующего пакета |
 | **📊 История импорта** | `Cmd+P/Ctrl+P` → «Просмотр истории операций» — UI с поиском для прошлых импортов, отчётов lint, операций обслуживания |
 
-![Панель команд — все команды LLM Wiki живут в палитре команд Obsidian](/docs/assets/command-panel.png)
+![Панель команд — все команды Karpathy LLM Wiki живут в палитре команд Obsidian](/docs/assets/command-panel.png)
 
 | До | После |
 |--------|-------|
@@ -183,13 +187,6 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🛡️ Предварительный шлюз импорта** — пустые / только-whitespace / только-frontmatter заметки отклоняются до любого вызова LLM; дедупликация по хешу содержимого обнаруживает идентичные файлы по разным путям.
 - **🆕 Шлюз кандидатов импорта (v1.27.0, #514 / PR #521)** — opt-in переключатель (`skipMentionOnlyCandidates`, по умолчанию выкл, Настройки → Расширенные). Для источников, язык которых имеет измеренный профиль (de измерен; en/fr/es/pt/nl/ko оценены с закреплёнными крайними случаями; пороги для zh/ja по системам письма не измерены), кандидаты, названные только в скобках / перечислениях / коротких пунктах списка, отсекаются до того, как они потребуют страницу плюс вызовы дедупликации и генерации. Межъязыковые заметки не шлюзуются; языки Wiki без профиля сообщают один раз за импорт и никогда не пропускаются молча.
 - **🆕 Пошаговые политики задач (v1.27.0, #525 / #490)** — LLM Advanced → поле Task Policies; переопределяйте настройку пошагового режим-текста/thinking без изменения кода. Встроенный базовый уровень остаётся нетронутым для шагов, которые вы не перечислили.
-
-### 🔒 Приватность
-
-- **🚫 Нет бэкенда, нет отслеживания, нет аналитики.** Работает полностью внутри Obsidian. Сеть используется только для связи с настроенным вами провайдером LLM.
-- **📁 Исходные файлы только для чтения.** Плагин никогда не изменяет ваши исходные заметки — только создаёт новые страницы в `wiki/`.
-- **🦙 Полный локальный режим.** Ollama, LM Studio или любой локальный OpenAI-совместимый эндпоинт → ваши заметки никогда не покидают вашу машину.
-- **🔐 Минимальные разрешения.** Доступ к файлам хранилища для управления Wiki. Доступ к буферу обмена только когда вы нажимаете кнопку «Копировать» в модальном окне запросов.
 
 ### 🦙 Локально-ориентированный
 
@@ -257,7 +254,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 Мы используем Monte Carlo PPR (Fogaras 2005) — 3000 случайных блужданий × 50 шагов каждый — с правилом тупиков из Haveliwala 2002. Стоимость — **O(K × L)** (K = блуждания, L = шаги на блуждание), независимо от количества страниц, так что хранилище с 2000 страниц видит ту же задержку расширения, что и с 200 страницами.
 
-**PPR @5 = 27,1% против pure-kNN baseline 24,1%** на собственном бенчмарк-корпусе проекта (единственный опубликованный бенчмарк поиска в этом пространстве LLM-Wiki с открытым исходным кодом).
+**PPR @5 = 27,1% против pure-kNN baseline 24,1%** на собственном бенчмарк-корпусе проекта (единственный опубликованный бенчмарк поиска в этом открытом пространстве плагинов для вики).
 
 ### Почему без эмбеддингов
 
@@ -384,7 +381,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ## 💖 Поддержка
 
-Если LLM-Wiki стала значимой частью вашего рабочего процесса работы со знаниями:
+Если Karpathy LLM Wiki стала значимой частью вашего рабочего процесса работы со знаниями:
 
 - ☕ **[Купить мне Ko-fi](https://ko-fi.com/greenerdalii)** — разово или ежемесячно
 - 💳 **[Чаевые через PayPal](https://paypal.me/greenerdalii)** — разовые чаевые
