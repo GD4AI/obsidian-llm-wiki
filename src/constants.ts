@@ -189,6 +189,17 @@ export const MAX_TOKENS_BATCH = 16000;
 export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
 
 /**
+ * Issue #954 — how many hubs the crystallization assessment ranks, so the
+ * percentile means something.
+ *
+ * `detectHubs` defaults to `topN = 10`, and a 0.75 percentile over ten nodes is
+ * "the top two or three of an arbitrary ten". That is not a measurement, it is a
+ * position in a list nobody chose for this purpose. Fifty is wide enough that the
+ * top quarter is a dozen candidates and narrow enough that a scan stays cheap.
+ */
+export const RETIREMENT_HUB_TOP_N = 50;
+
+/**
  * Token budget for full page generation (entity/concept/source-summary).
  * The LLM is asked to produce a complete wiki page with all sections.
  */

@@ -22,6 +22,7 @@ function makeFindings(overrides: Partial<ProgrammaticFindings> = {}): Programmat
     deadLinks: [],
     ungroundedQuotes: [],
     hubLinkDensityIssues: [],
+  crystallizedHubs: [],
     sourceDriftIssues: [],
     contradictionMarkerIssues: [],
     sourcesNormalizedFiles: 0,
