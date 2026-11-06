@@ -1,3 +1,4 @@
+import { RETIREMENT_HUB_TOP_N } from '../../constants';
 import { TEXTS } from '../../texts';
 import { LLMWikiSettings } from '../../types';
 import {
@@ -32,10 +33,7 @@ export function buildLintReport(input: ReportInput): string {
   const tagViolations = findings.tagViolations;
   const ungroundedQuotes = findings.ungroundedQuotes;
   const hubLinkDensityIssues: HubLinkDensityIssue[] = findings.hubLinkDensityIssues;
-  const sourcesNormalizedFiles = findings.sourcesNormalizedFiles;
-  const sourcesNormalizedEntries = findings.sourcesNormalizedEntries;
-  const sourceDriftIssues = findings.sourceDriftIssues;
-  const contradictionMarkerIssues = findings.contradictionMarkerIssues;
+  const { sourcesNormalizedFiles, sourcesNormalizedEntries, sourceDriftIssues, contradictionMarkerIssues } = findings;
 
   // Compute deadLinkFromDup / orphanFromDup counts
   const duplicatePaths = new Set<string>();
@@ -231,6 +229,8 @@ export function buildLintReport(input: ReportInput): string {
     progReport += '\n';
   }
 
+  progReport += renderCrystallizedHubs(findings.crystallizedHubs, t, folder);
+
   // 9. No issues message
   if (!duplicates.length && !deadLinks.length && !emptyPages.length && !orphans.length && !ungroundedQuotes.length && !hubLinkDensityIssues.length && !sourceDriftIssues.length && !contradictionMarkerIssues.length) {
     progReport += `${t.lintNoIssuesFound}\n\n`;
@@ -261,4 +261,29 @@ export function buildLintReport(input: ReportInput): string {
   // see controller.ts comment block). The LintReportBody is therefore
   // pure programmatic findings + contradictions, with no LLM section.
   return `# ${t.lintReportTitle}\n\n> ${summaryText}\n\n${progReport}${contradictionsReport}`;
+}
+
+/**
+ * Issue #954 — the crystallized-hub section, extracted so `buildLintReport` stays
+ * inside the size ratchet rather than raising the ceiling for it.
+ *
+ * Returns the empty string when there is no candidate: an empty heading reads as
+ * a finding that fired and found nothing, which is worse than silence.
+ */
+function renderCrystallizedHubs(
+  hubs: import('./scanners').CrystallizedHub[] | undefined,
+  t: (typeof TEXTS)[keyof typeof TEXTS],
+  folder: string,
+): string {
+  if (!hubs || hubs.length === 0) return '';
+  let out = `## ${t.lintCrystallizedHubsSection.replace('{count}', String(hubs.length))}\n\n`;
+  out += `${t.lintCrystallizedHubsIntro.replace('{topN}', String(RETIREMENT_HUB_TOP_N))}\n\n`;
+  for (const hub of hubs) {
+    const rel = hub.path.replace(folder + '/', '').replace('.md', '');
+    out += `- ${t.lintCrystallizedHubRow
+      .replace('{path}', rel)
+      .replace('{degree}', String(hub.degree))
+      .replace('{percentile}', String(Math.round(hub.clusteringPercentile * 100)))}\n`;
+  }
+  return out + '\n';
 }

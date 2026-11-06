@@ -1,5 +1,6 @@
+import { RETIREMENT_HUB_TOP_N } from '../../../constants';
 import { activeVocabularyLists } from '../../../core/vocabulary';
-import { detectAliasDeficiency, scanOrphans, scanTagViolations, scanDeadLinks, scanQuoteGrounding, scanHubLinkDensity, scanSourceDrift, scanContradictionMarkers, collectCitedRawNoteTargets } from '../scanners';
+import { detectAliasDeficiency, scanOrphans, scanTagViolations, scanCrystallizedHubs, scanDeadLinks, scanQuoteGrounding, scanHubLinkDensity, scanSourceDrift, scanContradictionMarkers, collectCitedRawNoteTargets } from '../scanners';
 import { detectPollutedPages } from '../utils';
 import { parseFrontmatter } from '../../../core/frontmatter';
 import { getText } from '../../../core/i18n';
@@ -115,6 +116,17 @@ export async function runProgrammaticPhase(
   });
   console.debug(`lintWiki: ${hubLinkDensityIssues.length} hub pages with link density issues`);
 
+  // Issue #954 — the wiring of #215. Report-only, and deliberately NOT in the
+  // periodic run: crystallization is slow and monotonic, so a background pass
+  // would spend a graph build to rediscover the same answer. `topN` is explicit
+  // because the percentile is computed over the assessed set, and a verdict whose
+  // meaning depends on an unstated constant is one nobody can read.
+  //
+  // `RETIREMENT_HUB_TOP_N` is 50 rather than detectHubs' default of 10: with ten
+  // nodes a 0.75 percentile means "the top two", which is not a measurement.
+  const crystallizedHubs = scanCrystallizedHubs(input.graph, { topN: RETIREMENT_HUB_TOP_N });
+  console.debug(`lintWiki: ${crystallizedHubs.length} crystallized hub candidate(s) of ${RETIREMENT_HUB_TOP_N} assessed`);
+
   // 8. Source drift (Issue #220 Tier 0, read half) — every `sources/` page
   // carries a `contentHash` of the note body it was built from (#164), but
   // nothing reads it back. Read each origin note once (same bounded-read
@@ -168,6 +180,7 @@ export async function runProgrammaticPhase(
     deadLinks,
     ungroundedQuotes,
     hubLinkDensityIssues,
+    crystallizedHubs,
     sourceDriftIssues,
     contradictionMarkerIssues,
     sourcesNormalizedFiles: 0, // populated by preparation phase caller

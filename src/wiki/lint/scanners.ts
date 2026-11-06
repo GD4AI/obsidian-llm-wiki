@@ -2,6 +2,8 @@
 // These have no Obsidian API dependencies and can be unit tested directly.
 
 import { parseFrontmatter, extractBody, originNoteRefs } from '../../core/frontmatter';
+import { detectHubs } from '../../core/hub-detection';
+import { assessHubs, buildUndirectedAdjacency } from '../../core/hub-retirement';
 import { hashBody } from '../../core/source-requirements';
 import { CONTRADICTIONS_KEY } from '../../core/contradicted-marker';
 import { getActiveEntityTags, getActiveConceptTags, getActiveSourceTags } from '../../core/tag-vocab';
@@ -533,6 +535,52 @@ export function scanTagViolations(
 // makes the algorithm unit-testable without an Obsidian dependency.
 
 export { scanHubLinkDensity, type HubLinkDensityIssue, type HubLinkDensityOptions } from '../../core/hub-link-distinctiveness';
+
+// ── Crystallized-hub scanner (Issue #954, the wiring of #215) ────────────────
+
+/**
+ * A hub whose neighbourhood has interconnected, so its developmental role has
+ * ended. **Report-only**: nothing is written, and the untag stays with the user.
+ *
+ * This is the wiring @DocTpoint specified on #215 — "one-shot via Lint Wiki,
+ * report-only … surface crystallized candidates in the Lint Wiki report, leave
+ * the actual untag to the user". Crystallization is slow and monotonic, so a
+ * periodic run would buy nothing and the background cost would not come back.
+ */
+export interface CrystallizedHub {
+  path: string;
+  /** Undirected degree, the noise guard's input. */
+  degree: number;
+  /** Local clustering coefficient: how interconnected its neighbours are. */
+  clustering: number;
+  /** Clustering percentile within the assessed hub set, 0..1. */
+  clusteringPercentile: number;
+}
+
+/**
+ * Hubs that have crystallized, most crystallized first.
+ *
+ * `topN` is explicit and the caller reports it: the percentile is computed over
+ * the assessed set, so a verdict whose meaning depends on an unstated constant
+ * is a verdict nobody can read. A hub below the module's degree floor is
+ * `building` and never reported — clustering variance scales with 1/degree.
+ */
+export function scanCrystallizedHubs(
+  graph: import('../../core/build-graph').Graph,
+  options: { topN: number; minInDegree?: number },
+): CrystallizedHub[] {
+  const adjacency = buildUndirectedAdjacency(graph.edges);
+  const hubs = detectHubs(graph, { topN: options.topN, ...(options.minInDegree !== undefined ? { minInDegree: options.minInDegree } : {}) });
+  const assessed = assessHubs(adjacency, hubs.map(h => h.node));
+  return assessed
+    .filter(a => a.verdict === 'crystallized')
+    .map(a => ({
+      path: a.id,
+      degree: a.degree,
+      clustering: a.clustering,
+      clusteringPercentile: a.clusteringPercentile,
+    }));
+}
 
 // ── Source drift scanner (Issue #220 Tier 0, read half) ──────────────────────
 
