@@ -152,24 +152,24 @@ The **idempotency** requirement is worth naming separately because it is not a d
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The refactor track — recorded 2026-11-01
+### The refactor track — recorded 2026-11-01, two items landed
 
-Approved as a plan, not started. The plan, the re-measured baseline, the frozen area and the stop
-conditions are in **#925**; scope is one issue per layer: **#926** snapshot, **#927** ratchet,
-**#928** subtraction, **#929** types, **#930** settings tab, **#931** `core/` layering, **#932** long
-functions, **#933** settings inventory. Nothing starts before #886, #895 and #924 land.
+Plan, re-measured baseline, frozen area and stop conditions are in **#925**; one issue per layer.
+**Landed:** #927 the ratchet (`arch-check` joined `gate:1`; 5 cycles and 13 `core` → upper edges allowlisted, both
+lists may only shrink) and #926 the golden net — all four scenarios, ingest / lint / query / conversation, one
+baseline each. #928's first module is gone: `truncation-retry.ts` retried a truncated response with a **doubled**
+`max_tokens` while the product halves the batch, so it was dead code whose test asserted behaviour no user reaches.
 
-**Two rows survived the superseded 2026-10-16 order, recorded here so they are not lost**: the real-question benchmark (20 hand-labelled
-answer pages in a synthetic fixture that runs by default — the largest evidence gap the project has), and the E1 escalation gate (a decision,
-not a fix; it needs the `coverage` and `lexCount` distributions before there is a rule to apply).
+**Order changed by evidence:** #926 had to come before #928, because a subtraction without a net is a deletion
+verified by reading. Next: the rest of #928 (`hub-retirement.ts`, `detail-renderer.ts`, and the `ingest-stages.ts`
+judgement), then the two dev tools out of `src/`, then #929. Carried over from the superseded 2026-10-16 order: the
+real-question benchmark (20 hand-labelled answer pages in a synthetic fixture that runs by default — the largest
+evidence gap the project has), and the E1 escalation gate.
 
-**The token ceiling was measured, and the number that matters is the after-state.** On the two vaults that describe the current write path, answers over an 8k window went from 9/30 to **0/30** (test8) and 27/30 to **0/30** (test10), with p50 falling 7,067 → 5,332 and 11,015 → 5,873. The third vault on disk was written by an earlier release and is deliberately not quoted as evidence.
-
-**Reclassified: #781 is held, not rejected.** It was called "denied by measurement". That was wrong, and it was wrong in the expensive direction — closing it would have discarded unfinished work on the strength of a claim nobody checked. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and **that measurement has never run.** DocTpoint's `CHANGES_REQUESTED` says so in his own words: "I am marking this as 'Request changes' so that it does not merge before #729 has an answer. This is a statement about the order of the steps, not about your code."
-
-All four of its prerequisites are now in (**#878**), and their reachability is not uniform — @DocTpoint checked, and the correction matters because "a fix that fixes nothing" is worse than no fix.
-
-The query path was seeded first (`ppr-cascade.ts:539` → `seededRngFrom(query, seeds)`) and its BM25F sort broke ties by breadth and then by path (`:184`). #878 closed the rest:
+**#781 is held, not rejected**, and the three debts its `CHANGES_REQUESTED` named are fixed: the tie-break is rarity-weighted,
+the strength floor is two shared targets, the hub problem shrinks twice. On two real vaults the "A" share went from 9.1 %
+against a 17.1 % pull to 6.9 % against 5.1 % (test8) and 6.1 % against 6.2 % (test10); the floor withholds 49.5 % and 59.5 %
+of candidate pairs. It merges when #729's measurement lands, which has still never run. Prerequisites in (**#878**).
 
 - **`hub-link-distinctiveness.ts` — live.** The lint scan runs it, and its PPR reached `Math.random` through `options.pprOptions ?? {}`. The distinctiveness is what the recommendation to strip a link is built from, so the number moved on every run.
 - **`hub-detection.ts` — guarded but unreachable in production.** `detectHubs` runs PPR only when `options.pprSeed` is set, and its one production caller (`scanHubLinkDensity`) passes `minInDegree` and `pprOptions` but no seed — so the hub's `pprScore` is never computed in production and that `Math.random` path was never taken. The guard is still right for the function's other callers; it is not a live defect.
