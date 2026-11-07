@@ -400,8 +400,8 @@ export const ZH_TEXTS = {
     extractionFocusDesc: '追加到提取提示词的自由文本：说明本知识库应重点识别的领域实体/概念。不改变 JSON 协议与标签规则。留空 = 关闭。上限 4000 字。',
     extractionFocusPlaceholder: '例如：跳过顺带提到的内容；每个被引用的人都单独成页',
     contentRequirementsName: '内容生成要求',
-    contentRequirementsDesc: '追加到页面生成提示词的自由文本：控制表达重点、结构与必须覆盖的方面。引用、合并与防幻觉规则由系统固定，不会被覆盖。留空 = 关闭。上限 4000 字。',
-    contentRequirementsPlaceholder: '例如：每页结尾加一行「待确认」；每节不超过 150 字',
+    contentRequirementsDesc: '追加到页面生成阶段、**只在页面已有的节内**生效的自由文本：控制重点、覆盖范围与顺序。不会新增节 —— 哪些节能保留由插件的节清单决定。引用、合并与防幻觉规则由系统固定，不会被覆盖。留空 = 关闭。上限 4000 字。',
+    contentRequirementsPlaceholder: '例如：每节开头先用一句话小结；每节不超过 150 字',
     // 摄入加速
     accelerationSectionTitle: '摄入加速',
     pageGenerationConcurrencyName: 'LLM 并发度',

@@ -398,8 +398,8 @@ export const ZH_HANT_TEXTS = {
     extractionFocusDesc: '附加到提取提示詞的自由文字：說明本知識庫應重點識別的領域實體/概念。不改變 JSON 協定與標籤規則。留空 = 關閉。上限 4000 字。',
     extractionFocusPlaceholder: '例如：跳過順帶一提的內容；每位被引用的人都單獨成頁',
     contentRequirementsName: '內容生成要求',
-    contentRequirementsDesc: '附加到頁面生成提示詞的自由文字：控制表達重點、結構與必須覆蓋的方面。引用、合併與防幻覺規則由系統固定，不會被覆蓋。留空 = 關閉。上限 4000 字。',
-    contentRequirementsPlaceholder: '例如：每頁結尾加一行「待確認事項」；每節不超過 150 字',
+    contentRequirementsDesc: '附加到頁面生成階段、**只在頁面已有的節內**生效的自由文字：控制重點、覆蓋範圍與順序。不會新增節 —— 哪些節能保留由外掛的節清單決定。引用、合併與防幻覺規則由系統固定，不會被覆蓋。留空 = 關閉。上限 4000 字。',
+    contentRequirementsPlaceholder: '例如：每節開頭先用一句話小結；每節不超過 150 字',
 
     // 摄入加速
     accelerationSectionTitle: '攝入加速',

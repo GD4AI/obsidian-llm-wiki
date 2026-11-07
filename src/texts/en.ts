@@ -413,8 +413,8 @@ export const EN_TEXTS = {
     extractionFocusDesc: 'Free-text hint appended to the extraction prompt: which domain entities/concepts this wiki should prioritize. Does not change the JSON protocol or tag rules. Empty = off. Max 4000 chars.',
     extractionFocusPlaceholder: 'e.g. skip passing mentions; every person who is quoted gets a page',
     contentRequirementsName: 'Content Requirements',
-    contentRequirementsDesc: 'Free-text requirements appended to page-generation prompts: expressive emphasis, structure, must-cover aspects. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
-    contentRequirementsPlaceholder: 'e.g. end every page with an "Open questions" line; keep sections under 150 words',
+    contentRequirementsDesc: 'Free-text requirements applied **within the sections a page already has**: emphasis, coverage and order. No new section is created — the section list held by the plugin decides what survives a write. Citation and anti-hallucination rules stay system-owned. Empty = off. Max 4000 chars.',
+    contentRequirementsPlaceholder: 'e.g. open every section with a one-sentence summary; keep sections under 150 words',
     // Ingestion Acceleration
     accelerationSectionTitle: 'Ingestion Acceleration',
     pageGenerationConcurrencyName: 'LLM Concurrency',

@@ -781,8 +781,8 @@ export class WikiEngine {
     // localized stage + base cancel-affordance label. Capturing the
     // invariant parts in a closure keeps the call sites one-liners.
     // The `keyof typeof TEXTS.en` constraint ensures callers can only pass
-    // real i18n keys; if a future stage is added to STAGE_KEYS it is
-    // automatically picked up here.
+    // real i18n keys, so a stage that has no copy is a compile error rather
+    // than a blank status bar.
     const setPdfStage = (stageKey: keyof typeof TEXTS.en) =>
       // B2 (v1.26.3 PATCH, DocT CR): emit RAW segments (filename · stage),
       // NOT a buildIngestStatusBarText result. command-registry routes the

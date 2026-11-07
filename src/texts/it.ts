@@ -410,8 +410,8 @@ export const IT_TEXTS = {
     extractionFocusDesc: 'Testo libero aggiunto al prompt di estrazione: quali entità e concetti del dominio questo wiki deve privilegiare. Non modifica il protocollo JSON né le regole sui tag. Vuoto = disattivato. Max 4000 caratteri.',
     extractionFocusPlaceholder: 'es. saltare i riferimenti di passaggio; ogni persona citata ha una pagina',
     contentRequirementsName: 'Requisiti di contenuto',
-    contentRequirementsDesc: 'Testo libero aggiunto ai prompt di generazione delle pagine: enfasi espressiva, struttura, aspetti da coprire necessariamente. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
-    contentRequirementsPlaceholder: 'es. chiudere ogni pagina con una riga «Domande aperte»; sezioni sotto le 150 parole',
+    contentRequirementsDesc: 'Testo libero applicato in fase di generazione **solo dentro le sezioni che la pagina ha già**: enfasi, copertura e ordine. Nessuna sezione nuova viene creata — la lista delle sezioni del plugin decide cosa sopravvive a una scrittura. Le regole di citazione e anti-allucinazione restano di proprietà del sistema. Vuoto = disattivato. Max 4000 caratteri.',
+    contentRequirementsPlaceholder: 'es. aprire ogni sezione con un riassunto di una frase; sezioni sotto le 150 parole',
 
     // Accelerazione Acquisizione
     accelerationSectionTitle: 'Accelerazione acquisizione',
