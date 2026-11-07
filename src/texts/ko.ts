@@ -400,8 +400,8 @@ export const KO_TEXTS = {
     extractionFocusDesc: '추출 프롬프트에 덧붙이는 자유 텍스트: 이 위키가 우선해야 할 도메인 엔티티·개념을 지정합니다. JSON 프로토콜과 태그 규칙은 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
     extractionFocusPlaceholder: '예: 스쳐 가는 언급은 건너뛰기. 인용된 인물은 모두 별도 페이지로',
     contentRequirementsName: '내용 요구사항',
-    contentRequirementsDesc: '페이지 생성 프롬프트에 덧붙이는 자유 텍스트: 표현의 초점, 구성, 반드시 다뤄야 할 aspects를 지정합니다. 인용과 환각 방지 규칙은 시스템 소유이므로 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
-    contentRequirementsPlaceholder: '예: 모든 페이지 끝에 "미해결 질문" 한 줄 두기. 각 절은 150단어 이내로',
+    contentRequirementsDesc: '페이지 생성 시 **페이지에 이미 있는 절 안에서만** 적용되는 자유 텍스트: 표현의 초점, 다룰 범위, 순서를 지정합니다. 새 절은 만들지 않습니다 — 어떤 절이 쓰기 후에도 남는지는 플러그인의 절 목록이 정합니다. 인용과 환각 방지 규칙은 시스템 소유이므로 바뀌지 않습니다. 비어 있으면 = 꺼짐. 최대 4000자.',
+    contentRequirementsPlaceholder: '예: 각 절을 한 문장 요약으로 시작하기. 각 절은 150단어 이내로',
 
     // Ingestion Acceleration
     accelerationSectionTitle: '수집 가속화',

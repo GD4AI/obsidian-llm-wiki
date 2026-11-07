@@ -399,8 +399,8 @@ export const JA_TEXTS = {
     extractionFocusDesc: '抽出プロンプトに追記される自由テキスト：この Wiki が優先すべき領域のエンティティ／概念を指定します。JSON プロトコルやタグ規則は変更しません。空欄 = 無効。上限 4000 文字。',
     extractionFocusPlaceholder: '例：通り一遍の言及は除く。引用されている人物は必ず1ページにする',
     contentRequirementsName: '内容生成の要件',
-    contentRequirementsDesc: 'ページ生成プロンプトに追記される自由テキスト：表現の重点・構成・必ず扱うべき観点を指定します。引用・統合・Hallucination 防止の規則はシステム管理のため変更されません。空欄 = 無効。上限 4000 文字。',
-    contentRequirementsPlaceholder: '例：各ページの末尾に「未解決の点」を1行置く。1節は150語以内に収める',
+    contentRequirementsDesc: 'ページ生成時に、**ページが既に持つ節の中だけ**に適用される自由テキスト：重点・網羅範囲・順序を指定します。新しい節は作られません —— どの節が書き込み後も残るかはプラグインの節リストが決めます。引用・統合・Hallucination 防止の規則はシステム管理のため変更されません。空欄 = 無効。上限 4000 文字。',
+    contentRequirementsPlaceholder: '例：各節の冒頭に一文で要約を置く。1節は150語以内に収める',
 
     // Ingestion Acceleration
     accelerationSectionTitle: '取り込み高速化',

@@ -401,8 +401,8 @@ export const FR_TEXTS = {
     extractionFocusDesc: 'Texte libre ajouté au prompt d\'extraction : quelles entités et concepts du domaine ce wiki doit prioriser. Ne modifie ni le protocole JSON ni les règles de tags. Vide = désactivé. 4000 caractères max.',
     extractionFocusPlaceholder: 'ex. ignorer les mentions en passant ; chaque personne citée a sa page',
     contentRequirementsName: 'Exigences de contenu',
-    contentRequirementsDesc: 'Texte libre ajouté aux prompts de génération de pages : insistance expressive, structure, aspects à couvrir impérativement. Les règles de citation et d\'anti-hallucination restent gérées par le système. Vide = désactivé. 4000 caractères max.',
-    contentRequirementsPlaceholder: 'ex. terminer chaque page par une ligne « Questions ouvertes » ; sections de moins de 150 mots',
+    contentRequirementsDesc: 'Texte libre appliqué lors de la génération **à l\'intérieur des sections que la page possède déjà** : insistance, couverture et ordre. Aucune section nouvelle n\'est créée — la liste de sections du plugin décide ce qui survit à une écriture. Les règles de citation et d\'anti-hallucination restent gérées par le système. Vide = désactivé. 4000 caractères max.',
+    contentRequirementsPlaceholder: 'ex. ouvrir chaque section par un résumé d\'une phrase ; sections de moins de 150 mots',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Accélération de l\'import',

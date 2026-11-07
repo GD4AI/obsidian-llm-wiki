@@ -401,8 +401,8 @@ export const DE_TEXTS = {
     extractionFocusDesc: 'Freitext, der an den Extraktions-Prompt angehängt wird: welche Domänen-Entitäten und -Konzepte dieses Wiki priorisieren soll. Das JSON-Protokoll und die Tag-Regeln bleiben unverändert. Leer = aus. Max. 4000 Zeichen.',
     extractionFocusPlaceholder: 'z. B. beiläufige Erwähnungen überspringen; jede zitierte Person bekommt eine Seite',
     contentRequirementsName: 'Inhaltsanforderungen',
-    contentRequirementsDesc: 'Freitext, der an die Seitenerzeugungs-Prompts angehängt wird: Ausdrucksschwerpunkt, Struktur, zwingend zu behandelnde Aspekte. Zitier- und Anti-Halluzinations-Regeln bleiben systemverwaltet. Leer = aus. Max. 4000 Zeichen.',
-    contentRequirementsPlaceholder: 'z. B. jede Seite mit einer Zeile "Offene Fragen" beenden; Abschnitte unter 150 Wörtern',
+    contentRequirementsDesc: 'Freitext, der bei der Seitenerzeugung **nur innerhalb der bereits vorhandenen Abschnitte** wirkt: Schwerpunkt, Abdeckung und Reihenfolge. Ein neuer Abschnitt entsteht nicht — welche Abschnitte einen Schreibvorgang überleben, entscheidet die Abschnittsliste des Plugins. Zitier- und Anti-Halluzinations-Regeln bleiben systemverwaltet. Leer = aus. Max. 4000 Zeichen.',
+    contentRequirementsPlaceholder: 'z. B. jeden Abschnitt mit einer Ein-Satz-Zusammenfassung beginnen; Abschnitte unter 150 Wörtern',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aufnahmen-Beschleunigung',

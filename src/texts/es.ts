@@ -401,8 +401,8 @@ export const ES_TEXTS = {
     extractionFocusDesc: 'Texto libre que se añade al prompt de extracción: qué entidades y conceptos del dominio debe priorizar este wiki. No cambia el protocolo JSON ni las reglas de etiquetas. Vacío = desactivado. Máx. 4000 caracteres.',
     extractionFocusPlaceholder: 'p. ej. omitir menciones de pasada; cada persona citada tiene su página',
     contentRequirementsName: 'Requisitos de contenido',
-    contentRequirementsDesc: 'Texto libre que se añade a los prompts de generación de páginas: énfasis expresivo, estructura, aspectos que deben cubrirse. Las reglas de cita y anti-alucinación siguen bajo control del sistema. Vacío = desactivado. Máx. 4000 caracteres.',
-    contentRequirementsPlaceholder: 'p. ej. cerrar cada página con una línea «Cuestiones abiertas»; secciones de menos de 150 palabras',
+    contentRequirementsDesc: 'Texto libre aplicado al generar **dentro de las secciones que la página ya tiene**: énfasis, cobertura y orden. No se crea ninguna sección nueva: la lista de secciones del plugin decide qué sobrevive a una escritura. Las reglas de cita y anti-alucinación siguen bajo control del sistema. Vacío = desactivado. Máx. 4000 caracteres.',
+    contentRequirementsPlaceholder: 'p. ej. abrir cada sección con un resumen de una frase; secciones de menos de 150 palabras',
 
     // Ingestion Acceleration
     accelerationSectionTitle: 'Aceleración de ingestión',
