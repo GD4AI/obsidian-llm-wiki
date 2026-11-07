@@ -1,4 +1,4 @@
-// core/recall-harness.ts — #729 Phase 3: the thing that calibrates.
+// tools/dev-instrument/src/recall-harness.ts — #729 Phase 3: the thing that calibrates.
 //
 // This module exists because the plan said field weights are calibrated on a
 // harness and never assumed, and the constant shipped alongside that sentence
@@ -23,7 +23,7 @@
 //
 // Pure. No IO. The CLI in `tools/dev-instrument/` supplies the IO.
 
-import type { PageRef } from './ppr-cascade';
+import type { PageRef } from '../../../src/core/ppr-cascade';
 import {
   buildPageTerms,
   buildCorpusTerms,
@@ -32,7 +32,7 @@ import {
   type FieldWeights,
   type PageTerms,
   type CorpusTerms,
-} from './term-index';
+} from '../../../src/core/term-index';
 
 /** One retrieval question with the pages that are known to answer it. */
 export interface Fixture {
