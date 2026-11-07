@@ -303,3 +303,71 @@ describe('AutoMaintainManager.stop and the periodic lint timer', () => {
     expect(lint).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * Issue #957 — a `monthly` period overflowed `setInterval` and crashed the renderer.
+ *
+ * `30 * 24 * 60 * 60 * 1000` is 2,592,000,000 ms. The HTML timer spec converts a delay to a signed
+ * 32-bit integer, so that value wraps negative and is clamped to 0 — the callback then runs as fast as
+ * the event loop allows. With no watched folders configured, `hasSourceFilesChanged()` returns true, so
+ * every one of those ticks started a full vault lint. On a 313k-file vault the reporter saw the renderer
+ * die with an OOM heap at 3.3 GB, ~85 s after launch, and switching only `periodicLint` to `off` stopped it.
+ *
+ * Three guards are asserted here, because each one alone leaves a path open: the delay must fit in a
+ * 32-bit timer, a tick must not act before the period has elapsed, and a tick must not start a second
+ * lint while one is still running.
+ */
+describe('periodic lint timers (#957)', () => {
+  const LIMIT = 2 ** 31 - 1;
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+
+  function makePeriodic(period: 'daily' | 'weekly' | 'monthly' | 'off', lint: () => Promise<void>) {
+    const settings = { language: 'en', watchedFolders: [], periodicLint: period } as unknown as LLMWikiSettings;
+    const app = { vault: { getMarkdownFiles: () => [], configDir: '.obsidian' } } as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
+    const plugin = { registerInterval: (id: number) => id } as unknown as ConstructorParameters<typeof AutoMaintainManager>[3];
+    return new AutoMaintainManager(app, settings, {} as WikiEngine, plugin, lint);
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it.each(['daily', 'weekly', 'monthly'] as const)('%s schedules a delay a 32-bit timer can hold', (period) => {
+    const spy = vi.spyOn(window, 'setInterval');
+    makePeriodic(period, async () => undefined).schedulePeriodicLint();
+    const delay = spy.mock.calls[0]?.[1] as number;
+    expect(delay, `${period} delay ${delay} exceeds the 32-bit timeout limit`).toBeLessThanOrEqual(LIMIT);
+  });
+
+  it('monthly does not run lint on the first tick', async () => {
+    vi.useFakeTimers();
+    const lint = vi.fn(async () => undefined);
+    makePeriodic('monthly', lint).schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(23 * HOUR);
+    expect(lint).not.toHaveBeenCalled();
+    // …and it does run once the month has elapsed.
+    await vi.advanceTimersByTimeAsync(30 * DAY);
+    expect(lint).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports an unknown period value instead of disabling itself silently', () => {
+    // A hand-edited data.json, or a value from a newer version that was then downgraded, must not turn
+    // periodic lint off without a trace — the setting would look on and never run.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    makePeriodic('yearly' as unknown as 'daily', async () => undefined).schedulePeriodicLint();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]?.[0])).toContain('yearly');
+  });
+
+  it('a tick does not start a second lint while one is still running', async () => {
+    vi.useFakeTimers();
+    let release: () => void = () => undefined;
+    const lint = vi.fn(() => new Promise<void>((resolve) => { release = resolve; }));
+    makePeriodic('daily', lint).schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(30 * DAY);
+    expect(lint, 'overlapping ticks started a second lint').toHaveBeenCalledTimes(1);
+    release();
+  });
+});
