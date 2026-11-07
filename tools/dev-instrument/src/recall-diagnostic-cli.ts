@@ -18,8 +18,8 @@ import {
   prepare,
   type DiagnosticPage,
 } from './recall-diagnostic';
-import { builtInFixtures } from '../../../src/core/recall-fixtures';
-import type { Fixture } from '../../../src/core/recall-harness';
+import { builtInFixtures } from './recall-fixtures';
+import type { Fixture } from './recall-harness';
 import {
   LEX_MATCH_MIN_COUNT,
 } from '../../../src/constants';

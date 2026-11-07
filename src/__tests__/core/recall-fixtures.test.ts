@@ -17,13 +17,13 @@ import {
   hardFixtures,
   SYNTHETIC_ENTRIES,
   HARD_ENTRIES,
-} from '../../core/recall-fixtures';
+} from '../../../tools/dev-instrument/src/recall-fixtures';
 import {
   runHarness,
   rankPages,
   type Fixture,
   type SourcedPage,
-} from '../../core/recall-harness';
+} from '../../../tools/dev-instrument/src/recall-harness';
 import {
   buildPageTerms,
   buildCorpusTerms,

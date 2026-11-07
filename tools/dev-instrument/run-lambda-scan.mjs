@@ -19,7 +19,7 @@
  *   npx tsx tools/dev-instrument/run-lambda-scan.mjs                 # synthetic
  *   npx tsx tools/dev-instrument/run-lambda-scan.mjs <wikiDir>       # real vault
  */
-import { hardFixtures, builtInFixtures } from '../../src/core/recall-fixtures.ts';
+import { hardFixtures, builtInFixtures } from './src/recall-fixtures.ts';
 import { assembleWithCoverage, rrfFuse } from '../../src/core/assembly.ts';
 import {
   buildPageTerms, buildCorpusTerms, bm25fScore, segment,

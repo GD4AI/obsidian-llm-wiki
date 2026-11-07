@@ -15,7 +15,7 @@ import {
   calibrateFieldWeights,
   type Fixture,
   type SourcedPage,
-} from '../../core/recall-harness';
+} from '../../../tools/dev-instrument/src/recall-harness';
 import {
   buildPageTerms,
   buildCorpusTerms,

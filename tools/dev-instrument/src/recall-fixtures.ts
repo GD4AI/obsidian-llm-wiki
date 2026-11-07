@@ -1,4 +1,4 @@
-// core/recall-fixtures.ts — #729 Phase 3: the fixture sets.
+// tools/dev-instrument/src/recall-fixtures.ts — #729 Phase 3: the fixture sets.
 //
 // Two layers, and the split is a fact about the world rather than a design
 // preference. A real vault has no ground truth: nobody has labelled which of
@@ -13,7 +13,7 @@
 // should". Both are in the plan. Only one of them can report recall.
 
 import type { Fixture, SourcedPage } from './recall-harness';
-import { segment } from './term-index';
+import { segment } from '../../../src/core/term-index';
 
 /** A page plus the query that is known to retrieve it. */
 export interface SyntheticPair {
