@@ -25,18 +25,19 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-06
+## Current state — 2026-11-07
 
-**Released:** v1.30.0 MINOR (2026-11-06). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
+**Releasing:** v1.30.0 MINOR (2026-11-07). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
 [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
 |---|---|
 | **Open PR** | #781 the co-citation projection — MERGEABLE, `CHANGES_REQUESTED` from @DocTpoint; its three named debts are fixed and the real-vault numbers are on the PR. Merges when #729's measurement runs, which still never has |
-| **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt), #954 (two open questions on hub wiring) |
-| **Blocked on a decision** | #902 Finding 2 (narrow the promise vs let users declare sections), #873 (MAJOR — page-type taxonomy), #891 (`interrupted`), #915 (math: render-time vs generate-time) |
-| **Refactor track** | #926 net, #927 ratchet and #928's modules landed; one module and two dev tools remain (#928) |
+| **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt) |
+| **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #891 (`interrupted`), #915 (math: render-time vs generate-time) |
+| **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
 | **Dependency hold** | the four AI SDK packages are pinned and ignored by dependabot until #891 accepts; building is the instrument, not the lockfile |
+| **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
 
 **The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** They were
 "current state" for a few days each and described a product two releases old. Verbatim, nothing dropped.

@@ -15,7 +15,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - latest: v1.30.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.29.0（MINOR — 詞法階段讀取頁面正文並以 BM25F 評分，疊加兩階段 Rocchio 擴展、Related 頁塑形與 `legacyScorer` 退路）
-- last-updated: 2026-11-06
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -188,7 +188,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🆕 攝入候選項閘門 (v1.27.0, #514 / PR #521)** — 需手動開啟的開關（`skipMentionOnlyCandidates`，預設關閉，位於 設定 → Advanced）。若來源語言已有實測輪廓（德文為實測；英/法/西/葡/荷/韓為估算並針對邊界情況做了固定處理；中文/日文的字符腳本門檻尚未實測），那些僅出現在括號、列舉或短列表項目中的候選項，會在耗費一個頁面外加去重與生成呼叫之前先被剪除。跨語言筆記不受此閘門限制；沒有語言輪廓的 Wiki 語言每次攝入僅回報一次，絕不靜默跳過。
 - **🆕 逐步驟任務策略 (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies 欄位，可在不改程式碼的情況下覆寫各步驟的文字模式／thinking 設定。你沒有列出的步驟，其內建基準值維持不變。
 
-### 🦙 本地優先### 🦙 本地優先
+### 🦙 本地優先
 
 - **🖥️ Ollama、LM Studio、OpenRouter、自訂端點** — 開箱即用。本地模型可用於查詢（較小的上下文窗口）；2000 頁 vault 的攝入通常需要長上下文雲端模型。
 - **📄 Apple Silicon 上 PDF OCR 路徑完全本機** — 請參閱上方 [文件 / PDF / 圖片擷取](#-文件--pdf--圖片擷取)。
