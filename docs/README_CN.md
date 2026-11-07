@@ -15,7 +15,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - latest: v1.30.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.29.0（MINOR — 词法阶段读取页面正文并用 BM25F 打分，叠加两阶段 Rocchio 扩展、Related 页塑形与 `legacyScorer` 退路）
-- last-updated: 2026-11-06
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
 - features: 基于图谱的检索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 级种子选择级联, Tier 1/Tier 2 重复检测, 11 语言界面 + 11 语言 Wiki 输出（独立设置）, 16+ LLM 提供商（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-兼容, Codex OAuth）,MinerU 多格式导入（PDF + 图像 + Office）, PDF 摄入（仅缓存、OCR 路径）, Lint 健康扫描, 一键智能修复, 源页原句引用, 摄入候选门, 按步骤任务策略 UI, Obsidian 图谱视图集成, 零嵌入零向量数据库架构, 本地优先模式
@@ -193,7 +193,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - **🆕 摄入候选门 (v1.27.0, #514 / PR #521)** — 可选开关（`skipMentionOnlyCandidates`，默认关闭，设置 → 高级）。对于语言已建立测量画像的源（de 已测量；en/fr/es/pt/nl/ko 用固定边界条件估计；zh/ja 字符脚本阈值未测量），那些只出现在括号/枚举/短列表项中的候选在消耗页面+去重+生成调用之前被剪除。跨语言笔记不进入此门；没有画像的 Wiki 语言每次摄入只报告一次且从不静默跳过。
 - **🆕 按步骤任务策略 (v1.27.0, #525 / #490)** — LLM 高级 → 任务策略字段；无需改代码即可覆盖各步骤的文本模式与思考设置。未列出的步骤保持内置基线不变。
 
-### 🦙 本地优先### 🦙 本地优先
+### 🦙 本地优先
 
 - **🖥️ Ollama、LM Studio、OpenRouter、自定义端点** — 开箱即用。本地模型可用于查询（上下文窗口较小）；2000 页 vault 的摄入通常需要长上下文云端模型。
 - **📄 Apple Silicon 上 PDF OCR 路径完全本地** — 见上方的 [文档 / PDF / 图片 摄入](#-文档--pdf--图片-摄入)。

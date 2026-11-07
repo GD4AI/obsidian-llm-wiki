@@ -3,7 +3,7 @@
 **Last Updated:** 2026-11-06
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.30.0 MINOR (2026-11-06, 5,229 tests / 387 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
