@@ -31,6 +31,7 @@ import { getSectionLabels } from '../system-prompts';
 import { extractThinkingPanel } from './renderers/thinking-extract';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { bindWikiLinkClicks } from './renderers/wiki-link-clicks';
+import { normalizeMathDelimiters } from './math-delimiters';
 import { renderHistoryMessage as buildHistoryMessage, addCopyButton } from './renderers/history-message';
 import { QueryViewValueSchema } from '../../llm-sdk/output-schemas';
 import {
@@ -951,9 +952,14 @@ export class QueryView extends ItemView {
       ? `${cited.text}\n\n---\n\n## References\n\n${renderReferenceList(cited.references)}`
       : normalizeReferenceSection(cited.text, cited.references);
 
+    // #915: the model emits `\( … \)`, which this renderer shows as literal
+    // text. Convert to the delimiters it does render, before the markdown pass
+    // eats the underscores inside the span.
+    const rendered = normalizeMathDelimiters(toRender);
+
     void MarkdownRenderer.render(
       this.app,
-      toRender,
+      rendered,
       container,
       sourcePath,
       this.activeRenderComponent
