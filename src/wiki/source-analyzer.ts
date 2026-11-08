@@ -837,7 +837,8 @@ export class SourceAnalyzer {
           const userHint = buildIngestErrorHint(errMsg, error, { provider: providerName, model: modelName });
 
           throw new Error(
-            `Failed to connect to ${providerName} API (model: ${modelName}): ${errMsg}. ${userHint}`
+            `Failed to connect to ${providerName} API (model: ${modelName}): ${errMsg}. ${userHint}`,
+            { cause: error }
           );
         }
 
@@ -848,7 +849,6 @@ export class SourceAnalyzer {
           continue;
         }
         retryingBatch = false;
-        escalateMaxTokens = false;
         console.warn(`[Batch ${batchNum + 1}] Non-first-round failure, keeping extracted items`);
         break;
       }

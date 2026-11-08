@@ -744,7 +744,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const currentMode = this.outputModeProber.getMode(this.baseURL, model);
 
         // Determine target tier based on current mode and last error body.
-        let demotedMode: OutputMode | null = null;
+        let demotedMode: OutputMode;
         if (currentMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
           // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
           demotedMode = 'json_schema_strict';
@@ -1216,7 +1216,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         let tentativeDemotion: OutputMode | null = null;
         for (let chainAttempt = 0; chainAttempt < 3; chainAttempt++) {
           const iterMode = this.outputModeProber.getMode(this.baseURL, model);
-          let demotedMode: OutputMode | null = null;
+          let demotedMode: OutputMode;
           if (iterMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
             // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
             demotedMode = 'json_schema_strict';

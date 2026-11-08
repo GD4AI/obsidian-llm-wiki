@@ -118,7 +118,7 @@ export async function runCodexSignOut(input: CodexSignOutInput): Promise<void> {
   // the second click is dropped.
   input.setBusy(true);
   input.render();
-  let confirmed = false;
+  let confirmed: boolean;
   try {
     confirmed = await input.confirm();
   } catch (error) {

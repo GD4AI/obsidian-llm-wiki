@@ -558,6 +558,6 @@ export async function appendToReviewedPage(
     return path;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to update reviewed page "${info.name}": ${msg}`);
+    throw new Error(`Failed to update reviewed page "${info.name}": ${msg}`, { cause: error });
   }
 }

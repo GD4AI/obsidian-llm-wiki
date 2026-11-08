@@ -42,7 +42,7 @@
     "ajv": "^8.20.0",
     "esbuild": "0.28.1",
     "eslint": "10.13.0",
-    "eslint-plugin-obsidianmd": "^0.4.2",
+    "eslint-plugin-obsidianmd": "^0.5.1",
     "fast-uri": "^4.2.2",
     "jsdom": "^30.0.1",
     "obsidian": "1.12.3",

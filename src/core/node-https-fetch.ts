@@ -68,7 +68,8 @@ async function requireNodeHttps(): Promise<NodeHttpsModule> {
     throw new TypeError('node:https transport is available on desktop only');
   }
   const nodeModule = await import('node:module');
-  // eslint-disable-next-line no-undef -- __filename is a CJS global injected by esbuild's CJS bundler; not a browser global - desktop-only, guarded by Platform.isDesktop above
+  // `__filename` is a CJS global injected by esbuild's CJS bundler, not a
+  // browser global; this path is desktop-only and guarded above.
   const nodeRequire = nodeModule.Module.createRequire(__filename);
   return nodeRequire('node:https') as NodeHttpsModule;
 }

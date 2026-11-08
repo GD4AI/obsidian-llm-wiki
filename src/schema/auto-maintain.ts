@@ -498,7 +498,7 @@ export class AutoMaintainManager {
     // flag is stuck at `false` (interrupted ingest, partial write). Archive them
     // so the user can recover from .trash if needed. Pages WITHOUT the field
     // are treated as legacy (preserved) — never wipe existing wikis on upgrade.
-    let incompleteFilesScanned = 0;
+    let incompleteFilesScanned: number;
     let incompleteFilesArchived = 0;
     try {
       const incomplete = await findIncompletePages(this.app, wikiFolder);
