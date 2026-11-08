@@ -41,7 +41,7 @@
     "@typescript-eslint/parser": "8.72.1",
     "ajv": "^8.20.0",
     "esbuild": "0.28.1",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "eslint-plugin-obsidianmd": "^0.5.1",
     "fast-uri": "^4.2.2",
     "jsdom": "^30.0.1",
