@@ -17,6 +17,7 @@ import {
 } from '../types';
 import { PROMPTS } from '../prompts';
 import { parseJsonResponse, parseJsonResult } from '../core/json';
+import { startCeilingFor, rememberCeiling } from '../core/output-ceiling-cache';
 import { isCrossLanguage, normalizeSourceLanguage, getWikiLanguageName } from '../core/source-language';
 import { renderTemplate } from '../core/template-renderer';
 import { computeExtractionBudget, resolveOutputCeiling, isReasoningPossible } from '../core/output-budget';
@@ -294,7 +295,8 @@ export class SourceAnalyzer {
     // at most twice, and the rest of the run uses what it learned. Bounded on
     // purpose: a reply that keeps failing for another reason must reach the
     // error classifier, not loop here.
-    let effectiveCeiling = outputCeiling;
+    // Issue #912: reuse what an earlier note learned about this pair.
+    let effectiveCeiling = startCeilingFor(this.ctx.settings, outputCeiling);
     let ceilingProbes = 0;
     const baseMaxTokens = computeExtractionBudget({
       taskNeed: limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET,
@@ -819,7 +821,7 @@ export class SourceAnalyzer {
             const next = Math.max(MAX_TOKENS_BATCH, Math.floor(effectiveCeiling / 2));
             if (next < effectiveCeiling) {
               ceilingProbes++;
-              effectiveCeiling = next;
+              effectiveCeiling = rememberCeiling(this.ctx.settings, next);
               console.debug(
                 `[Batch ${batchNum + 1}] Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
               );

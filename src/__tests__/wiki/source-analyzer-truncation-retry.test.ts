@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContext, createMockFile } from '../__support__/engine-context';
 import { SourceAnalyzer } from '../../wiki/source-analyzer';
 import { normalizeFinishReason } from '../../llm-sdk/finish-reason';
 import { SOURCE_ANALYZER_RETRY_MULTIPLIER, DEFAULT_MODEL_OUTPUT_TOKENS } from '../../constants';
 import type { LLMClient, LLMFinishReason } from '../../types';
 import { TFile } from 'obsidian';
+import { outputCeilingCache } from '../../core/output-ceiling-cache';
 
 // Issue #305 — a truncated batch response is not an error.
 //
@@ -98,6 +99,12 @@ function batchSizeOf(prompt: string): number | null {
   const m = prompt.match(/at most (\d+) items/);
   return m ? Number(m[1]) : null;
 }
+
+beforeEach(() => {
+  // #912: the ceiling cache is process-wide, so one case must not inherit the
+  // verdict another one learned.
+  outputCeilingCache.invalidate();
+});
 
 describe('SourceAnalyzer truncation retry (#305)', () => {
   it('retries with a halved batch instead of dropping a truncated first batch', async () => {
@@ -376,5 +383,67 @@ describe('normalizeFinishReason (#305)', () => {
     // Total on purpose: an unrecognized value must not be mistaken for
     // 'length', so the worst case is "no signal", i.e. pre-#305 behavior.
     expect(normalizeFinishReason(raw)).toBe('unknown');
+  });
+});
+
+// Issue #912: the ceiling learned from a rejection is a property of the
+// (baseURL, model) pair, not of the note that happened to discover it. Before
+// the cache, a 20-note ingest paid the same two rejected requests 20 times.
+describe('SourceAnalyzer — a learned ceiling outlives the note (#912)', () => {
+  const LIMIT = 65_536;
+  const REJECTS_CEILING = `Invalid value for max_tokens: must be less than or equal to ${LIMIT}`;
+
+  /**
+   * A client that rejects a request above a real limit, and says which limit,
+   * the way a gateway does. Rejecting unconditionally would prove nothing: the
+   * second note passing only matters if its lower ceiling is also accepted.
+   */
+  function clientWithLimit(): { client: LLMClient; maxTokens: number[]; rejected: () => number } {
+    const scripted = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    let rejections = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      if ((params.max_tokens as number) > LIMIT) {
+        rejections++;
+        throw new Error(REJECTS_CEILING);
+      }
+      return scripted.client.createMessage(params);
+    };
+    return { client: wrapped, maxTokens: scripted.maxTokens, rejected: () => rejections };
+  }
+
+  it('starts the next note from what the previous note learned', async () => {
+    const firstRun = clientWithLimit();
+    expect(await run(analyzerWith(firstRun.client))).not.toBeNull();
+    expect(firstRun.rejected(), 'the first note pays one rejection').toBe(1);
+    expect(firstRun.maxTokens[0]).toBe(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+
+    const secondRun = clientWithLimit();
+    expect(await run(analyzerWith(secondRun.client))).not.toBeNull();
+    expect(secondRun.rejected(), 'the second note pays none').toBe(0);
+    expect(secondRun.maxTokens[0], 'and starts where the first one ended').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS / 2,
+    );
+    expect(secondRun.maxTokens[0], 'below the limit the provider named').toBeLessThanOrEqual(LIMIT);
+  });
+
+  it('pays the probe again once the verdict is dropped', async () => {
+    const firstRun = clientWithLimit();
+    await run(analyzerWith(firstRun.client));
+    outputCeilingCache.invalidate();
+
+    const secondRun = clientWithLimit();
+    await run(analyzerWith(secondRun.client));
+    expect(secondRun.rejected(), 'a changed gateway or account re-learns').toBe(1);
+    expect(secondRun.maxTokens[0]).toBe(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+  });
+
+  it('never lets a learned ceiling raise what the user asked for', async () => {
+    const firstRun = clientWithLimit();
+    await run(analyzerWith(firstRun.client));
+
+    const asked = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    await run(analyzerWith(asked.client, { maxTokensPerCall: 4000 }));
+    expect(asked.maxTokens[0], 'the smaller of the two wins').toBeLessThanOrEqual(4000);
   });
 });
