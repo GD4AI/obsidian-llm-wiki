@@ -327,7 +327,13 @@ export class AutoMaintainManager {
       return;
     }
 
-    this.periodicLintBaseline = Date.now();
+    // Issue #961: the clock measures time since the last periodic run, not time
+    // since this call. `main.ts` re-arms on every settings save, and resetting
+    // here is what made a `monthly` gate unreachable for anyone who saved twice
+    // a month. Seeded once, then advanced only by a run.
+    if (this.periodicLintBaseline === 0) {
+      this.periodicLintBaseline = this.settings.lastPeriodicLintAt || Date.now();
+    }
     this.lintIntervalId = this.plugin.registerInterval(
       window.setInterval(() => {
         void (async () => {
@@ -362,6 +368,25 @@ export class AutoMaintainManager {
     } finally {
       this.lintInFlight = false;
       this.periodicLintBaseline = Date.now();
+      await this.persistPeriodicLintClock();
+    }
+  }
+
+  /**
+   * Write the run to settings so the next session starts where this one ended
+   * (Issue #961). Best-effort on purpose: a failed write must not throw out of a
+   * timer callback, and the in-memory baseline has already moved, so the run
+   * itself is not lost for this session.
+   */
+  private async persistPeriodicLintClock(): Promise<void> {
+    this.settings.lastPeriodicLintAt = this.periodicLintBaseline;
+    try {
+      // `saveData`, not `plugin.saveSettings()`: the plugin method also rebuilds
+      // the LLM client, re-syncs the schema manager and may invalidate query
+      // graphs. A clock tick must write one field and touch nothing else.
+      await this.plugin.saveData(this.settings);
+    } catch (error) {
+      console.warn('AutoMaintain: could not persist the periodic lint clock:', error);
     }
   }
 
