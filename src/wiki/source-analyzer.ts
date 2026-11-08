@@ -207,6 +207,23 @@ function emptyBatch(): NormalizedBatch {
   };
 }
 
+/**
+ * The output ceiling to try after a provider rejected one, or `null` when no
+ * probe is left to spend.
+ *
+ * Bounded on purpose: two attempts, only while there is room to halve, and
+ * only for a message that names the ceiling. A context-length complaint means
+ * the INPUT is too long, and halving the output budget would burn calls and
+ * change nothing. The same rule applies whichever batch carried the rejection
+ * (#970); keeping the rule here rather than inline also holds `analyzeSource`
+ * inside its function-length budget.
+ */
+function ceilingAfterRejection(current: number, probes: number, errMsg: string): number | null {
+  if (probes >= 2 || current <= MAX_TOKENS_BATCH || !namesOutputCeiling(errMsg)) return null;
+  const next = Math.max(MAX_TOKENS_BATCH, Math.floor(current / 2));
+  return next < current ? next : null;
+}
+
 export class SourceAnalyzer {
   constructor(private ctx: EngineContext) {}
 
@@ -804,31 +821,27 @@ export class SourceAnalyzer {
 
       } catch (error) {
         console.error(`[Batch ${batchNum + 1}] Call failed:`, error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+
+        // Issue #904 learned the real output limit instead of assuming it.
+        // Issue #970: the rejection can land on any batch, not only the first.
+        // Gating this on `isFirstBatch` sent a later rejection to the batch
+        // halving below, which answers a different question — and taught
+        // nothing, so every note paid the probe again.
+        const nextCeiling = ceilingAfterRejection(effectiveCeiling, ceilingProbes, errMsg);
+        if (nextCeiling !== null) {
+          ceilingProbes++;
+          effectiveCeiling = rememberCeiling(this.ctx.settings, nextCeiling);
+          console.debug(
+            `[Batch ${batchNum + 1}] Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
+          );
+          batchNum--;
+          continue;
+        }
+
         if (isFirstBatch) {
           const providerName = this.ctx.settings.provider;
           const modelName = this.ctx.settings.model;
-          const errMsg = error instanceof Error ? error.message : String(error);
-
-          // Issue #904: learn the real output limit instead of assuming it.
-          // Only a rejection that names the output ceiling qualifies — a
-          // context-length complaint means the INPUT is too long, and halving
-          // the output budget would burn two calls for nothing.
-          if (
-            ceilingProbes < 2
-            && effectiveCeiling > MAX_TOKENS_BATCH
-            && namesOutputCeiling(errMsg)
-          ) {
-            const next = Math.max(MAX_TOKENS_BATCH, Math.floor(effectiveCeiling / 2));
-            if (next < effectiveCeiling) {
-              ceilingProbes++;
-              effectiveCeiling = rememberCeiling(this.ctx.settings, next);
-              console.debug(
-                `[Batch ${batchNum + 1}] Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
-              );
-              batchNum--;
-              continue;
-            }
-          }
 
           // Classify error by message content for targeted user guidance.
           // Issue #904 removed the inline chain: it tested `includes('token')`
@@ -844,7 +857,6 @@ export class SourceAnalyzer {
           );
         }
 
-        const errMsg = error instanceof Error ? error.message : String(error);
         const isTruncation = errMsg.toLowerCase().includes('truncated') || errMsg.toLowerCase().includes('max_tokens');
         if (isTruncation && halveBatchAndRetry(`[Batch ${batchNum + 1}]`, 'provider error')) {
           batchNum--;
