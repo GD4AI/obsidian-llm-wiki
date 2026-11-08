@@ -371,3 +371,90 @@ describe('periodic lint timers (#957)', () => {
     release();
   });
 });
+
+/**
+ * Issue #961 — the period clock measured "time since this call", not "time since the last run".
+ *
+ * `main.ts` calls `clearPeriodicLint()` and then `schedulePeriodicLint()` on every settings save, and
+ * both reset the baseline, so a `monthly` user who saved settings twice a month never reached the
+ * gate. The same clock lived only in memory, so a user who restarted Obsidian more often than their
+ * period never reached it either.
+ *
+ * The fix is Option A: persist the last run and seed the baseline from it once. "Monthly" then means
+ * "a month since the last run", which is what the setting name promises.
+ */
+describe('periodic lint clock (#961)', () => {
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+
+  function makeSettings(period: 'daily' | 'weekly' | 'monthly') {
+    return { language: 'en', watchedFolders: [], periodicLint: period } as unknown as LLMWikiSettings;
+  }
+
+  /**
+   * `sink` stands in for `data.json`: `saveData` deep-copies what it is given, and a
+   * reload is simulated by building the next manager from that snapshot. Sharing the
+   * live settings object between two managers would make a run look persisted when
+   * only memory had moved.
+   */
+  function makeManager(settings: LLMWikiSettings, lint: () => Promise<void>, sink?: { value: unknown }) {
+    const app = { vault: { getMarkdownFiles: () => [], configDir: '.obsidian' } } as unknown as ConstructorParameters<typeof AutoMaintainManager>[0];
+    const plugin = {
+      registerInterval: (id: number) => id,
+      saveData: async (data: unknown) => {
+        if (sink) sink.value = JSON.parse(JSON.stringify(data)) as unknown;
+      },
+    } as unknown as ConstructorParameters<typeof AutoMaintainManager>[3];
+    return new AutoMaintainManager(app, settings, {} as WikiEngine, plugin, lint);
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('a settings save does not restart the period clock', async () => {
+    vi.useFakeTimers();
+    const lint = vi.fn(async () => undefined);
+    const mgr = makeManager(makeSettings('daily'), lint);
+    mgr.schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(20 * HOUR);
+    // Exactly what main.ts does on every settings save.
+    mgr.clearPeriodicLint();
+    mgr.schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(20 * HOUR);
+    expect(lint, 'the save restarted the day, so 40 hours of uptime ran no lint').toHaveBeenCalledTimes(1);
+  });
+
+  it('the last run survives a reload', async () => {
+    vi.useFakeTimers();
+    const settings = makeSettings('daily');
+    const persisted: { value: unknown } = { value: null };
+
+    const first = makeManager(settings, async () => undefined, persisted);
+    first.schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(DAY);
+
+    // A reload reads data.json; it does not inherit the live object.
+    expect(persisted.value, 'the run was never written to data.json').not.toBeNull();
+    const reloaded = JSON.parse(JSON.stringify(persisted.value)) as LLMWikiSettings;
+    expect(reloaded.lastPeriodicLintAt, 'the run was never persisted').toBeGreaterThan(0);
+
+    // The vault sits idle from T+24h to T+47h, then Obsidian reloads.
+    first.clearPeriodicLint();
+    await vi.advanceTimersByTimeAsync(23 * HOUR);
+
+    const lint = vi.fn(async () => undefined);
+    makeManager(reloaded, lint, persisted).schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(2 * HOUR);
+    expect(lint, 'the reload forgot the last run and armed a fresh day').toHaveBeenCalledTimes(1);
+  });
+
+  it('never run means the clock starts now, not at the epoch', async () => {
+    vi.useFakeTimers();
+    const lint = vi.fn(async () => undefined);
+    makeManager(makeSettings('daily'), lint).schedulePeriodicLint();
+    await vi.advanceTimersByTimeAsync(23 * HOUR);
+    expect(lint, 'an absent timestamp was read as a very old one and ran immediately').not.toHaveBeenCalled();
+  });
+});

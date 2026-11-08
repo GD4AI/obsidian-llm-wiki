@@ -339,6 +339,15 @@ export interface LLMWikiSettings {
   autoWatchDebounceMs: number;
   watchedFolders: string[];
   periodicLint: 'off' | 'daily' | 'weekly' | 'monthly';
+  /**
+   * Issue #961 — epoch ms of the last completed periodic lint, so the period
+   * clock survives a settings save and a reload. Absent or 0 means "never
+   * run", which starts the clock when periodic lint is armed.
+   *
+   * Optional so a `data.json` written before this field existed still
+   * type-checks; the read site falls back to "never run".
+   */
+  lastPeriodicLintAt?: number;
   startupCheck: boolean;
   /**
    * v1.23.0: controls whether the QuickFixes startup-check Notice is
@@ -1614,6 +1623,7 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   autoWatchDebounceMs: 5000,
   watchedFolders: [],
   periodicLint: 'off',
+  lastPeriodicLintAt: 0,
   startupCheck: true,  // Issue #81: default ON for low-level format fixes
   startupCheckNoticeLevel: 'visible',  // v1.23.0: show QuickFixes results Notice by default
   autoSmartFix: false,
