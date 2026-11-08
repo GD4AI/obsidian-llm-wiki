@@ -14,7 +14,8 @@
     "skipLibCheck": true,
     "lib": [
       "DOM",
-      "ES2021"
+      "ES2021",
+      "ES2022.Error"
     ],
     "types": [
       "node"

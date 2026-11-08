@@ -62,6 +62,15 @@ describe('classifyCandidate', () => {
     expect(classifyCandidate('Die oxidativen Wirkungen sind belegt.', 'Oxidative Wirkung')).toBe('prose');
     expect(classifyCandidate('Die Transferrinsättigung fällt.', 'Transferrin')).toBe('absent');
   });
+  // The boundary has two halves and only the trailing one is visible above: a
+  // suffix compound is rejected by the lookahead after the name, so a prefix
+  // compound is the case that needs the leading check. Without it, a page named
+  // `Transferrin` would be built from a note that only says `Co-Transferrin`.
+  it('a name that only appears inside a longer word is absent, on both sides', () => {
+    expect(classifyCandidate('Das Co-Transferrin ist erhöht.', 'Transferrin')).toBe('prose');
+    expect(classifyCandidate('Das Antitransferrin ist erhöht.', 'Transferrin')).toBe('absent');
+    expect(classifyCandidate('Die Transferrinsättigung fällt.', 'Transferrin')).toBe('absent');
+  });
   it('is case-insensitive and NFC-normalized', () => {
     expect(classifyCandidate(TEXT, 'ferritin')).toBe('prose');
     expect(classifyCandidate(TEXT, 'Transferrinsättigung')).toBe('prose');

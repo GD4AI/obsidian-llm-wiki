@@ -708,17 +708,51 @@ function isJsonWhitespace(ch: string): boolean {
 
 // A single backslash (an odd run) before anything JSON cannot escape:
 // `$\alpha$`, `[[Page\|alias]]`, `\u` without four hex digits.
-const INVALID_ESCAPE = /(?<!\\)((?:\\\\)*)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g;
+const JSON_ESCAPABLE = /^(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/;
 
 // LaTeX commands whose first letter makes `\<letter>` a valid JSON escape —
 // `\beta` parses to backspace + "eta", `\rightarrow` to carriage return +
 // "ightarrow". Rewritten only inside a `$…$` span and only as a whole command
 // name, where a real control character has no business.
-const LATEX_ESCAPE_IN_MATH = /(?<!\\)((?:\\\\)*)\\(?=(?:beta|bar|bullet|frac|forall|nabla|neq|ne|not|nu|rho|rightarrow|theta|tau|times|textbf|textit|text|tilde|top|to|triangle)(?![A-Za-z]))/g;
+const LATEX_COMMAND = /^(?:beta|bar|bullet|frac|forall|nabla|neq|ne|not|nu|rho|rightarrow|theta|tau|times|textbf|textit|text|tilde|top|to|triangle)(?![A-Za-z])/;
+
+/**
+ * Escape the last backslash of an odd run when `shouldEscape` holds for what
+ * follows it. An even run is a sequence of escaped backslashes and is left
+ * alone.
+ *
+ * A scan, not a lookbehind: `obsidianmd/regex-lookbehind` rejects lookbehind
+ * because iOS before 16.4 throws when the pattern is parsed, which would take
+ * the plugin down at load instead of costing one repair attempt. The slicing is
+ * per run and this path runs only after every cheaper step has failed.
+ */
+function escapeOddRuns(text: string, shouldEscape: (rest: string) => boolean): string {
+  if (!text.includes('\\')) return text;
+  let out = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] !== '\\') {
+      out += text[i];
+      i += 1;
+      continue;
+    }
+    let j = i;
+    while (j < text.length && text[j] === '\\') j += 1;
+    const run = j - i;
+    out += '\\'.repeat(run % 2 === 1 && shouldEscape(text.slice(j)) ? run + 1 : run);
+    i = j;
+  }
+  return out;
+}
+
+function escapeInvalidJsonEscapes(text: string): string {
+  return escapeOddRuns(text, rest => !JSON_ESCAPABLE.test(rest));
+}
 
 function escapeLatexInMath(text: string): string {
   if (!text.includes('$')) return text;
-  return text.replace(/\$[^$\n]{1,200}\$/g, span => span.replace(LATEX_ESCAPE_IN_MATH, '$1\\\\'));
+  return text.replace(/\$[^$\n]{1,200}\$/g, span =>
+    escapeOddRuns(span, rest => LATEX_COMMAND.test(rest)));
 }
 
 /**
@@ -728,8 +762,7 @@ function escapeLatexInMath(text: string): string {
  */
 function repairKnownDefects(text: string): Record<string, unknown> | null {
   const t = closeMismatchedBrackets(closeUnterminatedLines(
-    text
-      .replace(INVALID_ESCAPE, '$1\\\\')
+    escapeInvalidJsonEscapes(text)
       // `"name: "Psoriasis",` — the key lost its closing quote (25 of 50).
       // Before a bracket only when it ends the line: `"siehe: [[Vitamin D]] …"`
       // is a valid quote, not a key.

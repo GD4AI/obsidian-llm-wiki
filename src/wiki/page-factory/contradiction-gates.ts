@@ -123,7 +123,7 @@ export async function verifySourceStance(
 
   // Same two-path shape as classifyMergeNeed: typed output when the client
   // offers it, JSON text otherwise.
-  let parsed: SourceStance | null = null;
+  let parsed: SourceStance | null;
   try {
     if (client.createMessageWithOutput) {
       const result = await client.createMessageWithOutput<SourceStance>({

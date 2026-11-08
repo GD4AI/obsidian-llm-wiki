@@ -135,7 +135,7 @@ export async function obsidianFetchBridge(
     // Re-throw as a fetch-like TypeError so AI-SDK treats it as a
     // network failure (vs. an API error with a body).
     if (err instanceof Error) {
-      throw new TypeError(`obsidianFetchBridge network error: ${err.message}`);
+      throw new TypeError(`obsidianFetchBridge network error: ${err.message}`, { cause: err });
     }
     throw err;
   }

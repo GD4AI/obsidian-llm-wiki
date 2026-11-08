@@ -181,7 +181,7 @@ export async function requestUrl(param: RequestUrlParam): Promise<RequestUrlResp
       try {
         return JSON.parse(text) as unknown;
       } catch (e) {
-        throw new Error(`Request URL response is not valid JSON: ${(e as Error).message}`);
+        throw new Error(`Request URL response is not valid JSON: ${(e as Error).message}`, { cause: e });
       }
     },
   };
