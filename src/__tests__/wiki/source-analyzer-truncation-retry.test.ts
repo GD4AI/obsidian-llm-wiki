@@ -447,3 +447,96 @@ describe('SourceAnalyzer — a learned ceiling outlives the note (#912)', () => 
     expect(asked.maxTokens[0], 'the smaller of the two wins').toBeLessThanOrEqual(4000);
   });
 });
+
+// Issue #970: the ceiling probe was gated on `isFirstBatch`, so a note whose
+// first batch was accepted and whose second was rejected for naming
+// `max_tokens` took the truncation branch instead — it halved the batch size
+// and, when that did not apply, dropped the batch while keeping the items
+// already extracted. Nothing was learned either.
+describe('SourceAnalyzer — a rejection on a later batch (#970)', () => {
+  const LIMIT = 65_536;
+  const NAMES_CEILING = `Invalid value for max_tokens: must be less than or equal to ${LIMIT}`;
+
+  it('lowers the ceiling when the later batch is the rejected one', async () => {
+    const scripted = scriptedClient([
+      { text: VALID, finishReason: 'stop' }, // batch 1 accepted at the default ceiling
+      { text: VALID, finishReason: 'stop' }, // batch 2, retried after the ceiling halved
+    ]);
+    let calls = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      calls++;
+      // Only the second batch is over the limit; the first one is accepted.
+      if (calls === 2 && (params.max_tokens as number) > LIMIT) {
+        throw new Error(NAMES_CEILING);
+      }
+      return scripted.client.createMessage(params);
+    };
+
+    const result = await run(analyzerWith(wrapped));
+
+    expect(result, 'the note still completes').not.toBeNull();
+    expect(scripted.maxTokens[0], 'batch 1 went out at the default ceiling').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS,
+    );
+    expect(scripted.maxTokens[1], 'the retry went out lower').toBeLessThanOrEqual(
+      DEFAULT_MODEL_OUTPUT_TOKENS / 2,
+    );
+  });
+
+  it('hands what a later batch learned to the next note', async () => {
+    const first = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    let calls = 0;
+    const wrapped = Object.create(first.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      calls++;
+      if (calls === 2 && (params.max_tokens as number) > LIMIT) throw new Error(NAMES_CEILING);
+      return first.client.createMessage(params);
+    };
+    await run(analyzerWith(wrapped));
+
+    // Second note, second analyzer, same (baseURL, model): it starts lower.
+    const second = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    await run(analyzerWith(second.client));
+    expect(second.maxTokens[0]).toBeLessThanOrEqual(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+  });
+
+  it('still ignores a later failure that does not name the ceiling', async () => {
+    // Only a message that names the ceiling qualifies. This one names nothing
+    // the ceiling logic can act on, so no ceiling retry may be issued.
+    //
+    // Deliberately not a context-length message: `isTruncation` matches the
+    // substring `length`, so "maximum context length" is handled by the
+    // batch-halving branch that predates #904. That overlap is recorded in
+    // #970 rather than changed here.
+    const scripted = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    let extractionAttempts = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      const first = params.messages[0].content;
+      // The analyzer's own client also carries later tasks (page creation),
+      // so only the extraction prompt counts as a batch attempt.
+      if (typeof first === 'string' && first.startsWith('You are a Wiki knowledge base maintainer')) {
+        extractionAttempts++;
+        if (extractionAttempts === 2) {
+          throw new Error('Unprocessable entity: field messages is invalid');
+        }
+      }
+      return scripted.client.createMessage(params);
+    };
+
+    const result = await run(analyzerWith(wrapped));
+    expect(result).not.toBeNull();
+    expect(extractionAttempts, 'batch 2 was attempted once and not retried').toBe(2);
+    expect(outputCeilingCache.size, 'nothing was learned from it').toBe(0);
+  });
+});
