@@ -31,6 +31,7 @@
 
 import { type LanguageModel, APICallError, NoSuchModelError, InvalidPromptError } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { resolveSdkReasoning, type SdkReasoning } from './reasoning-level';
 import { LLMClient } from '../types';
 import { obsidianFetchBridge, streamWithFallback } from '../core/obsidian-fetch-bridge';
 import { wrapReasoningContent } from '../core/markdown';
@@ -78,6 +79,20 @@ export interface OpenAISdkClientOptions {
  * Lazy-loads the @ai-sdk/openai package in the constructor — keeps
  * unused providers out of the bundle for users on a single Provider.
  */
+/**
+ * The reasoning level as the SDK's unified call option, or nothing.
+ *
+ * Issue #912: `@ai-sdk/openai` translates this itself — `'high'` becomes
+ * `reasoning: { effort: 'high' }` on the Responses body, `'none'` becomes
+ * `{ effort: 'none' }`, and `'provider-default'` sends no field. Writing
+ * `providerOptions.openai.reasoningEffort` by hand meant a named level never
+ * reached the wire, and routed the value through a zod schema that drops keys
+ * it does not name.
+ */
+function reasoningCallOption(level: SdkReasoning | undefined): { reasoning?: SdkReasoning } {
+  return level === undefined ? {} : { reasoning: level };
+}
+
 export class OpenAISdkClient implements LLMClient {
   private readonly apiKey: string;
   private readonly baseURL: string | undefined;
@@ -188,7 +203,7 @@ export class OpenAISdkClient implements LLMClient {
 
   async createMessage(params: LLMClient['createMessage'] extends (p: infer P) => unknown ? P : never): Promise<string> {
     // Type-safe params destructure (LLMClient.createMessage signature).
-    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, response_format, onFinish, abortSignal, allowEmptyResponse } = params;
+    const { model, max_tokens, system, messages, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, response_format, onFinish, abortSignal, allowEmptyResponse } = params;
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
@@ -206,9 +221,9 @@ export class OpenAISdkClient implements LLMClient {
         // tree. Our buildProviderOptions returns a structurally-correct
         // object but TypeScript can't narrow `unknown` → JSONValue
         // automatically. Cast at the boundary; runtime behavior is fine.
+        ...reasoningCallOption(this.reasoningOption({ model, enableThinking, reasoningEffort })),
         providerOptions: this.buildProviderOptions({
           model,
-          enableThinking,
           repetitionPenalty: repetition_penalty,
           // Built here, discarded by the SDK. `createOpenAI()(modelId)` returns
           // the Responses model, which never emits `response_format` under any
@@ -251,9 +266,9 @@ export class OpenAISdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages,
           maxOutputTokens: max_tokens,
-          providerOptions: this.buildProviderOptions({
+          ...reasoningCallOption(this.reasoningOption({ model, enableThinking, reasoningEffort })),
+        providerOptions: this.buildProviderOptions({
             model,
-            enableThinking,
             repetitionPenalty: repetition_penalty,
             responseFormat: response_format,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
@@ -292,9 +307,10 @@ export class OpenAISdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages,
           maxOutputTokens: max_tokens,
+          // The retry after a 400 on the reasoning field sends none of it, so no
+          // `reasoning` option is passed at all.
           providerOptions: this.buildProviderOptions({
             model,
-            enableThinking: true,
             repetitionPenalty: repetition_penalty,
             responseFormat: response_format,
           }) as unknown as Parameters<typeof generateText>[0]['providerOptions'],
@@ -312,27 +328,53 @@ export class OpenAISdkClient implements LLMClient {
   }
 
   /**
+   * The reasoning level to send, or `undefined` to send none.
+   *
+   * Issue #912: the level travels as the SDK's unified `reasoning` call
+   * option and is translated there, which is what the Anthropic client has
+   * done since v1.29.0. This client used to hand-write
+   * `providerOptions.openai.reasoningEffort`, with two consequences: a named
+   * level never reached the wire at all, and the value went through a zod
+   * schema that drops keys it does not name.
+   *
+   * The on/off switch still means what it meant. `enableThinking: false` asks
+   * for `'none'`, which on GPT-5.1+ models skips the reasoning path entirely —
+   * no reasoning tokens billed, no sampling-param validation overhead — and
+   * that is the right trade for dedup, fix-runners, merge and the ingest
+   * JSON-decision calls. `enableThinking: true` yields `'provider-default'`,
+   * which the SDK renders as no field at all, so the behaviour of every caller
+   * that expresses no level is byte-identical.
+   *
+   * The strip probe still wins. Once a (baseURL, model) has answered 400 to a
+   * reasoning field, sending it again would short-circuit the strip-and-retry
+   * in the catch block, and the retry would never fire (B6-4).
+   */
+  private reasoningOption(opts: {
+    model: string;
+    enableThinking?: boolean;
+    reasoningEffort?: 'low' | 'medium' | 'high';
+  }): SdkReasoning | undefined {
+    if (
+      this.baseURL !== undefined &&
+      this.reasoningStripProber.shouldStrip(this.baseURL, opts.model)
+    ) {
+      return undefined;
+    }
+    return resolveSdkReasoning({
+      enableThinking: opts.enableThinking,
+      reasoningEffort: opts.reasoningEffort,
+    });
+  }
+
+  /**
    * Map AI-SDK options → OpenAI provider options.
    *
-   * OpenAI reasoning effort: maps `enableThinking=false` → `reasoningEffort: 'none'`
-   * (v1.26.0 Batch 6). On GPT-5.1+ models the AI SDK
-   * (@ai-sdk/openai@3.0.86/dist/index.mjs:943) skips the reasoning path
-   * entirely when effort is 'none' and supportsNonReasoningParameters is
-   * true — no reasoning tokens billed, no sampling-param validation
-   * overhead. For dedup-phase / fix-runners / merge / ingest JSON-decision
-   * calls this is the right tradeoff.
-   *
-   * Chat Completions path accepts string() (line 4856) so 'none' is also
-   * harmless on the older endpoint.
-   *
-   * Note: we do NOT support `enableThinking=true` explicitly — leaving it
-   * undefined lets OpenAI decide the model's reasoning behavior. This
-   * matches the v1.20.0 "provider-first thinking control" policy.
+   * Reasoning is not handled here since #912: it travels as the SDK's own
+   * `reasoning` call option, see `reasoningOption`.
    */
   private buildProviderOptions(opts: {
     /** Issue #551: the strip cache is keyed per (baseURL, model). */
     model: string;
-    enableThinking?: boolean;
     repetitionPenalty?: number;
     responseFormat?: { type: 'json_object' };
   }): Record<string, Record<string, unknown>> {
@@ -341,51 +383,6 @@ export class OpenAISdkClient implements LLMClient {
     // and cast at the call site — TypeScript's deep type narrowing
     // doesn't help us for forward-compat provider option keys.
     const openaiOpts: Record<string, unknown> = {};
-
-    if (
-      opts.enableThinking === false &&
-      !(this.baseURL !== undefined && this.reasoningStripProber.shouldStrip(this.baseURL, opts.model))
-    ) {
-      // v1.26.0 Batch 6 + Bug-1 fix: switch from 'low' to 'none' for the
-      // official OpenAI Responses path; gate on shouldStrip((baseURL, model)).
-      //
-      // The shouldStrip guard prevents a regression spotted during
-      // code-review (Aug 2026): once Layer-3 marks a (baseURL, model) as
-      // "strip" (because it 400'd on reasoning_effort), the next call
-      // must NOT re-inject the field — otherwise the catch-block guard
-      // `!shouldStrip` short-circuits and the reasoning-strip retry
-      // never fires. This is the same guard openai-compat has at
-      // line 322 of openai-compat-sdk-client.ts (B6-4).
-      //
-      // The `baseURL !== undefined` sub-check: shouldStrip only matters
-      // for custom baseURLs (the official OpenAI API never goes through
-      // Layer-3 — there's no per-baseURL cache for it). For the official
-      // path, always emit.
-      //
-      // History:
-      //   - v1.23.0: 'low' was the OpenAI-recommended safe default for
-      //     latency-sensitive cases per the GPT-5.x migration guide.
-      //   - Batch 6: 'none' is the more aggressive switch that fully
-      //     disables reasoning. Per the AI SDK source
-      //     (@ai-sdk/openai@3.0.86/dist/index.mjs:943):
-      //       if (openaiOptions.reasoningEffort !== 'none' ||
-      //           !modelCapabilities.supportsNonReasoningParameters) {
-      //         // …emit reasoning_effort…
-      //       }
-      //     On GPT-5.1+ models (supportsNonReasoningParameters=true),
-      //     'none' skips the reasoning path entirely — no reasoning
-      //     tokens billed, no temperature/top_p/logprobs validation
-      //     overhead. For dedup-phase this is exactly what we want.
-      //
-      //     Chat Completions path (@ai-sdk/openai@3.0.86:4856) accepts
-      //     string() (any value), so 'none' is also harmless there.
-      //
-      //   - Backend compat (no per-vendor matching): OpenAI SDK is
-      //     official OpenAI only — no Gemini-via-shim, no DeepSeek.
-      //     The 400-retry in B6-3 still applies if the user's baseURL
-      //     routes to a non-OpenAI backend that rejects 'none'.
-      openaiOpts.reasoningEffort = 'none';
-    }
 
     if (opts.repetitionPenalty !== undefined) {
       // llama.cpp extension — passed through as-is. The wire name rather than
@@ -435,6 +432,8 @@ export class OpenAISdkClient implements LLMClient {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     onChunk: (chunk: string) => void;
     enableThinking?: boolean;
+    /** Issue #912: named thinking level, translated by the SDK. */
+    reasoningEffort?: 'low' | 'medium' | 'high';
     temperature?: number;
     top_p?: number;
     repetition_penalty?: number;
@@ -442,7 +441,7 @@ export class OpenAISdkClient implements LLMClient {
     /** Step label for per-task accounting (Issue #469). Not consumed here — interface conformance. */
     task?: string;
   }): Promise<string> {
-    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, seed, enableThinking, abortSignal } = params;
+    const { model, max_tokens, system, messages, onChunk, temperature, top_p, repetition_penalty, seed, enableThinking, reasoningEffort, abortSignal } = params;
 
     // v1.23.0 P1.5: same URL fallback as createMessage, so streaming
     // (Query Wiki) is consistent with non-streaming (Ingest / Lint).
@@ -450,19 +449,16 @@ export class OpenAISdkClient implements LLMClient {
       const languageModel = this.getProvider(model, this.streamFetchImpl);
       const { streamText } = await import('ai');
 
-      // v1.23.0 P2: AI-SDK v6 stream consumption fix.
-      // See openai-compat-sdk-client.ts for full rationale — only consume
-      // textStream to get true real-time chunk forwarding. Iterating
-      // fullStream first causes textStream to buffer all chunks and yield
-      // them at completion, defeating streaming UX.
+      // v1.23.0 P2: consume only textStream — iterating fullStream first makes
+      // textStream buffer every chunk until completion (see the compat client).
       const result = streamText({
         model: languageModel,
         ...(system ? { system } : {}),
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         maxOutputTokens: max_tokens,
+        ...reasoningCallOption(this.reasoningOption({ model, enableThinking, reasoningEffort })),
         providerOptions: this.buildProviderOptions({
           model,
-          enableThinking,
           repetitionPenalty: repetition_penalty,
         }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
         ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
@@ -521,9 +517,9 @@ export class OpenAISdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           maxOutputTokens: max_tokens,
-          providerOptions: this.buildProviderOptions({
+          ...reasoningCallOption(this.reasoningOption({ model, enableThinking, reasoningEffort })),
+        providerOptions: this.buildProviderOptions({
             model,
-            enableThinking,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
           ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
@@ -567,9 +563,10 @@ export class OpenAISdkClient implements LLMClient {
           ...(system ? { system } : {}),
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           maxOutputTokens: max_tokens,
+          // The retry after a 400 on the reasoning field sends none of it, so no
+          // `reasoning` option is passed at all.
           providerOptions: this.buildProviderOptions({
             model,
-            enableThinking: true,
             repetitionPenalty: repetition_penalty,
           }) as unknown as Parameters<typeof streamText>[0]['providerOptions'],
           ...buildSamplingArgs({ temperature, top_p, seed, abortSignal }),
