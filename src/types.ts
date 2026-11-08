@@ -2,10 +2,16 @@
 
 import { App } from 'obsidian';
 import type { z } from 'zod';
-import type { RejectionReason } from './core/source-requirements';
 import type { TaskPolicyMap } from './core/task-policy';
+import type { ExtractionGranularity } from './constants';
 import type { OutputMode } from './llm-sdk/output-mode-prober';
 import type { TEXTS } from './texts';
+
+// Re-exported rather than declared here: `constants.ts` keys two tables by it
+// and `types.ts` already imports that module, so the declaration lives on the
+// far side of the edge. Declaring it here made `constants.ts` import
+// `types.ts`, which closed a seven-file cycle (#929).
+export type { ExtractionGranularity };
 
 /**
  * Issue #244 — Programmatic Mentions writes (v1.23.3 / v1.24.0).
@@ -245,7 +251,7 @@ export interface ProviderConfig {
 
 // Plugin settings
 
-export type ExtractionGranularity = 'fine' | 'standard' | 'coarse' | 'minimal' | 'custom';
+// `ExtractionGranularity` is declared in `constants.ts`; see the import block.
 
 export interface OpenAICodexModelCatalogEntry {
   slug: string;
@@ -770,6 +776,16 @@ export interface PageCreationResult {
    */
   created: boolean;
 }
+
+/**
+ * Why the pre-ingest gate (#164) rejected a file.
+ *
+ * Declared here, not in `core/source-requirements.ts`, because `IngestReport`
+ * carries the reason and `core/` imports `types.ts` — the other direction was
+ * the second of the two back-edges that closed the seven-file cycle (#929).
+ * The gate module imports it back the normal way.
+ */
+export type RejectionReason = 'empty' | 'incompatible-type' | 'duplicate' | 'injection' | 'unsupported-pdf' | 'mineru-page-limit' | 'mineru-size-limit';
 
 export interface IngestReport {
   sourceFile: string;

@@ -23,15 +23,6 @@
       "wiki/query-engine/types.ts"
     ],
     [
-      "constants.ts",
-      "core/domain-axis.ts",
-      "core/frontmatter.ts",
-      "core/slug.ts",
-      "core/source-requirements.ts",
-      "core/tag-vocab.ts",
-      "types.ts"
-    ],
-    [
       "core/mineru-converter.ts",
       "core/pdf-converter.ts"
     ],

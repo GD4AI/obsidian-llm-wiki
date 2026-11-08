@@ -19,7 +19,7 @@ import { App, Modal } from 'obsidian';
 import type { IngestReport } from '../../types';
 import { TEXTS } from '../../texts';
 import { getText } from '../../core/i18n';
-import type { RejectionReason } from '../../core/source-requirements';
+import type { RejectionReason } from '../../types';
 
 export class IngestReportModal extends Modal {
   private report: IngestReport;
