@@ -190,9 +190,11 @@ function applyTaskPolicy(
   const effort = thinkingEffort(policy.thinking);
 
   // Issue #904: the global level sits under the per-task policy. It is only
-  // consulted when the policy did not name a step, and only when the toggle
-  // is not asking for silence — `disableThinking` is the stronger request and
-  // resolves first, in `isReasoningPossible` as well, so budget and wire agree.
+  // consulted when the policy did not name a step, and only when the toggle is
+  // not asking for silence — `disableThinking` is the stronger request and wins
+  // here. #912 removed its shadow on the budget: the wire asks for the lowest
+  // level, but the budget stays at the ceiling, because a request the model may
+  // ignore is not evidence about how it behaves.
   const globalLevel = policy.thinking === 'default' && settings.disableThinking !== true
     ? settings.thinkingEffort
     : undefined;

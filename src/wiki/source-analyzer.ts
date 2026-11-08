@@ -20,7 +20,7 @@ import { parseJsonResponse, parseJsonResult } from '../core/json';
 import { startCeilingFor, rememberCeiling } from '../core/output-ceiling-cache';
 import { isCrossLanguage, normalizeSourceLanguage, getWikiLanguageName } from '../core/source-language';
 import { renderTemplate } from '../core/template-renderer';
-import { computeExtractionBudget, resolveOutputCeiling, isReasoningPossible } from '../core/output-budget';
+import { computeExtractionBudget, resolveOutputCeiling } from '../core/output-budget';
 import { buildIngestErrorHint, namesOutputCeiling } from './ingest-error-hint';
 import { matchExtractedToExisting } from '../core/index-search';
 import { coerceToArray } from '../core/arrays';
@@ -305,7 +305,6 @@ export class SourceAnalyzer {
     // when unused, one that is too low costs the whole batch. See
     // core/output-budget.ts for the rule and the reasoning behind it.
     const outputCeiling = resolveOutputCeiling(this.ctx.settings);
-    const reasoningPossible = isReasoningPossible(this.ctx.settings, 'extract');
     // Issue #904: the ceiling is a starting assumption, not a fact. A provider
     // whose real limit is below it answers with a 400 naming max_tokens, and a
     // 400 is not an answer — so the first batch learns the limit by halving,
@@ -318,14 +317,13 @@ export class SourceAnalyzer {
     const baseMaxTokens = computeExtractionBudget({
       taskNeed: limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET,
       ceiling: outputCeiling,
-      reasoningPossible,
     });
     // Retry escalation may grow the budget, but never past the ceiling: a
     // declared value above the model's limit is a 400, which is the failure
     // this whole change exists to remove.
     const retryCap = Math.min(baseMaxTokens * SOURCE_ANALYZER_RETRY_MULTIPLIER, outputCeiling);
 
-    console.debug(`[Batch limits] Initial size: ${limits.initialBatchSize}, Max batches: ${limits.maxBatches}, Max total: ${limits.maxTotalItems || 'none'}, baseMaxTokens: ${baseMaxTokens}, retryCap: ${retryCap}, ceiling: ${outputCeiling}, reasoningPossible: ${reasoningPossible}`);
+    console.debug(`[Batch limits] Initial size: ${limits.initialBatchSize}, Max batches: ${limits.maxBatches}, Max total: ${limits.maxTotalItems || 'none'}, baseMaxTokens: ${baseMaxTokens}, retryCap: ${retryCap}, ceiling: ${outputCeiling}`);
 
     let currentBatchSize = limits.initialBatchSize;
     let batchSizeHalved = false;
@@ -508,7 +506,6 @@ export class SourceAnalyzer {
         const normalBudget = computeExtractionBudget({
           taskNeed: batchAnswerNeed,
           ceiling: effectiveCeiling,
-          reasoningPossible,
         });
         // Escalation may only ADD room. When the first attempt already declares
         // the ceiling there is nothing above it, and falling back to

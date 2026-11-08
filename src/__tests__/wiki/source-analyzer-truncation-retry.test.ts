@@ -154,9 +154,12 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
     expect(maxTokens[1]).toBeLessThanOrEqual(DEFAULT_MODEL_OUTPUT_TOKENS);
   });
 
-  it('still triples a narrow budget when thinking is off', async () => {
-    // The pre-#904 invariant survives where it still has room: a request that
-    // declares only the answer need can grow on retry.
+  it('declares the ceiling even with thinking off, so a retry has nothing to add (#912)', async () => {
+    // Asking for silence is not evidence of silence — a model that refuses to
+    // stop thinking spends the whole budget on reasoning and returns an empty
+    // batch. #912 therefore stopped narrowing the budget when the toggle is on.
+    // The old invariant ("only a narrow request can grow on retry") has no
+    // subject left: no extraction request declares less than the ceiling.
     const { client, maxTokens } = scriptedClient([
       { text: TRUNCATED, finishReason: 'length' },
       { text: VALID, finishReason: 'stop' },
@@ -165,8 +168,11 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
     const result = await run(analyzerWith(client, { disableThinking: true }));
 
     expect(result).not.toBeNull();
+    expect(maxTokens[0], 'the first attempt already declares the ceiling').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS,
+    );
     expect(maxTokens.length).toBeGreaterThanOrEqual(2);
-    expect(maxTokens[1]).toBe(maxTokens[0] * SOURCE_ANALYZER_RETRY_MULTIPLIER);
+    expect(maxTokens[1], 'escalation may only add room, and there is none').toBe(maxTokens[0]);
   });
 
   // Issue #904: the ceiling is a starting assumption. A provider whose real
