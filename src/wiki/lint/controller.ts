@@ -41,6 +41,140 @@ import { SchemaTask } from '../../schema/schema-manager';
 // ui/modals/ indirect import) still reference `LintContext` from this file.
 export type { LintContext } from './types';
 
+export interface LintScanResult {
+  prep: Awaited<ReturnType<typeof runPreparationPhase>>;
+  findings: ProgrammaticFindings;
+  findingsWithEmpty: ProgrammaticFindings;
+  duplicates: Awaited<ReturnType<typeof runDedupPhase>>;
+  emptyPages: Array<{ path: string; content: string }>;
+  contradictionsReport: Awaited<ReturnType<typeof runContradictionPhase>>['report'];
+}
+
+/**
+ * The read-only half of a lint run: four phases in a fixed order, then the
+ * empty-page list and the report fragment they feed.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only. The phase call
+ * order is the observable contract — each phase emits its own progress — so
+ * nothing was reordered, merged or made conditional. `phaseCtx` is built by the
+ * caller because phase 1 writes `totalPages` back onto it and the fix callbacks
+ * later read it.
+ */
+async function runLintScanPhases(
+  ctx: LintContext,
+  phaseCtx: LintPhaseContext,
+): Promise<LintScanResult> {
+
+    // ---- Phase 1: Preparation (read pages, fix links, normalize sources) ----
+    const prep = await runPreparationPhase(phaseCtx);
+    phaseCtx.totalPages = prep.wikiFiles.length;
+
+    // ---- Build wiki-link graph (v1.23.0 P1-6, for hub-link density scanner) ----
+    // Pure function: derives edges from in-memory pageMap. No IO.
+    const allPaths = new Set<string>(prep.pageMap.keys());
+    const loadedPages = Array.from(prep.pageMap.values()).map(p => ({
+      path: p.path,
+      content: p.content,
+    }));
+    const graph = buildGraphFromContent(loadedPages, allPaths, ctx.settings.wikiFolder);
+
+    // ---- Phase 2: Programmatic + source-IO checks ----
+    // #496: async now — cited primary notes are read here so quote grounding
+    // runs against underlying documents, not generated summaries.
+    const findings: ProgrammaticFindings = await runProgrammaticPhase(phaseCtx, {
+      wikiFiles: prep.wikiFiles,
+      pageMap: prep.pageMap,
+      knownTargets: prep.knownTargets,
+      knownTargetsLower: prep.knownTargetsLower,
+      graph,
+    });
+    findings.sourcesNormalizedFiles = prep.sourcesNormalizedFiles;
+    findings.sourcesNormalizedEntries = prep.sourcesNormalizedEntries;
+    findings.doubleNestFixes = prep.doubleNestFixes;
+
+    const wikiFiles = prep.wikiFiles;
+    const pageMap = prep.pageMap;
+
+    // Extract findings from programmatic phase
+    // emptyPages initialized empty; populated below after we know duplicate paths
+    const emptyPages: Array<{ path: string; content: string }> = [];
+
+    // ---- 3. LLM-assisted checks (high latency / token cost) ----
+    //
+    // v1.24.0: extracted to lint/llm-phases/dedup-phase.ts.
+    // Behavior is identical to the previous inline implementation; see
+    // that file for the tier-classification + rate-limit details.
+    //
+    // v1.25.1 Phase F1 (closes controller.ts:151 TODO from v1.18.0+):
+    // dedup-phase.ts already runs batches in parallel with concurrency
+    // limit (see `for (let i = 0; i < batches.length; i += concurrency)`
+    // + `Promise.allSettled` at dedup-phase.ts:197-282). The roadmap
+    // items (a-d) below remain future work — open question for v1.26.0
+    // lint perf opening (ROADMAP §v1.26.0 row 3).
+    //
+    // Historical TODO (now resolved for parallel batches; remaining items
+    // deferred to v1.26.0):
+    //   a. Hash-bucket dedup: hash titles (n-gram or phonetic) and only LLM-verify
+    //      pairs that share a bucket. Reduces Tier 1 pair count by 5-10x.
+    //   b. Embedding-based prefilter: use a local embedding model to compute
+    //      Tier 2 candidate pairs, replace the title-similarity heuristic.
+    //   c. Cache LLM verify results in a per-lint-run memo so re-runs don't
+    //      re-verify unchanged pairs.
+    //   d. Skip the second LLM pass if the Tier 1 confidence score is below
+    //      a threshold AND no new entries appeared since the last lint.
+    //
+    // See ROADMAP.md "Lint performance" section for the larger picture.
+    const duplicates = await runDedupPhase(
+      phaseCtx,
+      { wikiFiles, pageMap },
+      phaseCtx.checkCancelled,
+    );
+
+    // ---- 3.5 Build empty-page list now that duplicates are known ----
+    const emptyPageDuplicates = new Set<string>();
+    for (const d of duplicates) {
+      emptyPageDuplicates.add(d.target);
+      emptyPageDuplicates.add(d.source);
+    }
+
+    for (const { path, content } of pageMap.values()) {
+      // Skip if this page is a duplicate source (will be deleted after merge)
+      if (emptyPageDuplicates.has(path)) continue;
+      if (isPageEmpty(content)) {
+        emptyPages.push({path, content});
+      }
+    }
+
+    // ---- 4. Contradiction scanning (LLM-assisted / mixed) ----
+    //
+    // v1.24.0: extracted to lint/llm-phases/contradiction-phase.ts.
+    // Behavior is identical to the previous inline implementation; see
+    // that file for the report-render details.
+    //
+    // v1.27.x audit (Phase 3 T3-1): the contradiction phase now runs
+    // BEFORE the report is built. Historically it ran after a throwaway
+    // buildLintReport call whose output was stripped (extractProgReport)
+    // for the LLM analysis prompt — deleted in v1.26.4 #473. With that
+    // consumer gone, the strip-then-re-add round-trip (and the duplicate
+    // summaryText / aliasPre re-derivation in this file) is dead weight:
+    // the builder already emits `# title + summary + aliasPre + body` in
+    // one pass. One call, real elapsed time, contradictions appended.
+    const findingsWithEmpty: ProgrammaticFindings = {
+      ...findings,
+      emptyPages,
+    };
+    const { report: contradictionsReport } = await runContradictionPhase(phaseCtx);
+  return {
+    prep,
+    findings,
+    findingsWithEmpty,
+    duplicates,
+    emptyPages,
+    contradictionsReport,
+  };
+}
+
+
 export async function runLintWiki(
   ctx: LintContext,
   signal?: AbortSignal,
@@ -84,112 +218,21 @@ export async function runLintWiki(
       buildSystemPrompt: (task: string) => ctx.wikiEngine.buildSystemPrompt(task as SchemaTask),
     };
 
-    // ---- Phase 1: Preparation (read pages, fix links, normalize sources) ----
-    const prep = await runPreparationPhase(phaseCtx);
-    phaseCtx.totalPages = prep.wikiFiles.length;
 
-    // ---- Build wiki-link graph (v1.23.0 P1-6, for hub-link density scanner) ----
-    // Pure function: derives edges from in-memory pageMap. No IO.
-    const allPaths = new Set<string>(prep.pageMap.keys());
-    const loadedPages = Array.from(prep.pageMap.values()).map(p => ({
-      path: p.path,
-      content: p.content,
-    }));
-    const graph = buildGraphFromContent(loadedPages, allPaths, ctx.settings.wikiFolder);
+    const scan = await runLintScanPhases(ctx, phaseCtx);
+    const {
+      findings, findingsWithEmpty, duplicates, emptyPages, contradictionsReport,
+    } = scan;
 
-    // ---- Phase 2: Programmatic + source-IO checks ----
-    // #496: async now — cited primary notes are read here so quote grounding
-    // runs against underlying documents, not generated summaries.
-    const findings: ProgrammaticFindings = await runProgrammaticPhase(phaseCtx, {
-      wikiFiles: prep.wikiFiles,
-      pageMap: prep.pageMap,
-      knownTargets: prep.knownTargets,
-      knownTargetsLower: prep.knownTargetsLower,
-      graph,
-    });
-    findings.sourcesNormalizedFiles = prep.sourcesNormalizedFiles;
-    findings.sourcesNormalizedEntries = prep.sourcesNormalizedEntries;
-    findings.doubleNestFixes = prep.doubleNestFixes;
-
-    const wikiFiles = prep.wikiFiles;
-    const pageMap = prep.pageMap;
+    const wikiFiles = scan.prep.wikiFiles;
     const t = TEXTS[ctx.settings.language];
 
-    // Extract findings from programmatic phase
     const aliasDeficientPages = findings.aliasDeficientPages;
     const orphans = findings.orphans;
     const tagViolations = findings.tagViolations;
     const pollutedPages = findings.pollutedPages;
     const deadLinks = findings.deadLinks;
     const ungroundedQuotes = findings.ungroundedQuotes;
-    // emptyPages initialized empty; populated below after we know duplicate paths
-    const emptyPages: Array<{ path: string; content: string }> = [];
-
-    // ---- 3. LLM-assisted checks (high latency / token cost) ----
-    //
-    // v1.24.0: extracted to lint/llm-phases/dedup-phase.ts.
-    // Behavior is identical to the previous inline implementation; see
-    // that file for the tier-classification + rate-limit details.
-    //
-    // v1.25.1 Phase F1 (closes controller.ts:151 TODO from v1.18.0+):
-    // dedup-phase.ts already runs batches in parallel with concurrency
-    // limit (see `for (let i = 0; i < batches.length; i += concurrency)`
-    // + `Promise.allSettled` at dedup-phase.ts:197-282). The roadmap
-    // items (a-d) below remain future work — open question for v1.26.0
-    // lint perf opening (ROADMAP §v1.26.0 row 3).
-    //
-    // Historical TODO (now resolved for parallel batches; remaining items
-    // deferred to v1.26.0):
-    //   a. Hash-bucket dedup: hash titles (n-gram or phonetic) and only LLM-verify
-    //      pairs that share a bucket. Reduces Tier 1 pair count by 5-10x.
-    //   b. Embedding-based prefilter: use a local embedding model to compute
-    //      Tier 2 candidate pairs, replace the title-similarity heuristic.
-    //   c. Cache LLM verify results in a per-lint-run memo so re-runs don't
-    //      re-verify unchanged pairs.
-    //   d. Skip the second LLM pass if the Tier 1 confidence score is below
-    //      a threshold AND no new entries appeared since the last lint.
-    //
-    // See ROADMAP.md "Lint performance" section for the larger picture.
-    const duplicates = await runDedupPhase(
-      phaseCtx,
-      { wikiFiles, pageMap },
-      checkCancelled,
-    );
-
-    // ---- 3.5 Build empty-page list now that duplicates are known ----
-    const emptyPageDuplicates = new Set<string>();
-    for (const d of duplicates) {
-      emptyPageDuplicates.add(d.target);
-      emptyPageDuplicates.add(d.source);
-    }
-
-    for (const { path, content } of pageMap.values()) {
-      // Skip if this page is a duplicate source (will be deleted after merge)
-      if (emptyPageDuplicates.has(path)) continue;
-      if (isPageEmpty(content)) {
-        emptyPages.push({path, content});
-      }
-    }
-
-    // ---- 4. Contradiction scanning (LLM-assisted / mixed) ----
-    //
-    // v1.24.0: extracted to lint/llm-phases/contradiction-phase.ts.
-    // Behavior is identical to the previous inline implementation; see
-    // that file for the report-render details.
-    //
-    // v1.27.x audit (Phase 3 T3-1): the contradiction phase now runs
-    // BEFORE the report is built. Historically it ran after a throwaway
-    // buildLintReport call whose output was stripped (extractProgReport)
-    // for the LLM analysis prompt — deleted in v1.26.4 #473. With that
-    // consumer gone, the strip-then-re-add round-trip (and the duplicate
-    // summaryText / aliasPre re-derivation in this file) is dead weight:
-    // the builder already emits `# title + summary + aliasPre + body` in
-    // one pass. One call, real elapsed time, contradictions appended.
-    const findingsWithEmpty: ProgrammaticFindings = {
-      ...findings,
-      emptyPages,
-    };
-    const { report: contradictionsReport } = await runContradictionPhase(phaseCtx);
 
     // ---- 5. Build the full report (delegated to report-builder) ----
     // Measure elapsed wall time since runLintWiki started. Round to whole
