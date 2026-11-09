@@ -504,47 +504,11 @@ export class SourceAnalyzer {
         //
         // Providers that report no finish reason keep 'unknown' and the repair
         // path regardless.
-        const repairFn = finish.reason === 'length' && canHalveBatch()
-          ? undefined
-          : async (malformedJson: string) => {
-            const repairPrompt = `Fix the following malformed JSON. Only fix JSON syntax errors (unescaped quotes, trailing commas, missing brackets). Do NOT change any values or content. Output ONLY the fixed JSON, no other text.\n\n${malformedJson}`;
-            const repairArgs = {
-              task: 'extract-retry' as const,
-              model: resolveModelForTask(this.ctx.settings, 'ingest'),
-              max_tokens: repairCap, // Repair may need full output if original was truncated at the ceiling
-              system: await this.ctx.buildSystemPrompt('analyze'),
-              messages: [{ role: 'user' as const, content: repairPrompt }],
-              response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-              maxTokensPerCall: repairCap,
-              // v1.26.0 Batch 7 follow-up (DocTpoint measurement, PR #411
-              // review 2026-08-05 05:38 UTC): eucher's finding that the
-              // repair callback did not propagate `disableThinking` is
-              // true at the surface, but the fix is NOT to mirror the
-              // parent call's setting. DocTpoint's controlled pair on
-              // LM Studio / gemma-4-12b showed that disabling reasoning
-              // on the repair call produces structurally valid JSON with
-              // wrong content (concepts duplicated into entities;
-              // `concepts` set to null; key fields dropped) — silent
-              // data corruption. Repair needs reasoning budget to
-              // understand broken-JSON semantics, not just string-level
-              // bracket fixing. The opposite direction (complementary
-              // append at 600-token cap) IS reasoning-burnt (Issue
-              // #403) and should disable. The per-call policy is:
-              //   - parent analysis call → `disableThinking` honors
-              //   - repair call → always allow reasoning (default
-              //     model behavior; no flag passed means SDK picks)
-              //   - short-cap append call → `disableThinking` honors
-              // The setting is not propagated uniformly. Tracked as a
-              // v1.26.x PATCH item: introduce a per-call-type
-              // `thinkingPolicy` enum so the user can express "no
-              // reasoning for short-budget calls, full reasoning for
-              // repair".
-            };
-            // Same typed-output dispatch as the parent call, via the centralized
-            // core/llm-dispatch helper. parseJsonResponse only needs the
-            // string back, so either branch returns the same shape.
-            return callLlm(client, repairArgs);
-          };
+        const repairFn = this.buildRepairFn({
+          client,
+          skipRepair: finish.reason === 'length' && canHalveBatch(),
+          repairCap,
+        });
         // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): use
         // parseJsonResult (not parseJsonResponse) so the parse FAILURE
         // REASON is available. A grammar-constrained reasoning model
@@ -589,29 +553,11 @@ export class SourceAnalyzer {
         const { validity, data: norm } = normalizeBatchResponse(analysisData, file.path);
 
         if (isFirstBatch) {
-          if (validity === 'unusable') {
-            console.error('❌ Round 1 unusable — no entities or concepts:', {
-              entities: !!analysisData?.entities,
-              concepts: !!analysisData?.concepts
-            });
-            return null;
-          }
-          if (!norm.sourceTitle) {
-            console.debug('Round 1 missing source_title, falling back to filename:', file.basename);
-          }
-          // Issue #524: the later batches log their item counts via
-          // calculateBatchStats; the first one did not, and it is the batch
-          // whose yield says most about the response regime.
-          console.debug(`[Batch 1] items: entities=${norm.entities.length} concepts=${norm.concepts.length} (batch_size=${currentBatchSize})`);
-          firstBatchData = norm;
-          accumulation.relatedPages = norm.relatedPages;
-          accumulation.keyPoints = norm.keyPoints;
-
-          // First batch: immediately merge entities/concepts into accumulation
-          const firstMergeResult = mergeBatchResults(accumulation, norm, customTypeCaps);
-          accumulation.entities = firstMergeResult.allEntities;
-          accumulation.concepts = firstMergeResult.allConcepts;
-          accumulation.extractedNames = firstMergeResult.extractedNames;
+          const first = this.absorbFirstBatch({
+            validity, norm, analysisData, file, accumulation, customTypeCaps, currentBatchSize,
+          });
+          firstBatchData = first.firstBatchData;
+          if (first.action.kind === 'abort') return null;
         }
 
         if (validity === 'empty') {
@@ -1157,6 +1103,118 @@ export class SourceAnalyzer {
         .replace('{entities}', String(accumulation.entities.length))
         .replace('{concepts}', String(accumulation.concepts.length))
     );
+  }
+
+  /**
+   * Take the first batch, which is the only one allowed to abort the source.
+   *
+   * Round one is the batch whose yield says most about the response regime, so it
+   * logs its item counts even though the later ones log theirs through
+   * `calculateBatchStats` (#524). It is also the batch that decides whether the
+   * source is usable at all: no entities and no concepts in round one means there
+   * is nothing to build pages from, and the caller returns null rather than
+   * finalising an empty source.
+   *
+   * Returns the batch data because the caller keeps it for the final assembly, and
+   * an action because a helper cannot return for its caller. Extracted from
+   * `analyzeSource` by #932.
+   */
+  private absorbFirstBatch(args: {
+    validity: string;
+    norm: NormalizedBatch;
+    analysisData: Partial<SourceAnalysis> | null;
+    file: TFile;
+    accumulation: ReturnType<typeof createEmptyAccumulation>;
+    customTypeCaps: ReturnType<typeof getCustomTypeCaps>;
+    currentBatchSize: number;
+  }): { action: BatchAction; firstBatchData: NormalizedBatch | null } {
+    const { validity, norm, analysisData, file, accumulation, customTypeCaps, currentBatchSize } = args;
+
+    if (validity === 'unusable') {
+      console.error('❌ Round 1 unusable — no entities or concepts:', {
+        entities: !!analysisData?.entities,
+        concepts: !!analysisData?.concepts
+      });
+      return { action: { kind: 'abort' }, firstBatchData: null };
+    }
+    if (!norm.sourceTitle) {
+      console.debug('Round 1 missing source_title, falling back to filename:', file.basename);
+    }
+    console.debug(`[Batch 1] items: entities=${norm.entities.length} concepts=${norm.concepts.length} (batch_size=${currentBatchSize})`);
+    accumulation.relatedPages = norm.relatedPages;
+    accumulation.keyPoints = norm.keyPoints;
+
+    // First batch: immediately merge entities/concepts into accumulation
+    const firstMergeResult = mergeBatchResults(accumulation, norm, customTypeCaps);
+    accumulation.entities = firstMergeResult.allEntities;
+    accumulation.concepts = firstMergeResult.allConcepts;
+    accumulation.extractedNames = firstMergeResult.extractedNames;
+
+    return { action: { kind: 'next' }, firstBatchData: norm };
+  }
+
+  /**
+   * The JSON-repair callback for one batch, or `undefined` when repair should not
+   * be attempted.
+   *
+   * Repair is the last salvage, not the first: on a truncated response the JSON is
+   * incomplete rather than malformed, and a repair pass re-hits the same limit.
+   * While a halve-and-retry is still available it is the better answer, so repair
+   * is skipped and the caller retries smaller. Providers that report no finish
+   * reason keep the repair path regardless.
+   *
+   * The thinking policy here is deliberately NOT the parent call's, and the
+   * comment that records why travels with the code: a controlled pair on LM
+   * Studio / gemma-4-12b showed that disabling reasoning on the repair call
+   * returns structurally valid JSON with wrong content. Extracted from
+   * `analyzeSource` by #932 (#305, #443).
+   */
+  private buildRepairFn(args: {
+    client: LLMClient;
+    skipRepair: boolean;
+    repairCap: number;
+  }): ((malformedJson: string) => Promise<string>) | undefined {
+    const { client, skipRepair, repairCap } = args;
+    if (skipRepair) return undefined;
+    return async (malformedJson: string) => {
+      const repairPrompt = `Fix the following malformed JSON. Only fix JSON syntax errors (unescaped quotes, trailing commas, missing brackets). Do NOT change any values or content. Output ONLY the fixed JSON, no other text.\n\n${malformedJson}`;
+      const repairArgs = {
+        task: 'extract-retry' as const,
+        model: resolveModelForTask(this.ctx.settings, 'ingest'),
+        max_tokens: repairCap, // Repair may need full output if original was truncated at the ceiling
+        system: await this.ctx.buildSystemPrompt('analyze'),
+        messages: [{ role: 'user' as const, content: repairPrompt }],
+        response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
+        maxTokensPerCall: repairCap,
+        // v1.26.0 Batch 7 follow-up (DocTpoint measurement, PR #411
+        // review 2026-08-05 05:38 UTC): eucher's finding that the
+        // repair callback did not propagate `disableThinking` is
+        // true at the surface, but the fix is NOT to mirror the
+        // parent call's setting. DocTpoint's controlled pair on
+        // LM Studio / gemma-4-12b showed that disabling reasoning
+        // on the repair call produces structurally valid JSON with
+        // wrong content (concepts duplicated into entities;
+        // `concepts` set to null; key fields dropped) — silent
+        // data corruption. Repair needs reasoning budget to
+        // understand broken-JSON semantics, not just string-level
+        // bracket fixing. The opposite direction (complementary
+        // append at 600-token cap) IS reasoning-burnt (Issue
+        // #403) and should disable. The per-call policy is:
+        //   - parent analysis call → `disableThinking` honors
+        //   - repair call → always allow reasoning (default
+        //     model behavior; no flag passed means SDK picks)
+        //   - short-cap append call → `disableThinking` honors
+        // The setting is not propagated uniformly. Tracked as a
+        // v1.26.x PATCH item: introduce a per-call-type
+        // `thinkingPolicy` enum so the user can express "no
+        // reasoning for short-budget calls, full reasoning for
+        // repair".
+      };
+      // Same typed-output dispatch as the parent call, via the centralized
+      // core/llm-dispatch helper. parseJsonResponse only needs the
+      // string back, so either branch returns the same shape.
+      return callLlm(client, repairArgs);
+    };
   }
 
   /**
