@@ -283,20 +283,7 @@ export class SourceAnalyzer {
     console.debug('Existing Wiki pages count: — delayed until post-extraction matching');
 
     // Calculate batch limits using pure functions (Phase 1)
-    const limits = calculateBatchLimits(content.length, this.ctx.settings.extractionGranularity || 'standard', {
-      entityCap: this.ctx.settings.customEntityLimit,
-      conceptCap: this.ctx.settings.customConceptLimit
-    });
-
-    const customTypeCaps = getCustomTypeCaps(this.ctx.settings);
-
-    // Issue #904: one ceiling pays for reasoning and the answer together, so
-    // sizing it from the answer alone fails on any model that thinks. While
-    // reasoning is possible the request declares the model's own ceiling and
-    // lets the model stop early — a ceiling that is too high costs nothing
-    // when unused, one that is too low costs the whole batch. See
-    // core/output-budget.ts for the rule and the reasoning behind it.
-    const outputCeiling = resolveOutputCeiling(this.ctx.settings);
+    const plan = this.prepareExtraction(content);
     // Issue #904: the ceiling is a starting assumption, not a fact. A provider
     // whose real limit is below it answers with a 400 naming max_tokens, and a
     // 400 is not an answer — so the first batch learns the limit by halving,
@@ -304,18 +291,14 @@ export class SourceAnalyzer {
     // purpose: a reply that keeps failing for another reason must reach the
     // error classifier, not loop here.
     // Issue #912: reuse what an earlier note learned about this pair.
-    let effectiveCeiling = startCeilingFor(this.ctx.settings, outputCeiling);
+    let effectiveCeiling = startCeilingFor(this.ctx.settings, plan.outputCeiling);
     let ceilingProbes = 0;
-    const baseMaxTokens = computeExtractionBudget({
-      taskNeed: limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET,
-      ceiling: outputCeiling,
-    });
-    // Retry escalation may grow the budget, but never past the ceiling: a
-    // declared value above the model's limit is a 400, which is the failure
-    // this whole change exists to remove.
-    const retryCap = Math.min(baseMaxTokens * SOURCE_ANALYZER_RETRY_MULTIPLIER, outputCeiling);
 
-    console.debug(`[Batch limits] Initial size: ${limits.initialBatchSize}, Max batches: ${limits.maxBatches}, Max total: ${limits.maxTotalItems || 'none'}, baseMaxTokens: ${baseMaxTokens}, retryCap: ${retryCap}, ceiling: ${outputCeiling}`);
+    console.debug(`[Batch limits] Initial size: ${plan.limits.initialBatchSize}, Max batches: ${plan.limits.maxBatches}, Max total: ${plan.limits.maxTotalItems || 'none'}, baseMaxTokens: ${plan.baseMaxTokens}, retryCap: ${plan.retryCap}, ceiling: ${plan.outputCeiling}`);
+
+    const limits = plan.limits;
+    const customTypeCaps = plan.customTypeCaps;
+    const retryCap = plan.retryCap;
 
     let currentBatchSize = limits.initialBatchSize;
     let batchSizeHalved = false;
@@ -427,20 +410,7 @@ export class SourceAnalyzer {
 
       console.debug(`[Batch ${batchNum + 1}/${limits.maxBatches}] LLM call started (batch_size=${currentBatchSize})...`);
       console.debug(`[Batch ${batchNum + 1}] Prompt length:`, prompt.length);
-      if (isFirstBatch) {
-        this.ctx.onProgress?.(
-          getText(this.ctx.settings.language, 'ingestBatchInitial')
-            .replace('{total}', String(limits.maxBatches))
-        );
-      } else {
-        this.ctx.onProgress?.(
-          getText(this.ctx.settings.language, 'ingestBatchProgress')
-            .replace('{current}', String(batchNum + 1))
-            .replace('{total}', String(limits.maxBatches))
-            .replace('{entities}', String(accumulation.entities.length))
-            .replace('{concepts}', String(accumulation.concepts.length))
-        );
-      }
+      this.emitBatchProgress({ isFirstBatch, batchNum, limits, accumulation });
 
       try {
         const systemPrompt = await this.ctx.buildSystemPrompt('analyze');
@@ -1116,6 +1086,77 @@ export class SourceAnalyzer {
       action: isFirstBatch ? { kind: 'abort' } : { kind: 'stop' },
       placeholderRetried,
     };
+  }
+
+  /**
+   * The sizes and budgets one extraction run starts from.
+   *
+   * Kept together because they answer one question — how much to ask for — and
+   * because the ceiling rule has to be read as a whole to be changed safely:
+   * one ceiling pays for reasoning and the answer together, so sizing it from
+   * the answer alone fails on any model that thinks. While reasoning is
+   * possible the request declares the model's own ceiling and lets the model
+   * stop early: a ceiling that is too high costs nothing when unused, one that
+   * is too low costs the whole batch. See `core/output-budget.ts`.
+   *
+   * Retry escalation may grow the budget, but never past the ceiling — a
+   * declared value above the model's limit is a 400, which is the failure that
+   * change exists to remove.
+   *
+   * Pure except for the `startCeilingFor` cache read the caller performs, so the
+   * mutable `effectiveCeiling` stays with the loop. Extracted from
+   * `analyzeSource` by #932 (#904, #912).
+   */
+  private prepareExtraction(content: string): {
+    limits: ReturnType<typeof calculateBatchLimits>;
+    customTypeCaps: ReturnType<typeof getCustomTypeCaps>;
+    outputCeiling: number;
+    baseMaxTokens: number;
+    retryCap: number;
+  } {
+    const limits = calculateBatchLimits(content.length, this.ctx.settings.extractionGranularity || 'standard', {
+      entityCap: this.ctx.settings.customEntityLimit,
+      conceptCap: this.ctx.settings.customConceptLimit
+    });
+    const customTypeCaps = getCustomTypeCaps(this.ctx.settings);
+    const outputCeiling = resolveOutputCeiling(this.ctx.settings);
+    const baseMaxTokens = computeExtractionBudget({
+      taskNeed: limits.initialBatchSize * TOKENS_PER_ITEM_BUDGET,
+      ceiling: outputCeiling,
+    });
+    const retryCap = Math.min(baseMaxTokens * SOURCE_ANALYZER_RETRY_MULTIPLIER, outputCeiling);
+    return { limits, customTypeCaps, outputCeiling, baseMaxTokens, retryCap };
+  }
+
+  /**
+   * Announce which round of extraction is starting.
+   *
+   * The first round and the later ones say different things, and the later ones
+   * carry the running counts because that is the only progress the user sees
+   * while a long note is being read. Extracted from `analyzeSource` by #932; the
+   * call site and its position in the loop are unchanged.
+   */
+  private emitBatchProgress(args: {
+    isFirstBatch: boolean;
+    batchNum: number;
+    limits: ReturnType<typeof calculateBatchLimits>;
+    accumulation: ReturnType<typeof createEmptyAccumulation>;
+  }): void {
+    const { isFirstBatch, batchNum, limits, accumulation } = args;
+    if (isFirstBatch) {
+      this.ctx.onProgress?.(
+        getText(this.ctx.settings.language, 'ingestBatchInitial')
+          .replace('{total}', String(limits.maxBatches))
+      );
+      return;
+    }
+    this.ctx.onProgress?.(
+      getText(this.ctx.settings.language, 'ingestBatchProgress')
+        .replace('{current}', String(batchNum + 1))
+        .replace('{total}', String(limits.maxBatches))
+        .replace('{entities}', String(accumulation.entities.length))
+        .replace('{concepts}', String(accumulation.concepts.length))
+    );
   }
 
   /**
