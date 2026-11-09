@@ -14,7 +14,7 @@ import {
   hashCacheKey,
   sha256Bytes,
 } from './pdf-cache';
-import type { ConversionResult, PdfConversionContext } from './pdf-converter';
+import type { ConversionResult, PdfConversionContext } from './pdf-conversion-types';
 
 interface MineruEnvelope {
   code: number | string;

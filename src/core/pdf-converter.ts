@@ -27,9 +27,7 @@
  * the project's standard error shape. We do not add a translation layer.
  */
 
-import { App, TFile } from 'obsidian';
 import {
-  PdfCacheEntry,
   sha256Bytes,
   hashCacheKey,
   PDF_CONVERTER_VERSION,
@@ -44,46 +42,15 @@ import {
   NATIVE_PDF_PROVIDER_IDS,
 } from '../constants';
 import { PDF_PROMPTS } from '../wiki/prompts/pdf';
-import type { LLMClient } from '../types';
 import { convertPdfWithMineru } from './mineru-converter';
+import type { ConversionResult, PdfConversionContext } from './pdf-conversion-types';
+
+// Re-exported so the call sites that read these from this module keep working.
+export type { ConversionResult, PdfConversionContext };
 
 // --- public types ---
 
-/** What the caller hands us. Kept narrow so test mocks stay simple. */
-export interface PdfConversionContext {
-  app: App;
-  settings: {
-    provider: string;
-    apiKey: string;
-    baseUrl?: string;
-    model: string;
-    forcePdfSupport?: boolean;
-    markdownConversionBackend?: 'native' | 'mineru';
-    [k: string]: unknown;
-  };
-  /** Resolved at the WikiEngine boundary from Obsidian SecretStorage. */
-  mineruApiToken?: string;
-  onMineruPhase?: (phase: 'uploading' | 'waiting' | 'downloading') => void;
-  pdfFile: TFile;
-  llmClient: LLMClient;
-  /** Returns the resolved model for the conversion task. */
-  resolveModelForTask: (settings: PdfConversionContext['settings'], task: string) => string;
-  /** SubtleCrypto implementation; injected so the gate runs against the
-   *  popout-window-aware `activeWindow.crypto.subtle` rather than the
-   *  banned `window` global. */
-  subtle?: SubtleCrypto;
-  /** v1.25.0 PR3 follow-up #8 (Bug D, e2e 2026-07-17): cancellation signal
-   *  for the LLM call. When the user clicks the status bar during PDF
-   *  conversion, this signal flips to aborted and Vercel AI SDK v6
-   *  propagates the cancellation to the underlying HTTP request,
-   *  returning early instead of letting the LLM call run to completion.
-   *  Legacy clients ignore unknown params and run as before — graceful
-   *  degradation, no behavior change for them. */
-  abortSignal?: AbortSignal;
-}
 
-/** What we return on success. */
-export type ConversionResult = PdfCacheEntry;
 
 // --- errors ---
 

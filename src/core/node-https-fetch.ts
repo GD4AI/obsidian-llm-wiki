@@ -44,8 +44,7 @@
 // `openai-codex/loopback-flow.ts:134`, which has shipped since v1.25.6.
 
 import { Platform } from 'obsidian';
-import type { ObsidianFetchInit } from './obsidian-fetch-bridge';
-import { headersToObject } from './obsidian-fetch-bridge';
+import { headersToObject, type ObsidianFetchInit } from './fetch-shared';
 
 /** The shape of the Node module this transport needs. */
 type NodeHttpsModule = typeof import('node:https');

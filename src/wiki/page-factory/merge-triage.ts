@@ -28,26 +28,15 @@ import { renderNoteExcerptBlock } from './note-window';
 import { renderTemplate } from '../../core/template-renderer';
 import { MergeTriageSchema, type MergeTriage } from '../../llm-sdk/output-schemas';
 import { applyContradictionGates, type DemotedContradiction, type SourceStanceContext } from './contradiction-gates';
+import type { ComplementaryItem } from './merge-shared';
+
+// Re-exported so the call sites that read it from this module keep working.
+export type { ComplementaryItem };
 export type { DemotedContradiction } from './contradiction-gates';
 
 /** Strategy selected by the LLM for handling new information vs. an existing page. */
 export type MergeStrategy = 'merge' | 'skip' | 'complementary' | 'contradictory';
 
-/**
- * A single triage item (only populated when strategy === 'complementary').
- * `kind: 'contradictory'` marks a piece that conflicts with a specific
- * existing statement — it is appended as an attributed conflict note and
- * stamps the `contradictions:` frontmatter marker, instead of being
- * integrated as if it were a fact.
- */
-export interface ComplementaryItem {
-  kind: 'complementary' | 'contradictory';
-  content: string;
-  target_section: string;
-  reason?: string;
-  /** Contradictory only: the page sentence the claim conflicts with, verified on the page (gate 1, contradiction-gates.ts). */
-  existing_statement?: string;
-}
 
 /**
  * Single source of truth for the runtime list of valid strategies. Derived
