@@ -447,27 +447,9 @@ export class SourceAnalyzer {
         // Scale max_tokens with current batch size to avoid truncation.
         // Recomputed per attempt from `effectiveCeiling`, so a ceiling the
         // provider rejected is not sent again.
-        const batchAnswerNeed = currentBatchSize * TOKENS_PER_ITEM_BUDGET;
-        const normalBudget = computeExtractionBudget({
-          taskNeed: batchAnswerNeed,
-          ceiling: effectiveCeiling,
+        const { batchMaxTokens, repairCap } = this.batchBudgets({
+          currentBatchSize, effectiveCeiling, escalateMaxTokens,
         });
-        // Escalation may only ADD room. When the first attempt already declares
-        // the ceiling there is nothing above it, and falling back to
-        // `answerNeed x 3` would shrink a budget that just proved too small.
-        const escalatedBudget = Math.min(
-          Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
-          effectiveCeiling,
-        );
-        const batchMaxTokens = escalateMaxTokens
-          ? Math.min(Math.max(normalBudget, escalatedBudget), effectiveCeiling)
-          : normalBudget;
-        // Same ceiling for the JSON-repair call: a repair cannot emit more
-        // than the provider accepts, whatever the parent call declared.
-        const repairCap = Math.min(
-          Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
-          effectiveCeiling,
-        );
         // v1.24.0 #208: route through resolveModelForTask so the debug
         // log reflects the ACTUAL model used (per-task override), not
         // the unified setting. Without this, e2e verification of
@@ -478,43 +460,21 @@ export class SourceAnalyzer {
         // report it leave this at 'unknown', which keeps pre-#305 behavior.
         // Held in an object rather than a bare `let` so control-flow analysis
         // does not narrow it to its initializer across the callback.
-        const finish: { reason: LLMFinishReason; usage?: LLMUsage } = { reason: 'unknown' };
-        // v1.26.3 PATCH (Issue #443): typed-output path. The schema travels on
-        // the wire as `response_format: { type: 'json_schema', json_schema: {...} }`
-        // when the OutputModeProber has cached Tier 0 (json_schema) for this
-        // baseURL — exactly what LMStudio accepts. On Tier 1 / Tier 2, the SDK
-        // drops the schema and falls back to `Output.json()` / no-field; we then
-        // parse `result.text` via the existing parseJsonResponse path.
-        const extractArgs = {
-          task: 'extract' as const,
-          model: resolvedModel,
-          max_tokens: batchMaxTokens,
-          system: systemPrompt,
-          messages: [{ role: 'user' as const, content: finalPrompt }],
-          response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-          cacheBreakpoint: staticPrefix.length,
-          maxTokensPerCall: repairCap,
-          // Extraction never mentioned the thinking setting, so whatever the
-          // server had been started with decided it and the setting meant
-          // nothing here. Not the only such call site — the lint alias and tag
-          // runners and the PDF converter still do not pass it, and the welcome
-          // note and the connection probe omit it deliberately — but the one
-          // this change is about. Sent in the disable direction
-          // only, matching every other call site: `disableThinking` defaults to
-          // false, so asking for reasoning would fire on every install that
-          // never opened the setting.
-          ...(this.ctx.settings.disableThinking === true ? { enableThinking: false } : {}),
-          onFinish: (meta: { finishReason: LLMFinishReason; usage?: LLMUsage }) => {
-            finish.reason = meta.finishReason;
-            finish.usage = meta.usage;
-          },
-        };
+        const batchCall = this.buildExtractArgs({
+          systemPrompt,
+          finalPrompt,
+          resolvedModel,
+          batchMaxTokens,
+          repairCap,
+          staticPrefixLength: staticPrefix.length,
+        });
+        const finish = batchCall.finish;
         // Typed-output dispatch via the centralized helper in core/llm-dispatch:
         // prefer createMessageWithOutput on modern clients, fall back to
         // createMessage on legacy Anthropic / OpenAI / Codex. The returned
         // string is the wire text — Tier 1 / Tier 2 (output undefined) flows
         // through the existing parseJsonResponse path below.
-        const response = await callLlm(client, extractArgs);
+        const response = await callLlm(client, batchCall.args);
 
         // Surface real token usage (Issue #305 follow-up): the model reports
         // prompt/completion tokens; logging them per batch turns truncation
@@ -705,44 +665,18 @@ export class SourceAnalyzer {
 
       } catch (error) {
         console.error(`[Batch ${batchNum + 1}] Call failed:`, error);
-        const errMsg = error instanceof Error ? error.message : String(error);
-
-        // Issue #904 learned the real output limit instead of assuming it.
-        // Issue #970: the rejection can land on any batch, not only the first.
-        // Gating this on `isFirstBatch` sent a later rejection to the batch
-        // halving below, which answers a different question — and taught
-        // nothing, so every note paid the probe again.
-        const nextCeiling = ceilingAfterRejection(effectiveCeiling, ceilingProbes, errMsg);
-        if (nextCeiling !== null) {
-          ceilingProbes++;
-          effectiveCeiling = rememberCeiling(this.ctx.settings, nextCeiling);
-          console.debug(
-            `[Batch ${batchNum + 1}] Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
-          );
-          batchNum--;
-          continue;
-        }
-
-        if (isFirstBatch) {
-          const providerName = this.ctx.settings.provider;
-          const modelName = this.ctx.settings.model;
-
-          // Classify error by message content for targeted user guidance.
-          // Issue #904 removed the inline chain: it tested `includes('token')`
-          // before anything else, and the reasoning guard's message contains
-          // "output tokens", so the user was told the file was too large for
-          // the context window. The ordering lives in ingest-error-hint.ts
-          // where it can be tested without building a client.
-          const userHint = buildIngestErrorHint(errMsg, error, { provider: providerName, model: modelName });
-
-          throw new Error(
-            `Failed to connect to ${providerName} API (model: ${modelName}): ${errMsg}. ${userHint}`,
-            { cause: error }
-          );
-        }
-
-        const isTruncation = errMsg.toLowerCase().includes('truncated') || errMsg.toLowerCase().includes('max_tokens');
-        if (isTruncation && halveBatchAndRetry(`[Batch ${batchNum + 1}]`, 'provider error')) {
+        const failure = this.afterBatchError({
+          error,
+          batchLabel: `[Batch ${batchNum + 1}]`,
+          isFirstBatch,
+          effectiveCeiling,
+          ceilingProbes,
+          halveAndRetry: cause => halveBatchAndRetry(`[Batch ${batchNum + 1}]`, cause),
+        });
+        effectiveCeiling = failure.effectiveCeiling;
+        ceilingProbes = failure.ceilingProbes;
+        if (failure.action.kind === 'throw') throw failure.action.error;
+        if (failure.action.kind === 'rerun') {
           batchNum--;
           continue;
         }
@@ -913,6 +847,164 @@ export class SourceAnalyzer {
     }
 
     return { action: { kind: 'next' }, currentBatchSize, batchSizeHalved };
+  }
+
+  /**
+   * What to do when one batch call threw.
+   *
+   * Three answers in this order, and the order is the contract. First a ceiling
+   * probe, because a provider that rejected `max_tokens` has not failed — it has
+   * told us its limit, and the same batch can run again with it. Then the first
+   * batch, which has no accumulated items to fall back on, so it throws with a
+   * classified hint instead. Then halving, which only answers truncation.
+   *
+   * Returns the ceiling bookkeeping because this function owns the probe count;
+   * the caller writes both back, so there is still one place that holds the loop
+   * state. The thrown error is built here and thrown by the caller, which is how
+   * a helper returns `throw` through the batch protocol.
+   *
+   * Extracted from `analyzeSource` by #932 (#970, #904).
+   */
+  private afterBatchError(args: {
+    error: unknown;
+    batchLabel: string;
+    isFirstBatch: boolean;
+    effectiveCeiling: number;
+    ceilingProbes: number;
+    halveAndRetry: (cause: string) => boolean;
+  }): {
+    action: BatchAction | { kind: 'throw'; error: Error };
+    effectiveCeiling: number;
+    ceilingProbes: number;
+  } {
+    const { error, batchLabel, isFirstBatch, halveAndRetry } = args;
+    let { effectiveCeiling, ceilingProbes } = args;
+    const errMsg = error instanceof Error ? error.message : String(error);
+
+    // Issue #904 learned the real output limit instead of assuming it.
+    // Issue #970: the rejection can land on any batch, not only the first.
+    // Gating this on `isFirstBatch` sent a later rejection to the batch
+    // halving below, which answers a different question — and taught
+    // nothing, so every note paid the probe again.
+    const nextCeiling = ceilingAfterRejection(effectiveCeiling, ceilingProbes, errMsg);
+    if (nextCeiling !== null) {
+      ceilingProbes++;
+      effectiveCeiling = rememberCeiling(this.ctx.settings, nextCeiling);
+      console.debug(
+        `${batchLabel} Provider rejected max_tokens; retrying with ceiling ${effectiveCeiling}`,
+      );
+      return { action: { kind: 'rerun' }, effectiveCeiling, ceilingProbes };
+    }
+
+    if (isFirstBatch) {
+      const providerName = this.ctx.settings.provider;
+      const modelName = this.ctx.settings.model;
+
+      // Classify error by message content for targeted user guidance.
+      // Issue #904 removed the inline chain: it tested `includes('token')`
+      // before anything else, and the reasoning guard's message contains
+      // "output tokens", so the user was told the file was too large for
+      // the context window. The ordering lives in ingest-error-hint.ts
+      // where it can be tested without building a client.
+      const userHint = buildIngestErrorHint(errMsg, error, { provider: providerName, model: modelName });
+
+      return {
+        action: {
+          kind: 'throw',
+          error: new Error(
+            `Failed to connect to ${providerName} API (model: ${modelName}): ${errMsg}. ${userHint}`,
+            { cause: error },
+          ),
+        },
+        effectiveCeiling,
+        ceilingProbes,
+      };
+    }
+
+    const isTruncation = errMsg.toLowerCase().includes('truncated') || errMsg.toLowerCase().includes('max_tokens');
+    if (isTruncation && halveAndRetry('provider error')) {
+      return { action: { kind: 'rerun' }, effectiveCeiling, ceilingProbes };
+    }
+
+    return { action: { kind: 'stop' }, effectiveCeiling, ceilingProbes };
+  }
+
+  /**
+   * The two token budgets one batch attempt declares.
+   *
+   * `batchMaxTokens` pays for the answer; `repairCap` pays for the JSON-repair
+   * call, which cannot emit more than the provider accepts whatever the parent
+   * call declared. Escalation may only ADD room: when the first attempt already
+   * declares the ceiling there is nothing above it, and falling back to
+   * `answerNeed x 3` would shrink a budget that just proved too small.
+   *
+   * Pure. Recomputed per attempt from `effectiveCeiling`, so a ceiling the
+   * provider rejected is not sent again. Extracted from `analyzeSource` by #932.
+   */
+  private batchBudgets(args: {
+    currentBatchSize: number;
+    effectiveCeiling: number;
+    escalateMaxTokens: boolean;
+  }): { batchMaxTokens: number; repairCap: number } {
+    const { currentBatchSize, effectiveCeiling, escalateMaxTokens } = args;
+    const batchAnswerNeed = currentBatchSize * TOKENS_PER_ITEM_BUDGET;
+    const normalBudget = computeExtractionBudget({
+      taskNeed: batchAnswerNeed,
+      ceiling: effectiveCeiling,
+    });
+    const escalatedBudget = Math.min(
+      Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
+      effectiveCeiling,
+    );
+    const batchMaxTokens = escalateMaxTokens
+      ? Math.min(Math.max(normalBudget, escalatedBudget), effectiveCeiling)
+      : normalBudget;
+    const repairCap = Math.min(
+      Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
+      effectiveCeiling,
+    );
+    return { batchMaxTokens, repairCap };
+  }
+
+  /**
+   * The arguments for one extraction call, and the holder the `onFinish`
+   * callback writes its verdict into.
+   *
+   * The holder leaves this function so the caller can read the finish reason
+   * after the await. It stays an object rather than a bare `let` because
+   * control-flow analysis would otherwise narrow it to its initializer across
+   * the callback — the #305 comment records what that cost.
+   *
+   * Extracted from `analyzeSource` by #932 with its own comments. The thinking
+   * setting is still sent in the disable direction only, matching every other
+   * call site.
+   */
+  private buildExtractArgs(args: {
+    systemPrompt: string | undefined;
+    finalPrompt: string;
+    resolvedModel: string;
+    batchMaxTokens: number;
+    repairCap: number;
+    staticPrefixLength: number;
+  }): { args: Parameters<typeof callLlm>[1]; finish: { reason: LLMFinishReason; usage?: LLMUsage } } {
+    const { systemPrompt, finalPrompt, resolvedModel, batchMaxTokens, repairCap, staticPrefixLength } = args;
+    const finish: { reason: LLMFinishReason; usage?: LLMUsage } = { reason: 'unknown' };
+    const callArgs = {
+      task: 'extract' as const,
+      model: resolvedModel,
+      max_tokens: batchMaxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user' as const, content: finalPrompt }],
+      response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
+      cacheBreakpoint: staticPrefixLength,
+      maxTokensPerCall: repairCap,
+      ...(this.ctx.settings.disableThinking === true ? { enableThinking: false } : {}),
+      onFinish: (meta: { finishReason: LLMFinishReason; usage?: LLMUsage }) => {
+        finish.reason = meta.finishReason;
+        finish.usage = meta.usage;
+      },
+    };
+    return { args: callArgs, finish };
   }
 
   /**
