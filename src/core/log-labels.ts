@@ -9,7 +9,7 @@
 //
 // Pure, no Obsidian dependencies.
 
-import { escapeRegex } from '../wiki/lint/utils';
+import { escapeRegex } from './regex-escape';
 
 export interface LogLabels {
   createdPages: string;

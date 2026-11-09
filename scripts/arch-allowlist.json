@@ -49,18 +49,6 @@
       "llm-sdk/output-schemas.ts"
     ],
     [
-      "core/log-labels.ts",
-      "wiki/lint/utils.ts"
-    ],
-    [
-      "core/mentions-injector.ts",
-      "wiki/lint/utils.ts"
-    ],
-    [
-      "core/mentions-parser.ts",
-      "wiki/lint/utils.ts"
-    ],
-    [
       "core/openai-codex-model-policy.ts",
       "llm-sdk/openai-codex/constants.ts"
     ],

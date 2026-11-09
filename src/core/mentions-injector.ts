@@ -12,7 +12,7 @@
 
 import type { MentionWithProvenance } from '../types';
 import { formatMentionsSection } from './mentions-formatter';
-import { escapeRegex } from '../wiki/lint/utils';
+import { escapeRegex } from './regex-escape';
 
 export interface InjectMentionsOptions {
   /** Section header label (default: caller must pass). */

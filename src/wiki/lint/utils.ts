@@ -1,9 +1,9 @@
 import { LLMWikiSettings } from '../../types';
 import { getSectionLabels } from '../system-prompts';
+import { escapeRegex } from '../../core/regex-escape';
 
-export function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// Re-exported so the five `wiki/` call sites keep importing it from here.
+export { escapeRegex };
 
 export function buildSectionLabelsHint(settings: LLMWikiSettings): string {
   const labels = getSectionLabels(settings);
