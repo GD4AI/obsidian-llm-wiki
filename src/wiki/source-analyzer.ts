@@ -694,30 +694,13 @@ export class SourceAnalyzer {
     // After extraction, match extracted names against existing wiki pages
     // using slug + alias matching (same logic as resolvePagePath Fast path 2).
     // Replaces the old approach of embedding ~200K chars of page list in prompt.
-    const allExtractedNames = [
-      ...accumulation.entities.map(e => e.name),
-      ...accumulation.concepts.map(c => c.name),
-    ];
-    if (allExtractedNames.length > 0) {
-      try {
-        const existingPages = await this.ctx.getExistingWikiPages();
-        accumulation.relatedPages = matchExtractedToExisting(allExtractedNames, existingPages);
-        console.debug('[Related pages] Programmatic matching:', accumulation.relatedPages.length, 'pages matched');
-      } catch (err) {
-        console.warn('[Related pages] Programmatic matching failed:', err);
-      }
-    }
+    await this.matchRelatedPages(accumulation);
 
     // Hard-cap accumulation to the configured custom limits (#120).
     // The prompt instruction is a soft hint the LLM may exceed; the
     // convergence detector only stops further batches. This slice ensures
     // the user's limit is actually honoured regardless of LLM behaviour.
-    if (this.ctx.settings.extractionGranularity === 'custom') {
-      const eCap = this.ctx.settings.customEntityLimit ?? 5;
-      const cCap = this.ctx.settings.customConceptLimit ?? 5;
-      if (accumulation.entities.length > eCap) accumulation.entities = accumulation.entities.slice(0, eCap);
-      if (accumulation.concepts.length > cCap) accumulation.concepts = accumulation.concepts.slice(0, cCap);
-    }
+    this.applyCustomCaps(accumulation);
 
     // A note's title is its own: its H1 on the first body line (the #592 rule
     // `getExistingWikiPages` uses) or its file name. The prompt shows the
@@ -729,19 +712,9 @@ export class SourceAnalyzer {
       : extractBody(content).match(/^#\s+(.+?)(?:\n|$)/)?.[1].trim() || file.basename;
 
     // Build final SourceAnalysis using pure function (Phase 3)
-    const analysis = buildSourceAnalysis(
-      file.path,
-      file.basename,
-      accumulation,
-      firstBatchData ? {
-        sourceTitle: noteTitle ?? firstBatchData.sourceTitle,
-        summary: firstBatchData.summary
-      } : undefined,
-      // Issue #185: forward curated source-note aliases so the
-      // generated sources/<slug> page can carry them.
-      sourceNoteAliases
-    );
-    if (imageAnalysis) analysis.embedded_image_analysis = imageAnalysis.report;
+    const analysis = this.buildAnalysisFrom({
+      accumulation, firstBatchData, file, noteTitle, sourceNoteAliases, imageAnalysis,
+    });
 
     // patch 16 — lemma guarantee. The extraction prompt asks what a text
     // mentions, never what it is about, so the note's own topic is regularly
@@ -847,6 +820,84 @@ export class SourceAnalyzer {
     }
 
     return { action: { kind: 'next' }, currentBatchSize, batchSizeHalved };
+  }
+
+  /**
+   * Match the extracted names against the existing wiki pages.
+   *
+   * Slug and alias matching, the same logic `resolvePagePath` uses on its fast
+   * path. A failure here is logged and swallowed: related pages are a
+   * convenience, and losing them must not lose the extraction that just cost the
+   * user tokens.
+   *
+   * Mutates `accumulation.relatedPages`, which the caller still reads afterwards.
+   * Extracted from `analyzeSource` by #932.
+   */
+  private async matchRelatedPages(accumulation: ReturnType<typeof createEmptyAccumulation>): Promise<void> {
+    const allExtractedNames = [
+      ...accumulation.entities.map(e => e.name),
+      ...accumulation.concepts.map(c => c.name),
+    ];
+    if (allExtractedNames.length === 0) return;
+    try {
+      const existingPages = await this.ctx.getExistingWikiPages();
+      accumulation.relatedPages = matchExtractedToExisting(allExtractedNames, existingPages);
+      console.debug('[Related pages] Programmatic matching:', accumulation.relatedPages.length, 'pages matched');
+    } catch (err) {
+      console.warn('[Related pages] Programmatic matching failed:', err);
+    }
+  }
+
+  /**
+   * Slice the accumulation down to the user's custom limits (#120).
+   *
+   * The prompt instruction is a soft hint the LLM may exceed, and the
+   * convergence detector only stops further batches — neither honours the
+   * setting. This is the one place that does.
+   *
+   * Extracted from `analyzeSource` by #932.
+   */
+  private applyCustomCaps(accumulation: ReturnType<typeof createEmptyAccumulation>): void {
+    if (this.ctx.settings.extractionGranularity !== 'custom') return;
+    const eCap = this.ctx.settings.customEntityLimit ?? 5;
+    const cCap = this.ctx.settings.customConceptLimit ?? 5;
+    if (accumulation.entities.length > eCap) accumulation.entities = accumulation.entities.slice(0, eCap);
+    if (accumulation.concepts.length > cCap) accumulation.concepts = accumulation.concepts.slice(0, cCap);
+  }
+
+  /**
+   * Assemble the final `SourceAnalysis` from what the batches accumulated.
+   *
+   * The title arrives from the caller because a note's title is its own (#592),
+   * and a PDF keeps the one the model read off the document. The image report
+   * rides along when the setting asked for it.
+   *
+   * Extracted from `analyzeSource` by #932.
+   */
+  private buildAnalysisFrom(args: {
+    accumulation: ReturnType<typeof createEmptyAccumulation>;
+    firstBatchData: NormalizedBatch | null;
+    file: TFile;
+    noteTitle: string | null;
+    sourceNoteAliases: string[];
+    imageAnalysis?: { report: EmbeddedImageAnalysisReport };
+  }): SourceAnalysis {
+    const { accumulation, firstBatchData, file, noteTitle, sourceNoteAliases, imageAnalysis } = args;
+    // Build final SourceAnalysis using pure function (Phase 3)
+    const analysis = buildSourceAnalysis(
+      file.path,
+      file.basename,
+      accumulation,
+      firstBatchData ? {
+        sourceTitle: noteTitle ?? firstBatchData.sourceTitle,
+        summary: firstBatchData.summary
+      } : undefined,
+      // Issue #185: forward curated source-note aliases so the
+      // generated sources/<slug> page can carry them.
+      sourceNoteAliases
+    );
+    if (imageAnalysis) analysis.embedded_image_analysis = imageAnalysis.report;
+    return analysis;
   }
 
   /**
