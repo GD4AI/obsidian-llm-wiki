@@ -208,6 +208,25 @@ function emptyBatch(): NormalizedBatch {
 }
 
 /**
+ * How the extraction loop proceeds after a decision point.
+ *
+ * The loop has three kinds of exit and they are not interchangeable: a halved
+ * retry discards this attempt and re-runs the same batch number, a stop keeps
+ * what was accumulated, and an abort discards everything. A helper cannot
+ * `continue` or `break` for its caller, so the decision travels back as one of
+ * these four actions and the caller performs it in one place (#932).
+ *
+ * `rerun` is the only one that rewinds `batchNum`; the caller emits no progress
+ * when it acts on it, because the retry is the same batch and announcing it
+ * twice would count it twice.
+ */
+type BatchAction =
+  | { kind: 'next' }
+  | { kind: 'rerun' }
+  | { kind: 'stop' }
+  | { kind: 'abort' };
+
+/**
  * The output ceiling to try after a provider rejected one, or `null` when no
  * probe is left to spend.
  *
@@ -610,38 +629,20 @@ export class SourceAnalyzer {
         const parseReason = parseResult.ok ? undefined : parseResult.reason;
 
         if (!analysisData) {
-          // Issue #305: a truncated response is not malformed JSON, it is
-          // *incomplete* JSON — the repair callback above cannot restore
-          // content that was never emitted, and it re-hits the same limit
-          // trying. When the provider tells us it ran out of tokens, halve
-          // the batch and re-run instead of dropping it. Applies to the
-          // first batch too: the alternative there is `return null`, i.e.
-          // the whole ingest fails, so one bounded retry is strictly
-          // better. `retryingBatch` and `minBatchSize` bound it to a single
-          // extra attempt.
-          if (finish.reason === 'length' && halveBatchAndRetry(`[Batch ${batchNum + 1}]`, 'finish_reason=length')) {
+          const decision = this.afterParseFailure({
+            batchLabel: `[Batch ${batchNum + 1}]`,
+            isFirstBatch,
+            placeholderRetried,
+            parseReason,
+            finishReason: finish.reason,
+            halveAndRetry: cause => halveBatchAndRetry(`[Batch ${batchNum + 1}]`, cause),
+          });
+          placeholderRetried = decision.placeholderRetried;
+          if (decision.action.kind === 'rerun') {
             batchNum--;
             continue;
           }
-          // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): the
-          // placeholder gate (`{"": ""}` grammar-constrained artifact)
-          // returns reason 'thinking-block-only' with finish.reason='stop'.
-          // A complete JSON is sometimes emitted on a second generation
-          // pass (observed on LMStudio + Qwen3.5). Give the first batch
-          // ONE retry without halving before giving up — but ONLY for the
-          // placeholder-gate condition, NOT for malformed/empty (those keep
-          // the #305 "no retry on non-truncation" contract). Later batches
-          // skip this — by then the model is clearly misbehaving and
-          // retrying every batch would multiply LLM calls (Gate 4 network
-          // regression).
-          if (isFirstBatch && !placeholderRetried && parseReason === 'thinking-block-only') {
-            placeholderRetried = true;
-            console.warn(`[Batch ${batchNum + 1}] Placeholder response (placeholder gate), retrying once without halving`);
-            batchNum--;
-            continue;
-          }
-          console.error(`[Batch ${batchNum + 1}] JSON parse failed, skipping batch`);
-          if (isFirstBatch) return null;
+          if (decision.action.kind === 'abort') return null;
           break;
         }
 
@@ -690,54 +691,14 @@ export class SourceAnalyzer {
 
         // Later batches: merge batch results using pure function (Phase 3)
         if (!isFirstBatch) {
-          const mergeResult = mergeBatchResults(accumulation, norm, customTypeCaps);
-          accumulation.entities = mergeResult.allEntities;
-          accumulation.concepts = mergeResult.allConcepts;
-          accumulation.extractedNames = mergeResult.extractedNames;
-
-          // Batch statistics logging for later batches
-          const rawTotal = norm.entities.length + norm.concepts.length;
-          const newTotal = mergeResult.newEntities.length + mergeResult.newConcepts.length;
-          const statsMsg = calculateBatchStats(batchNum + 1, {
-            entities: mergeResult.newEntities.length,
-            concepts: mergeResult.newConcepts.length
-          }, {
-            entities: accumulation.entities.length,
-            concepts: accumulation.concepts.length
+          const outcome = this.mergeLaterBatch({
+            accumulation, norm, customTypeCaps, batchNum,
+            responseLength: response.length,
+            limits, currentBatchSize, batchSizeHalved,
           });
-          console.debug(statsMsg);
-
-          // Adjust batch size for long responses (Phase 1)
-          currentBatchSize = adjustBatchSizeForResponse(currentBatchSize, response.length, limits.responseFullnessThreshold);
-
-          // Check empty batch (Phase 2)
-          const emptyCheck = checkEmptyBatch(rawTotal, newTotal);
-          if (emptyCheck.shouldStop) {
-            console.debug(`[Batch ${batchNum + 1}] ${emptyCheck.reason}, stopping`);
-            break;
-          }
-
-          // Convergence detection (Phase 2)
-          const convergence = detectConvergence(rawTotal, currentBatchSize, batchSizeHalved, limits.minBatchSize);
-          if (convergence.shouldStop) {
-            console.debug(formatConvergenceStatus(batchNum + 1, convergence));
-            break;
-          }
-          if (convergence.newBatchSizeHalved) {
-            batchSizeHalved = true;
-            currentBatchSize = convergence.newBatchSize;
-          }
-
-          // Cumulative limits check (Phase 2)
-          const cumulativeCheck = checkCumulativeLimits(accumulation.entities.length, accumulation.concepts.length, {
-            customEntityCap: customTypeCaps.entityCap,
-            customConceptCap: customTypeCaps.conceptCap,
-            maxTotalItems: limits.maxTotalItems
-          });
-          if (cumulativeCheck.shouldStop) {
-            console.debug(`[Batch ${batchNum + 1}] ${cumulativeCheck.reason}, stopping`);
-            break;
-          }
+          currentBatchSize = outcome.currentBatchSize;
+          batchSizeHalved = outcome.batchSizeHalved;
+          if (outcome.action.kind === 'stop') break;
         }
 
         finalBatchNum = batchNum + 1;
@@ -869,6 +830,149 @@ export class SourceAnalyzer {
     console.debug('  - Deduplicated names:', accumulation.extractedNames.size);
 
     return analysis;
+  }
+
+  /**
+   * Merge one later batch into the accumulation and decide whether to go on.
+   *
+   * The three stop checks run in this order and none of them is a shortcut for
+   * another: an empty batch says the source is mined out, convergence says the
+   * next round is unlikely to yield, and the cumulative check says the user's
+   * cap is reached. Each logs its own reason through a pure formatter, so the
+   * log text is unchanged.
+   *
+   * Returns the batch size and the halved flag because this function owns both
+   * adjustments; the caller writes them back, so there is still one place that
+   * holds the loop state.
+   *
+   * Extracted from `analyzeSource` by #932. The `break`s became a `stop` action
+   * so the caller can perform them (#932's decision protocol).
+   */
+  private mergeLaterBatch(args: {
+    accumulation: ReturnType<typeof createEmptyAccumulation>;
+    norm: NormalizedBatch;
+    customTypeCaps: ReturnType<typeof getCustomTypeCaps>;
+    batchNum: number;
+    responseLength: number;
+    limits: ReturnType<typeof calculateBatchLimits>;
+    currentBatchSize: number;
+    batchSizeHalved: boolean;
+  }): { action: BatchAction; currentBatchSize: number; batchSizeHalved: boolean } {
+    const { accumulation, norm, customTypeCaps, batchNum, responseLength, limits } = args;
+    let { currentBatchSize, batchSizeHalved } = args;
+
+    const mergeResult = mergeBatchResults(accumulation, norm, customTypeCaps);
+    accumulation.entities = mergeResult.allEntities;
+    accumulation.concepts = mergeResult.allConcepts;
+    accumulation.extractedNames = mergeResult.extractedNames;
+
+    // Batch statistics logging for later batches
+    const rawTotal = norm.entities.length + norm.concepts.length;
+    const newTotal = mergeResult.newEntities.length + mergeResult.newConcepts.length;
+    const statsMsg = calculateBatchStats(batchNum + 1, {
+      entities: mergeResult.newEntities.length,
+      concepts: mergeResult.newConcepts.length
+    }, {
+      entities: accumulation.entities.length,
+      concepts: accumulation.concepts.length
+    });
+    console.debug(statsMsg);
+
+    // Adjust batch size for long responses (Phase 1)
+    currentBatchSize = adjustBatchSizeForResponse(currentBatchSize, responseLength, limits.responseFullnessThreshold);
+
+    const next = { action: { kind: 'next' } as BatchAction, currentBatchSize, batchSizeHalved };
+
+    // Check empty batch (Phase 2)
+    const emptyCheck = checkEmptyBatch(rawTotal, newTotal);
+    if (emptyCheck.shouldStop) {
+      console.debug(`[Batch ${batchNum + 1}] ${emptyCheck.reason}, stopping`);
+      return { ...next, action: { kind: 'stop' } };
+    }
+
+    // Convergence detection (Phase 2)
+    const convergence = detectConvergence(rawTotal, currentBatchSize, batchSizeHalved, limits.minBatchSize);
+    if (convergence.shouldStop) {
+      console.debug(formatConvergenceStatus(batchNum + 1, convergence));
+      return { ...next, action: { kind: 'stop' } };
+    }
+    if (convergence.newBatchSizeHalved) {
+      batchSizeHalved = true;
+      currentBatchSize = convergence.newBatchSize;
+    }
+
+    // Cumulative limits check (Phase 2)
+    const cumulativeCheck = checkCumulativeLimits(accumulation.entities.length, accumulation.concepts.length, {
+      customEntityCap: customTypeCaps.entityCap,
+      customConceptCap: customTypeCaps.conceptCap,
+      maxTotalItems: limits.maxTotalItems
+    });
+    if (cumulativeCheck.shouldStop) {
+      console.debug(`[Batch ${batchNum + 1}] ${cumulativeCheck.reason}, stopping`);
+      return { ...next, action: { kind: 'stop' } };
+    }
+
+    return { action: { kind: 'next' }, currentBatchSize, batchSizeHalved };
+  }
+
+  /**
+   * What to do with a batch whose JSON did not parse.
+   *
+   * The order of the three checks is the contract, so it lives here rather than
+   * in the loop: truncation first, because a truncated response is incomplete
+   * rather than malformed and the repair callback cannot restore content that
+   * was never emitted; the placeholder gate second, once per source and only on
+   * the first batch; and the give-up path last, which aborts on the first batch
+   * and stops on any later one.
+   *
+   * Extracted from `analyzeSource` by #932 with its own comments. The halving
+   * itself still happens through the caller's closure, so the retry budget
+   * keeps its single owner.
+   */
+  private afterParseFailure(args: {
+    batchLabel: string;
+    isFirstBatch: boolean;
+    placeholderRetried: boolean;
+    parseReason: string | undefined;
+    finishReason: LLMFinishReason;
+    halveAndRetry: (cause: string) => boolean;
+  }): { action: BatchAction; placeholderRetried: boolean } {
+    const { batchLabel, isFirstBatch, parseReason, finishReason, halveAndRetry } = args;
+    let placeholderRetried = args.placeholderRetried;
+
+    // Issue #305: a truncated response is not malformed JSON, it is
+    // *incomplete* JSON — the repair callback above cannot restore
+    // content that was never emitted, and it re-hits the same limit
+    // trying. When the provider tells us it ran out of tokens, halve
+    // the batch and re-run instead of dropping it. Applies to the
+    // first batch too: the alternative there is `return null`, i.e.
+    // the whole ingest fails, so one bounded retry is strictly
+    // better. `retryingBatch` and `minBatchSize` bound it to a single
+    // extra attempt.
+    if (finishReason === 'length' && halveAndRetry('finish_reason=length')) {
+      return { action: { kind: 'rerun' }, placeholderRetried };
+    }
+
+    // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): the placeholder gate
+    // (`{"": ""}` grammar-constrained artifact) returns reason
+    // 'thinking-block-only' with finish.reason='stop'. A complete JSON is
+    // sometimes emitted on a second generation pass (observed on LMStudio +
+    // Qwen3.5). Give the first batch ONE retry without halving before giving up
+    // — but ONLY for the placeholder-gate condition, NOT for malformed/empty
+    // (those keep the #305 "no retry on non-truncation" contract). Later
+    // batches skip this — by then the model is clearly misbehaving and retrying
+    // every batch would multiply LLM calls (Gate 4 network regression).
+    if (isFirstBatch && !placeholderRetried && parseReason === 'thinking-block-only') {
+      placeholderRetried = true;
+      console.warn(`${batchLabel} Placeholder response (placeholder gate), retrying once without halving`);
+      return { action: { kind: 'rerun' }, placeholderRetried };
+    }
+
+    console.error(`${batchLabel} JSON parse failed, skipping batch`);
+    return {
+      action: isFirstBatch ? { kind: 'abort' } : { kind: 'stop' },
+      placeholderRetried,
+    };
   }
 
   /**
