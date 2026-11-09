@@ -175,6 +175,42 @@ async function runLintScanPhases(
 }
 
 
+/**
+ * The report and the counts that the completion modal reads.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only: the same
+ * `buildLintReport` call with the same arguments, and the same six counts.
+ * Elapsed time is rounded to whole seconds because sub-second precision is
+ * noise in a user-facing summary, and floored at one because "0 seconds" reads
+ * as a failure.
+ */
+function buildLintRunReport(
+  ctx: LintContext,
+  scan: LintScanResult,
+  lintStartTime: number,
+): { fullReport: ReturnType<typeof buildLintReport>; counts: LintCounts } {
+  const elapsedSeconds = Math.max(1, Math.round((Date.now() - lintStartTime) / 1000));
+  const fullReport = buildLintReport({
+    settings: ctx.settings,
+    findings: scan.findingsWithEmpty,
+    duplicates: scan.duplicates,
+    contradictionsReport: scan.contradictionsReport,
+    elapsedSeconds,
+    totalPages: scan.prep.wikiFiles.length,
+  });
+  const counts: LintCounts = {
+    deadLinks: scan.findings.deadLinks.length,
+    emptyPages: scan.emptyPages.length,
+    pollutedPages: scan.findings.pollutedPages.length,
+    orphans: scan.findings.orphans.length,
+    duplicates: scan.duplicates.length,
+    pagesMissingAliases: scan.findings.aliasDeficientPages.length,
+    tagViolations: scan.findings.tagViolations.length,
+    ungroundedQuotes: scan.findings.ungroundedQuotes.length,
+  };
+  return { fullReport, counts };
+}
+
 export async function runLintWiki(
   ctx: LintContext,
   signal?: AbortSignal,
@@ -221,7 +257,7 @@ export async function runLintWiki(
 
     const scan = await runLintScanPhases(ctx, phaseCtx);
     const {
-      findings, findingsWithEmpty, duplicates, emptyPages, contradictionsReport,
+      findings, duplicates, emptyPages, contradictionsReport,
     } = scan;
 
     const wikiFiles = scan.prep.wikiFiles;
@@ -235,33 +271,13 @@ export async function runLintWiki(
     const ungroundedQuotes = findings.ungroundedQuotes;
 
     // ---- 5. Build the full report (delegated to report-builder) ----
-    // Measure elapsed wall time since runLintWiki started. Round to whole
-    // seconds for the user-facing summary; sub-second precision is noise here.
-    const elapsedSeconds = Math.max(1, Math.round((Date.now() - lintStartTime) / 1000));
-    const fullReport = buildLintReport({
-      settings: ctx.settings,
-      findings: findingsWithEmpty,
-      duplicates,
-      contradictionsReport,
-      elapsedSeconds,
-      totalPages: wikiFiles.length,
-    });
+    const { fullReport, counts } = buildLintRunReport(ctx, scan, lintStartTime);
 
     // v1.24.0: removed the v1.18.0-era "Missing Concept Pages tracker" TODO
     // (24 lines of design notes that had been parked here since 2026-07 and
     // never implemented). If/when the missing-concept-pages feature is
     // designed, see ROADMAP.md for the placeholder.
 
-    const counts: LintCounts = {
-      deadLinks: deadLinks.length,
-      emptyPages: emptyPages.length,
-      pollutedPages: pollutedPages.length,
-      orphans: orphans.length,
-      duplicates: duplicates.length,
-      pagesMissingAliases: aliasDeficientPages.length,
-      tagViolations: tagViolations.length,
-      ungroundedQuotes: ungroundedQuotes.length,
-    };
 
     // ---- Build callbacks ----
 
