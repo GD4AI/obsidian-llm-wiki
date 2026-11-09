@@ -21,27 +21,6 @@
       "wiki/query-engine/index.ts",
       "wiki/query-engine/renderers/retrieval-label.ts",
       "wiki/query-engine/types.ts"
-    ],
-    [
-      "constants.ts",
-      "core/domain-axis.ts",
-      "core/frontmatter.ts",
-      "core/slug.ts",
-      "core/source-requirements.ts",
-      "core/tag-vocab.ts",
-      "types.ts"
-    ],
-    [
-      "core/mineru-converter.ts",
-      "core/pdf-converter.ts"
-    ],
-    [
-      "core/node-https-fetch.ts",
-      "core/obsidian-fetch-bridge.ts"
-    ],
-    [
-      "wiki/page-factory/contradiction-gates.ts",
-      "wiki/page-factory/merge-triage.ts"
     ]
   ],
   "coreUpper": [

@@ -184,7 +184,13 @@ describe('#603 — every writer names the layers it wants', () => {
     // #582/#583 exist to prevent. Read as a declaration rather than inferred from
     // the call site, so removing it is a deliberate edit.
     const engine = stripComments(readFileSync(join(SRC, 'wiki', 'wiki-engine.ts'), 'utf8'));
-    const types = stripComments(readFileSync(join(SRC, 'types.ts'), 'utf8'));
+    // #929 split `types.ts`: the write-intent presets live in `types/write.ts`.
+    // Read the barrel too, so a later move between parts cannot make this pass
+    // by reading an empty file.
+    const types = stripComments(
+      readFileSync(join(SRC, 'types.ts'), 'utf8')
+      + readFileSync(join(SRC, 'types', 'write.ts'), 'utf8'),
+    );
 
     expect(engine).toContain('await this.rawWrite(path, flipped, STAMP_WRITE_INTENT)');
     expect(types).toMatch(/STAMP_WRITE_INTENT[\s\S]{0,200}create: false/);

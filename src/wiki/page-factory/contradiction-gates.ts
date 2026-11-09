@@ -29,7 +29,7 @@
 // here — one lane measured, one lane changed.
 
 import type { LLMClient, LLMWikiSettings, SourceContext } from '../../types';
-import type { ComplementaryItem } from './merge-triage';
+import type { ComplementaryItem } from './merge-shared';
 import { PROMPTS } from '../../prompts';
 import { renderTemplate } from '../../core/template-renderer';
 import { parseJsonResponse } from '../../core/json';

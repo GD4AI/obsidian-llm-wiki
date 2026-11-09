@@ -49,7 +49,9 @@ describe('prompt customization lives in the bottom Advanced panel', () => {
   });
 
   it('keeps the default off', () => {
-    const defaults = readFileSync('src/types.ts', 'utf8');
+    // #929 split `types.ts` into a barrel plus parts; the defaults moved with
+    // `LLMWikiSettings`, which is where this assertion has always meant to look.
+    const defaults = readFileSync('src/types/settings.ts', 'utf8');
     expect(defaults).toMatch(/showAdvancedSettings:\s*false/);
   });
 });

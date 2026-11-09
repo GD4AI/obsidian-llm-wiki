@@ -25,49 +25,13 @@
 
 import { requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { nodeHttpsFetch } from './node-https-fetch';
+import { headersToObject, type ObsidianFetchInit } from './fetch-shared';
 
-export interface ObsidianFetchInit {
-  method?: string;
-  /** Fetch-API HeadersInit: plain object, Headers instance, or tuple array. */
-  headers?: HeadersInit;
-  body?: string | Uint8Array | undefined;
-  signal?: AbortSignal;
-  // Note: AI-SDK doesn't pass these but we accept them defensively.
-  timeout?: number;
-}
+// Re-exported so the call sites that read these from this module keep working.
+export type { ObsidianFetchInit };
+export { headersToObject };
 
-/**
- * Convert a Fetch API HeadersInit to a plain object that `requestUrl`
- * understands. AI-SDK passes either a Headers instance, a plain object,
- * or an array of tuples.
- *
- * Exported since v1.27.0 (#425): the Bedrock SigV4 signing wrapper
- * reuses this normalization so wrapped and unwrapped paths see
- * identical header shapes.
- */
-export function headersToObject(headers: HeadersInit | undefined): Record<string, string> {
-  if (!headers) return {};
-  if (headers instanceof Headers) {
-    const obj: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      obj[key] = value;
-    });
-    return obj;
-  }
-  if (Array.isArray(headers)) {
-    const obj: Record<string, string> = {};
-    for (const [key, value] of headers) {
-      obj[key] = value;
-    }
-    return obj;
-  }
-  // Plain object — shallow copy to avoid aliasing caller's object.
-  const obj: Record<string, string> = {};
-  for (const [key, value] of Object.entries(headers)) {
-    obj[key] = value;
-  }
-  return obj;
-}
+
 
 // v1.23.0 P1-7: debug logging for fetch adapter path selection.
 // Matched with "STREAM-FETCH" prefix so it's greppable in DevTools.

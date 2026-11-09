@@ -9,8 +9,16 @@
  * maintainability, discoverability, and type safety.
  */
 
-// Type-only: `types.ts` does not import this module, so there is no cycle.
-import type { ExtractionGranularity } from './types';
+/**
+ * How much one extraction pass asks a model to pull out of a source.
+ *
+ * Declared here, not in `types.ts`, because the two tables keyed by it —
+ * `EXTRACTION_LIMITS` and `RELATED_BUDGET` — also live here. `types.ts`
+ * imports this module, so the declaration has to sit on this side of that
+ * edge; the other way round closed a seven-file import cycle (#929).
+ * `types.ts` re-exports it, so no caller's import changes.
+ */
+export type ExtractionGranularity = 'fine' | 'standard' | 'coarse' | 'minimal' | 'custom';
 
 // ============================================================================
 // Wiki Folder Structure
