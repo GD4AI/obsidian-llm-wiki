@@ -9,7 +9,7 @@ import { NOTICE_NORMAL, NOTICE_ABORT, MINERU_API_TOKEN_SECRET_ID } from './const
 import { preloadLLMClientModules } from './llm-sdk/create-llm-client';
 import { isProviderConfigured } from './core/provider-auth';
 import { resolveProviderApiKey } from './llm-sdk/provider-api-key-resolver';
-import { createLLMClient } from './core/create-plugin-llm-client';
+import { createLLMClient } from './llm-sdk/create-plugin-llm-client';
 import { CodexAuthManager } from './llm-sdk/openai-codex/auth-manager';
 import { BedrockAuthManager } from './llm-sdk/bedrock-sso/credential-manager';
 import { BEDROCK_SSO_SECRET_ID, BEDROCK_IAM_SECRET_ID } from './llm-sdk/bedrock-sso/constants';

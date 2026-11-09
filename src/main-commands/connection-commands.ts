@@ -22,11 +22,11 @@ import {
 import type { LLMTask } from '../core/model-resolver';
 import { TEXTS } from '../texts';
 import { getText } from '../core/i18n';
-import { createLLMClient } from '../core/create-plugin-llm-client';
+import { createLLMClient } from '../llm-sdk/create-plugin-llm-client';
 import { providerRequiresApiKey, usesBedrockAwsCredentials } from '../core/provider-auth';
 import { resolveProviderApiKey } from '../llm-sdk/provider-api-key-resolver';
 import type { CodexAuthManager } from '../llm-sdk/openai-codex/auth-manager';
-import { applyCodexModelPolicy } from '../core/openai-codex-model-policy';
+import { applyCodexModelPolicy } from '../llm-sdk/openai-codex/model-policy';
 import { resolveModelForTask } from '../core/model-resolver';
 import { TOKENS_QUERY_MODEL_DETECT, NOTICE_ERROR } from '../constants';
 import { getCachedUrl } from '../core/url-fallback';

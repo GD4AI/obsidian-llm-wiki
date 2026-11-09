@@ -21,7 +21,7 @@ vi.mock('../../core/pdf-cache', async () => {
   };
 });
 
-import { convertPdfToMarkdown } from '../../core/pdf-converter';
+import { convertPdfToMarkdown } from '../../wiki/pdf-converter';
 import { MineruPdfError, convertPdfWithMineru, extractMineruMarkdown } from '../../core/mineru-converter';
 
 function context(overrides: Record<string, unknown> = {}) {

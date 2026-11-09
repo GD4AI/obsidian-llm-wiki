@@ -134,6 +134,16 @@ describe('escapeRegex', () => {
   it('handles empty string', () => {
     expect(escapeRegex('')).toBe('');
   });
+
+  // #931 sank this into `core/` because three core modules imported it from
+  // this layer. The repo held three copies of the same body before that: one
+  // here, one in `core/section-extractor.ts`, one in the core caller. This
+  // assertion is what stops a fourth appearing — a second implementation that
+  // keeps the same behaviour would pass every other test in this block.
+  it('is one implementation, not a copy per layer', async () => {
+    const core = await import('../../core/regex-escape');
+    expect(core.escapeRegex).toBe(escapeRegex);
+  });
 });
 
 // ── normalizeFrontmatterDates ───────────────────────────────────

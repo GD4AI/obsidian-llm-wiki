@@ -4,7 +4,7 @@ import type { CodexAuthManager, DeviceLoginPrompt } from '../llm-sdk/openai-code
 import type { CodexCredentialStore } from '../llm-sdk/openai-codex/credential-store';
 import type { FetchLike } from '../llm-sdk/openai-codex/types';
 import { obsidianFetchBridge } from '../core/obsidian-fetch-bridge';
-import { applyCodexModelPolicy } from '../core/openai-codex-model-policy';
+import { applyCodexModelPolicy } from '../llm-sdk/openai-codex/model-policy';
 import { fetchCodexModelCatalog } from '../llm-sdk/openai-codex/model-catalog';
 import { getText } from '../core/i18n';
 import { openCodexExternalUrl } from '../ui/openai-codex-auth-controls';

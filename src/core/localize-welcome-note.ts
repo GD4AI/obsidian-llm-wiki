@@ -23,7 +23,7 @@
 
 import type { LLMClient } from '../types';
 import { TOKENS_PAGE_GENERATION } from '../constants';
-import { WelcomeTranslationLLMSchema } from '../llm-sdk/output-schemas';
+import { WelcomeTranslationLLMSchema } from './welcome-translation-schema';
 import { callLlm } from './llm-dispatch';
 import { parseJsonResponse } from './json';
 

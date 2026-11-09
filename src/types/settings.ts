@@ -5,7 +5,7 @@
  * `LLMWikiSettings`, because a setting and its default are one fact.
  */
 import type { ExtractionGranularity } from '../constants';
-import type { TaskPolicyMap } from '../core/task-policy';
+import type { TaskPolicyMap } from './task-policy';
 import type { TEXTS } from '../texts';
 import type { OpenAICodexModelCatalogEntry } from './llm';
 import type { QueryHistoryMessage } from './query';

@@ -16,7 +16,7 @@
 // That is sufficient for the union dedup key `(quote, source_path)`.
 
 import type { MentionWithProvenance } from '../types';
-import { escapeRegex } from '../wiki/lint/utils';
+import { escapeRegex } from './regex-escape';
 import { dedupMentionsByProvenanceKey } from './batch-merger';
 
 /**
