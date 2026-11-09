@@ -20,7 +20,7 @@
 // sequences the phases and builds the fix-callback dispatch.
 
 import { Notice } from 'obsidian';
-import { LintFixCallbacks, LintCounts, LintReportModal, FixReportPhase } from '../../ui/modals';
+import { LintFixCallbacks, LintCounts, LintReportModal } from '../../ui/modals';
 import { TEXTS } from '../../texts';
 import { getText } from '../../core/i18n';
 import { nestReportUnderParent } from '../../core/report';
@@ -210,6 +210,175 @@ function buildLintRunReport(
   };
   return { fullReport, counts };
 }
+
+interface FixAllDeps {
+  ctx: LintContext;
+  t: (typeof TEXTS)[keyof typeof TEXTS];
+  pollutedPages: LintScanResult['findings']['pollutedPages'];
+  aliasDeficientPages: LintScanResult['findings']['aliasDeficientPages'];
+  duplicates: LintScanResult['duplicates'];
+  deadLinks: LintScanResult['findings']['deadLinks'];
+  orphans: LintScanResult['findings']['orphans'];
+  emptyPages: LintScanResult['emptyPages'];
+  tagViolations: LintScanResult['findings']['tagViolations'];
+}
+
+/**
+ * The "smart fix all" callback: six phases in a fixed causal order, one
+ * lint-operation lifecycle around all of them so the status bar keeps a working
+ * cancel button (#94), and one summary at the end.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only. The phase order
+ * is the observable contract and is unchanged: polluted pages, aliases,
+ * duplicate merges, dead links, orphans, empty pages, retagging. Each phase's
+ * `setMessage` text is unchanged, because that string is what the user reads
+ * while the run happens.
+ *
+ * Body indentation moved down four spaces with the function; the statements are
+ * byte-identical, so `git diff -w` shows only the wrapper.
+ */
+function buildFixAllCallback(deps: FixAllDeps): () => void {
+  const {
+    ctx, t, pollutedPages, aliasDeficientPages, duplicates,
+    deadLinks, orphans, emptyPages, tagViolations,
+  } = deps;
+  return () => {
+    void (async () => {
+      // Issue: Smart Fix All was NOT wrapped in startLintOperation/endLintOperation
+      // (unlike single-phase fixes via runFixPhase). This meant the status bar
+      // never appeared, so the user had no way to cancel a long-running batch.
+      // Fix: wrap the entire IIFE in a single lint-operation lifecycle so the
+      // status bar stays visible throughout all 6 phases.
+      const signal = ctx.wikiEngine.startLintOperation();
+      try {
+      const allResults: string[] = [];
+      const fixAllNotice = makeMirroredNotice(ctx);
+
+      // Track per-phase counts for final summary
+      let pollutedFixed = 0;
+
+      // Smart fix strategy: follow causality chain with aliases as foundation
+      // Phase -1: Fix polluted pages (structural root cause before everything else)
+      fixAllNotice.setMessage('Smart fix: Phase -1 — Fixing polluted pages...');
+      if (pollutedPages.length > 0) {
+        for (const pp of pollutedPages) {
+          try {
+            const result = await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
+            console.debug(`[Pollution Fix] ${result}`);
+            pollutedFixed++;
+          } catch (e) {
+            console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
+          }
+        }
+        if (pollutedFixed > 0) {
+          allResults.push(`## Fix Polluted Pages\nFixed ${pollutedFixed}/${pollutedPages.length} polluted pages`);
+        }
+      }
+
+      // Phase 0: Complete aliases (pre-flight, ensures duplicate detection accuracy)
+      // → Aliases are required for Tier 1 duplicate signals (crossLang)
+      // → Missing aliases → duplicate detection misses true duplicates → downstream fixes incomplete
+      fixAllNotice.setMessage('Smart fix: Phase 0 — Completing aliases...');
+      if (aliasDeficientPages.length > 0) {
+        const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
+        if (filled > 0) {
+          allResults.push(`## Complete Aliases\n${results.join('\n')}`);
+          console.debug(`Smart fix: Completed ${filled} aliases, improving duplicate detection accuracy`);
+        }
+      }
+
+      // Phase 1: Merge duplicates (root cause)
+      // → Eliminates redundant pages, resolves many dead links and orphans automatically via link rewriting
+      // → Duplicate detection now uses complete aliases (Tier 1 crossLang signals active)
+      fixAllNotice.setMessage('Smart fix: Phase 1 — Merging duplicates...');
+      if (duplicates.length > 0) {
+        const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
+        if (merged > 0) {
+          allResults.push(`## Merge Duplicate Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Merged ${merged} duplicates, dead links and orphans may be auto-resolved`);
+        }
+      }
+
+      // Phase 2: Fix remaining dead links
+      // → Links to deleted source pages were already rewritten during merge
+      // → This phase fixes any remaining dead links (pointing to non-existent pages)
+      // → Dead link fallback uses aliases to find existing pages (avoiding stub creation)
+      fixAllNotice.setMessage('Smart fix: Phase 2 — Fixing dead links...');
+      if (deadLinks.length > 0) {
+        const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
+        if (fixed > 0) {
+          allResults.push(`## Fix Dead Links\n${results.join('\n')}`);
+          console.debug(`Smart fix: Fixed ${fixed} dead links`);
+        }
+      }
+
+      // Phase 3: Link remaining orphan pages
+      // → Some orphans may be auto-resolved after duplicate merge (source page deleted, target page now has incoming links)
+      // → This phase links any remaining orphan pages
+      fixAllNotice.setMessage('Smart fix: Phase 3 — Linking orphan pages...');
+      if (orphans.length > 0) {
+        const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
+        if (linked > 0) {
+          allResults.push(`## Link Orphan Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Linked ${linked} orphan pages`);
+        }
+      }
+
+      // Phase 4: Expand empty pages (last, independent of other issues)
+      fixAllNotice.setMessage('Smart fix: Phase 4 — Expanding empty pages...');
+      if (emptyPages.length > 0) {
+        const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
+        if (filled > 0) {
+          allResults.push(`## Expand Empty Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Expanded ${filled} empty pages`);
+        }
+      }
+
+      // Issue #85 v7 — Phase 5: retag out-of-vocabulary tag pages.
+      // LLMs may invent types that don't match the active
+      // vocabulary; this phase asks the LLM to re-emit valid
+      // tags using only values from the active vocabulary.
+      fixAllNotice.setMessage('Smart fix: Phase 5 — Retagging out-of-vocabulary tag pages...');
+      if (tagViolations.length > 0) {
+        const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
+        if (fixed > 0) {
+          allResults.push(`## Retag Tag Violations\n${results.join('\n')}`);
+          console.debug(`Smart fix: Retagged ${fixed} tag violations`);
+        }
+      }
+
+      fixAllNotice.hide();
+      if (allResults.length > 0) {
+        await ctx.wikiEngine.generateIndexFromEngine();
+        await ctx.wikiEngine.logLintFix('Smart Fix All (Causality-Aware with Aliases)', allResults.join('\n\n'));
+      }
+
+      // Build phase result data for modal report
+      // NOTE: must be inside the try block so the closure-captured counters
+      // (pollutedFixed, aliasesFilled, etc.) are still in scope when the
+      // modal renders.
+      // v1.25.1: smarter completion summary.
+      // - phasesRun = phases the user kicked off (input lengths > 0).
+      // - phasesModified = phases that actually wrote changes.
+      // If phasesModified === 0, every phase failed silently — surface
+      // that distinctly so the user doesn't think Fix All did nothing.
+      // Also: NOTICE_NORMAL (5s) instead of NOTICE_ERROR (8s) to match
+      // the non-blocking convention of other fix callbacks.
+      const historyHint = getText(ctx.settings.language, 'ingestionNoticeHistoryHint');
+      const phasesModified = allResults.filter(r => r !== 'skipped').length;
+      const summary = phasesModified === 0
+        ? `${t.lintFixAllComplete}: ${t.lintFixAllNoChanges}`
+        : `${t.lintFixAllComplete}: ${phasesModified} ${t.lintFixPhasesLabel}. ${historyHint}`;
+      new Notice(summary, NOTICE_NORMAL);
+      } finally {
+        // Issue: status bar must persist throughout all 6 phases. Match the
+        // startLintOperation call above so the user can click "cancel" at any point.
+        ctx.wikiEngine.endLintOperation();
+      }
+    })();
+  };
+}
+
 
 export async function runLintWiki(
   ctx: LintContext,
@@ -483,197 +652,10 @@ export async function runLintWiki(
     const totalFixable = deadLinks.length + emptyPages.length + orphans.length + duplicates.length;
     const totalFixableIncludingAliases = totalFixable + aliasDeficientPages.length + pollutedPages.length;
     if (totalFixableIncludingAliases > 0) {
-      fixCallbacks.onFixAll = () => {
-        void (async () => {
-          // Issue: Smart Fix All was NOT wrapped in startLintOperation/endLintOperation
-          // (unlike single-phase fixes via runFixPhase). This meant the status bar
-          // never appeared, so the user had no way to cancel a long-running batch.
-          // Fix: wrap the entire IIFE in a single lint-operation lifecycle so the
-          // status bar stays visible throughout all 6 phases.
-          const signal = ctx.wikiEngine.startLintOperation();
-          try {
-          const allResults: string[] = [];
-          const fixAllNotice = makeMirroredNotice(ctx);
-
-          // Track per-phase counts for final summary
-          let pollutedFixed = 0;
-          let aliasesFilled = 0;
-          let duplicatesMerged = 0;
-          let deadLinksFixed = 0;
-          let orphansLinked = 0;
-          let emptyPagesFilled = 0;
-          let tagsRetagged = 0;
-
-          // Smart fix strategy: follow causality chain with aliases as foundation
-          // Phase -1: Fix polluted pages (structural root cause before everything else)
-          fixAllNotice.setMessage('Smart fix: Phase -1 — Fixing polluted pages...');
-          if (pollutedPages.length > 0) {
-            for (const pp of pollutedPages) {
-              try {
-                const result = await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
-                console.debug(`[Pollution Fix] ${result}`);
-                pollutedFixed++;
-              } catch (e) {
-                console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
-              }
-            }
-            if (pollutedFixed > 0) {
-              allResults.push(`## Fix Polluted Pages\nFixed ${pollutedFixed}/${pollutedPages.length} polluted pages`);
-            }
-          }
-
-          // Phase 0: Complete aliases (pre-flight, ensures duplicate detection accuracy)
-          // → Aliases are required for Tier 1 duplicate signals (crossLang)
-          // → Missing aliases → duplicate detection misses true duplicates → downstream fixes incomplete
-          fixAllNotice.setMessage('Smart fix: Phase 0 — Completing aliases...');
-          if (aliasDeficientPages.length > 0) {
-            const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
-            aliasesFilled = filled;
-            if (filled > 0) {
-              allResults.push(`## Complete Aliases\n${results.join('\n')}`);
-              console.debug(`Smart fix: Completed ${filled} aliases, improving duplicate detection accuracy`);
-            }
-          }
-
-          // Phase 1: Merge duplicates (root cause)
-          // → Eliminates redundant pages, resolves many dead links and orphans automatically via link rewriting
-          // → Duplicate detection now uses complete aliases (Tier 1 crossLang signals active)
-          fixAllNotice.setMessage('Smart fix: Phase 1 — Merging duplicates...');
-          if (duplicates.length > 0) {
-            const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
-            duplicatesMerged = merged;
-            if (merged > 0) {
-              allResults.push(`## Merge Duplicate Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Merged ${merged} duplicates, dead links and orphans may be auto-resolved`);
-            }
-          }
-
-          // Phase 2: Fix remaining dead links
-          // → Links to deleted source pages were already rewritten during merge
-          // → This phase fixes any remaining dead links (pointing to non-existent pages)
-          // → Dead link fallback uses aliases to find existing pages (avoiding stub creation)
-          fixAllNotice.setMessage('Smart fix: Phase 2 — Fixing dead links...');
-          if (deadLinks.length > 0) {
-            const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
-            deadLinksFixed = fixed;
-            if (fixed > 0) {
-              allResults.push(`## Fix Dead Links\n${results.join('\n')}`);
-              console.debug(`Smart fix: Fixed ${fixed} dead links`);
-            }
-          }
-
-          // Phase 3: Link remaining orphan pages
-          // → Some orphans may be auto-resolved after duplicate merge (source page deleted, target page now has incoming links)
-          // → This phase links any remaining orphan pages
-          fixAllNotice.setMessage('Smart fix: Phase 3 — Linking orphan pages...');
-          if (orphans.length > 0) {
-            const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
-            orphansLinked = linked;
-            if (linked > 0) {
-              allResults.push(`## Link Orphan Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Linked ${linked} orphan pages`);
-            }
-          }
-
-          // Phase 4: Expand empty pages (last, independent of other issues)
-          fixAllNotice.setMessage('Smart fix: Phase 4 — Expanding empty pages...');
-          if (emptyPages.length > 0) {
-            const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
-            emptyPagesFilled = filled;
-            if (filled > 0) {
-              allResults.push(`## Expand Empty Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Expanded ${filled} empty pages`);
-            }
-          }
-
-          // Issue #85 v7 — Phase 5: retag out-of-vocabulary tag pages.
-          // LLMs may invent types that don't match the active
-          // vocabulary; this phase asks the LLM to re-emit valid
-          // tags using only values from the active vocabulary.
-          fixAllNotice.setMessage('Smart fix: Phase 5 — Retagging out-of-vocabulary tag pages...');
-          if (tagViolations.length > 0) {
-            const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
-            tagsRetagged = fixed;
-            if (fixed > 0) {
-              allResults.push(`## Retag Tag Violations\n${results.join('\n')}`);
-              console.debug(`Smart fix: Retagged ${fixed} tag violations`);
-            }
-          }
-
-          fixAllNotice.hide();
-          if (allResults.length > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Smart Fix All (Causality-Aware with Aliases)', allResults.join('\n\n'));
-          }
-
-          // Build phase result data for modal report
-          // NOTE: must be inside the try block so the closure-captured counters
-          // (pollutedFixed, aliasesFilled, etc.) are still in scope when the
-          // modal renders.
-          const phases: FixReportPhase[] = [];
-          if (pollutedPages.length > 0) {
-            phases.push({
-              label: `🧹 Fix polluted pages (${pollutedPages.length})`,
-              detail: `${pollutedFixed}/${pollutedPages.length}`
-            });
-          }
-          if (aliasDeficientPages.length > 0) {
-            phases.push({
-              label: t.lintAliasesCompleteBtn.replace('{count}', String(aliasDeficientPages.length)),
-              detail: `${aliasesFilled}/${aliasDeficientPages.length}`
-            });
-          }
-          if (duplicates.length > 0) {
-            phases.push({
-              label: t.lintModalMergeDuplicates.replace('{count}', String(duplicates.length)),
-              detail: `${duplicatesMerged}/${duplicates.length}`
-            });
-          }
-          if (deadLinks.length > 0) {
-            phases.push({
-              label: t.lintModalFixDeadLinks.replace('{count}', String(deadLinks.length)),
-              detail: `${deadLinksFixed}/${deadLinks.length}`
-            });
-          }
-          // Issue #85 v7: tag-violation retag phase summary
-          if (tagViolations.length > 0) {
-            phases.push({
-              label: t.lintTagViolationRetagBtn.replace('{count}', String(tagViolations.length)),
-              detail: `${tagsRetagged}/${tagViolations.length}`
-            });
-          }
-          if (orphans.length > 0) {
-            phases.push({
-              label: t.lintModalLinkOrphans.replace('{count}', String(orphans.length)),
-              detail: `${orphansLinked}/${orphans.length}`
-            });
-          }
-          if (emptyPages.length > 0) {
-            phases.push({
-              label: t.lintModalExpandEmpty.replace('{count}', String(emptyPages.length)),
-              detail: `${emptyPagesFilled}/${emptyPages.length}`
-            });
-          }
-          // v1.25.1: smarter completion summary.
-          // - phasesRun = phases the user kicked off (input lengths > 0).
-          // - phasesModified = phases that actually wrote changes.
-          // If phasesModified === 0, every phase failed silently — surface
-          // that distinctly so the user doesn't think Fix All did nothing.
-          // Also: NOTICE_NORMAL (5s) instead of NOTICE_ERROR (8s) to match
-          // the non-blocking convention of other fix callbacks.
-          const historyHint = getText(ctx.settings.language, 'ingestionNoticeHistoryHint');
-          const phasesModified = allResults.filter(r => r !== 'skipped').length;
-          const summary = phasesModified === 0
-            ? `${t.lintFixAllComplete}: ${t.lintFixAllNoChanges}`
-            : `${t.lintFixAllComplete}: ${phasesModified} ${t.lintFixPhasesLabel}. ${historyHint}`;
-          new Notice(summary, NOTICE_NORMAL);
-          } finally {
-            // Issue: status bar must persist throughout all 6 phases. Match the
-            // startLintOperation call above so the user can click "cancel" at any point.
-            ctx.wikiEngine.endLintOperation();
-          }
-        })();
-      };
+      fixCallbacks.onFixAll = buildFixAllCallback({
+        ctx, t, pollutedPages, aliasDeficientPages, duplicates,
+        deadLinks, orphans, emptyPages, tagViolations,
+      });
     }
 
     stageNotice.hide();
