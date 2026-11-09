@@ -15,7 +15,7 @@
 // under test.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createLLMClient } from '../../core/create-plugin-llm-client';
+import { createLLMClient } from '../../llm-sdk/create-plugin-llm-client';
 import { createLLMClientFromSettingsSync } from '../../llm-sdk/create-llm-client';
 import type { BedrockAuthManager } from '../../llm-sdk/bedrock-sso/credential-manager';
 import type { LLMWikiSettings } from '../../types';

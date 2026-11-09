@@ -1,6 +1,11 @@
 /**
  * v1.25.1 Phase C-PR3: Plugin-level LLM client factory.
  *
+ * Lives in `llm-sdk/` since #931: this is a composition root, and a composition
+ * root has to know every concrete provider, so `core/` — which must stay
+ * provider-agnostic — is the one layer it cannot sit in. Moving it here added
+ * no layer and no rule: `llm-sdk/` was already above `core/`.
+ *
  * Extracted from main.ts to break the circular dependency between
  * main.ts and main-commands/connection-commands.ts: the connection
  * test commands need to call createLLMClient without main.ts
@@ -12,11 +17,11 @@
  */
 
 import { wrapWithAdvancedSettings } from '../llm-client-wrapper';
-import { createLLMClientFromSettingsSync } from '../llm-sdk/create-llm-client';
-import { getText } from './i18n';
-import type { CodexAuthManager } from '../llm-sdk/openai-codex/auth-manager';
-import type { BedrockAuthManager } from '../llm-sdk/bedrock-sso/credential-manager';
-import type { ProviderSecretStorage } from '../llm-sdk/provider-secret-store';
+import { createLLMClientFromSettingsSync } from './create-llm-client';
+import { getText } from '../core/i18n';
+import type { CodexAuthManager } from './openai-codex/auth-manager';
+import type { BedrockAuthManager } from './bedrock-sso/credential-manager';
+import type { ProviderSecretStorage } from './provider-secret-store';
 import type { LLMWikiSettings, LLMClient } from '../types';
 
 export function createLLMClient(

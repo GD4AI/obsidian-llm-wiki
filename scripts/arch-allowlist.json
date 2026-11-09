@@ -25,26 +25,6 @@
   ],
   "coreUpper": [
     [
-      "core/create-plugin-llm-client.ts",
-      "llm-client-wrapper.ts"
-    ],
-    [
-      "core/create-plugin-llm-client.ts",
-      "llm-sdk/bedrock-sso/credential-manager.ts"
-    ],
-    [
-      "core/create-plugin-llm-client.ts",
-      "llm-sdk/create-llm-client.ts"
-    ],
-    [
-      "core/create-plugin-llm-client.ts",
-      "llm-sdk/openai-codex/auth-manager.ts"
-    ],
-    [
-      "core/create-plugin-llm-client.ts",
-      "llm-sdk/provider-secret-store.ts"
-    ],
-    [
       "core/localize-welcome-note.ts",
       "llm-sdk/output-schemas.ts"
     ],

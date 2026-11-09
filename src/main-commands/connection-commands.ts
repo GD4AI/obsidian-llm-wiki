@@ -22,7 +22,7 @@ import {
 import type { LLMTask } from '../core/model-resolver';
 import { TEXTS } from '../texts';
 import { getText } from '../core/i18n';
-import { createLLMClient } from '../core/create-plugin-llm-client';
+import { createLLMClient } from '../llm-sdk/create-plugin-llm-client';
 import { providerRequiresApiKey, usesBedrockAwsCredentials } from '../core/provider-auth';
 import { resolveProviderApiKey } from '../llm-sdk/provider-api-key-resolver';
 import type { CodexAuthManager } from '../llm-sdk/openai-codex/auth-manager';
