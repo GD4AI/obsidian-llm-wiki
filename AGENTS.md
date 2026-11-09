@@ -334,6 +334,17 @@ Every change via `Read` + `Edit` — no sed/awk/python for code or document edit
 - **grep alone is NOT sufficient** — grep tells you *where* a pattern exists, not what surrounds it. Always Read full context before Edit.
 - **Verify idempotency** — surrounding content intact, no swallowed bullets, no broken headings.
 
+**Large-function extraction — read, classify, write, then verify (2026-11-09, #932).**
+A block of 400+ lines cannot be moved by scripted line slicing. On `runLintWiki` the first two cuts
+worked because each block had one role. The third failed and was reverted: that block holds three
+roles at once — lines the caller owns (`logReport`, `logLintFix`), preludes the callbacks share
+(`runFixPhase`, the analysis summary), and the callbacks themselves. A slicer cannot tell them
+apart, and the repair pass then patched the wrong occurrence and declared one const twice.
+Fixed order: (1) read the whole block, (2) write down each line's role, (3) derive the parameter
+list from that classification, (4) write the function in one piece, (5) golden snapshot, then the
+full suite. Never `tsc`-guided trial and error at this size: the compiler names what is *missing*
+and says nothing about what was captured wrongly.
+
 ## 📋 Karpathy Philosophy Compliance
 
 - **Knowledge compounds** — query results flow back into wiki
