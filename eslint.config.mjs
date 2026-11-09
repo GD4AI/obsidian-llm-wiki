@@ -19,7 +19,6 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/ui/settings-sections/provider-section.ts": 238,
 	"src/ui/settings-sections/wiki-config-section.ts": 200,
 	"src/wiki/conversation-ingest.ts": 221,
-	"src/wiki/lint/controller.ts": 444,
 	"src/wiki/lint/fix-dead-link.ts": 143,
 	"src/wiki/lint/fix-runners.ts": 127,
 	"src/wiki/lint/llm-phases/dedup-phase.ts": 277,
@@ -28,7 +27,7 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/wiki/page-factory/merge-page.ts": 199,
 	"src/wiki/page-factory/path-resolution.ts": 126,
 	"src/wiki/query-engine/QueryView-class.ts": 246,
-	"src/wiki/source-analyzer.ts": 377,
+	"src/wiki/source-analyzer.ts": 327,
 	"src/wiki/wiki-engine.ts": 510,
 };
 

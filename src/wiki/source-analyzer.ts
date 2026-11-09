@@ -259,34 +259,7 @@ export class SourceAnalyzer {
       return null;
     }
 
-    // Issue #185: source note's frontmatter `aliases:` are appended to
-    // the generated `sources/<slug>` page (consumed there by
-    // `fix-dead-link`'s slugify-normalized cross-page alias match).
-    const noteFm = this.ctx.app.metadataCache
-      .getFileCache(file)?.frontmatter as { aliases?: unknown; language?: unknown; tags?: unknown } | undefined;
-    const rawNoteAliases = noteFm?.aliases;
-    const sourceNoteAliases: string[] = Array.isArray(rawNoteAliases)
-      ? rawNoteAliases.filter((a): a is string => typeof a === 'string')
-      : [];
-    // domain axis stage 3 (#568): the note's own tags are the domain proposal
-    // for the note's own lemma. Extracted items get their `domains` subset
-    // from the model; the lemma candidate is added after extraction and never
-    // passes through that prompt, so without this it is the one page class
-    // born domainless. The note's tags describe the note's subject — which is
-    // exactly what the lemma page is — and they are in the harvested
-    // vocabulary by construction; the engine-side `selectDomains` validation
-    // still runs over them like over any model answer.
-    const rawNoteTags = noteFm?.tags;
-    const sourceNoteTags: string[] = Array.isArray(rawNoteTags)
-      ? rawNoteTags.filter((t): t is string => typeof t === 'string')
-      : [];
-    // Source note's frontmatter `language:` lets us skip the translation
-    // instruction when the source is already in the wiki's language (e.g. a
-    // Russian source in a Russian wiki -- translating verbatim quotes into the
-    // same language is wasteful and bloats the JSON). Absent -> legacy behavior.
-    // Reuse the frontmatter value already fetched above instead of a second
-    // metadataCache call.
-    const sourceLang = normalizeSourceLanguage(noteFm?.language);
+    const { sourceNoteAliases, sourceNoteTags, sourceLang } = this.readNoteMetadata(file);
 
     console.debug('Existing Wiki pages count: — delayed until post-extraction matching');
 
@@ -428,57 +401,10 @@ export class SourceAnalyzer {
     for (let batchNum = 0; batchNum < limits.maxBatches; batchNum++) {
       const isFirstBatch = batchNum === 0;
 
-      let batchContext: string;
-      if (isFirstBatch) {
-        batchContext = 'This is the first extraction round. Extract the most important entities and concepts from the source.';
-      } else {
-        // Build already-extracted context with names and aliases to inform later rounds.
-        // This prevents the LLM from re-extracting duplicates (especially useful for
-        // small models that cannot reliably remember their own previous output).
-        const ctxLines: string[] = [];
-        for (const e of accumulation.entities) {
-          const line = e.aliases?.length
-            ? `${e.name} (aliases: ${e.aliases.join(', ')})`
-            : e.name;
-          ctxLines.push(line);
-        }
-        for (const c of accumulation.concepts) {
-          const line = c.aliases?.length
-            ? `${c.name} (aliases: ${c.aliases.join(', ')})`
-            : c.name;
-          ctxLines.push(line);
-        }
-        const alreadyExtracted = ctxLines.length > 0
-          ? `\n\nAlready extracted from this source:\n  [${ctxLines.join('; ')}]\n  (including abbreviations, synonyms, and translations of these names)\nDo NOT extract them again. If a candidate name is equivalent to any of the above — including their aliases — skip it.`
-          : '';
-        batchContext = `This is round ${batchNum + 1} of extraction. Extract the next batch of most important entities and concepts from the remaining content. If no more items are worth extracting, return empty arrays [] for entities and concepts.${alreadyExtracted}`;
-      }
-
-      const prompt = renderTemplate(staticPrefix + batchContext + suffixTemplate, {
-        granularity_instruction: granularityInstruction,
-        batch_size: String(currentBatchSize),
+      const { prompt, finalPrompt } = this.buildExtractionPrompt({
+        isFirstBatch, batchNum, accumulation, currentBatchSize,
+        staticPrefix, suffixTemplate, granularityInstruction, sourceLang,
       });
-
-      const wikiLang = this.ctx.settings.wikiLanguage || 'en';
-      const wikiLangName = getWikiLanguageName(wikiLang);
-      const langHint = `\n\nCRITICAL LANGUAGE REQUIREMENT: Summaries, descriptions, source_title, and key_points in your JSON output MUST be written in ${wikiLangName}. HOWEVER: entity names and concept names MUST be preserved in their original source language -- NEVER translate names. mentions_in_source MUST be verbatim quotes from the source (preserve original language).`;
-      // Issue #244 (manual test fix): when the user's wiki language differs
-      // from English, instruct the LLM to ALSO emit a 'translation' field
-      // alongside each quote in mentions_with_provenance. The downstream
-      // formatter renders: "<verbatim>" (<translation>) -- [[path|display]].
-      // When source and wiki languages match, skip the translation field.
-      // When the source's own language matches the wiki language, translating
-      // its verbatim quotes back into the same language is meaningless (and
-      // bloats the JSON to the point of truncation). Prefer the explicit
-      // frontmatter `language:` signal; fall back to the legacy `!== 'en'`
-      // proxy only when the source is untagged, so cross-language wikis keep
-      // their translation behavior unchanged.
-      const crossLanguage = isCrossLanguage(sourceLang, wikiLang);
-      const translationHint = crossLanguage
-        ? `\n\nTRANSLATION (cross-language wikis): For each entry in mentions_with_provenance, ALSO add a 'translation' field containing a ${wikiLangName} translation of the quote text. The 'quote' field MUST stay verbatim in the source's original language; the translation goes in a separate 'translation' field. Example: {"quote": "Machine learning is fun", "translation": "机器学习很有趣"}`
-        : '';
-      // #328 Phase 1 follow-up: user-layer tag-vocab removed — system layer (buildSystemPrompt) always injects once.
-      const finalPrompt = prompt + langHint + translationHint;
 
       console.debug(`[Batch ${batchNum + 1}/${limits.maxBatches}] LLM call started (batch_size=${currentBatchSize})...`);
       console.debug(`[Batch ${batchNum + 1}] Prompt length:`, prompt.length);
@@ -943,6 +869,121 @@ export class SourceAnalyzer {
     console.debug('  - Deduplicated names:', accumulation.extractedNames.size);
 
     return analysis;
+  }
+
+  /**
+   * The three frontmatter values the extraction prompt depends on, read once.
+   *
+   * Extracted from `analyzeSource` by #932. The comments that explain each
+   * axis travel with the code; only the read moved.
+   */
+  private readNoteMetadata(file: TFile): {
+    sourceNoteAliases: string[];
+    sourceNoteTags: string[];
+    sourceLang: ReturnType<typeof normalizeSourceLanguage>;
+  } {
+    // Issue #185: source note's frontmatter `aliases:` are appended to
+    // the generated `sources/<slug>` page (consumed there by
+    // `fix-dead-link`'s slugify-normalized cross-page alias match).
+    const noteFm = this.ctx.app.metadataCache
+      .getFileCache(file)?.frontmatter as { aliases?: unknown; language?: unknown; tags?: unknown } | undefined;
+    const rawNoteAliases = noteFm?.aliases;
+    const sourceNoteAliases: string[] = Array.isArray(rawNoteAliases)
+      ? rawNoteAliases.filter((a): a is string => typeof a === 'string')
+      : [];
+    // domain axis stage 3 (#568): the note's own tags are the domain proposal
+    // for the note's own lemma. Extracted items get their `domains` subset
+    // from the model; the lemma candidate is added after extraction and never
+    // passes through that prompt, so without this it is the one page class
+    // born domainless. The note's tags describe the note's subject — which is
+    // exactly what the lemma page is — and they are in the harvested
+    // vocabulary by construction; the engine-side `selectDomains` validation
+    // still runs over them like over any model answer.
+    const rawNoteTags = noteFm?.tags;
+    const sourceNoteTags: string[] = Array.isArray(rawNoteTags)
+      ? rawNoteTags.filter((t): t is string => typeof t === 'string')
+      : [];
+    // Source note's frontmatter `language:` lets us skip the translation
+    // instruction when the source is already in the wiki's language (e.g. a
+    // Russian source in a Russian wiki -- translating verbatim quotes into the
+    // same language is wasteful and bloats the JSON). Absent -> legacy behavior.
+    // Reuse the frontmatter value already fetched above instead of a second
+    // metadataCache call.
+    const sourceLang = normalizeSourceLanguage(noteFm?.language);
+    return { sourceNoteAliases, sourceNoteTags, sourceLang };
+  }
+
+  /**
+   * The prompt for one extraction round: which round this is, what has
+   * already been extracted, and the two language instructions.
+   *
+   * Pure. Extracted from `analyzeSource` by #932 with its own comments; the
+   * caller still emits progress, so no observable side effect moved here.
+   */
+  private buildExtractionPrompt(args: {
+    isFirstBatch: boolean;
+    batchNum: number;
+    accumulation: ReturnType<typeof createEmptyAccumulation>;
+    currentBatchSize: number;
+    staticPrefix: string;
+    suffixTemplate: string;
+    granularityInstruction: string;
+    sourceLang: ReturnType<typeof normalizeSourceLanguage>;
+  }): { prompt: string; finalPrompt: string } {
+    const { isFirstBatch, batchNum, accumulation, currentBatchSize,
+      staticPrefix, suffixTemplate, granularityInstruction, sourceLang } = args;
+    let batchContext: string;
+    if (isFirstBatch) {
+      batchContext = 'This is the first extraction round. Extract the most important entities and concepts from the source.';
+    } else {
+      // Build already-extracted context with names and aliases to inform later rounds.
+      // This prevents the LLM from re-extracting duplicates (especially useful for
+      // small models that cannot reliably remember their own previous output).
+      const ctxLines: string[] = [];
+      for (const e of accumulation.entities) {
+        const line = e.aliases?.length
+          ? `${e.name} (aliases: ${e.aliases.join(', ')})`
+          : e.name;
+        ctxLines.push(line);
+      }
+      for (const c of accumulation.concepts) {
+        const line = c.aliases?.length
+          ? `${c.name} (aliases: ${c.aliases.join(', ')})`
+          : c.name;
+        ctxLines.push(line);
+      }
+      const alreadyExtracted = ctxLines.length > 0
+        ? `\n\nAlready extracted from this source:\n  [${ctxLines.join('; ')}]\n  (including abbreviations, synonyms, and translations of these names)\nDo NOT extract them again. If a candidate name is equivalent to any of the above — including their aliases — skip it.`
+        : '';
+      batchContext = `This is round ${batchNum + 1} of extraction. Extract the next batch of most important entities and concepts from the remaining content. If no more items are worth extracting, return empty arrays [] for entities and concepts.${alreadyExtracted}`;
+    }
+
+    const prompt = renderTemplate(staticPrefix + batchContext + suffixTemplate, {
+      granularity_instruction: granularityInstruction,
+      batch_size: String(currentBatchSize),
+    });
+
+    const wikiLang = this.ctx.settings.wikiLanguage || 'en';
+    const wikiLangName = getWikiLanguageName(wikiLang);
+    const langHint = `\n\nCRITICAL LANGUAGE REQUIREMENT: Summaries, descriptions, source_title, and key_points in your JSON output MUST be written in ${wikiLangName}. HOWEVER: entity names and concept names MUST be preserved in their original source language -- NEVER translate names. mentions_in_source MUST be verbatim quotes from the source (preserve original language).`;
+    // Issue #244 (manual test fix): when the user's wiki language differs
+    // from English, instruct the LLM to ALSO emit a 'translation' field
+    // alongside each quote in mentions_with_provenance. The downstream
+    // formatter renders: "<verbatim>" (<translation>) -- [[path|display]].
+    // When source and wiki languages match, skip the translation field.
+    // When the source's own language matches the wiki language, translating
+    // its verbatim quotes back into the same language is meaningless (and
+    // bloats the JSON to the point of truncation). Prefer the explicit
+    // frontmatter `language:` signal; fall back to the legacy `!== 'en'`
+    // proxy only when the source is untagged, so cross-language wikis keep
+    // their translation behavior unchanged.
+    const crossLanguage = isCrossLanguage(sourceLang, wikiLang);
+    const translationHint = crossLanguage
+      ? `\n\nTRANSLATION (cross-language wikis): For each entry in mentions_with_provenance, ALSO add a 'translation' field containing a ${wikiLangName} translation of the quote text. The 'quote' field MUST stay verbatim in the source's original language; the translation goes in a separate 'translation' field. Example: {"quote": "Machine learning is fun", "translation": "机器学习很有趣"}`
+      : '';
+    // #328 Phase 1 follow-up: user-layer tag-vocab removed — system layer (buildSystemPrompt) always injects once.
+    const finalPrompt = prompt + langHint + translationHint;
+    return { prompt, finalPrompt };
   }
 
   private async analyzeEmbeddedImages(markdown: string, sourcePath: string, client: LLMClient): Promise<{ evidence: string; report: EmbeddedImageAnalysisReport }> {
