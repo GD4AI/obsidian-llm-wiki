@@ -86,8 +86,8 @@ function writers(): string[] {
  * unlisted writer is reported, including one in an already-listed file.
  */
 const PARAM_WRITER_ALLOWLIST = [
-  'core/openai-codex-model-policy.ts:applyCodexModelPolicy',
-  'core/openai-codex-model-policy.ts:preserveCodexRuntimeModelState',
+  'llm-sdk/openai-codex/model-policy.ts:applyCodexModelPolicy',
+  'llm-sdk/openai-codex/model-policy.ts:preserveCodexRuntimeModelState',
 ];
 
 /**

@@ -3,7 +3,7 @@
 // template, and a copy could come back wrong.
 
 import { describe, it, expect } from 'vitest';
-import { stampSourcePageHead } from '../../core/source-page-head';
+import { stampSourcePageHead } from '../../wiki/source-page-head';
 import { SECTION_LABELS, SOURCE_PAGE_HEAD_LABELS, getSourcePageHeadLabels } from '../../wiki/system-prompts';
 import type { LLMWikiSettings } from '../../types';
 

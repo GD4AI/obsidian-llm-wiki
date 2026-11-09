@@ -6,7 +6,7 @@ import {
   EncryptedPdfError,
   type PdfConversionContext,
   type ConversionResult,
-} from '../../core/pdf-converter';
+} from '../../wiki/pdf-converter';
 import { sha256Bytes, hashCacheKey, PDF_CONVERTER_VERSION } from '../../core/pdf-cache';
 
 // Inject the global SubtleCrypto mock from setup.ts so sha256Bytes has

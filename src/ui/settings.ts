@@ -21,7 +21,7 @@ import { renderAutoMaintainSection } from './settings-sections/auto-maintain-sec
 import { renderAdvancedSettingsSection } from './settings-sections/advanced-settings-section';
 import { copyCodexDeviceCode, runCodexDeviceAuth, runCodexModelRefresh, runCodexSignOut } from './openai-codex-auth-controls';
 import { copyBedrockUserCode, runBedrockDeviceAuth, runBedrockSignOut, type BedrockDevicePrompt } from './bedrock-auth-controls';
-import { applyCodexModelPolicy } from '../core/openai-codex-model-policy';
+import { applyCodexModelPolicy } from '../llm-sdk/openai-codex/model-policy';
 import type { CodexDevicePrompt } from './openai-codex-auth-controls';
 import { BEDROCK_DEFAULT_REGION, NOTICE_NORMAL, NOTICE_ERROR } from '../constants';
 import { ProviderSecretStore } from '../llm-sdk/provider-secret-store';

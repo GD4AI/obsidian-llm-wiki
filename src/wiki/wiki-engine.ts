@@ -35,7 +35,7 @@ import { isInSourceScope } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
 import { parseFrontmatter, upsertFrontmatterField, mergeFrontmatterArrayField, replaceFrontmatterArrayField, extractBody, enforceFrontmatterConstraints } from '../core/frontmatter';
 import { setGenerationComplete } from '../core/incomplete-page-cleaner';
-import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from '../core/pdf-converter';
+import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from './pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
 import { hashBody, checkContentRequirements } from '../core/source-requirements';
 import { resolveModelForTask } from '../core/model-resolver';
@@ -50,7 +50,7 @@ import { selectDomains } from '../core/domain-axis'; // domain axis stages 3-5 (
 import { activeVocabulary, activeVocabularyLists, domainVocabulary as domainVocabularyOf } from '../core/vocabulary';
 import { getSourceLanguage, isCrossLanguage } from '../core/source-language';
 import { cleanMarkdownResponse } from '../core/markdown';
-import { stampSourcePageHead } from '../core/source-page-head';
+import { stampSourcePageHead } from './source-page-head';
 import { injectMentionsSection } from '../core/mentions-injector';
 import { injectEmbeddedImageEvidenceSection } from '../core/embedded-image-evidence';
 import { SchemaManager, SchemaTask } from '../schema/schema-manager';

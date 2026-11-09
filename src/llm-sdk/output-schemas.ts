@@ -345,10 +345,10 @@ export type TagFixLLM = z.infer<typeof TagFixLLMSchema>;
  * markdown inside `translated`. Widening passthrough so future fields
  * (e.g. `notes`) don't break.
  */
-export const WelcomeTranslationLLMSchema = z.object({
-  translated: z.string(),
-}).loose();
-export type WelcomeTranslationLLM = z.infer<typeof WelcomeTranslationLLMSchema>;
+export {
+  WelcomeTranslationLLMSchema,
+  type WelcomeTranslationLLM,
+} from '../core/welcome-translation-schema';
 
 /** Factual evidence extracted from one bounded package of embedded images. */
 export const EmbeddedImageEvidenceSchema = z.object({

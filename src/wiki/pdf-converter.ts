@@ -32,18 +32,18 @@ import {
   hashCacheKey,
   PDF_CONVERTER_VERSION,
   createPdfCache,
-} from './pdf-cache';
+} from '../core/pdf-cache';
 import {
   parsePdfInfoDictText,
   isEncryptedPdfText,
-} from './pdf-metadata';
+} from '../core/pdf-metadata';
 import {
   TOKENS_PDF_CONVERSION,
   NATIVE_PDF_PROVIDER_IDS,
 } from '../constants';
-import { PDF_PROMPTS } from '../wiki/prompts/pdf';
-import { convertPdfWithMineru } from './mineru-converter';
-import type { ConversionResult, PdfConversionContext } from './pdf-conversion-types';
+import { PDF_PROMPTS } from './prompts/pdf';
+import { convertPdfWithMineru } from '../core/mineru-converter';
+import type { ConversionResult, PdfConversionContext } from '../core/pdf-conversion-types';
 
 // Re-exported so the call sites that read these from this module keep working.
 export type { ConversionResult, PdfConversionContext };

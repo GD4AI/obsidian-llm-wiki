@@ -4,7 +4,6 @@
  * Split out of `types.ts` by #929. Nothing here imports the barrel.
  */
 import type { z } from 'zod';
-import type { OutputMode } from '../llm-sdk/output-mode-prober';
 
 // LLM Provider configuration
 
@@ -62,6 +61,16 @@ export interface OpenAICodexModelCatalogEntry {
   serviceTiers: Array<{ id: string; name: string; description: string }>;
   defaultServiceTier?: string;
 }
+
+/**
+ * How a call asks the provider to produce structured output.
+ *
+ * Declared here, not in `llm-sdk/output-mode-prober.ts`, because settings carry
+ * it: `core/task-policy.ts` reads it from a task policy, and `core/` must not
+ * import `llm-sdk/`. The prober re-exports it, so its callers are unchanged
+ * (#931), the same way `ExtractionGranularity` moved in #929.
+ */
+export type OutputMode = 'json_schema' | 'json_schema_strict' | 'json_object' | 'text_prompt';
 
 /**
  * A content part within a chat message. Extends the legacy `string` content

@@ -35,7 +35,7 @@ import { EXIT_USAGE, exitCodeForReport } from './exit-code';
 import { type App, TFile, normalizePath } from 'obsidian';
 import { WikiEngine } from '../../../src/wiki/wiki-engine';
 import { SchemaManager } from '../../../src/schema/schema-manager';
-import { createLLMClient } from '../../../src/core/create-plugin-llm-client';
+import { createLLMClient } from '../../../src/llm-sdk/create-plugin-llm-client';
 import { preloadLLMClientModules } from '../../../src/llm-sdk/create-llm-client';
 import { applySettingsMigrations } from '../../../src/core/settings-migrations';
 import { isLocalNoKeyProvider } from '../../../src/core/local-no-key-provider';

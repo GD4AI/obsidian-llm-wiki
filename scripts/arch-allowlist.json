@@ -23,26 +23,5 @@
       "wiki/query-engine/types.ts"
     ]
   ],
-  "coreUpper": [
-    [
-      "core/localize-welcome-note.ts",
-      "llm-sdk/output-schemas.ts"
-    ],
-    [
-      "core/openai-codex-model-policy.ts",
-      "llm-sdk/openai-codex/constants.ts"
-    ],
-    [
-      "core/pdf-converter.ts",
-      "wiki/prompts/pdf.ts"
-    ],
-    [
-      "core/source-page-head.ts",
-      "wiki/system-prompts.ts"
-    ],
-    [
-      "core/task-policy.ts",
-      "llm-sdk/output-mode-prober.ts"
-    ]
-  ]
+  "coreUpper": []
 }

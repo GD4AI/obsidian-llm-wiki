@@ -1,4 +1,4 @@
-import { CODEX_MODELS } from '../llm-sdk/openai-codex/constants';
+import { CODEX_MODELS } from './constants';
 
 export interface CodexModelPolicyTarget {
   provider?: string;
