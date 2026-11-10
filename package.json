@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:tools": "tsc -p tools/dev-instrument/tsconfig.json --noEmit",
     "gate:1": "pnpm lint && pnpm arch-check && pnpm typecheck && pnpm build && pnpm test && pnpm css-lint",
-    "arch-check": "node scripts/arch-check.mjs"
+    "arch-check": "node scripts/arch-check.mjs",
+    "golden:mutation": "node tools/golden-mutation.mjs"
   },
   "keywords": [
     "obsidian",
