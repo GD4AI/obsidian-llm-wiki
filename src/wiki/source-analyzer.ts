@@ -879,6 +879,12 @@ export class SourceAnalyzer {
         // Read here, not inside the hint builder: that module stays pure, and
         // #980's advice only names the 60-second limit on the platform that has it.
         isMobile: Platform.isMobile,
+        // #980: the hint names the setting only when the setting is the cause, so
+        // it has to know which value the user chose.
+        streamIngest: this.ctx.settings.streamIngest,
+        // The hint is shown in a Notice, so it is user-visible text and follows
+        // the UI language like every other string.
+        language: this.ctx.settings.language,
       });
 
       return {

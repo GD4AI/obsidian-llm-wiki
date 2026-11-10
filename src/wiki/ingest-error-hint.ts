@@ -13,6 +13,10 @@
 // tested first, and the guards below state which is most specific and why.
 
 import { REASONING_ONLY_ERROR_CODE } from '../llm-sdk/finish-reason';
+import { TEXTS } from '../texts';
+
+type Language = keyof typeof TEXTS;
+type LocaleTexts = (typeof TEXTS)[Language];
 
 export interface IngestErrorContext {
   /** Provider id, used only to name the provider in the message. */
@@ -20,44 +24,28 @@ export interface IngestErrorContext {
   /** Resolved model id for the step. */
   model: string;
   /**
-   * Whether the call ran on iOS/iPadOS. Optional, and passed in rather than read
-   * from `Platform` here, so this module stays pure and its tests need no
-   * platform stub (#980).
+   * Whether the call ran on a mobile platform. Optional, and passed in rather
+   * than read from `Platform` here, so this module stays pure and its tests need
+   * no platform stub (#980).
    */
   isMobile?: boolean;
+  /**
+   * The user's transport choice, when the caller can read it (#980).
+   *
+   * The hint needs it to tell apart two states that look identical from the error
+   * alone: streaming was on and something upstream buffered the answer, or the
+   * user turned streaming off and that is the cause.
+   */
+  streamIngest?: 'auto' | 'always' | 'never';
+  /**
+   * The UI language, so the advice is translated (#980 follow-up).
+   *
+   * This hint is not console output: `ingest-commands.ts` puts the whole error
+   * message into a Notice. On a phone that Notice is the only surface a user has,
+   * and half-English advice inside a translated prefix reads as a broken plugin.
+   */
+  language?: Language;
 }
-
-/** The reasoning-only sentence, appended after the guard's own explanation. */
-const REASONING_ADVICE =
-  'The cause is the thinking budget, not the file size: the model spent the whole output budget on reasoning, so no answer was left. '
-  + 'Either turn thinking off for this step (Settings → LLM Advanced Parameters → Disable thinking), '
-  + 'or lower the thinking level, or raise Max output tokens per call — extraction now declares the model\'s full output ceiling by default, '
-  + 'so if this still happens the ceiling is being capped by that setting.';
-
-const CONTEXT_ADVICE =
-  'The request was rejected because the source file is too large for this model\'s context window. '
-  + 'Try: (1) switch to a model with a larger context window (e.g. 1M tokens) in Settings, '
-  + '(2) reduce the file size, or (3) use a provider that supports larger contexts.';
-
-/**
- * A timeout, on the one platform where the plugin cannot prevent it (Issue #980).
- *
- * The transport now streams ingest requests, so the plugin no longer creates this
- * failure by itself. What remains is upstream: a reverse proxy that buffers the
- * response, or a provider that does not flush partial output. Naming both keeps
- * the advice true after the fix instead of pointing at a limit that no longer
- * applies.
- */
-const MOBILE_TIMEOUT_ADVICE =
-  'The request received no data for 60 seconds. That is the iOS limit for one request, and it fires while the model is still working. '
-  + 'Ingest requests stream when the provider allows it, so a gap this long means something between the plugin and the model held the answer back. '
-  + 'Try: (1) turn off response buffering on any reverse proxy in front of the model server, '
-  + '(2) use a provider or model that streams partial output, or (3) run the ingest from a desktop device, which has no such limit.';
-
-/** The same failure with no platform stated: the cause is named, the number is not. */
-const TIMEOUT_ADVICE =
-  'The request timed out before any data arrived. Ingest requests stream when the provider allows it, so a silent gap usually means the answer was buffered — '
-  + 'by a reverse proxy, or by a provider that does not flush partial output. Check the provider URL and any proxy in front of it.';
 
 /**
  * Match a timeout, and not a user cancellation.
@@ -116,33 +104,48 @@ export function namesOutputCeiling(errMsg: string): boolean {
  * not, because a wrong path is worse than no path: the user looks, does not
  * find it, and concludes the plugin is broken.
  */
+/**
+ * Pick the advice the platform and the setting call for (#980).
+ *
+ * Three states, and the setting decides which one applies. On mobile, `auto` and
+ * `always` both stream, so a timeout there means something upstream held the
+ * answer back; `never` means the user turned streaming off and that is the cause.
+ * On desktop nothing streams unless asked, so `always` is the actionable control.
+ */
+function timeoutAdvice(context: IngestErrorContext, t: LocaleTexts): string {
+  if (context.streamIngest === 'never') return t.ingestHintStreamingOff;
+  return context.isMobile ? t.ingestHintMobileTimeout : t.ingestHintDesktopTimeout;
+}
+
 export function buildIngestErrorHint(errMsg: string, error: unknown, context: IngestErrorContext): string {
   const lowerErr = errMsg.toLowerCase();
   const code = (error as { code?: unknown } | null)?.code;
+  // Falls back to English when the caller states no language, so a unit test or a
+  // future call site cannot end up with an empty hint.
+  const t = TEXTS[context.language ?? 'en'] ?? TEXTS.en;
 
   // Most specific first. The guard's message is the only one that can contain
   // `token` while being about neither the context window nor `max_tokens`.
-  if (looksLikeReasoningOnly(errMsg, code)) return REASONING_ADVICE;
+  if (looksLikeReasoningOnly(errMsg, code)) return t.ingestHintReasoning;
   if (lowerErr.includes('max_tokens') || lowerErr.includes('max tokens')) {
-    return 'The model rejected the max_tokens value. Lower Max output tokens per call in Settings → LLM Advanced Parameters.';
+    return t.ingestHintMaxTokens;
   }
   if (lowerErr.includes('context') || lowerErr.includes('length') || lowerErr.includes('exceed')) {
-    return CONTEXT_ADVICE;
+    return t.ingestHintContextWindow;
   }
   if (lowerErr.includes('400')) {
-    return 'The API returned a Bad Request error. Check that the model name is correct and supported by your provider.';
+    return t.ingestHintBadRequest;
   }
   if (lowerErr.includes('401') || lowerErr.includes('403')) {
-    return 'Authentication failed. Check your API key in Settings.';
+    return t.ingestHintAuth;
   }
   if (lowerErr.includes('429')) {
-    return 'Rate limit exceeded. Wait a moment and try again, or switch to a provider with higher limits.';
+    return t.ingestHintRateLimit;
   }
   // After the HTTP codes, so a message carrying both keeps the rejection's
   // advice: a 401 is actionable and a timeout beside it is the symptom.
   if (looksLikeTimeout(lowerErr)) {
-    return context.isMobile ? MOBILE_TIMEOUT_ADVICE : TIMEOUT_ADVICE;
+    return timeoutAdvice(context, t);
   }
-  return 'Check your network connection, API key, and provider URL in Settings. '
-    + 'If the error mentions SSL/TLS, try: (1) restart Obsidian, (2) check VPN/proxy settings, (3) verify the provider URL is correct.';
+  return t.ingestHintDefault;
 }
