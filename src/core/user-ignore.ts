@@ -27,21 +27,49 @@ interface UserIgnoreCache {
 }
 
 /**
+ * Derived once and reported once. `AutoMaintain.isWatched` builds a predicate on
+ * every vault event, so a per-call warning would be the log spam the throwing
+ * branch already risked.
+ */
+let warnedMissingResolver = false;
+
+/** Tests only: forget that the warning was emitted. */
+export function __resetUserIgnoreWarning(): void {
+  warnedMissingResolver = false;
+}
+
+/**
  * Derive the exclusion predicate from a `MetadataCache`.
  *
  * Returns a function that never throws. An absent method — an older Obsidian, or a
- * test double — yields "nothing is excluded", which is the same behaviour as a vault
- * with an empty list.
+ * test double — yields "nothing is excluded", and says so once per session.
  *
- * A throwing `isUserIgnored` is caught and treated as "not excluded" with a warning.
- * That is deliberate: `userIgnoreFilters` accepts regexes, a user can write an invalid
- * one, and the recoverable failure is ingesting a file the user meant to exclude. The
+ * The warning is not noise, and the distinction matters: `isUserIgnored` exists on
+ * every Obsidian version this plugin supports **whether or not the list is empty**,
+ * so a missing method is an environment mismatch rather than a vault with no
+ * exclusions. Both used to produce the same silent `false`, which made "every
+ * exclusion the user wrote is being ignored" indistinguishable from "nothing to
+ * ignore". #872 closed the watcher path without covering that branch.
+ *
+ * A throwing `isUserIgnored` is caught and treated as "not excluded" with a warning
+ * per call, naming the path. That is deliberate and different from the above:
+ * `userIgnoreFilters` accepts regexes, a user can write an invalid one, and the
+ * recoverable failure is ingesting a file the user meant to exclude. The
  * alternative is that one broken pattern stops a whole folder ingest with no path
- * forward, which is worse and harder to discover.
+ * forward, which is worse and harder to discover. That branch is also per path
+ * because the path is the only actionable detail.
  */
 export function makeUserIgnorePredicate(metadataCache: unknown): (path: string) => boolean {
   const cache = metadataCache as UserIgnoreCache | null | undefined;
-  if (typeof cache?.isUserIgnored !== 'function') return () => false;
+  if (typeof cache?.isUserIgnored !== 'function') {
+    if (!warnedMissingResolver) {
+      warnedMissingResolver = true;
+      console.warn(
+        'userIgnoreFilters: metadataCache.isUserIgnored is unavailable; Obsidian\'s Excluded files list is being ignored for this session'
+      );
+    }
+    return () => false;
+  }
 
   const isUserIgnored = cache.isUserIgnored.bind(cache);
   return (path: string): boolean => {
