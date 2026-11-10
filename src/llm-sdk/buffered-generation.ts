@@ -41,7 +41,7 @@
 // The limit is a property of the platform, so the platform decides. Desktop has
 // no such limit and keeps the cheaper transport.
 import { Platform } from 'obsidian';
-import { generateText, streamText } from 'ai';
+import { generateText, streamText, NoOutputGeneratedError } from 'ai';
 import type { FinishReason, LanguageModelUsage } from 'ai';
 
 /**
@@ -51,9 +51,11 @@ import type { FinishReason, LanguageModelUsage } from 'ai';
  * backends route the answer into `reasoning_content` and leave `content` empty,
  * so losing this field would silently disable that rescue (#443).
  *
- * `output` is present only when an `output` specification was passed. The SDK
- * throws when the field is read without one, and every caller already treats
- * "absent" as `undefined` — see `readOutput` in the compat client.
+ * `output` is present only when an `output` specification was passed, and reading
+ * it without one throws — the same contract the SDK's own getter has. Two call
+ * sites catch that error and recover the answer from the reasoning channel, so
+ * turning it into `undefined` here would have moved the throw out of their
+ * `try`/`catch` and lost the recovery (#443).
  */
 export interface BufferedGeneration {
 	readonly text: string;
@@ -99,17 +101,13 @@ export async function generateBuffered(
 	const stream = options.stream ?? shouldStreamForSilence();
 
 	if (!stream) {
-		const result = await generateText(args);
-		return {
-			text: result.text,
-			finishReason: result.finishReason,
-			usage: result.usage,
-			finalStep: result.finalStep,
-			// Guarded: the SDK's `output` getter throws when no specification was
-			// passed, so reading it unconditionally would turn the buffered path
-			// into a failure the streamed path does not have.
-			output: args.output ? result.output : undefined,
-		};
+		// The SDK result is returned untouched, not rebuilt field by field. Every
+		// field already has exactly the semantics the callers rely on, and `output`
+		// is a getter that throws when nothing was parsed — a detail two call sites
+		// catch on purpose. Copying the fields here moved that throw from their
+		// `try`/`catch` into this function, which is how the first version of this
+		// module broke them.
+		return await generateText(args);
 	}
 
 	const result = streamText(args as unknown as StreamArgs);
@@ -119,10 +117,17 @@ export async function generateBuffered(
 		result.usage,
 		result.finalStep,
 	]);
-	// `unknown` is stated rather than inferred: the cast above erases the output
-	// generic, so the inferred type here is `any` and the lint budget forbids an
-	// unchecked assignment. The callers cast at the point of use through
-	// `readOutput`, which already accepts `unknown`.
+	// Awaited only when a specification was passed: parsing output is work a
+	// caller that never reads it should not pay for.
 	const output: unknown = args.output ? await result.output : undefined;
-	return { text, finishReason, usage, finalStep, output };
+	return {
+		text,
+		finishReason,
+		usage,
+		finalStep,
+		get output(): unknown {
+			if (!args.output) throw new NoOutputGeneratedError();
+			return output;
+		},
+	};
 }
