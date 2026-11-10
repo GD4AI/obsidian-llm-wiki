@@ -14,6 +14,8 @@
 //      calls that work today.
 //   3. The policy could drift. Streaming is only worth its ~60× byte cost where
 //      the platform cuts an idle connection, and desktop has no such limit.
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Platform } from 'obsidian';
 
@@ -214,5 +216,40 @@ describe('generateBuffered — the reasoning channel survives', () => {
 		const result = await generateBuffered(ARGS, { stream: true });
 
 		expect(await extractResultReasoning(result)).toBe('the reasoning answer');
+	});
+});
+
+// A helper nobody calls is not a fix. This reads the production tree, so the next
+// call site added to any SDK client cannot bypass the platform decision — the
+// defect in #980 was exactly that: eleven call sites that buffered on every
+// platform because nothing said they could not.
+describe('no SDK client bypasses the platform decision (#980)', () => {
+	const SDK_DIR = join(__dirname, '..', '..', 'llm-sdk');
+	const EXEMPT = new Set(['buffered-generation.ts']);
+
+	const isCode = (line: string): boolean => {
+		const trimmed = line.trimStart();
+		return !trimmed.startsWith('//') && !trimmed.startsWith('*');
+	};
+
+	it('calls generateBuffered rather than generateText anywhere in src/llm-sdk', () => {
+		// Lines only. Two files carry a `generateText` example in a doc comment, and
+		// a net that cannot tell prose from code reports a defect that is not there.
+		const callers = readdirSync(SDK_DIR)
+			.filter(name => name.endsWith('.ts') && !name.endsWith('.test.ts') && !EXEMPT.has(name))
+			.filter(name =>
+				readFileSync(join(SDK_DIR, name), 'utf8')
+					.split('\n')
+					.some(line => isCode(line) && /\bawait generateText\(/.test(line)),
+			);
+
+		expect(callers).toEqual([]);
+	});
+
+	it('keeps streamText direct, because a stream is already not silent', () => {
+		// The rule above is about buffered calls only. Exempting the streaming
+		// paths too would flag the one transport that needs no help.
+		const streaming = readFileSync(join(SDK_DIR, 'openai-sdk-client.ts'), 'utf8');
+		expect(streaming).toMatch(/\.textStream\b/);
 	});
 });

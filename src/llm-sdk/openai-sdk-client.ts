@@ -30,6 +30,10 @@
 //   - Streaming SSE parser — AI-SDK's textStream replaces it.
 
 import { type LanguageModel, APICallError, NoSuchModelError, InvalidPromptError } from 'ai';
+// Type-only: the value moved to `generateBuffered`, which decides per platform
+// whether this call may buffer (#980). `Parameters<typeof generateText>` below
+// still types the provider options, so the type stays.
+import type { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { resolveSdkReasoning, type SdkReasoning } from './reasoning-level';
 import { LLMClient } from '../types';
@@ -43,6 +47,7 @@ import {
 import { extractResultReasoning, reportFinish } from './finish-reason';
 import { bodyExcerpt, describeUnreadableBody } from './unreadable-body';
 import { withExplicitStreamFalse } from './explicit-stream-flag';
+import { generateBuffered } from './buffered-generation';
 import { assertNotEmptyAnswer } from './empty-answer';
 import { buildSamplingArgs } from './sampling-args';
 import { ReasoningStripProber } from './reasoning-strip-probe';
@@ -188,8 +193,7 @@ export class OpenAISdkClient implements LLMClient {
   private async probeBaseURL(baseURL: string): Promise<boolean> {
     try {
       const languageModel = this.getProvider('gpt-4o-mini', this.fetchImpl, baseURL);
-      const { generateText } = await import('ai');
-      await generateText({
+      await generateBuffered({
         model: languageModel,
         messages: [{ role: 'user', content: 'hi' }],
         maxOutputTokens: 1,
@@ -207,10 +211,11 @@ export class OpenAISdkClient implements LLMClient {
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
-      // Lazy import to keep generateText on the same module surface.
-      const { generateText } = await import('ai');
 
-      const result = await generateText({
+      // #980: on mobile this streams, so a long generation is never silent for
+      // longer than the platform allows. On desktop it returns generateText's
+      // own result untouched.
+      const result = await generateBuffered({
         model: languageModel,
         ...(system ? { system } : {}),
         messages,
@@ -260,8 +265,7 @@ export class OpenAISdkClient implements LLMClient {
         });
         // Retry with the resolved URL
         const retryLanguageModel = this.getProvider(model, this.fetchImpl, resolved);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+        const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
@@ -301,8 +305,7 @@ export class OpenAISdkClient implements LLMClient {
         ReasoningStripProber.isReasoningFieldError(err.message ?? '')
       ) {
         const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+        const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
