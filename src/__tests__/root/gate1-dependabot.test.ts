@@ -27,6 +27,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 const WORKFLOWS = join(__dirname, '..', '..', '..', '.github', 'workflows');
@@ -68,5 +69,65 @@ describe('Gate 1 reaches a Dependabot commit (#974)', () => {
 		// `contents: write` alone cannot start a run; the dispatch 403s and the
 		// pull request is back to having no checks, silently.
 		expect(sync).toMatch(/^ {2}actions: write$/m);
+	});
+
+	it('checks the existing run when it did not push, instead of assuming one stands', () => {
+		const sync = read('dependabot-lockfile.yml');
+
+		// The push path dispatches. The other path used to trust "the original run
+		// stands", and #975 showed that run can be `completed / action_required` —
+		// never started, waiting for an approval that never came.
+		expect(sync).toMatch(/if: steps\.push\.outputs\.pushed != 'true'/);
+		expect(sync).toContain('node scripts/gate1-run-state.mjs');
+	});
+});
+
+// The decision itself, driven through the script the workflow calls. A string
+// assertion on the YAML would pass for a workflow that runs the wrong logic.
+const SCRIPT = join(__dirname, '..', '..', '..', 'scripts', 'gate1-run-state.mjs');
+
+function verdict(states: string): { status: number | null; output: string } {
+	const result = spawnSync(process.execPath, [SCRIPT, states], { encoding: 'utf8' });
+	return { status: result.status, output: `${result.stdout}${result.stderr}` };
+}
+
+describe('a Gate 1 run that cannot pass is not a gate (#975)', () => {
+	it('fails when the commit has no Gate 1 run at all', () => {
+		const { status, output } = verdict('');
+
+		// The absent case is the one that reads as "nothing to check".
+		expect(status).toBe(1);
+		expect(output).toContain('No Gate 1 run exists');
+	});
+
+	it('fails when the run ended action_required', () => {
+		const { status, output } = verdict('completed/action_required');
+
+		// Terminal, and never started: waiting approval is not a pass and is not
+		// pending. `gh pr checks` prints nothing for it.
+		expect(status).toBe(1);
+		expect(output).toContain('dependabot rebase');
+	});
+
+	it('fails when the run failed', () => {
+		expect(verdict('completed/failure').status).toBe(1);
+	});
+
+	it('passes on success', () => {
+		expect(verdict('completed/success').status).toBe(0);
+	});
+
+	it('passes when a run is still coming', () => {
+		// A queued run is not evidence of anything yet, but failing here would
+		// turn the lockfile job red on its own dispatch being slow to start.
+		expect(verdict('in_progress/-').status).toBe(0);
+		expect(verdict('queued/-').status).toBe(0);
+		// `waiting` is the state an approval request actually sits in while live.
+		expect(verdict('waiting/-').status).toBe(0);
+	});
+
+	it('passes when any run on the commit succeeded', () => {
+		// A retry that passed makes the commit guarded, whatever older attempts did.
+		expect(verdict('completed/action_required,completed/success').status).toBe(0);
 	});
 });

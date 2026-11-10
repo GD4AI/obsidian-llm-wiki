@@ -93,8 +93,8 @@ jobs:
         # checks at all — the run that exists belongs to the commit *before* the
         # fix. Dispatching here puts the gate on the commit that would be merged.
         #
-        # Only on a real push: when the lockfile already matched, the original
-        # run stands and starting a second one would only duplicate it.
+        # Only on a real push: when the lockfile already matched, the step below
+        # checks the run that already exists rather than starting a second one.
         #
         # A failing dispatch is left failing on purpose. It happens when the head
         # branch's `pr-ci.yml` predates the `workflow_dispatch` trigger — a pull
@@ -106,3 +106,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run pr-ci.yml --ref "${{ github.event.pull_request.head.ref }}"
+
+      - name: Fail when this commit has no Gate 1 run that can still pass
+        # Issue #975. The step above starts a run only when it pushed. When it did
+        # not push, this workflow assumed "the original run stands", and #975 showed
+        # the assumption is false: a run can end `completed / action_required`,
+        # which means it never started because a maintainer's approval was needed.
+        # `gh pr checks` prints "no checks reported" for that state, so an unrun
+        # gate reads as a gate that is not needed — the same confusion #974 removed
+        # on the push path. The decision lives in a script so a test can drive it.
+        if: steps.push.outputs.pushed != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha="${{ github.event.pull_request.head.sha }}"
+          states=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$sha&per_page=50" \
+            --jq '[.workflow_runs[] | select(.name == "Gate 1 (Five-Gate)") | "\(.status)/\(.conclusion // "-")"] | join(",")')
+          echo "Gate 1 runs on $sha: ${states:-none}"
+          node scripts/gate1-run-state.mjs "$states"
