@@ -22,7 +22,7 @@ vi.mock('ai', async () => {
 	return { ...actual, generateText: vi.fn(), streamText: vi.fn() };
 });
 
-import { generateText, streamText } from 'ai';
+import { generateText, streamText, NoOutputGeneratedError } from 'ai';
 import { generateBuffered, shouldStreamForSilence } from '../../llm-sdk/buffered-generation';
 import { extractResultReasoning } from '../../llm-sdk/finish-reason';
 
@@ -104,13 +104,16 @@ describe('generateBuffered — the buffered transport', () => {
 		expect(result.usage).toEqual(USAGE);
 	});
 
-	it('does not read output when the caller passed no specification', async () => {
-		// The fake throws from the getter. Reaching it would fail here.
+	it('keeps generateText\'s output contract: reading it without a specification throws', async () => {
+		// The callers that matter rely on this. Two sites catch the throw and
+		// recover the answer from the reasoning channel (#443), so returning
+		// `undefined` here would move the throw out of their `try`/`catch` and
+		// lose the recovery. The fake's getter throws, exactly like the SDK's.
 		mockGenerateText.mockResolvedValue(bufferedResult() as never);
 
 		const result = await generateBuffered(ARGS, { stream: false });
 
-		expect(result.output).toBeUndefined();
+		expect(() => result.output).toThrow('output was read without a specification');
 	});
 
 	it('returns output when a specification was passed', async () => {
@@ -141,13 +144,16 @@ describe('generateBuffered — the streamed transport', () => {
 		expect(result.usage).toEqual(USAGE);
 	});
 
-	it('does not await output when the caller passed no specification', async () => {
-		// The fake's getter rejects. Awaiting it would reject here.
+	it('does not parse output when the caller passed no specification, and says so on read', async () => {
+		// Two properties at once. The stream is not rejected, so `output` was not
+		// awaited; and reading the field still throws, so a caller expecting
+		// structured output cannot mistake `undefined` for a parsed result.
 		mockStreamText.mockReturnValue(streamedResult() as never);
 
 		const result = await generateBuffered(ARGS, { stream: true });
 
-		expect(result.output).toBeUndefined();
+		expect(result.text).toBe('the answer');
+		expect(() => result.output).toThrow(NoOutputGeneratedError);
 	});
 
 	it('awaits output when a specification was passed', async () => {
