@@ -135,6 +135,24 @@ interface DedupOutcome {
 }
 
 /**
+ * Record a retry that produced an answer, and hand the answer back (#993).
+ *
+ * One line at the call site on purpose: `runDedupPhase` is under a line ceiling,
+ * and the difference between "this retry worked" and "this retry ran" is the whole
+ * of #993.
+ */
+function recordRecovery(
+  events: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }>,
+  batchNum: number,
+  attempt: 1 | 2,
+  delayMs: number,
+  answer: string,
+): string {
+  events.push({ batchNum, attempt, delayMs });
+  return answer;
+}
+
+/**
  * Report the run's failures and retries. Extracted from `runDedupPhase` (#932).
  *
  * Three signals, each with one audience: the rate-limit Notice for the user, the
@@ -198,10 +216,13 @@ function reportDedupOutcome(outcome: DedupOutcome): void {
   // path (dedup, analysis, fix-runners) can use; this Toast key is
   // designed to be reused by those callers too.
   if (retryEvents.length > 0) {
-    const delayedRetries = retryEvents.filter(e => e.delayMs > 0).length;
-    const summary = delayedRetries > 0
-      ? `${retryEvents.length} batch(es) recovered from empty LLM responses (${delayedRetries} with 2s backoff). Concurrency was temporarily reduced from ${outcome.userConcurrency} → ${outcome.finalConcurrency} for the rest of the scan. See console for detail.`
-      : `${retryEvents.length} batch(es) recovered from empty LLM responses (immediate retry succeeded). See console for detail.`;
+    // #993: `retryEvents` now holds recovered batches only, so the count means
+    // what the sentence says. The old parenthetical counted every retry that had
+    // a delay, which labelled a 500 ms recovery as "2s backoff".
+    const concurrencyNote = outcome.finalConcurrency < outcome.userConcurrency
+      ? ` Concurrency was reduced from ${outcome.userConcurrency} → ${outcome.finalConcurrency} for the rest of the scan.`
+      : '';
+    const summary = `${retryEvents.length} batch(es) recovered after an empty LLM response.${concurrencyNote} See console for detail.`;
     console.warn(
       `[Dedup LLM] ${summary}`,
     );
@@ -597,8 +618,11 @@ export async function runDedupPhase(
       if (first.length > 0) return first;
 
       // Attempt 2: 500ms-delayed retry of the same request.
+      //
+      // #993: the recovery is recorded after this attempt returns, not before it.
+      // The old order counted a retry that also came back empty, so a batch that
+      // failed every attempt was still announced as recovered.
       softThrottleDetected = true;
-      retryEvents.push({ batchNum, attempt: 1, delayMs: RETRY_ATTEMPT_2_DELAY_MS });
       console.warn(
         `[Dedup LLM batch ${batchNum}] empty response (attempt 1) — ` +
         `retrying after ${RETRY_ATTEMPT_2_DELAY_MS}ms. enableThinking_sent=${FORCE_DISABLE_THINKING ? 'false' : 'unset'} ` +
@@ -607,10 +631,9 @@ export async function runDedupPhase(
       await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_2_DELAY_MS));
       const second = await callOnce();
       logResponse(second, 2, RETRY_ATTEMPT_2_DELAY_MS);
-      if (second.length > 0) return second;
+      if (second.length > 0) return recordRecovery(retryEvents, batchNum, 1, RETRY_ATTEMPT_2_DELAY_MS, second);
 
       // Attempt 3: 2-second delayed retry (final attempt).
-      retryEvents.push({ batchNum, attempt: 2, delayMs: RETRY_ATTEMPT_3_DELAY_MS });
       console.warn(
         `[Dedup LLM batch ${batchNum}] empty response (attempt 2) — ` +
         `retrying after ${RETRY_ATTEMPT_3_DELAY_MS}ms delay (likely provider soft-throttle).`
@@ -618,6 +641,7 @@ export async function runDedupPhase(
       await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_3_DELAY_MS));
       const third = await callOnce();
       logResponse(third, 3, RETRY_ATTEMPT_3_DELAY_MS);
+      if (third.length > 0) return recordRecovery(retryEvents, batchNum, 2, RETRY_ATTEMPT_3_DELAY_MS, third);
       return third;
     }
 
