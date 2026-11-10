@@ -101,22 +101,29 @@ describe('a timeout names the platform cause (#980)', () => {
     expect(hint).not.toContain('the iOS limit');
   });
 
-  it('gives numbered steps the user can act on', () => {
+  it('gives an action the user can take, not just a diagnosis', () => {
     const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
 
-    // "Brief guidance" is the requirement: three steps, in the order to try them.
-    expect(hint).toContain('(1)');
-    expect(hint).toContain('(2)');
-    expect(hint).toContain('(3)');
+    // Shortened from three numbered steps to two named actions (#980 follow-up):
+    // the whole message lands in one Notice, and a phone cannot read 525
+    // characters of advice. What must survive the shortening is an action.
+    expect(hint.toLowerCase()).toContain('buffering');
+    expect(hint.toLowerCase()).toContain('streams');
   });
 
-  it('names the 60-second limit on mobile', () => {
-    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
+  it('is translated, because the hint is shown in a Notice', () => {
+    // `ingest-commands.ts` puts the whole error message into a Notice, so this is
+    // user-visible text on the one surface a phone user has. Half-English advice
+    // inside a translated prefix reads as a broken plugin.
+    const zh = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: true, language: 'zh' });
+    expect(zh).toContain('移动平台');
+    expect(zh).not.toContain('mobile platform');
 
-    // The number is the whole point: "timed out" alone sends the user to check
-    // their connection, which is not the cause.
-    expect(hint).toContain('60 seconds');
-    expect(hint).toMatch(/iOS|iPadOS/);
+    // And every locale answers, rather than falling back to English silently.
+    for (const language of ['en', 'zh', 'zh-Hant', 'ja', 'ko', 'de', 'fr', 'es', 'pt', 'it', 'ru'] as const) {
+      const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: true, language });
+      expect(hint.length).toBeGreaterThan(20);
+    }
   });
 
   it('points at what still causes it, now that ingest streams', () => {
@@ -142,7 +149,35 @@ describe('a timeout names the platform cause (#980)', () => {
     const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), CTX);
 
     expect(hint.length).toBeGreaterThan(0);
-    expect(hint).toContain('stream');
+    // No platform stated means the desktop wording, which is the one that does
+    // not claim a mobile limit.
+    expect(hint).not.toContain('mobile platform');
+  });
+
+  it('names the setting when the setting caused it, and only then', () => {
+    // On mobile, `auto` and `always` both stream, so no setting value can rescue a
+    // call that already timed out with streaming on: the silence is upstream.
+    // `never` is the exception — it turns streaming off, which is exactly what
+    // produces this failure on mobile. So the hint names the setting in that case
+    // and stays quiet in the others, where naming it would send the user to a
+    // control that cannot help.
+    const onNever = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: true, streamIngest: 'never' });
+    expect(onNever).toContain('Stream ingest calls');
+    expect(onNever).toContain('Auto');
+
+    for (const mode of ['auto', 'always', undefined] as const) {
+      const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: true, streamIngest: mode });
+      expect(hint).not.toContain('Stream ingest calls');
+    }
+  });
+
+  it('tells a desktop user which setting helps when a proxy cuts the connection', () => {
+    // Desktop buffers under `auto`, so `always` is the one setting that changes
+    // anything there: it keeps bytes moving past a proxy that closes idle links.
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: false, streamIngest: 'auto' });
+
+    expect(hint).toContain('Stream ingest calls');
+    expect(hint).toContain('Always');
   });
 
   it('does not swallow a more specific failure that merely mentions time', () => {
