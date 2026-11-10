@@ -1302,7 +1302,7 @@ describe('runDedupPhase — retry recovery is reported (#932 characterization)',
     return { warnSpy, createMessage, ctx, pageMap };
   }
 
-  it('reports one recovered batch, with the backoff counted', async () => {
+  it('reports one recovered batch, counting only the ones that recovered', async () => {
     const { warnSpy, createMessage, ctx, pageMap } = harness(['', '{"duplicates":[]}']);
     try {
       await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
@@ -1312,12 +1312,14 @@ describe('runDedupPhase — retry recovery is reported (#932 characterization)',
 
       const summary = warnSpy.mock.calls
         .map(args => String(args[0]))
-        .filter(line => line.includes('recovered from empty LLM responses'));
+        .filter(line => line.includes('recovered after an empty LLM response'));
       expect(summary).toHaveLength(1);
-      // `(1 with 2s backoff)` is how the delay constant becomes visible. Setting
-      // the 500 ms retry to 0 changes this sentence to "immediate retry
-      // succeeded", which is a behaviour change and must be caught.
-      expect(summary[0]).toContain('1 batch(es) recovered from empty LLM responses (1 with 2s backoff)');
+      // #993: the count is how many batches recovered, and no delay tier is
+      // asserted, because one recovered batch may have succeeded on either tier.
+      // The old text printed "(1 with 2s backoff)" for a retry that took 500 ms.
+      expect(summary[0]).toContain('1 batch(es) recovered after an empty LLM response.');
+      // No halving happened in this scenario, so the sentence must not claim one.
+      expect(summary[0]).not.toContain('Concurrency was');
 
       // The user-facing half: one Notice, not one per retry.
       const retryNotices = noticedTexts().filter(text => text.includes('needed retry'));
@@ -1329,22 +1331,43 @@ describe('runDedupPhase — retry recovery is reported (#932 characterization)',
     }
   });
 
-  it('reports a recovery even when every retry also returned nothing — current behaviour, filed as #993', async () => {
+  it('does not report a recovery when every attempt returned nothing (#993)', async () => {
     const { warnSpy, ctx, pageMap } = harness(['', '', '']);
     try {
       await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
 
-      // Pinning what the code does, not what it should do. `retryEvents` is
-      // pushed on attempts 2 and 3 whatever they return, so a batch that failed
-      // all three times is still announced as recovered, while the same batch
-      // lands in `dedupFailures`. #993 records the contradiction and the fix;
-      // this test exists so the #932 extraction cannot change it by accident,
-      // and it must be rewritten when #993 lands.
+      // The retry ran and failed. Announcing a recovery here told the user the
+      // opposite of the truth, and the same batch was simultaneously counted in
+      // `dedupFailures` — one run printed both "recovered" and "failed".
       const recovered = warnSpy.mock.calls
         .map(args => String(args[0]))
-        .filter(line => line.includes('recovered from empty LLM responses'));
+        .filter(line => line.includes('recovered after an empty LLM response'));
+      expect(recovered).toHaveLength(0);
+      expect(noticedTexts().filter(text => text.includes('needed retry'))).toHaveLength(0);
+
+      // And the failure is still reported, so silence is not the fix.
+      const failed = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('failed for non-rate-limit reasons'));
+      expect(failed.length).toBeGreaterThan(0);
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('counts a batch that recovered on the third attempt exactly once', async () => {
+    // Two empty answers then content: the 2-second tier succeeded, so the batch
+    // recovered, and it is one batch — not one per attempt.
+    const { warnSpy, ctx, pageMap } = harness(['', '', '{"duplicates":[]}']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      const recovered = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered after an empty LLM response'));
       expect(recovered).toHaveLength(1);
-      expect(noticedTexts().filter(text => text.includes('needed retry'))).toHaveLength(1);
+      expect(recovered[0]).toContain('1 batch(es) recovered');
     } finally {
       warnSpy.mockRestore();
       clearNotices();
