@@ -20,8 +20,30 @@
  *
  * Normalised before comparison — timestamps, `updated:` dates, absolute paths and
  * the elapsed-time fields. Everything else is compared exactly.
+ *
+ * **Values are recorded for the keys the plugin computes.** Added 2026-11-10,
+ * after `tools/golden-mutation.mjs` showed a mutation that changed a page's
+ * `sources:` target surviving the whole net: the key was present, so
+ * `frontmatterKeys` matched, and nothing looked at the value.
+ *
+ * The rule is provenance, not type. A value is recorded when the **plugin**
+ * derives it from an input the net fixes — `sources` from the source note,
+ * `aliases` from the extracted names after the redundancy filter. A value is not
+ * recorded when it is the model's own prose (`title`, the body), because then the
+ * net would compare a fake client's constant against itself, which is the same
+ * trap that keeps prompt text out of this file.
+ *
+ * Values are sorted, so an order change alone does not fail. A change to **which**
+ * entries exist does.
  */
 import { parseFrontmatter } from '../../core/frontmatter';
+
+/**
+ * Frontmatter keys whose value the plugin computes, keyed to nothing else.
+ * `tags` and `type` are recorded as their own fields above; they are not repeated
+ * here. Adding a key to this list widens the net, so it needs a mutation that dies.
+ */
+const COMPUTED_VALUE_KEYS = ['sources', 'aliases'] as const;
 
 export interface PageStructure {
 	path: string;
@@ -30,6 +52,8 @@ export interface PageStructure {
 	/** The two values a refactor actually moves, when present. */
 	type: string | null;
 	tags: string[];
+	/** Values of the keys the plugin computes — see `COMPUTED_VALUE_KEYS`. */
+	frontmatterValues: Record<string, string[]>;
 	/** Headings in document order — a lost section shows up here. */
 	headings: string[];
 	/** Wikilink targets, sorted and de-duplicated. */
@@ -76,6 +100,31 @@ function linksOf(body: string): string[] {
 	return [...found].sort();
 }
 
+function asStringArray(raw: unknown): string[] {
+	if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean).sort();
+	if (typeof raw === 'string') {
+		return raw
+			.split(/[,\s]+/)
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.sort();
+	}
+	return [];
+}
+
+function computedValuesOf(frontmatter: Record<string, unknown> | null): Record<string, string[]> {
+	const out: Record<string, string[]> = {};
+	for (const key of COMPUTED_VALUE_KEYS) {
+		const value = frontmatter?.[key];
+		if (value === undefined || value === null) continue;
+		const entries = asStringArray(value);
+		// An empty list is a value too: "the plugin stopped writing any entry" must
+		// fail here rather than look like an absent key.
+		out[key] = entries;
+	}
+	return out;
+}
+
 function structureOf(path: string, content: string): PageStructure {
 	const normalised = normalise(content);
 	const frontmatter = parseFrontmatter(normalised) as Record<string, unknown> | null;
@@ -94,6 +143,7 @@ function structureOf(path: string, content: string): PageStructure {
 		frontmatterKeys: frontmatter ? Object.keys(frontmatter).sort() : [],
 		type,
 		tags,
+		frontmatterValues: computedValuesOf(frontmatter),
 		headings: headingsOf(normalised),
 		links: linksOf(normalised),
 	};

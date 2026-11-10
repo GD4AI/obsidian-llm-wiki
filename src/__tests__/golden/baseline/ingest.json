@@ -39,6 +39,12 @@
 			"tags": [
 				"term"
 			],
+			"frontmatterValues": {
+				"sources": [
+					"[[sources/contradiction_2c40ba]]",
+					"[[sources/long_428adb]]"
+				]
+			},
 			"headings": [
 				"# PAGE",
 				"## Related Concepts",
@@ -64,6 +70,12 @@
 			"tags": [
 				"person"
 			],
+			"frontmatterValues": {
+				"sources": [
+					"[[sources/contradiction_2c40ba]]",
+					"[[sources/long_428adb]]"
+				]
+			},
 			"headings": [
 				"# PAGE",
 				"## Related Entities",
@@ -89,6 +101,12 @@
 			"tags": [
 				"person"
 			],
+			"frontmatterValues": {
+				"sources": [
+					"[[sources/contradiction_2c40ba]]",
+					"[[sources/long_428adb]]"
+				]
+			},
 			"headings": [
 				"# PAGE",
 				"## Related Entities",
@@ -106,6 +124,7 @@
 			"frontmatterKeys": [],
 			"type": null,
 			"tags": [],
+			"frontmatterValues": {},
 			"headings": [
 				"# Wiki Index",
 				"## Entities",
@@ -126,6 +145,7 @@
 			"frontmatterKeys": [],
 			"type": null,
 			"tags": [],
+			"frontmatterValues": {},
 			"headings": [
 				"# Wiki Operation Log",
 				"## [<date>] ingest | Short · mock-model · 32B",
@@ -154,6 +174,7 @@
 			],
 			"type": "source",
 			"tags": [],
+			"frontmatterValues": {},
 			"headings": [
 				"# Contradiction - Summary",
 				"## Source",
@@ -176,6 +197,7 @@
 			],
 			"type": "source",
 			"tags": [],
+			"frontmatterValues": {},
 			"headings": [
 				"# Long - Summary",
 				"## Source",
@@ -198,6 +220,7 @@
 			],
 			"type": "source",
 			"tags": [],
+			"frontmatterValues": {},
 			"headings": [
 				"# Short - Summary",
 				"## Source",
