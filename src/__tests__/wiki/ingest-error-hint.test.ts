@@ -91,6 +91,25 @@ describe('a timeout names the platform cause (#980)', () => {
   const TIMEOUT = 'The request timed out.';
   const mobile = { ...CTX, isMobile: true };
 
+  it('says mobile, not iOS alone, because Android also has a mobile limit (#980)', () => {
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
+
+    // `Platform.isMobile` is true for the Capacitor app on Android too, so a hint
+    // that names iOS as THE limit is wrong on a device where this fires. Only iOS
+    // has a measured 60 seconds; the others have their own, unmeasured, limits.
+    expect(hint.toLowerCase()).toContain('mobile platform');
+    expect(hint).not.toContain('the iOS limit');
+  });
+
+  it('gives numbered steps the user can act on', () => {
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
+
+    // "Brief guidance" is the requirement: three steps, in the order to try them.
+    expect(hint).toContain('(1)');
+    expect(hint).toContain('(2)');
+    expect(hint).toContain('(3)');
+  });
+
   it('names the 60-second limit on mobile', () => {
     const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
 
