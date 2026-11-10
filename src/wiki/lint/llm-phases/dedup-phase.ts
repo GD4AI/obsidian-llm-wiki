@@ -121,6 +121,98 @@ export function computeVerifyBatch(
  *
  * On any error, returns `[]` and logs. Does NOT throw.
  */
+/** What the dedup phase has to say once every batch is done (#932). */
+interface DedupOutcome {
+  dedupFailures: Array<{ name: string; reason: string; type?: string }>;
+  /** The concurrency the run started with, from settings. */
+  concurrency: number;
+  settings: LintPhaseContext['settings'];
+  retryEvents: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }>;
+  /** What the user set. Printed beside the reduced value so the difference shows. */
+  userConcurrency: number;
+  /** What the in-scan halving left it at. */
+  finalConcurrency: number;
+}
+
+/**
+ * Report the run's failures and retries. Extracted from `runDedupPhase` (#932).
+ *
+ * Three signals, each with one audience: the rate-limit Notice for the user, the
+ * non-rate-limit warn line for whoever reads the log, and the retry Notice for the
+ * user. They were the tail of a 739-line function and nothing tested them — a
+ * mutation that dropped the whole block changed no assertion. The characterization
+ * tests in `dedup-phase.test.ts` were written before this move, so they guard it.
+ */
+function reportDedupOutcome(outcome: DedupOutcome): void {
+  const { dedupFailures, retryEvents, settings } = outcome;
+  // Rate-limit detection for duplicate detection
+  const dedupRateInfo = detectRateLimitFailures(
+    dedupFailures,
+    outcome.concurrency,
+    settings.batchDelayMs ?? 300,
+  );
+  if (dedupRateInfo) {
+    console.warn(
+      `[Duplicate Rate Limit] ${dedupRateInfo.count} duplicate detection batch(es) failed with 429, `
+      + `suggested concurrency=${dedupRateInfo.suggestedConcurrency}, delay=${dedupRateInfo.suggestedDelay}ms`,
+    );
+    new Notice(formatRateLimitNotice(dedupRateInfo, settings.language), NOTICE_RATE_LIMIT);
+  }
+  // v1.26.0 (#382 item 1, Batch 2): log non-rate-limit failures
+  // separately so DocTpoint's batch-expansion truncation hypothesis
+  // is measurable across dedup runs.
+  //
+  // v1.26.0 Batch 7 + CR-3 fix (PR #411 simplify review 2026-08-05):
+  // pass the FULL failure item, not just `f.reason`. The structured
+  // `type: 'parse-failure'` discriminator on dedupFailures (added in
+  // commit 6e6388a) was being dropped at every consumer — the
+  // `isRateLimitFailure` structured-form branch was unreachable from
+  // production. Without the fix, a future edit to the parse-failure
+  // reason string that mentions "throttl" or "rate limit" would
+  // silently misclassify parse-failures as 429s, vanish the
+  // [Duplicate Batch Failures] truncation counter, AND fire a
+  // spurious [Duplicate Rate Limit] Notice. The CR-3 regression
+  // guarantee was on the test page; this wiring puts it on the
+  // running plugin's call path too.
+  const nonRateLimitFailures = dedupFailures.filter(f =>
+    !isRateLimitFailure(f),
+  );
+  if (nonRateLimitFailures.length > 0) {
+    console.warn(
+      `[Duplicate Batch Failures] ${nonRateLimitFailures.length} duplicate detection batch(es) failed for non-rate-limit reasons (parse failure / empty response / etc.) — see preceding 'lintWiki: duplicate detection batch failed' lines for details`,
+    );
+  }
+
+  // v1.26.0 (#382 item 1, Batch 2): user-facing Notice when the
+  // dedup-phase retry / concurrency-halving mechanism kicked in.
+  // This is the only user-visible signal — the log has full detail,
+  // but most users won't read it. The Notice fires only when at
+  // least one batch triggered a retry (so a clean run stays quiet)
+  // AND only once per scan (one Toast, not one per retry). It is
+  // informational, not a failure — duplicate detection still
+  // completed successfully for the batches that recovered.
+  //
+  // The Notice text comes from the `llmRetryRecoveredToast` i18n key
+  // (10 locales). v1.27.0 follow-up: extract the retry/backoff into
+  // a reusable `core/llm-retry.ts` helper that any LLM business
+  // path (dedup, analysis, fix-runners) can use; this Toast key is
+  // designed to be reused by those callers too.
+  if (retryEvents.length > 0) {
+    const delayedRetries = retryEvents.filter(e => e.delayMs > 0).length;
+    const summary = delayedRetries > 0
+      ? `${retryEvents.length} batch(es) recovered from empty LLM responses (${delayedRetries} with 2s backoff). Concurrency was temporarily reduced from ${outcome.userConcurrency} → ${outcome.finalConcurrency} for the rest of the scan. See console for detail.`
+      : `${retryEvents.length} batch(es) recovered from empty LLM responses (immediate retry succeeded). See console for detail.`;
+    console.warn(
+      `[Dedup LLM] ${summary}`,
+    );
+    new Notice(
+      getText(settings.language, 'llmRetryRecoveredToast')
+        .replace('{count}', String(retryEvents.length)),
+      NOTICE_RATE_LIMIT,
+    );
+  }
+}
+
 export async function runDedupPhase(
   ctx: LintPhaseContext,
   input: DedupPhaseInput,
@@ -760,72 +852,14 @@ export async function runDedupPhase(
       }
     }
 
-    // Rate-limit detection for duplicate detection
-    const dedupRateInfo = detectRateLimitFailures(
+    reportDedupOutcome({
       dedupFailures,
       concurrency,
-      ctx.settings.batchDelayMs ?? 300,
-    );
-    if (dedupRateInfo) {
-      console.warn(
-        `[Duplicate Rate Limit] ${dedupRateInfo.count} duplicate detection batch(es) failed with 429, ` +
-        `suggested concurrency=${dedupRateInfo.suggestedConcurrency}, delay=${dedupRateInfo.suggestedDelay}ms`
-      );
-      new Notice(formatRateLimitNotice(dedupRateInfo, ctx.settings.language), NOTICE_RATE_LIMIT);
-    }
-    // v1.26.0 (#382 item 1, Batch 2): log non-rate-limit failures
-    // separately so DocTpoint's batch-expansion truncation hypothesis
-    // is measurable across dedup runs.
-    //
-    // v1.26.0 Batch 7 + CR-3 fix (PR #411 simplify review 2026-08-05):
-    // pass the FULL failure item, not just `f.reason`. The structured
-    // `type: 'parse-failure'` discriminator on dedupFailures (added in
-    // commit 6e6388a) was being dropped at every consumer — the
-    // `isRateLimitFailure` structured-form branch was unreachable from
-    // production. Without the fix, a future edit to the parse-failure
-    // reason string that mentions "throttl" or "rate limit" would
-    // silently misclassify parse-failures as 429s, vanish the
-    // [Duplicate Batch Failures] truncation counter, AND fire a
-    // spurious [Duplicate Rate Limit] Notice. The CR-3 regression
-    // guarantee was on the test page; this wiring puts it on the
-    // running plugin's call path too.
-    const nonRateLimitFailures = dedupFailures.filter(f =>
-      !isRateLimitFailure(f)
-    );
-    if (nonRateLimitFailures.length > 0) {
-      console.warn(
-        `[Duplicate Batch Failures] ${nonRateLimitFailures.length} duplicate detection batch(es) failed for non-rate-limit reasons (parse failure / empty response / etc.) — see preceding 'lintWiki: duplicate detection batch failed' lines for details`
-      );
-    }
-
-    // v1.26.0 (#382 item 1, Batch 2): user-facing Notice when the
-    // dedup-phase retry / concurrency-halving mechanism kicked in.
-    // This is the only user-visible signal — the log has full detail,
-    // but most users won't read it. The Notice fires only when at
-    // least one batch triggered a retry (so a clean run stays quiet)
-    // AND only once per scan (one Toast, not one per retry). It is
-    // informational, not a failure — duplicate detection still
-    // completed successfully for the batches that recovered.
-    //
-    // The Notice text comes from the `llmRetryRecoveredToast` i18n key
-    // (10 locales). v1.27.0 follow-up: extract the retry/backoff into
-    // a reusable `core/llm-retry.ts` helper that any LLM business
-    // path (dedup, analysis, fix-runners) can use; this Toast key is
-    // designed to be reused by those callers too.
-    if (retryEvents.length > 0) {
-      const delayedRetries = retryEvents.filter(e => e.delayMs > 0).length;
-      const summary = delayedRetries > 0
-        ? `${retryEvents.length} batch(es) recovered from empty LLM responses (${delayedRetries} with 2s backoff). Concurrency was temporarily reduced from ${userConcurrency} → ${currentConcurrency} for the rest of the scan. See console for detail.`
-        : `${retryEvents.length} batch(es) recovered from empty LLM responses (immediate retry succeeded). See console for detail.`;
-      console.warn(
-        `[Dedup LLM] ${summary}`
-      );
-      new Notice(
-        getText(ctx.settings.language, 'llmRetryRecoveredToast')
-          .replace('{count}', String(retryEvents.length)),
-        NOTICE_RATE_LIMIT,
-      );
-    }
+      settings: ctx.settings,
+      retryEvents,
+      userConcurrency,
+      finalConcurrency: currentConcurrency,
+    });
 
     console.debug(`lintWiki: LLM confirmed ${allDuplicates.length} duplicate pairs total`);
     return allDuplicates;

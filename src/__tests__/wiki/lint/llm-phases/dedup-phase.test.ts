@@ -7,6 +7,7 @@
 // to exercise the parallel-batch + rate-limit path.
 
 import { describe, it, expect, vi } from 'vitest';
+import { Notice } from 'obsidian';
 import {
   classifyTiers,
   computeVerifyBatch,
@@ -1252,5 +1253,101 @@ describe('runDedupPhase — a self-pair must not survive normalization (#826)', 
     const ctx = makeLintPhaseContext({ llmClient: () => client });
     const result = await runDedupPhase(ctx, { wikiFiles: files, pageMap }, () => {});
     expect(result).toHaveLength(1);
+  });
+});
+
+// === characterization before the #932 extraction ===
+// The retry wrapper is about to move out of `runDedupPhase`. Its only observable
+// outputs are the recovered-batch Notice and the warn line that summarises
+// `retryEvents`; nothing asserted either of them before this block, so the move
+// would have been unguarded. These tests pass before the move and must pass
+// after it — their value is proven by mutation afterwards, not by colour here.
+describe('runDedupPhase — retry recovery is reported (#932 characterization)', () => {
+  // The setup mock records every construction; `hide()` marks the last one.
+  const NoticeMock = Notice as unknown as { instances: Array<{ message: string; hidden: boolean }> };
+  const noticedTexts = (): string[] => NoticeMock.instances.map(entry => entry.message);
+  const clearNotices = (): void => { NoticeMock.instances.length = 0; };
+
+  const CANDIDATES = [
+    { path: 'wiki/entities/alpha.md', basename: 'alpha.md' },
+    { path: 'wiki/entities/Alpha.md', basename: 'Alpha.md' },
+  ];
+
+  function harness(responses: string[]) {
+    // The mock records every construction for the whole file, so a Notice left
+    // by an earlier test would satisfy an assertion about this one.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const pageMap = makePageMap(
+      CANDIDATES.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept`,
+      ]),
+    );
+    const callCounts = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const n = (callCounts.get(key) ?? 0) + 1;
+      callCounts.set(key, n);
+      return responses[Math.min(n - 1, responses.length - 1)];
+    });
+    const ctx = makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    return { warnSpy, createMessage, ctx, pageMap };
+  }
+
+  it('reports one recovered batch, with the backoff counted', async () => {
+    const { warnSpy, createMessage, ctx, pageMap } = harness(['', '{"duplicates":[]}']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      // The empty answer must have been retried, not accepted.
+      expect(createMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      const summary = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered from empty LLM responses'));
+      expect(summary).toHaveLength(1);
+      // `(1 with 2s backoff)` is how the delay constant becomes visible. Setting
+      // the 500 ms retry to 0 changes this sentence to "immediate retry
+      // succeeded", which is a behaviour change and must be caught.
+      expect(summary[0]).toContain('1 batch(es) recovered from empty LLM responses (1 with 2s backoff)');
+
+      // The user-facing half: one Notice, not one per retry.
+      const retryNotices = noticedTexts().filter(text => text.includes('needed retry'));
+      expect(retryNotices).toHaveLength(1);
+      expect(retryNotices[0]).toContain('1 batch(es)');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('reports a recovery even when every retry also returned nothing — current behaviour, filed as #993', async () => {
+    const { warnSpy, ctx, pageMap } = harness(['', '', '']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      // Pinning what the code does, not what it should do. `retryEvents` is
+      // pushed on attempts 2 and 3 whatever they return, so a batch that failed
+      // all three times is still announced as recovered, while the same batch
+      // lands in `dedupFailures`. #993 records the contradiction and the fix;
+      // this test exists so the #932 extraction cannot change it by accident,
+      // and it must be rewritten when #993 lands.
+      const recovered = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered from empty LLM responses'));
+      expect(recovered).toHaveLength(1);
+      expect(noticedTexts().filter(text => text.includes('needed retry'))).toHaveLength(1);
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
   });
 });
