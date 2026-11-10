@@ -149,19 +149,22 @@ The **idempotency** requirement is worth naming separately because it is not a d
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The refactor track — recorded 2026-11-01, three items landed
+### The refactor track — status lives in the issues, not here
 
-Plan, re-measured baseline, frozen area and stop conditions are in **#925**; one issue per layer.
-**Landed:** #927 the ratchet (`arch-check` joined `gate:1`; 5 cycles and 13 `core` → upper edges allowlisted,
-both lists may only shrink) and #926 the golden net — all four scenarios, one baseline each. A subtraction
-without that net is a deletion verified by reading, which is why #926 came first.
-**#928 has one module left.** `truncation-retry.ts` doubled `max_tokens` while the product halves the batch —
-dead code whose test asserted behaviour no user reaches. `detail-renderer.ts` was a barrel one consumer read
-around. `hub-retirement.ts` was **wired, not deleted** (#954, PR #955): dead by the import test, alive by the
-waiting test — #215 carried a report-only wiring spec and a 2026-07-02 promise that was never filed.
-Next: the `ingest-stages.ts` judgement and the two dev tools out of `src/`, then #929. Carried over from the
-superseded 2026-10-16 order: the real-question benchmark (20 hand-labelled answer pages in a synthetic
-fixture that runs by default — the largest evidence gap), and the E1 escalation gate.
+Plan, re-measured baseline, frozen area and stop conditions are in **#925**; one issue per layer, and each
+carries its own current state. This section restated that state until 2026-11-10, by which time three of its
+claims were wrong — #929 and #931 had merged, and an item it listed as outstanding had been deleted.
+
+The rule is worth keeping because it decides order rather than status: **a subtraction without the golden
+net is a deletion verified by reading**, which is why #926 came first. **A move needs the same net.** #979
+moved about 430 lines of lint fix callbacks and cited the net as its guard; the net does not reach them,
+three mutations passed the full suite, and PR #981 adds the coverage and re-runs all six. The ratchet in
+`eslint.config.mjs` is the enforcement, not the line count: every cut lowers its own ceiling in the same
+commit.
+
+Still unstarted, carried over from the superseded 2026-10-16 order: the real-question benchmark (20
+hand-labelled answer pages in a synthetic fixture that runs by default — the largest evidence gap) and the
+E1 escalation gate.
 
 **#781 is held, not rejected**, and the three debts its `CHANGES_REQUESTED` named are fixed: the tie-break is rarity-weighted,
 the strength floor is two shared targets, the hub problem shrinks twice. On two real vaults the "A" share went from 9.1 %
