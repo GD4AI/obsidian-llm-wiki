@@ -317,6 +317,20 @@ export interface LLMWikiSettings {
    */
   lintDedupIncludeSources?: boolean;
   /**
+   * #980: whether an ingest LLM call streams its response.
+   *
+   * `auto` streams on mobile, where the platform can cut a request that receives
+   * no data while the model is still working, and buffers on desktop, which has no
+   * such limit. `always` streams everywhere — for a slow local model behind a proxy
+   * that has its own idle timeout. `never` buffers everywhere — for a user on
+   * metered mobile data, who accepts that a long call on mobile will fail.
+   *
+   * Streaming is not faster: measured 42.0 s against 39.6 s for the same 2,200
+   * tokens. It only keeps the connection busy. It costs about 60× the bytes
+   * uncompressed, and about 3× when a proxy gzips the event stream.
+   */
+  streamIngest?: 'auto' | 'always' | 'never';
+  /**
    * #819 step 7. Run the old hand-tuned linear query scorer instead of BM25F.
    * A new ranking is on by default and must be switchable off; the two rank
    * differently (top-5 overlap measured 2.4 of 5) and until the harness carries
@@ -585,6 +599,10 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
   // own the default; the filter reads `settings.lintDedupIncludeSources
   // !== false` so a missing key is treated as on).
   lintDedupIncludeSources: undefined,
+  // #980: undefined means `auto`. Stored only when the user picks a value, so
+  // the default stays a policy decision in `buffered-generation.ts` rather than
+  // a literal repeated here.
+  streamIngest: undefined,
   // Issue #514: off by default — fewer pages is a behaviour change, opt in.
   skipMentionOnlyCandidates: false,
   // S135: off by default — stubs from gate dissent are a behaviour change, opt in.

@@ -77,14 +77,42 @@ export interface BufferedGenerationOptions {
 type GenerateArgs = Parameters<typeof generateText>[0];
 type StreamArgs = Parameters<typeof streamText>[0];
 
+/** How the plugin decides whether an ingest call streams (#980). */
+export type StreamIngestMode = 'auto' | 'always' | 'never';
+
+/**
+ * The user's choice, as last read from settings.
+ *
+ * A module-level value because it is one decision about the transport, not data
+ * that varies per call: the three clients make fifteen completion calls between
+ * them, and threading a mode through every one would add a parameter that can be
+ * forgotten at one site. `create-llm-client.ts` sets it where settings are read.
+ */
+let streamIngestMode: StreamIngestMode = 'auto';
+
 /**
  * True where an idle connection is cut before a long generation can finish.
  *
  * `Platform.isMobile` covers both mobile apps. It is read here, and nowhere
- * else, so the policy has one home; the parameter exists for tests.
+ * else, so the policy has one home; the parameters exist for tests.
+ *
+ * `always` and `never` are escape hatches the platform cannot express. A desktop
+ * user behind a proxy with its own idle timeout needs the first; a user on
+ * metered mobile data, who reads the byte cost and prefers a failed long call to
+ * an expensive one, needs the second.
  */
-export function shouldStreamForSilence(isMobile: boolean = Platform.isMobile): boolean {
+export function shouldStreamForSilence(
+	isMobile: boolean = Platform.isMobile,
+	mode: StreamIngestMode = streamIngestMode,
+): boolean {
+	if (mode === 'always') return true;
+	if (mode === 'never') return false;
 	return isMobile;
+}
+
+/** Set once, where the plugin reads its settings. */
+export function setStreamIngestMode(mode: StreamIngestMode | undefined): void {
+	streamIngestMode = mode === 'always' || mode === 'never' ? mode : 'auto';
 }
 
 /**

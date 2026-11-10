@@ -37,6 +37,7 @@
 
 import { Notice, Setting, MarkdownView, TFile } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
+import type { LLMWikiSettings } from '../../types';
 import { MIN_ALIAS_LENGTH, MIN_ALIAS_LENGTH_MIN, MIN_ALIAS_LENGTH_MAX, NOTICE_SHORT } from '../../constants';
 import { renderNumberInput } from './shared-inputs';
 import { clampPromptFocusText } from '../../core/prompt-focus';
@@ -126,12 +127,13 @@ export function renderAdvancedSettingsSection(tab: LLMWikiSettingTab, containerE
       .setValue(tempSettings.writePdfMarkdownToVault === true)
       .onChange((value) => { tempSettings.writePdfMarkdownToVault = value; }));
 
-  new Setting(containerEl)
-    .setName(tab.getText('analyzeEmbeddedImagesName'))
-    .setDesc(tab.getText('analyzeEmbeddedImagesDesc'))
-    .addToggle(toggle => toggle
-      .setValue(tempSettings.analyzeEmbeddedImages === true)
-      .onChange((value) => { tempSettings.analyzeEmbeddedImages = value; }));
+  addImageAnalysisSetting(containerEl, tab, tempSettings);
+
+  // #980: the transport choice. Bottom panel, not LLM Advanced, because that
+  // section's boundary is sampling and provider overrides, and this is a network
+  // decision with a byte cost — the same audience as the storage toggles above.
+  // `auto` is the default and reproduces the previous behaviour exactly.
+  addStreamIngestSetting(containerEl, tab, tempSettings);
 
   new Setting(containerEl)
     .setName(tab.getText('saveEmbeddedImageEvidenceName'))
@@ -402,4 +404,44 @@ heading: string,
   if (line < 0) return;
   view.editor.setCursor({ line, ch: 0 });
   view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+}
+
+/**
+ * #980: the ingest transport choice.
+ *
+ * Three values, not two. `always` exists for a desktop user behind a proxy that
+ * has an idle timeout of its own; `never` exists for a user on metered mobile
+ * data, who prefers a failed long call to an expensive one. Both are stated as
+ * trades in the description, because neither is free.
+ */
+function addStreamIngestSetting(
+  containerEl: HTMLElement,
+  tab: LLMWikiSettingTab,
+  tempSettings: LLMWikiSettings,
+): void {
+  new Setting(containerEl)
+    .setName(tab.getText('streamIngestName'))
+    .setDesc(tab.getText('streamIngestDesc'))
+    .addDropdown(dropdown => dropdown
+      .addOption('auto', tab.getText('streamIngestAuto'))
+      .addOption('always', tab.getText('streamIngestAlways'))
+      .addOption('never', tab.getText('streamIngestNever'))
+      .setValue(tempSettings.streamIngest ?? 'auto')
+      .onChange((value) => {
+        tempSettings.streamIngest = value === 'always' || value === 'never' ? value : 'auto';
+      }));
+}
+
+/** Extracted with the setting above to stay under this file's line ceiling. */
+function addImageAnalysisSetting(
+  containerEl: HTMLElement,
+  tab: LLMWikiSettingTab,
+  tempSettings: LLMWikiSettings,
+): void {
+  new Setting(containerEl)
+    .setName(tab.getText('analyzeEmbeddedImagesName'))
+    .setDesc(tab.getText('analyzeEmbeddedImagesDesc'))
+    .addToggle(toggle => toggle
+      .setValue(tempSettings.analyzeEmbeddedImages === true)
+      .onChange((value) => { tempSettings.analyzeEmbeddedImages = value; }));
 }
