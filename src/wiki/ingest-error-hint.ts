@@ -19,6 +19,12 @@ export interface IngestErrorContext {
   provider: string;
   /** Resolved model id for the step. */
   model: string;
+  /**
+   * Whether the call ran on iOS/iPadOS. Optional, and passed in rather than read
+   * from `Platform` here, so this module stays pure and its tests need no
+   * platform stub (#980).
+   */
+  isMobile?: boolean;
 }
 
 /** The reasoning-only sentence, appended after the guard's own explanation. */
@@ -32,6 +38,40 @@ const CONTEXT_ADVICE =
   'The request was rejected because the source file is too large for this model\'s context window. '
   + 'Try: (1) switch to a model with a larger context window (e.g. 1M tokens) in Settings, '
   + '(2) reduce the file size, or (3) use a provider that supports larger contexts.';
+
+/**
+ * A timeout, on the one platform where the plugin cannot prevent it (Issue #980).
+ *
+ * The transport now streams ingest requests, so the plugin no longer creates this
+ * failure by itself. What remains is upstream: a reverse proxy that buffers the
+ * response, or a provider that does not flush partial output. Naming both keeps
+ * the advice true after the fix instead of pointing at a limit that no longer
+ * applies.
+ */
+const MOBILE_TIMEOUT_ADVICE =
+  'The request received no data for 60 seconds. That is the iOS limit for one request, and it fires while the model is still working. '
+  + 'Ingest requests stream when the provider allows it, so a gap this long means something between the plugin and the model held the answer back. '
+  + 'Try: (1) turn off response buffering on any reverse proxy in front of the model server, '
+  + '(2) use a provider or model that streams partial output, or (3) run the ingest from a desktop device, which has no such limit.';
+
+/** The same failure with no platform stated: the cause is named, the number is not. */
+const TIMEOUT_ADVICE =
+  'The request timed out before any data arrived. Ingest requests stream when the provider allows it, so a silent gap usually means the answer was buffered — '
+  + 'by a reverse proxy, or by a provider that does not flush partial output. Check the provider URL and any proxy in front of it.';
+
+/**
+ * Match a timeout, and not a user cancellation.
+ *
+ * `aborted` is deliberately absent: Obsidian raises it when the user cancels a
+ * run, and advising them about a 60-second limit they never reached would be
+ * wrong in the one case they caused themselves.
+ */
+function looksLikeTimeout(lowerErr: string): boolean {
+  return lowerErr.includes('timed out')
+    || lowerErr.includes('timeout')
+    || lowerErr.includes('etimedout')
+    || lowerErr.includes('deadline exceeded');
+}
 
 /**
  * Match the reasoning-only failure.
@@ -76,7 +116,7 @@ export function namesOutputCeiling(errMsg: string): boolean {
  * not, because a wrong path is worse than no path: the user looks, does not
  * find it, and concludes the plugin is broken.
  */
-export function buildIngestErrorHint(errMsg: string, error: unknown, _context: IngestErrorContext): string {
+export function buildIngestErrorHint(errMsg: string, error: unknown, context: IngestErrorContext): string {
   const lowerErr = errMsg.toLowerCase();
   const code = (error as { code?: unknown } | null)?.code;
 
@@ -97,6 +137,11 @@ export function buildIngestErrorHint(errMsg: string, error: unknown, _context: I
   }
   if (lowerErr.includes('429')) {
     return 'Rate limit exceeded. Wait a moment and try again, or switch to a provider with higher limits.';
+  }
+  // After the HTTP codes, so a message carrying both keeps the rejection's
+  // advice: a 401 is actionable and a timeout beside it is the symptom.
+  if (looksLikeTimeout(lowerErr)) {
+    return context.isMobile ? MOBILE_TIMEOUT_ADVICE : TIMEOUT_ADVICE;
   }
   return 'Check your network connection, API key, and provider URL in Settings. '
     + 'If the error mentions SSL/TLS, try: (1) restart Obsidian, (2) check VPN/proxy settings, (3) verify the provider URL is correct.';

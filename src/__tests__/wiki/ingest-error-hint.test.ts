@@ -5,6 +5,8 @@
 // classifier, so a future branch cannot claim a failure that a more specific
 // branch already explained.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { buildIngestErrorHint } from '../../wiki/ingest-error-hint';
 import { REASONING_ONLY_ERROR_CODE } from '../../llm-sdk/finish-reason';
@@ -79,5 +81,69 @@ describe('buildIngestErrorHint — most specific first', () => {
       expect(hint).not.toMatch(/Context Window/);
       expect(hint).not.toMatch(/LLM Configuration/);
     }
+  });
+});
+
+describe('a timeout names the platform cause (#980)', () => {
+  // #980's Proposal item 3. The transport fix stops the plugin from creating
+  // this failure on its own, but the user still needs to know what a silent
+  // timeout means, because a proxy or a non-flushing provider can reproduce it.
+  const TIMEOUT = 'The request timed out.';
+  const mobile = { ...CTX, isMobile: true };
+
+  it('names the 60-second limit on mobile', () => {
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
+
+    // The number is the whole point: "timed out" alone sends the user to check
+    // their connection, which is not the cause.
+    expect(hint).toContain('60 seconds');
+    expect(hint).toMatch(/iOS|iPadOS/);
+  });
+
+  it('points at what still causes it, now that ingest streams', () => {
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), mobile);
+
+    // A hint that only says "the platform did it" would be true and useless.
+    // After #980 the plugin streams, so a silent gap means something upstream
+    // held the answer back.
+    expect(hint).toContain('stream');
+    expect(hint.toLowerCase()).toContain('buffer');
+  });
+
+  it('does not claim a 60-second limit on desktop, which has none', () => {
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), { ...CTX, isMobile: false });
+
+    expect(hint).not.toContain('60 seconds');
+    expect(hint).not.toMatch(/iOS|iPadOS/);
+  });
+
+  it('still explains a timeout when the caller states no platform', () => {
+    // The context field is optional, so an older call site keeps a usable hint
+    // rather than an empty branch.
+    const hint = buildIngestErrorHint(TIMEOUT, new Error(TIMEOUT), CTX);
+
+    expect(hint.length).toBeGreaterThan(0);
+    expect(hint).toContain('stream');
+  });
+
+  it('does not swallow a more specific failure that merely mentions time', () => {
+    // Order is the design of this module. A message carrying both a timeout and
+    // a rejection must keep the rejection's advice.
+    const mixed = 'HTTP 401 Unauthorized after the request timed out';
+    const hint = buildIngestErrorHint(mixed, new Error(mixed), mobile);
+
+    expect(hint).toContain('Authentication failed');
+  });
+});
+
+describe('the platform reaches the hint from the call site (#980)', () => {
+  it('passes the live platform, so the mobile branch is reachable', () => {
+    // A branch only a unit test exercises is the #974 failure shape: coverage
+    // that reports green for code production never runs. The classifier takes
+    // the flag as data to stay pure, which moves the wiring risk here.
+    const source = readFileSync(join(__dirname, '..', '..', 'wiki', 'source-analyzer.ts'), 'utf8');
+
+    expect(source).toContain('isMobile: Platform.isMobile');
+    expect(source).toMatch(/import \{[^}]*Platform[^}]*\} from 'obsidian'/);
   });
 });
