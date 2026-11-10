@@ -31,12 +31,19 @@ import { compatHeaders } from './compat-headers';
 import { usesBedrockAwsCredentials } from '../core/provider-auth';
 import type { ProviderSecretStorage } from './provider-secret-store';
 import { obsidianFetchBridge, streamWithFallback, type ObsidianFetchInit } from '../core/obsidian-fetch-bridge';
+import { setStreamIngestMode, type StreamIngestMode } from './buffered-generation';
 import { createSigV4SigningFetch } from './bedrock-sso/signing-fetch';
 import type { BedrockAuthManager } from './bedrock-sso/credential-manager';
 
 export interface ProviderSettings {
   provider: string;
   apiKey: string;
+  /**
+   * #980: transport choice for ingest calls. Read once here, where settings are
+   * read, and handed to the one policy module — the three clients make fifteen
+   * completion calls and none of them should have to carry this.
+   */
+  streamIngest?: StreamIngestMode;
   /**
    * v1.25.3 #182: stable ID for the provider API key in Obsidian
    * SecretStorage. When the migration has run, the live key lives in
@@ -326,6 +333,9 @@ export function createLLMClientFromSettingsSync(
   settings: ProviderSettings,
   pendingApiKey?: string,
 ): LLMClient {
+  // #980: the transport policy is one decision for the whole process, so it is
+  // set where the settings are read rather than passed into each call.
+  setStreamIngestMode(settings.streamIngest);
   if (!preloadedModules) {
     throw new Error(
       '[v1.23.0 LLM migration] SDK modules not preloaded. ' +
