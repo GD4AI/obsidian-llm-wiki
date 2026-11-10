@@ -49,8 +49,8 @@ const CONTEXT_ADVICE =
  * applies.
  */
 const MOBILE_TIMEOUT_ADVICE =
-  'The request received no data for 60 seconds. That is the iOS limit for one request, and it fires while the model is still working. '
-  + 'Ingest requests stream when the provider allows it, so a gap this long means something between the plugin and the model held the answer back. '
+  'The request stayed silent too long, so the mobile platform closed it. iOS cuts a request after about 60 seconds without data, and other mobile platforms have their own limits. '
+  + 'Ingest requests stream when the provider allows it, so a gap this long usually means a proxy or a provider held the whole answer back. '
   + 'Try: (1) turn off response buffering on any reverse proxy in front of the model server, '
   + '(2) use a provider or model that streams partial output, or (3) run the ingest from a desktop device, which has no such limit.';
 
