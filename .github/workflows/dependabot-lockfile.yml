@@ -95,6 +95,13 @@ jobs:
         #
         # Only on a real push: when the lockfile already matched, the original
         # run stands and starting a second one would only duplicate it.
+        #
+        # A failing dispatch is left failing on purpose. It happens when the head
+        # branch's `pr-ci.yml` predates the `workflow_dispatch` trigger — a pull
+        # request opened before this workflow learned to dispatch. The pull request
+        # then has no gate, and a red step says so; swallowing the error would make
+        # "no checks" look like "nothing to check". The fix for such a branch is a
+        # rebase.
         if: steps.push.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
