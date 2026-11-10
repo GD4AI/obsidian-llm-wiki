@@ -20,7 +20,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { isIngestableSource } from '../../core/folder-scope';
-import { makeUserIgnorePredicate } from '../../core/user-ignore';
+import { makeUserIgnorePredicate, __resetUserIgnoreWarning } from '../../core/user-ignore';
 
 const WIKI = 'wiki';
 const CONFIG = '.obsidian';
@@ -46,8 +46,43 @@ describe('makeUserIgnorePredicate — ask Obsidian, do not reimplement it (#503)
   });
 
   it('excludes nothing when there is no metadata cache at all', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(makeUserIgnorePredicate(undefined)('x.md')).toBe(false);
     expect(makeUserIgnorePredicate(null)('x.md')).toBe(false);
+  });
+
+  it('says so once when the resolver is missing, because silence looks like an empty list', () => {
+    // Added 2026-11-10. The absent-method branch returned `() => false` with no
+    // record anywhere, and it cannot distinguish "this vault has no excluded
+    // files" from "this environment has no resolver" — both produce the same
+    // silent `false`. They are not the same event: the resolver exists on every
+    // Obsidian version this plugin supports, whether or not the list is empty,
+    // so a missing one is an environment mismatch and every exclusion the user
+    // wrote is being ignored for the whole session.
+    //
+    // Once per session, not once per call: `AutoMaintain.isWatched` builds a
+    // predicate on every vault event, so a per-call warning would be the log
+    // spam this module exists to avoid.
+    __resetUserIgnoreWarning();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(makeUserIgnorePredicate(null)('a.md')).toBe(false);
+    expect(makeUserIgnorePredicate(undefined)('b.md')).toBe(false);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('isUserIgnored');
+  });
+
+  it('keeps the exclusion working when the resolver is present, without a warning', () => {
+    // The other half: the new warning must not fire for the ordinary case.
+    __resetUserIgnoreWarning();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const excluded = makeUserIgnorePredicate({
+      isUserIgnored: (path: string) => path.startsWith('private/'),
+    });
+
+    expect(excluded('private/x.md')).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it('treats a throwing isUserIgnored as not excluded, and warns', () => {
