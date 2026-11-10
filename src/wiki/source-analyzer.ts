@@ -1,7 +1,7 @@
 // Source Analyzer — iterative batch extraction of entities/concepts from source files.
 // Extracted from WikiEngine.
 
-import { TFile } from 'obsidian';
+import { Platform, TFile } from 'obsidian';
 import {
   EngineContext,
   SourceAnalysis,
@@ -873,7 +873,13 @@ export class SourceAnalyzer {
       // "output tokens", so the user was told the file was too large for
       // the context window. The ordering lives in ingest-error-hint.ts
       // where it can be tested without building a client.
-      const userHint = buildIngestErrorHint(errMsg, error, { provider: providerName, model: modelName });
+      const userHint = buildIngestErrorHint(errMsg, error, {
+        provider: providerName,
+        model: modelName,
+        // Read here, not inside the hint builder: that module stays pure, and
+        // #980's advice only names the 60-second limit on the platform that has it.
+        isMobile: Platform.isMobile,
+      });
 
       return {
         action: {
