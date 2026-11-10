@@ -121,13 +121,20 @@ export function computeVerifyBatch(
  *
  * On any error, returns `[]` and logs. Does NOT throw.
  */
+/** One retry that produced an answer, for the post-loop Notice. */
+interface RetryEvent {
+  batchNum: number;
+  attempt: 1 | 2;
+  delayMs: number;
+}
+
 /** What the dedup phase has to say once every batch is done (#932). */
 interface DedupOutcome {
   dedupFailures: Array<{ name: string; reason: string; type?: string }>;
   /** The concurrency the run started with, from settings. */
   concurrency: number;
   settings: LintPhaseContext['settings'];
-  retryEvents: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }>;
+  retryEvents: RetryEvent[];
   /** What the user set. Printed beside the reduced value so the difference shows. */
   userConcurrency: number;
   /** What the in-scan halving left it at. */
@@ -142,7 +149,7 @@ interface DedupOutcome {
  * of #993.
  */
 function recordRecovery(
-  events: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }>,
+  events: RetryEvent[],
   batchNum: number,
   attempt: 1 | 2,
   delayMs: number,
@@ -232,6 +239,135 @@ function reportDedupOutcome(outcome: DedupOutcome): void {
       NOTICE_RATE_LIMIT,
     );
   }
+}
+
+/**
+ * Retry state the batch loop shares with the retry helper (#932).
+ *
+ * Both fields are written by `callLlmWithRetry` and read elsewhere in the loop, so
+ * they travel as one object rather than two closures: the loop halves concurrency
+ * when the first attempt of a chunk came back empty, and the run's reporting counts
+ * the retries that actually recovered.
+ */
+interface DedupRetryState {
+  events: RetryEvent[];
+  softThrottleDetected: boolean;
+}
+
+/** Everything the retry needs. Nothing is captured, so nothing goes stale. */
+interface DedupRetryRequest {
+  batchNum: number;
+  prompt: string;
+  llm: LLMClient;
+  /** Read per call, because a task policy can change between batches. */
+  settings: LintPhaseContext['settings'];
+  systemPrompt?: string;
+  state: DedupRetryState;
+}
+
+const RETRY_ATTEMPT_2_DELAY_MS = 500;
+const RETRY_ATTEMPT_3_DELAY_MS = 2000;
+
+/**
+ * Dedup force-disables thinking for its own calls.
+ *
+ * The full reasoning — why this is hard-coded rather than a setting, and why the
+ * 4-layer fallback below it is live — is recorded beside the concurrency setup in
+ * `runDedupPhase`. The constant sits here because `callLlmWithRetry` is its only
+ * reader (#932).
+ */
+const FORCE_DISABLE_THINKING = true;
+
+/**
+ * Call the LLM for one dedup batch, retrying an empty answer (#932).
+ *
+ * Some providers (notably deepseek-v4-flash in thinking mode) return 200 OK with a
+ * 0-byte body under burst load — a soft-throttle rather than a hard 429. The retry
+ * policy is tiered: attempt 1 is the original request, attempt 2 waits 500 ms and
+ * retries the same request, attempt 3 waits 2 s. The 500 ms is short enough not to
+ * slow the happy path and long enough to let one in-flight request drain; the 2 s
+ * tier empirically clears the soft-throttle.
+ *
+ * If attempt 3 is still empty the final empty string is returned, `parseJsonResponse`
+ * throws `EmptyResponseError`, and the batch lands in `dedupFailures`. A batch that
+ * recovered on either retry is recorded in `state.events`, so the post-loop reporting
+ * can print one Notice for the run instead of one per batch.
+ */
+async function callLlmWithRetry(request: DedupRetryRequest): Promise<string> {
+  const { batchNum, prompt, llm, settings, systemPrompt, state } = request;
+  const retryEvents = state.events;
+  const lintModel = resolveModelForTask(settings, 'lint');
+  const llmArgs = {
+    task: 'lint-dedup' as const,
+    model: lintModel,
+    max_tokens: TOKENS_LINT_DEDUP_LLM,
+    messages: [{ role: 'user' as const, content: prompt }],
+    ...(systemPrompt ? { system: systemPrompt } : {}),
+    // v1.26.3 PATCH Issue #443 expanded scope: typed-output path.
+    // DedupResultLLMSchema ({duplicates?: [{target, source, reason}]})
+    // travels on the wire as Tier 0 json_schema — LMStudio accepts,
+    // no parse-error fallback to empty.
+    response_format: { type: 'json_object' as const, schema: DedupResultLLMSchema },
+    // v1.26.0 Batch 7 follow-up (eucher): the previous
+    // `enableThinkingOverride ? … : {}` ternary silently sent
+    // nothing because `override = false` always picks the empty
+    // branch. The flag is now `FORCE_DISABLE_THINKING = true` and
+    // the spread is unconditional so `enableThinking: false`
+    // actually enters llmArgs and reaches buildProviderOptions
+    // (which then maps it to `reasoningEffort: 'none'` /
+    // `thinking: {type: 'disabled'}` per SDK).
+    ...(FORCE_DISABLE_THINKING ? { enableThinking: false } : {}),
+  };
+
+  const logResponse = (response: string, attempt: 1 | 2 | 3, delayMs: number) => {
+    console.debug(
+      `[Dedup LLM batch ${batchNum}] request: prompt_chars=${prompt.length} ` +
+      `system_chars=${systemPrompt?.length ?? 0} ` +
+      `model=${lintModel} ` +
+      `max_tokens=${TOKENS_LINT_DEDUP_LLM} ` +
+      `disableThinking=${FORCE_DISABLE_THINKING ? 'force' : 'inherit-user'} ` +
+      `response_format=json_object attempt=${attempt} delay_ms=${delayMs} | ` +
+      `response: raw_length=${response.length} ` +
+      `first_100_chars="${response.substring(0, 100).replace(/\n/g, '\\n')}"`
+    );
+  };
+
+  // v1.26.3 PATCH Issue #443 expanded scope: typed-output dispatch via the
+  // centralized core/llm-dispatch helper. The retry tier logic is
+  // unchanged — only the wire shape gains schema enforcement.
+  const callOnce = () => callLlm(llm, llmArgs);
+
+  // Attempt 1: original request.
+  const first = await callOnce();
+  logResponse(first, 1, 0);
+  if (first.length > 0) return first;
+
+  // Attempt 2: 500ms-delayed retry of the same request.
+  //
+  // #993: the recovery is recorded after this attempt returns, not before it.
+  // The old order counted a retry that also came back empty, so a batch that
+  // failed every attempt was still announced as recovered.
+  state.softThrottleDetected = true;
+  console.warn(
+    `[Dedup LLM batch ${batchNum}] empty response (attempt 1) — ` +
+    `retrying after ${RETRY_ATTEMPT_2_DELAY_MS}ms. enableThinking_sent=${FORCE_DISABLE_THINKING ? 'false' : 'unset'} ` +
+    `prompt_chars=${prompt.length} max_tokens=${TOKENS_LINT_DEDUP_LLM} model=${lintModel}`
+  );
+  await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_2_DELAY_MS));
+  const second = await callOnce();
+  logResponse(second, 2, RETRY_ATTEMPT_2_DELAY_MS);
+  if (second.length > 0) return recordRecovery(retryEvents, batchNum, 1, RETRY_ATTEMPT_2_DELAY_MS, second);
+
+  // Attempt 3: 2-second delayed retry (final attempt).
+  console.warn(
+    `[Dedup LLM batch ${batchNum}] empty response (attempt 2) — ` +
+    `retrying after ${RETRY_ATTEMPT_3_DELAY_MS}ms delay (likely provider soft-throttle).`
+  );
+  await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_3_DELAY_MS));
+  const third = await callOnce();
+  logResponse(third, 3, RETRY_ATTEMPT_3_DELAY_MS);
+  if (third.length > 0) return recordRecovery(retryEvents, batchNum, 2, RETRY_ATTEMPT_3_DELAY_MS, third);
+  return third;
 }
 
 export async function runDedupPhase(
@@ -512,7 +648,8 @@ export async function runDedupPhase(
     // reason step by step"), not from Layers 1-3 (which were never sent
     // before this fix). After this fix Layers 1-3 will be live and the
     // expectation is real wall-time reduction, not just retry recovery.
-    const FORCE_DISABLE_THINKING = true;
+    // Dedup force-disables thinking. The flag itself is at module scope
+    // (`FORCE_DISABLE_THINKING`), because the retry helper is now its only reader.
     //
     // The user-set `pageGenerationConcurrency` is the starting point.
     // When an empty-response soft-throttle is detected (deepseek-v4-flash
@@ -536,114 +673,11 @@ export async function runDedupPhase(
     let consecutiveThrottleChunks = 0;
     const HALVE_AFTER_CONSECUTIVE_CHUNKS = 2;
 
-    // v1.26.0 (#382 item 1, Batch 2): empty-response retry helper.
-    //
-    // Some providers (notably deepseek-v4-flash in thinking mode)
-    // return 200 OK with a 0-byte body under burst load — a
-    // soft-throttle rather than a hard 429. The retry policy is
-    // tiered:
-    //   attempt 1: original request.
-    //   attempt 2: 500ms-delayed retry of the SAME request.
-    //               (v1.26.0 Batch 2 follow-up: previously immediate;
-    //                added 500ms backoff so we don't hard-collide
-    //                with the provider's request queue immediately
-    //                after the burst. 500ms is short enough not to
-    //                slow the happy path noticeably, long enough to
-    //                let one in-flight request drain.)
-    //   attempt 3: 2-second delayed retry (final attempt — lets the
-    //               provider's request queue drain — empirically
-    //               clears the soft-throttle on deepseek-v4-flash).
-    //
-    // If attempt 3 is still empty, the batch is recorded as a
-    // dedupFailure. The function returns the final response (empty
-    // string = permanent failure), the parseJsonResponse call below
-    // throws EmptyResponseError, and the batch lands in
-    // `dedupFailures`. The retryEvents accumulator lets the post-loop
-    // code surface a single user-facing Notice if retries were
-    // triggered, rather than 1 Notice per batch.
-    const RETRY_ATTEMPT_2_DELAY_MS = 500;
-    const RETRY_ATTEMPT_3_DELAY_MS = 2000;
-    const retryEvents: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }> = [];
-    let softThrottleDetected = false;
-
-    async function callLlmWithRetry(
-      batchNum: number,
-      prompt: string,
-      llm: LLMClient,
-    ): Promise<string> {
-      const lintModel = resolveModelForTask(ctx.settings, 'lint');
-      const llmArgs = {
-        task: 'lint-dedup' as const,
-        model: lintModel,
-        max_tokens: TOKENS_LINT_DEDUP_LLM,
-        messages: [{ role: 'user' as const, content: prompt }],
-        ...(systemPrompt ? { system: systemPrompt } : {}),
-        // v1.26.3 PATCH Issue #443 expanded scope: typed-output path.
-        // DedupResultLLMSchema ({duplicates?: [{target, source, reason}]})
-        // travels on the wire as Tier 0 json_schema — LMStudio accepts,
-        // no parse-error fallback to empty.
-        response_format: { type: 'json_object' as const, schema: DedupResultLLMSchema },
-        // v1.26.0 Batch 7 follow-up (eucher): the previous
-        // `enableThinkingOverride ? … : {}` ternary silently sent
-        // nothing because `override = false` always picks the empty
-        // branch. The flag is now `FORCE_DISABLE_THINKING = true` and
-        // the spread is unconditional so `enableThinking: false`
-        // actually enters llmArgs and reaches buildProviderOptions
-        // (which then maps it to `reasoningEffort: 'none'` /
-        // `thinking: {type: 'disabled'}` per SDK).
-        ...(FORCE_DISABLE_THINKING ? { enableThinking: false } : {}),
-      };
-
-      const logResponse = (response: string, attempt: 1 | 2 | 3, delayMs: number) => {
-        console.debug(
-          `[Dedup LLM batch ${batchNum}] request: prompt_chars=${prompt.length} ` +
-          `system_chars=${systemPrompt?.length ?? 0} ` +
-          `model=${lintModel} ` +
-          `max_tokens=${TOKENS_LINT_DEDUP_LLM} ` +
-          `disableThinking=${FORCE_DISABLE_THINKING ? 'force' : 'inherit-user'} ` +
-          `response_format=json_object attempt=${attempt} delay_ms=${delayMs} | ` +
-          `response: raw_length=${response.length} ` +
-          `first_100_chars="${response.substring(0, 100).replace(/\n/g, '\\n')}"`
-        );
-      };
-
-      // v1.26.3 PATCH Issue #443 expanded scope: typed-output dispatch via the
-      // centralized core/llm-dispatch helper. The retry tier logic is
-      // unchanged — only the wire shape gains schema enforcement.
-      const callOnce = () => callLlm(llm, llmArgs);
-
-      // Attempt 1: original request.
-      const first = await callOnce();
-      logResponse(first, 1, 0);
-      if (first.length > 0) return first;
-
-      // Attempt 2: 500ms-delayed retry of the same request.
-      //
-      // #993: the recovery is recorded after this attempt returns, not before it.
-      // The old order counted a retry that also came back empty, so a batch that
-      // failed every attempt was still announced as recovered.
-      softThrottleDetected = true;
-      console.warn(
-        `[Dedup LLM batch ${batchNum}] empty response (attempt 1) — ` +
-        `retrying after ${RETRY_ATTEMPT_2_DELAY_MS}ms. enableThinking_sent=${FORCE_DISABLE_THINKING ? 'false' : 'unset'} ` +
-        `prompt_chars=${prompt.length} max_tokens=${TOKENS_LINT_DEDUP_LLM} model=${lintModel}`
-      );
-      await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_2_DELAY_MS));
-      const second = await callOnce();
-      logResponse(second, 2, RETRY_ATTEMPT_2_DELAY_MS);
-      if (second.length > 0) return recordRecovery(retryEvents, batchNum, 1, RETRY_ATTEMPT_2_DELAY_MS, second);
-
-      // Attempt 3: 2-second delayed retry (final attempt).
-      console.warn(
-        `[Dedup LLM batch ${batchNum}] empty response (attempt 2) — ` +
-        `retrying after ${RETRY_ATTEMPT_3_DELAY_MS}ms delay (likely provider soft-throttle).`
-      );
-      await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_3_DELAY_MS));
-      const third = await callOnce();
-      logResponse(third, 3, RETRY_ATTEMPT_3_DELAY_MS);
-      if (third.length > 0) return recordRecovery(retryEvents, batchNum, 2, RETRY_ATTEMPT_3_DELAY_MS, third);
-      return third;
-    }
+    // The retry policy, its delays and the recovered-batch accumulator live in
+    // `callLlmWithRetry` (#932). What stays here is the shared state: the batch
+    // loop reads `softThrottleDetected` to halve concurrency, and the run's
+    // reporting reads `events` for the recovered-batch Notice.
+    const retryState: DedupRetryState = { events: [], softThrottleDetected: false };
 
     // Process batches in parallel with concurrency limit
     const allDuplicates: DuplicateResult[] = [];
@@ -696,7 +730,14 @@ export async function runDedupPhase(
             throw new Error('runDedupPhase: LLM client became null mid-run');
           }
 
-          const dedupResponse = await callLlmWithRetry(batchNum, dedupPrompt, llm);
+          const dedupResponse = await callLlmWithRetry({
+            batchNum,
+            prompt: dedupPrompt,
+            llm,
+            settings: ctx.settings,
+            systemPrompt,
+            state: retryState,
+          });
 
           // v1.26.0 (#382 item 1, Batch 2): throwOnEmpty surfaces 0-byte
           // LLM responses as batch failures instead of silently masking
@@ -818,7 +859,7 @@ export async function runDedupPhase(
     // loop. Floor at 1. The user's settings value is unaffected
     // (currentConcurrency is a local that resets every run).
     i += currentConcurrency;
-    if (softThrottleDetected) {
+    if (retryState.softThrottleDetected) {
       consecutiveThrottleChunks += 1;
       if (consecutiveThrottleChunks >= HALVE_AFTER_CONSECUTIVE_CHUNKS && currentConcurrency > 1) {
         const newConcurrency = Math.max(1, Math.floor(currentConcurrency / 2));
@@ -833,7 +874,7 @@ export async function runDedupPhase(
     } else {
       consecutiveThrottleChunks = 0;
     }
-    softThrottleDetected = false;
+    retryState.softThrottleDetected = false;
 
       for (let resultIdx = 0; resultIdx < results.length; resultIdx++) {
         const result = results[resultIdx];
@@ -880,7 +921,7 @@ export async function runDedupPhase(
       dedupFailures,
       concurrency,
       settings: ctx.settings,
-      retryEvents,
+      retryEvents: retryState.events,
       userConcurrency,
       finalConcurrency: currentConcurrency,
     });

@@ -21,7 +21,7 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/wiki/conversation-ingest.ts": 221,
 	"src/wiki/lint/fix-dead-link.ts": 143,
 	"src/wiki/lint/fix-runners.ts": 127,
-	"src/wiki/lint/llm-phases/dedup-phase.ts": 251,
+	"src/wiki/lint/llm-phases/dedup-phase.ts": 202,
 	"src/wiki/lint/merge-duplicates.ts": 172,
 	"src/wiki/lint/report-builder.ts": 199,
 	"src/wiki/page-factory/merge-page.ts": 199,

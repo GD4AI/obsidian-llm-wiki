@@ -1356,6 +1356,27 @@ describe('runDedupPhase — retry recovery is reported (#932 characterization)',
     }
   });
 
+  it('waits 500 ms before the second attempt and 2 s before the third', async () => {
+    // The two delay values are the part of the retry policy that no other test can
+    // see: the recovered-batch assertions count attempts, not spacing. A move that
+    // dropped a delay would leave every other test green and hammer a provider that
+    // is throttling us — so the numbers are pinned here before the code moves.
+    const { warnSpy, ctx, pageMap } = harness(['', '', '{"duplicates":[]}']);
+    const timeouts = vi.spyOn(window, 'setTimeout');
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      const delays = timeouts.mock.calls
+        .map(call => call[1])
+        .filter((ms): ms is number => typeof ms === 'number' && ms >= 500);
+      expect(delays.slice(0, 2)).toEqual([500, 2000]);
+    } finally {
+      timeouts.mockRestore();
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
   it('counts a batch that recovered on the third attempt exactly once', async () => {
     // Two empty answers then content: the 2-second tier succeeded, so the batch
     // recovered, and it is one batch — not one per attempt.
