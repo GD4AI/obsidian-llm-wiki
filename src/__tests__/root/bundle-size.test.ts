@@ -46,6 +46,18 @@ import { describe, expect, it } from 'vitest';
 /** One file, Sync Standard plan. Decimal MB as the docs state it. */
 const SYNC_STANDARD_MAX_FILE_BYTES = 5_000_000;
 
+/**
+ * #1007: a floor, not only a ceiling.
+ *
+ * The ceiling alone lets the bundle creep to within a few KB of the cap, and then the next
+ * feature PR crosses it with nothing to do about it in that PR. That is exactly what
+ * happened: `main` sat at 4,994,790 bytes, 5,210 under the cap, and #781 added 7,358.
+ *
+ * 500 KB is deliberately generous. It is enough for a dependency bump and a feature together,
+ * and it is small enough that the answer to "can I add this?" is still usually yes.
+ */
+const HEADROOM_FLOOR_BYTES = 500_000;
+
 const bundle = readFileSync('main.js');
 const bundleBytes = bundle.length;
 const bundleText = bundle.toString('utf8');
@@ -78,6 +90,20 @@ describe('shipped bundle size', () => {
         `charset 'utf8' and minify both work, and the comment at the top of this ` +
         `file records what each one measures.`,
     ).toBeLessThan(SYNC_STANDARD_MAX_FILE_BYTES);
+  });
+
+  it.skipIf(isDevBuild)('keeps a floor of headroom under the cap, so growth trips early', () => {
+    // A cap-only guard fires when it is already too late for the PR that trips it.
+    // This one fires while there is still room to choose between "add a dependency" and
+    // "recover bytes first".
+    expect(
+      bundleBytes,
+      `main.js is ${bundleBytes.toLocaleString('en-US')} bytes, leaving ` +
+        `${(SYNC_STANDARD_MAX_FILE_BYTES - bundleBytes).toLocaleString('en-US')} bytes of ` +
+        `headroom. #1007 sets a floor of ${HEADROOM_FLOOR_BYTES.toLocaleString('en-US')} ` +
+        `bytes so a PR meets this wall with room to act, not one byte before it. ` +
+        `See #1007 for the measured levers and the composition of the bundle.`,
+    ).toBeLessThan(SYNC_STANDARD_MAX_FILE_BYTES - HEADROOM_FLOOR_BYTES);
   });
 
   it('decodes as clean UTF-8 with no replacement characters', () => {

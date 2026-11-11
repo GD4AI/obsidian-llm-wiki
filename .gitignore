@@ -28,3 +28,4 @@ data.json
 # (settings.json has plugin config, settings.local.json has user credentials —
 # neither belongs in the plugin repo)
 .claude/
+esbuild-meta.json

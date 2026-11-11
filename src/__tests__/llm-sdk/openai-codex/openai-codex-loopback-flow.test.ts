@@ -51,7 +51,11 @@ describe('Codex loopback flow', () => {
     expect(bundle).not.toContain('require("node:http")');
     expect(bundle).not.toContain('import("node:http")');
     const loads = bundle.match(/require\("node:module"\)/g) ?? [];
-    const deferred = bundle.match(/Promise\.resolve\(\)\.then\(\(\) => __toESM\(require\("node:module"\)\)\)/g) ?? [];
+    // #1007: the production bundle is minified, so the interop helper is renamed
+    // (`__toESM` becomes a short identifier) and the arrow body has no spaces.
+    // Assert the SHAPE — a `require("node:module")` inside a deferred callback —
+    // not the identifier the bundler happened to choose.
+    const deferred = bundle.match(/Promise\.resolve\(\)\.then\(\(\) *=> *[\w$]+\(require\("node:module"\)\)\)/g) ?? [];
     expect(deferred).toHaveLength(2);
     expect(loads).toHaveLength(deferred.length);
     expect(bundle).toContain('createRequire');
