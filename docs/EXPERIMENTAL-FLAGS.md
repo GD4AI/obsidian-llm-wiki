@@ -16,9 +16,11 @@ read, and the version it expires in. Nothing here removes a setting, and nothing
 | `gateDissentStubs` | off | `applyCandidateGates` (`wiki-engine.ts:1172`) | `=== true` | S135. When the two gate halves disagree, the candidate becomes a stub from the extraction's own summary instead of being dropped. Needs `skipMentionOnlyCandidates` on, because the table consumes the position verdict that setting opts into. | 1.32.0 |
 | `createStubsForUnresolvableLinks` | **on** | `shouldCreateStubForUnresolvableLink` (`fix-dead-link.ts:165`) | `!== false` | #75. When *Fix Dead Links* cannot resolve a target, it writes an empty stub and re-points the link instead of leaving it dead. Default-on, so the flag is an opt-out, not an opt-in. | 1.33.0 |
 
-**The expiry column is a proposal, not a measurement.** Nothing in the code records a date,
-and a date nobody agreed to is worse than no date. The maintainer sets it; what this file
-supplies is the evidence each flag is waiting on, in the last section.
+**The expiry column is a proposal, not an agreement.** Nobody has set a release date. The
+dates live in `src/core/experimental-flags.ts`, and `experimental-flags.test.ts` compares each
+one to `package.json`'s version — so the release that reaches an expiry fails the suite and
+forces the decision. Moving a date is allowed; moving it silently is what the test makes
+visible. The register below is checked against that file by the same test, in both directions.
 
 ## Three things this table makes visible
 
@@ -36,7 +38,8 @@ release, the flag is removed, its behaviour becomes unconditional, and the chang
 the migration line. This repository's rule is that an escape hatch is not allowed to become
 permanent furniture — `legacyScorer` is the current example, and it is named in `AGENTS.md`
 §"Which of the three numbers moves" as a MAJOR trigger precisely because removing it removes
-a way back. A proposal that nobody carries becomes the furniture the rule forbids.
+a way back. The deadline is enforced in code, so a proposal that nobody carries becomes a
+failing test rather than furniture.
 
 ## What would make a flag expire early
 
