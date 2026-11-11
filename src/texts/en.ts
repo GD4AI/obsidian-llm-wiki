@@ -698,7 +698,7 @@ export const EN_TEXTS = {
     lintOrphanIsDuplicate: ' (⚠️ duplicate page)',
     lintHubLinkDensitySection: 'Hub link density issues (Issue #157 / #175) [{count}]',
     lintCrystallizedHubsSection: 'Crystallized hub candidates [{count}]',
-    lintCrystallizedHubsIntro: 'Their neighbours now link to each other, so the hub is no longer load-bearing. Nothing is changed automatically — remove the hub tag yourself if the role has ended. Assessed the top {topN} hubs by degree.',
+    lintCrystallizedHubsIntro: 'Their neighbours now link to each other, so the hub is no longer load-bearing. If you mark hubs by hand, this hub\'s role has ended. The plugin ignores that marker and changes nothing. Assessed the top {topN} hubs by degree.',
     lintCrystallizedHubRow: '{path} — degree {degree}, clustering percentile {percentile}%',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree} in-degree, {relatedCount} related links, distinctiveness {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ strip',

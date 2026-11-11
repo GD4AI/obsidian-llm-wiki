@@ -715,7 +715,7 @@ export const DE_TEXTS = {
     lintOrphanIsDuplicate: ' (⚠️ doppelte Seite)',
     lintHubLinkDensitySection: 'Hub-Link-Dichte-Probleme (Issue #157 / #175) [{count}]',
     lintCrystallizedHubsSection: 'Kristallisierte Hub-Kandidaten [{count}]',
-    lintCrystallizedHubsIntro: 'Ihre Nachbarn verlinken sich jetzt gegenseitig, der Hub traegt also nichts mehr. Es wird nichts automatisch geaendert — entferne das Hub-Tag selbst, wenn die Rolle beendet ist. Die obersten {topN} Hubs nach Grad wurden bewertet.',
+    lintCrystallizedHubsIntro: 'Ihre Nachbarn verlinken sich jetzt gegenseitig, der Hub traegt also nichts mehr. Wenn du Hubs von Hand markierst, ist die Rolle dieses Hubs beendet. Das Plugin liest diese Markierung nicht und aendert nichts. Bewertet wurden die obersten {topN} Hubs nach Grad.',
     lintCrystallizedHubRow: '{path} — Grad {degree}, Clustering-Perzentil {percentile} %',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree} eingehend, {relatedCount} verwandte Links, Unterscheidbarkeit {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ entfernen',

@@ -680,7 +680,7 @@ export const RU_TEXTS = {
     lintOrphanIsDuplicate: ' (⚠️ дублирующаяся страница)',
     lintHubLinkDensitySection: 'Проблемы плотности хаб-ссылок (Issue #157 / #175) [{count}]',
     lintCrystallizedHubsSection: 'Кандидаты в кристаллизованные хабы [{count}]',
-    lintCrystallizedHubsIntro: 'Их соседи теперь ссылаются друг на друга, поэтому хаб больше не держит структуру. Автоматически ничего не меняется — снимите тег хаба сами, если роль завершена. Оценены {topN} хабов с наибольшей степенью.',
+    lintCrystallizedHubsIntro: 'Их соседи теперь ссылаются друг на друга, поэтому хаб больше не держит структуру. Если вы помечаете хабы вручную, роль этого хаба завершена. Плагин не читает эту пометку и ничего не меняет. Оценены {topN} хабов с наибольшей степенью.',
     lintCrystallizedHubRow: '{path} — степень {degree}, процентиль кластеризации {percentile} %',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree} входящих, {relatedCount} связанных ссылок, отличительность {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ удалить',

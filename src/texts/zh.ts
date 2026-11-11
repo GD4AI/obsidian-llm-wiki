@@ -634,7 +634,7 @@ export const ZH_TEXTS = {
     lintOrphanIsDuplicate: ' （⚠️ 重复页面）',
     lintHubLinkDensitySection: '枢纽页面链接密度问题（Issue #157 / #175）[{count}]',
     lintCrystallizedHubsSection: '已结晶的枢纽候选 [{count}]',
-    lintCrystallizedHubsIntro: '它们的邻居现在互相链接，枢纽不再是承重结构。不会自动改动任何东西 —— 若这个角色已经结束，请自行移除枢纽标签。已按度数评估前 {topN} 个枢纽。',
+    lintCrystallizedHubsIntro: '它们的邻居现在互相链接，枢纽不再是承重结构。如果你手工标记枢纽，这个枢纽的角色已经结束。插件不读取这个标记，也不会因此改动任何东西。按连接数评估前 {topN} 个枢纽。',
     lintCrystallizedHubRow: '{path} — 度数 {degree}，聚类百分位 {percentile}%',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree} 个入链，{relatedCount} 个相关链接，区分度 {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ 建议剥离',

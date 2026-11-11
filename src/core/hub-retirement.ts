@@ -2,10 +2,17 @@
 // "crystallized" and can have its hub status retired.
 //
 // Model (S15): a hub is a content-unspecific CRYSTALLIZATION POINT for a
-// developing domain. Its special status (hub-link suppression) is a DECAYING
-// developmental role. While the domain is a STAR — neighbors hang only off the
-// hub — the hub is load-bearing → keep. Once the neighbors interconnect
-// (crystallization) the hub is structurally redundant → retire the status.
+// developing domain, and its hub status is a DECAYING developmental role. While
+// the domain is a STAR — neighbors hang only off the hub — the hub is
+// load-bearing → keep. Once the neighbors interconnect (crystallization) the hub
+// is structurally redundant → retire the status.
+//
+// A hub TAG is a curatorial marker that the plugin does not read. No code path
+// consults it, and hub status is recomputed from the graph on every run, so
+// removing a tag changes nothing. This module tells the user when the role the
+// marker describes has ended. The one suppression the product still performs is
+// degree-based, not tag-based: `scanHubLinkDensity` examines the `detectHubs`
+// set and `runHubLinkFixes` strips low-distinctiveness links there.
 //
 // Metric = local clustering coefficient of the hub: edges among its neighbors
 // divided by possible neighbor pairs. Hubs have intrinsically LOW clustering, so
