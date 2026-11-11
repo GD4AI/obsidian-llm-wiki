@@ -216,4 +216,32 @@ describe('contradiction marker section (#575 read half)', () => {
     });
     expect(report).not.toContain('Pages flagged with contradictions');
   });
+
+  // #954: the intro used to tell the user to remove the hub tag. A hub tag is a
+  // curatorial marker the plugin never reads, so for the majority who never set
+  // one the instruction pointed at nothing, and for the rest it implied that
+  // removing it changes plugin behaviour. It does not.
+  it('says the plugin ignores a hub tag instead of telling the user to remove it', () => {
+    const report = buildLintReport({
+      settings: makeSettings(),
+      findings: makeFindings({
+        crystallizedHubs: [
+          { path: 'wiki/entities/Hub.md', degree: 12, clustering: 0.04, clusteringPercentile: 0.98 },
+        ],
+      }),
+      duplicates: [],
+      contradictionsReport: '',
+      elapsedSeconds: 1,
+      totalPages: 10,
+    });
+
+    expect(report).toContain('entities/Hub — degree 12');
+    // The instruction that pointed at nothing.
+    expect(report).not.toContain('remove the hub tag yourself');
+    // What actually happens.
+    expect(report).toContain('The plugin ignores that marker and changes nothing');
+    // The assessed set is named with its real size, not a placeholder.
+    expect(report).toContain('Assessed the top 50 hubs by degree');
+    expect(report).not.toContain('{topN}');
+  });
 });

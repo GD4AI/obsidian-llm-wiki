@@ -713,7 +713,7 @@ export const ES_TEXTS = {
     lintOrphanIsDuplicate: ' (⚠️ página duplicada)',
     lintHubLinkDensitySection: 'Problemas de densidad de enlaces en hubs (Issue #157 / #175) [{count}]',
     lintCrystallizedHubsSection: 'Candidatos a hub cristalizados [{count}]',
-    lintCrystallizedHubsIntro: 'Sus vecinos ahora se enlazan entre si, asi que el hub ya no sostiene la estructura. Nada cambia automaticamente: elimina tu el tag de hub si el rol ha terminado. Se evaluaron los {topN} hubs de mayor grado.',
+    lintCrystallizedHubsIntro: 'Sus vecinos ya se enlazan entre si, asi que el hub ya no sostiene la estructura. Si marcas los hubs a mano, el rol de este hub ha terminado. El plugin no lee esa marca y no cambia nada. Se evaluaron los {topN} hubs de mayor grado.',
     lintCrystallizedHubRow: '{path} — grado {degree}, percentil de clustering {percentile} %',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree} entrantes, {relatedCount} enlaces relacionados, distintividad {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ eliminar',

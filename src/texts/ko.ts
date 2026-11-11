@@ -716,7 +716,7 @@ export const KO_TEXTS = {
     lintOrphanIsDuplicate: ' (⚠️ 중복 페이지)',
     lintHubLinkDensitySection: '허브 링크 밀도 문제 (Issue #157 / #175) [{count}]',
     lintCrystallizedHubsSection: '결정화된 허브 후보 [{count}]',
-    lintCrystallizedHubsIntro: '이웃들이 서로 연결되어 이 허브는 더 이상 지지대가 아닙니다. 자동으로 바뀌는 것은 없습니다. 역할이 끝났다면 허브 태그를 직접 제거하세요. 차수 기준 상위 {topN}개 허브를 평가했습니다.',
+    lintCrystallizedHubsIntro: '이웃들이 서로 연결되어 이 허브는 더 이상 지지대가 아닙니다. 허브를 직접 표시했다면 이 허브의 역할은 끝났습니다. 플러그인은 그 표시를 읽지 않으며 아무것도 바꾸지 않습니다. 연결 수 기준 상위 {topN}개 허브를 평가했습니다.',
     lintCrystallizedHubRow: '{path} — 차수 {degree}, 클러스터링 백분위 {percentile}%',
     lintHubLinkDensityItem: '- [[{page}]] — {inDegree}개 인바운드, {relatedCount}개 관련 링크, 식별도 {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ 제거',
