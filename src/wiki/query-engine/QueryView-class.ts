@@ -16,7 +16,8 @@
 //   `_lastRetrieval` writes remain on the class (the cache lives here).
 
 import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer, Component } from 'obsidian';
-import LLMWikiPlugin from '../../main';
+// Type-only: `main.ts` owns this view, so a value import closes a cycle (#930).
+import type LLMWikiPlugin from '../../main';
 import { TEXTS } from '../../texts';
 import { PROMPTS } from '../../prompts';
 import { parseJsonResponse } from '../../core/json';

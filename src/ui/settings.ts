@@ -1,7 +1,9 @@
 // Settings panel UI for LLM Wiki Plugin
 
 import { App, PluginSettingTab, Setting, Notice, Platform } from 'obsidian';
-import LLMWikiPlugin from '../main';
+// Type-only: `main.ts` constructs this tab, so a value import would close a cycle
+// and promise a plugin instance that does not exist yet at load time (#930).
+import type LLMWikiPlugin from '../main';
 import { LLMWikiSettings } from '../types';
 import { ConfirmModal } from './modals/ConfirmModal-class';
 import { TEXTS } from '../texts';
