@@ -27,7 +27,7 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/wiki/page-factory/merge-page.ts": 199,
 	"src/wiki/page-factory/path-resolution.ts": 126,
 	"src/wiki/query-engine/QueryView-class.ts": 246,
-	"src/wiki/wiki-engine.ts": 459,
+	"src/wiki/wiki-engine.ts": 438,
 };
 
 export default [

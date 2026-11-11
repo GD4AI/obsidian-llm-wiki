@@ -1158,53 +1158,13 @@ export class WikiEngine {
         wikiLang,
         translated,
       });
-      // domain axis stage 3 (#568): the semantic half follows on the
-      // survivors — the extraction reported per candidate how the source treats
-      // it (`coverage`), the threshold in candidate-gate.ts says what is enough;
-      // a missing value keeps the candidate. Then the per-item domain subset
-      // is validated against the vault's tag vocabulary: a value no note
-      // carries is dropped (logged), not written. Runs regardless of the #521
-      // opt-in — the deterministic gate is upstream's setting, this half is
-      // the local domain-axis design. Under the outcome table the threshold
-      // has already been folded into the routing, so only the domain
-      // validation runs — over the survivors AND the planned stubs, whose
-      // frontmatter carries the same validated subset.
-      let domainVocabulary: string[] = [];
-      {
-        if (!tableApplied) {
-          // #620 parity: a dropped name the vault already has a page for keeps
-          // its edge in the survivors' related_* lists. Without the predicate
-          // behaviour is unchanged. (The author's own link markup is folded
-          // into applyCoverageThreshold's own sourceText path — see candidate-gate.ts.)
-          const coverageResolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
-          const covered = applyCoverageThreshold(
-            analysis,
-            extractBody(rawSource),
-            name => coverageResolve(name) !== undefined,
-          );
-          if (covered.dropped.length > 0) {
-            const list = covered.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            const kept = covered.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${covered.linkedAnyway.join('; ')}` : '';
-            console.warn(`[candidate-gate] ${file.path}: dropped ${covered.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
-            this.onProgress?.(`Candidate gate: ${covered.dropped.length} dropped — ${list}${kept}`);
-            analysis.entities = covered.entities;
-            analysis.concepts = covered.concepts;
-          }
-        }
-        // Stage 5 (#568): validation accepts exactly what the prompt offered —
-        // the one vocabulary of vocabulary.ts (settings list + note tags + page
-        // tags). A value outside it is dropped, not written.
-        domainVocabulary = domainVocabularyOf(this.app, this.settings);
-        for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
-          const selection = selectDomains(item.domains, domainVocabulary);
-          if (selection.rejected.length > 0) {
-            console.debug(`[domain-axis] ${file.path}: "${item.name}" — dropped ${selection.rejected.length} value(s) the vocabulary does not carry: ${selection.rejected.join(', ')}`);
-          }
-          if (selection.kept.length > 0) item.domains = selection.kept;
-          else delete item.domains;
-        }
-      }
-
+      const domainVocabulary = await this.applyDomainAxis({
+        analysis,
+        rawSource,
+        file,
+        tableApplied,
+        stubPlan,
+      });
       // Every page born from this note links its siblings, a related name
       // the vault answers is written under the page's own title and kind,
       // and a name nothing answers stays as written and is counted.
@@ -1715,6 +1675,71 @@ export class WikiEngine {
     }
 
     return { stubPlan, tableApplied };
+  }
+
+  /**
+   * The domain axis (#568) stages 3 and 5.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: it reads the
+   * extraction and the vault's tag vocabulary, and answers with the vocabulary
+   * the later phase shapes related lists against.
+   */
+  private async applyDomainAxis(args: {
+    analysis: SourceAnalysis;
+    rawSource: string;
+    file: TFile;
+    tableApplied: boolean;
+    stubPlan: StubCandidate[];
+  }): Promise<string[]> {
+    const { analysis, rawSource, file, tableApplied, stubPlan } = args;
+    // domain axis stage 3 (#568): the semantic half follows on the
+    // survivors — the extraction reported per candidate how the source treats
+    // it (`coverage`), the threshold in candidate-gate.ts says what is enough;
+    // a missing value keeps the candidate. Then the per-item domain subset
+    // is validated against the vault's tag vocabulary: a value no note
+    // carries is dropped (logged), not written. Runs regardless of the #521
+    // opt-in — the deterministic gate is upstream's setting, this half is
+    // the local domain-axis design. Under the outcome table the threshold
+    // has already been folded into the routing, so only the domain
+    // validation runs — over the survivors AND the planned stubs, whose
+    // frontmatter carries the same validated subset.
+    let domainVocabulary: string[];
+    {
+      if (!tableApplied) {
+        // #620 parity: a dropped name the vault already has a page for keeps
+        // its edge in the survivors' related_* lists. Without the predicate
+        // behaviour is unchanged. (The author's own link markup is folded
+        // into applyCoverageThreshold's own sourceText path — see candidate-gate.ts.)
+        const coverageResolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
+        const covered = applyCoverageThreshold(
+          analysis,
+          extractBody(rawSource),
+          name => coverageResolve(name) !== undefined,
+        );
+        if (covered.dropped.length > 0) {
+          const list = covered.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          const kept = covered.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${covered.linkedAnyway.join('; ')}` : '';
+          console.warn(`[candidate-gate] ${file.path}: dropped ${covered.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
+          this.onProgress?.(`Candidate gate: ${covered.dropped.length} dropped — ${list}${kept}`);
+          analysis.entities = covered.entities;
+          analysis.concepts = covered.concepts;
+        }
+      }
+      // Stage 5 (#568): validation accepts exactly what the prompt offered —
+      // the one vocabulary of vocabulary.ts (settings list + note tags + page
+      // tags). A value outside it is dropped, not written.
+      domainVocabulary = domainVocabularyOf(this.app, this.settings);
+      for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
+        const selection = selectDomains(item.domains, domainVocabulary);
+        if (selection.rejected.length > 0) {
+          console.debug(`[domain-axis] ${file.path}: "${item.name}" — dropped ${selection.rejected.length} value(s) the vocabulary does not carry: ${selection.rejected.join(', ')}`);
+        }
+        if (selection.kept.length > 0) item.domains = selection.kept;
+        else delete item.domains;
+      }
+    }
+
+    return domainVocabulary;
   }
 
   private async apiDelay(ms?: number): Promise<void> {
