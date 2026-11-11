@@ -227,6 +227,42 @@ type BatchAction =
   | { kind: 'abort' };
 
 /**
+ * Everything one analysis run carries between its batches (#932).
+ *
+ * These were locals of `analyzeSource`. They travel as one object because the batch
+ * body mutates most of them: the retry budget, the ceiling a provider taught us, the
+ * accumulation the post-loop report reads, and the two batch counters.
+ *
+ * The order inside a run is unchanged by the move. `effectiveCeiling` exists because a
+ * provider whose real limit is below the assumed one answers with a 400 naming
+ * max_tokens, and a 400 is not an answer — so the first batch learns the limit by
+ * halving, at most twice, and the rest of the run uses what it learned (#904).
+ * `ceilingProbes` is what bounds that loop.
+ */
+interface AnalysisRunState {
+  file: TFile;
+  content: string;
+  sourceLang: ReturnType<typeof normalizeSourceLanguage>;
+  limits: ReturnType<typeof calculateBatchLimits>;
+  customTypeCaps: ReturnType<typeof getCustomTypeCaps>;
+  retryCap: number;
+  accumulation: ReturnType<typeof createEmptyAccumulation>;
+  /** Filled by `preparePromptShell`, once the note text is final. */
+  staticPrefix: string;
+  suffixTemplate: string;
+  granularityInstruction: string;
+  currentBatchSize: number;
+  batchSizeHalved: boolean;
+  retryingBatch: boolean;
+  escalateMaxTokens: boolean;
+  placeholderRetried: boolean;
+  effectiveCeiling: number;
+  ceilingProbes: number;
+  firstBatchData: NormalizedBatch | null;
+  finalBatchNum: number;
+}
+
+/**
  * The output ceiling to try after a provider rejected one, or `null` when no
  * probe is left to spend.
  *
@@ -259,6 +295,339 @@ export class SourceAnalyzer {
    * Returns null on blank content (defense-in-depth; the pre-ingest gate
    * normally rejects blank sources first).
    */
+  /**
+   * Build the run state for one note (#932).
+   *
+   * Pure work plus the two counters the retry policy needs. `preparePromptShell`
+   * fills the prompt halves afterwards, once the note text (including any image
+   * evidence) is final.
+   */
+  private prepareRunState(
+    file: TFile,
+    content: string,
+    sourceLang: ReturnType<typeof normalizeSourceLanguage>,
+  ): AnalysisRunState {
+    // Calculate batch limits using pure functions (Phase 1)
+    const plan = this.prepareExtraction(content);
+
+    console.debug(`[Batch limits] Initial size: ${plan.limits.initialBatchSize}, Max batches: ${plan.limits.maxBatches}, Max total: ${plan.limits.maxTotalItems || 'none'}, baseMaxTokens: ${plan.baseMaxTokens}, retryCap: ${plan.retryCap}, ceiling: ${plan.outputCeiling}`);
+
+    // Issue #912: reuse what an earlier note learned about this pair.
+    return {
+      file,
+      content,
+      sourceLang,
+      limits: plan.limits,
+      customTypeCaps: plan.customTypeCaps,
+      retryCap: plan.retryCap,
+      accumulation: createEmptyAccumulation(),
+      staticPrefix: '',
+      suffixTemplate: '',
+      granularityInstruction: getGranularityInstruction(this.ctx.settings),
+      currentBatchSize: plan.limits.initialBatchSize,
+      batchSizeHalved: false,
+      retryingBatch: false,
+      escalateMaxTokens: false,
+      placeholderRetried: false,
+      effectiveCeiling: startCeilingFor(this.ctx.settings, plan.outputCeiling),
+      ceilingProbes: 0,
+      firstBatchData: null,
+      finalBatchNum: 0,
+    };
+  }
+
+  /**
+   * Render the static prefix and the per-batch suffix once per run (#932).
+   *
+   * Issue #904: this pass fills the static prefix on purpose and stops at
+   * `{{batch_context}}`; the per-batch pass fills the rest. Naming the deferred
+   * fields keeps "not yet" from logging as "unknown", which is how three noise
+   * lines per ingest came to hide the warnings that matter.
+   */
+  private preparePromptShell(state: AnalysisRunState, extractionContent: string): void {
+    const templateUntouched = renderTemplate(PROMPTS.analyzeSource, {
+      content: extractionContent,
+      source_path: state.file.path,
+      domain_context: buildDomainContext(
+        domainVocabulary(this.ctx.app, this.ctx.settings),
+      ),
+    }, {
+      defer: ['batch_context', 'granularity_instruction', 'batch_size'],
+    });
+    const batchMarker = '{{batch_context}}';
+    const markerIdx = templateUntouched.indexOf(batchMarker);
+    state.staticPrefix = templateUntouched.substring(0, markerIdx);
+    state.suffixTemplate = templateUntouched.substring(markerIdx + batchMarker.length);
+  }
+
+  /**
+   * Whether a halve-and-retry is still available for the current batch.
+   *
+   * Gates both the retry itself and the decision to skip JSON repair on a truncated
+   * response — repair is the last salvage once halving is spent (Issue #305).
+   */
+  private canHalveBatch(state: AnalysisRunState): boolean {
+    return !state.retryingBatch && state.currentBatchSize > state.limits.minBatchSize;
+  }
+
+  /**
+   * Halve the batch and raise the budget, or say that the budget is spent (#305).
+   *
+   * Issue #305: the halving retry used to live only in the catch block, so it required
+   * the provider call to *throw*. An OpenAI-compatible provider does not throw on
+   * truncation — it returns HTTP 200 with a body that stops mid-token — so the batch
+   * fell through to the parse-failure `break` and was dropped silently. It lives here
+   * so the parse-failure path and the catch path share one implementation.
+   *
+   * S143: halving lowers only the item ceiling inside the prompt. A reasoning model
+   * that spent the whole budget thinking never reached the items, so a smaller ceiling
+   * cannot shorten the retry — and `Math.max(baseMaxTokens, …)` could only shrink the
+   * budget back to base. The retry also raises the budget to `retryCap`, which until
+   * then was only ever passed as a ceiling nothing climbed toward.
+   */
+  private halveBatchAndRetry(state: AnalysisRunState, batchLabel: string, cause: string): boolean {
+    if (!this.canHalveBatch(state)) return false;
+    state.currentBatchSize = Math.max(state.limits.minBatchSize, Math.floor(state.currentBatchSize * 0.5));
+    state.escalateMaxTokens = true;
+    console.warn(`${batchLabel} Truncation detected (${cause}), halving batch size to ${state.currentBatchSize} and raising max_tokens to ${state.retryCap} for the retry`);
+    state.retryingBatch = true;
+    return true;
+  }
+
+  /**
+   * Run one extraction batch and say what the loop should do next (#932).
+   *
+   * Extracted from `analyzeSource`. The three loop-control statements it used to hold
+   * (`batchNum--; continue;`, `return null`, `break`) became the `BatchAction` this
+   * class already returns from `mergeLaterBatch`, `afterParseFailure` and
+   * `afterBatchError` — so the caller owns the loop and this method owns the batch.
+   */
+  private async runBatchIteration(
+    state: AnalysisRunState,
+    batchNum: number,
+    isFirstBatch: boolean,
+    client: LLMClient,
+  ): Promise<BatchAction> {
+    const { prompt, finalPrompt } = this.buildExtractionPrompt({
+      isFirstBatch, batchNum, accumulation: state.accumulation,
+      currentBatchSize: state.currentBatchSize,
+      staticPrefix: state.staticPrefix, suffixTemplate: state.suffixTemplate,
+      granularityInstruction: state.granularityInstruction, sourceLang: state.sourceLang,
+    });
+
+    console.debug(`[Batch ${batchNum + 1}/${state.limits.maxBatches}] LLM call started (batch_size=${state.currentBatchSize})...`);
+    console.debug(`[Batch ${batchNum + 1}] Prompt length:`, prompt.length);
+    this.emitBatchProgress({ isFirstBatch, batchNum, limits: state.limits, accumulation: state.accumulation });
+
+    try {
+      const systemPrompt = await this.ctx.buildSystemPrompt('analyze');
+      // Scale max_tokens with current batch size to avoid truncation.
+      // Recomputed per attempt from `effectiveCeiling`, so a ceiling the
+      // provider rejected is not sent again.
+      const { batchMaxTokens, repairCap } = this.batchBudgets({
+        currentBatchSize: state.currentBatchSize,
+        effectiveCeiling: state.effectiveCeiling,
+        escalateMaxTokens: state.escalateMaxTokens,
+      });
+      // v1.24.0 #208: route through resolveModelForTask so the debug
+      // log reflects the ACTUAL model used (per-task override), not
+      // the unified setting. Without this, e2e verification of
+      // per-task routing would be impossible from console alone.
+      const resolvedModel = resolveModelForTask(this.ctx.settings, 'ingest');
+      console.debug(`[Batch ${batchNum + 1}] Provider:`, this.ctx.settings.provider, '| Model:', resolvedModel, '| Prompt:', finalPrompt.length, 'chars', '| max_tokens:', batchMaxTokens);
+      // Issue #305: record why generation stopped. Clients that do not
+      // report it leave this at 'unknown', which keeps pre-#305 behavior.
+      // Held in an object rather than a bare `let` so control-flow analysis
+      // does not narrow it to its initializer across the callback.
+      const batchCall = this.buildExtractArgs({
+        systemPrompt,
+        finalPrompt,
+        resolvedModel,
+        batchMaxTokens,
+        repairCap,
+        staticPrefixLength: state.staticPrefix.length,
+      });
+      const finish = batchCall.finish;
+      // Typed-output dispatch via the centralized helper in core/llm-dispatch:
+      // prefer createMessageWithOutput on modern clients, fall back to
+      // createMessage on legacy Anthropic / OpenAI / Codex. The returned
+      // string is the wire text — Tier 1 / Tier 2 (output undefined) flows
+      // through the existing parseJsonResponse path below.
+      const response = await callLlm(client, batchCall.args);
+
+      // Surface real token usage (Issue #305 follow-up): the model reports
+      // prompt/completion tokens; logging them per batch turns truncation
+      // tuning (batch size vs max_tokens vs context window) into a
+      // measurement instead of a char-count guess.
+      const usageStr = finish.usage
+        ? ` | tokens in=${finish.usage.inputTokens ?? '?'} out=${finish.usage.outputTokens ?? '?'} (max_tokens=${batchMaxTokens})`
+        : '';
+      console.debug(`[Batch ${batchNum + 1}] Response length:`, response.length, usageStr);
+      this.ctx.onProgress?.(
+        getText(this.ctx.settings.language, 'ingestBatchProcessed')
+          .replace('{current}', String(batchNum + 1))
+      );
+
+      // Issue #524: a degenerate repetition loop is the one signal that
+      // tells a damaged batch from a short one. Under grammar-constrained
+      // decoding the loop can end in `finish_reason: stop` with schema-valid
+      // JSON around it — a handful of items, the loop inside a string — and
+      // every guard below (empty-batch, halving on `length`, JSON repair)
+      // accepts that as a successful batch. Treat it like truncation: halve
+      // and retry while the budget allows; otherwise parse what arrived and
+      // say so. The debug line carries finish reason and reasoning tokens
+      // so a user can read the regime off the log (#524).
+      const loop = findRepetitionLoop(response);
+      const reasoningStr = finish.usage?.reasoningTokens !== undefined ? ` reasoning_tokens=${finish.usage.reasoningTokens}` : '';
+      console.debug(`[Batch ${batchNum + 1}] finish=${finish.reason}${reasoningStr}${loop ? ` repetition_loop=${loop.length} chars (unit "${loop.unit}")` : ''}`);
+      // #525 review: a note that repeats a phrase itself — a refrain, a
+      // tabulated column, a quoted chorus — produces a faithful echo that
+      // looks exactly like degeneracy here. Halving changes how many items
+      // are asked for, never the note, so the retry is spent on a certainty
+      // and the same batch is merged afterwards anyway. Check the note
+      // before spending it.
+      if (this.repetitionLoopAction(state, loop, `[Batch ${batchNum + 1}]`) === 'rerun') {
+        return { kind: 'rerun' };
+      }
+
+      // Issue #305 follow-up: on a truncated response (finish_reason=length)
+      // the JSON is *incomplete*, not malformed, and a syntax-repair pass
+      // costs another retryCap-sized call re-hitting the same limit
+      // (observed: a ~48k-token repair that itself truncates). Prefer
+      // halve-and-retry, which re-runs the batch smaller.
+      //
+      // Only skip repair while that retry is actually available. Once the
+      // halving budget is spent, repair becomes the last salvage: a truncated
+      // batch is a prefix of complete items followed by one cut-off item, and
+      // closing the brackets around the complete ones is exactly what the
+      // repair prompt asks for. Without it the parse-failure path falls to
+      // `return null` on a first batch — dropping the whole source rather
+      // than the items that did arrive.
+      //
+      // Providers that report no finish reason keep 'unknown' and the repair
+      // path regardless.
+      const repairFn = this.buildRepairFn({
+        client,
+        skipRepair: finish.reason === 'length' && this.canHalveBatch(state),
+        repairCap,
+      });
+
+      // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): use
+      // parseJsonResult (not parseJsonResponse) so the parse FAILURE
+      // REASON is available. A grammar-constrained reasoning model
+      // emits `{"": ""}` — the placeholder gate rejects it with reason
+      // 'thinking-block-only'. That is the one condition we retry
+      // without halving. Malformed/empty/exception keep the legacy
+      // paths below unchanged.
+      const parseResult = await parseJsonResult(response, repairFn);
+      const analysisData = parseResult.ok
+        ? parseResult.value as Partial<SourceAnalysis>
+        : null;
+      const parseReason = parseResult.ok ? undefined : parseResult.reason;
+
+      if (!analysisData) {
+        const decision = this.afterParseFailure({
+          batchLabel: `[Batch ${batchNum + 1}]`,
+          isFirstBatch,
+          placeholderRetried: state.placeholderRetried,
+          parseReason,
+          finishReason: finish.reason,
+          halveAndRetry: cause => this.halveBatchAndRetry(state, `[Batch ${batchNum + 1}]`, cause),
+        });
+        state.placeholderRetried = decision.placeholderRetried;
+        if (decision.action.kind === 'rerun') return { kind: 'rerun' };
+        if (decision.action.kind === 'abort') return { kind: 'abort' };
+        return { kind: 'stop' };
+      }
+
+      // Issue #305 follow-up: the one-retry-per-batch budget must reset once
+      // a batch parses successfully. Otherwise the first halve anywhere
+      // latches `retryingBatch` for the rest of the source, so a later
+      // truncation can no longer halve (halveBatchAndRetry short-circuits)
+      // and its batch is silently dropped — the source finalizes as
+      // complete while missing that batch's items. Resetting here, on the
+      // success path, gives each batch its own retry budget.
+      state.retryingBatch = false;
+      state.escalateMaxTokens = false;
+
+      const { validity, data: norm } = normalizeBatchResponse(analysisData, state.file.path);
+
+      if (isFirstBatch) {
+        const first = this.absorbFirstBatch({
+          validity, norm, analysisData, file: state.file,
+          accumulation: state.accumulation, customTypeCaps: state.customTypeCaps,
+          currentBatchSize: state.currentBatchSize,
+        });
+        state.firstBatchData = first.firstBatchData;
+        if (first.action.kind === 'abort') return { kind: 'abort' };
+      }
+
+      if (validity === 'empty') {
+        console.debug(`[Batch ${batchNum + 1}] LLM returned empty arrays, stopping iteration`);
+        return { kind: 'stop' };
+      }
+
+      // Later batches: merge batch results using pure function (Phase 3)
+      if (!isFirstBatch) {
+        const outcome = this.mergeLaterBatch({
+          accumulation: state.accumulation, norm, customTypeCaps: state.customTypeCaps, batchNum,
+          responseLength: response.length,
+          limits: state.limits, currentBatchSize: state.currentBatchSize,
+          batchSizeHalved: state.batchSizeHalved,
+        });
+        state.currentBatchSize = outcome.currentBatchSize;
+        state.batchSizeHalved = outcome.batchSizeHalved;
+        if (outcome.action.kind === 'stop') return { kind: 'stop' };
+      }
+
+      state.finalBatchNum = batchNum + 1;
+      return { kind: 'next' };
+
+    } catch (error) {
+      console.error(`[Batch ${batchNum + 1}] Call failed:`, error);
+      const failure = this.afterBatchError({
+        error,
+        batchLabel: `[Batch ${batchNum + 1}]`,
+        isFirstBatch,
+        effectiveCeiling: state.effectiveCeiling,
+        ceilingProbes: state.ceilingProbes,
+        halveAndRetry: cause => this.halveBatchAndRetry(state, `[Batch ${batchNum + 1}]`, cause),
+      });
+      state.effectiveCeiling = failure.effectiveCeiling;
+      state.ceilingProbes = failure.ceilingProbes;
+      if (failure.action.kind === 'throw') throw failure.action.error;
+      if (failure.action.kind === 'rerun') return { kind: 'rerun' };
+      state.retryingBatch = false;
+      console.warn(`[Batch ${batchNum + 1}] Non-first-round failure, keeping extracted items`);
+      return { kind: 'stop' };
+    }
+  }
+
+  /**
+   * Treat a degenerate repetition loop as a damaged batch, and say whether to retry.
+   *
+   * #525 review: a note that repeats a phrase itself — a refrain, a tabulated column,
+   * a quoted chorus — produces a faithful echo that looks exactly like degeneracy
+   * here. Halving changes how many items are asked for, never the note, so the retry
+   * would be spent on a certainty and the same batch merged afterwards anyway. The
+   * note is checked before the budget is spent.
+   */
+  private repetitionLoopAction(
+    state: AnalysisRunState,
+    loop: ReturnType<typeof findRepetitionLoop>,
+    batchLabel: string,
+  ): 'rerun' | 'parse' {
+    if (!loop) return 'parse';
+    if (isSourceBorneLoop(loop, state.content)) {
+      console.debug(`${batchLabel} Repetition loop mirrors the source note (unit "${loop.unit}" occurs there ${REPETITION_LOOP_MIN_REPEATS}+ times) — echo, not damage; no retry spent`);
+      return 'parse';
+    }
+    console.warn(`${batchLabel} Repetition loop in response (${loop.length} chars repeating "${loop.unit}") — treating the batch as damaged (Issue #524)`);
+    if (this.halveBatchAndRetry(state, batchLabel, 'repetition loop')) return 'rerun';
+    console.warn(`${batchLabel} No retry budget left for the damaged batch; parsing what arrived`);
+    return 'parse';
+  }
+
   async analyzeSource(file: TFile, opts?: { contentOverride?: string }): Promise<SourceAnalysis | null> {
     console.debug('=== Source analysis started ===');
     console.debug('File:', file.path);
@@ -282,75 +651,7 @@ export class SourceAnalyzer {
 
     console.debug('Existing Wiki pages count: — delayed until post-extraction matching');
 
-    // Calculate batch limits using pure functions (Phase 1)
-    const plan = this.prepareExtraction(content);
-    // Issue #904: the ceiling is a starting assumption, not a fact. A provider
-    // whose real limit is below it answers with a 400 naming max_tokens, and a
-    // 400 is not an answer — so the first batch learns the limit by halving,
-    // at most twice, and the rest of the run uses what it learned. Bounded on
-    // purpose: a reply that keeps failing for another reason must reach the
-    // error classifier, not loop here.
-    // Issue #912: reuse what an earlier note learned about this pair.
-    let effectiveCeiling = startCeilingFor(this.ctx.settings, plan.outputCeiling);
-    let ceilingProbes = 0;
-
-    console.debug(`[Batch limits] Initial size: ${plan.limits.initialBatchSize}, Max batches: ${plan.limits.maxBatches}, Max total: ${plan.limits.maxTotalItems || 'none'}, baseMaxTokens: ${plan.baseMaxTokens}, retryCap: ${plan.retryCap}, ceiling: ${plan.outputCeiling}`);
-
-    const limits = plan.limits;
-    const customTypeCaps = plan.customTypeCaps;
-    const retryCap = plan.retryCap;
-
-    let currentBatchSize = limits.initialBatchSize;
-    let batchSizeHalved = false;
-    let retryingBatch = false; // one retry on truncation: halve batch size
-    // S143: halving lowers only the item ceiling inside the prompt. A
-    // reasoning model that spent the whole budget thinking never reached the
-    // items, so a smaller ceiling cannot shorten the retry — and
-    // Math.max(baseMaxTokens, …) could only shrink the budget back to base.
-    // The retry must also raise the budget to retryCap, which until now was
-    // only ever passed as a ceiling nothing climbed toward.
-    let escalateMaxTokens = false;
-    // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): a reasoning-mode
-    // model under grammar constraint emits `{"": ""}` (minimum valid JSON
-    // object) as a placeholder when its thinking budget is tight. The
-    // parseJsonResponse placeholder gate now rejects it (returns null),
-    // but the model sometimes emits a complete JSON on retry (observed in
-    // LMStudio + Qwen3.5 testing). Give the FIRST batch one bounded retry
-    // WITHOUT halving (placeholder is not truncation — batch size is fine,
-    // the model just needs another generation pass). Mirrors the
-    // `retryingBatch` single-attempt philosophy from Issue #305.
-    let placeholderRetried = false;
-
-    // Issue #305: the halving retry below used to live only in the catch
-    // block, so it required the provider call to *throw*. An
-    // OpenAI-compatible provider does not throw on truncation — it returns
-    // HTTP 200 with a body that stops mid-token — so the batch fell through
-    // to the parse-failure `break` and was dropped silently. Hoisted into a
-    // closure so the parse-failure path and the catch path share one
-    // implementation. Returns whether the caller should re-run this batch;
-    // the caller owns the loop control (`batchNum--; continue;`).
-    // Whether a halve-and-retry is still available for the current batch.
-    // Gates both the retry itself and the decision to skip JSON repair on a
-    // truncated response — repair is the last salvage once halving is spent.
-    const canHalveBatch = (): boolean => !retryingBatch && currentBatchSize > limits.minBatchSize;
-
-    const halveBatchAndRetry = (batchLabel: string, cause: string): boolean => {
-      if (!canHalveBatch()) return false;
-      currentBatchSize = Math.max(limits.minBatchSize, Math.floor(currentBatchSize * 0.5));
-      escalateMaxTokens = true;
-      console.warn(`${batchLabel} Truncation detected (${cause}), halving batch size to ${currentBatchSize} and raising max_tokens to ${retryCap} for the retry`);
-      retryingBatch = true;
-      return true;
-    };
-
-    // Initialize batch accumulation using pure function (Phase 3)
-    const accumulation = createEmptyAccumulation();
-
-    let firstBatchData: NormalizedBatch | null = null;
-    let finalBatchNum = 0;
-
-    // Build granularity instruction from shared definitions
-    const granularityInstruction = getGranularityInstruction(this.ctx.settings)
+    const state = this.prepareRunState(file, content, sourceLang);
 
     // Issue #85 v6 / #328 Phase 1 follow-up: user-layer tag-vocab removed
     // (system layer append once, see comments at the injection site below).
@@ -382,227 +683,21 @@ export class SourceAnalyzer {
       ? `${content}\n\n## Embedded Image Visual Evidence\n${imageAnalysis.evidence}`
       : content;
 
-    const templateUntouched = renderTemplate(PROMPTS.analyzeSource, {
-      content: extractionContent,
-      source_path: file.path,
-      domain_context: buildDomainContext(
-        domainVocabulary(this.ctx.app, this.ctx.settings),
-      ),
-    }, {
-      // Issue #904: this pass fills the static prefix on purpose and stops at
-      // `{{batch_context}}`; the per-batch pass below fills these three. Naming
-      // them keeps "not yet" from logging as "unknown", which is how three
-      // noise lines per ingest came to hide the warnings that matter.
-      defer: ['batch_context', 'granularity_instruction', 'batch_size'],
-    });
-    const batchMarker = '{{batch_context}}';
-    const markerIdx = templateUntouched.indexOf(batchMarker);
-    const staticPrefix = templateUntouched.substring(0, markerIdx);
-    const suffixTemplate = templateUntouched.substring(markerIdx + batchMarker.length);
+    this.preparePromptShell(state, extractionContent);
 
-    for (let batchNum = 0; batchNum < limits.maxBatches; batchNum++) {
-      const isFirstBatch = batchNum === 0;
-
-      const { prompt, finalPrompt } = this.buildExtractionPrompt({
-        isFirstBatch, batchNum, accumulation, currentBatchSize,
-        staticPrefix, suffixTemplate, granularityInstruction, sourceLang,
-      });
-
-      console.debug(`[Batch ${batchNum + 1}/${limits.maxBatches}] LLM call started (batch_size=${currentBatchSize})...`);
-      console.debug(`[Batch ${batchNum + 1}] Prompt length:`, prompt.length);
-      this.emitBatchProgress({ isFirstBatch, batchNum, limits, accumulation });
-
-      try {
-        const systemPrompt = await this.ctx.buildSystemPrompt('analyze');
-        // Scale max_tokens with current batch size to avoid truncation.
-        // Recomputed per attempt from `effectiveCeiling`, so a ceiling the
-        // provider rejected is not sent again.
-        const { batchMaxTokens, repairCap } = this.batchBudgets({
-          currentBatchSize, effectiveCeiling, escalateMaxTokens,
-        });
-        // v1.24.0 #208: route through resolveModelForTask so the debug
-        // log reflects the ACTUAL model used (per-task override), not
-        // the unified setting. Without this, e2e verification of
-        // per-task routing would be impossible from console alone.
-        const resolvedModel = resolveModelForTask(this.ctx.settings, 'ingest');
-        console.debug(`[Batch ${batchNum + 1}] Provider:`, this.ctx.settings.provider, '| Model:', resolvedModel, '| Prompt:', finalPrompt.length, 'chars', '| max_tokens:', batchMaxTokens);
-        // Issue #305: record why generation stopped. Clients that do not
-        // report it leave this at 'unknown', which keeps pre-#305 behavior.
-        // Held in an object rather than a bare `let` so control-flow analysis
-        // does not narrow it to its initializer across the callback.
-        const batchCall = this.buildExtractArgs({
-          systemPrompt,
-          finalPrompt,
-          resolvedModel,
-          batchMaxTokens,
-          repairCap,
-          staticPrefixLength: staticPrefix.length,
-        });
-        const finish = batchCall.finish;
-        // Typed-output dispatch via the centralized helper in core/llm-dispatch:
-        // prefer createMessageWithOutput on modern clients, fall back to
-        // createMessage on legacy Anthropic / OpenAI / Codex. The returned
-        // string is the wire text — Tier 1 / Tier 2 (output undefined) flows
-        // through the existing parseJsonResponse path below.
-        const response = await callLlm(client, batchCall.args);
-
-        // Surface real token usage (Issue #305 follow-up): the model reports
-        // prompt/completion tokens; logging them per batch turns truncation
-        // tuning (batch size vs max_tokens vs context window) into a
-        // measurement instead of a char-count guess.
-        const usageStr = finish.usage
-          ? ` | tokens in=${finish.usage.inputTokens ?? '?'} out=${finish.usage.outputTokens ?? '?'} (max_tokens=${batchMaxTokens})`
-          : '';
-        console.debug(`[Batch ${batchNum + 1}] Response length:`, response.length, usageStr);
-        this.ctx.onProgress?.(
-          getText(this.ctx.settings.language, 'ingestBatchProcessed')
-            .replace('{current}', String(batchNum + 1))
-        );
-
-        // Issue #524: a degenerate repetition loop is the one signal that
-        // tells a damaged batch from a short one. Under grammar-constrained
-        // decoding the loop can end in `finish_reason: stop` with schema-valid
-        // JSON around it — a handful of items, the loop inside a string — and
-        // every guard below (empty-batch, halving on `length`, JSON repair)
-        // accepts that as a successful batch. Treat it like truncation: halve
-        // and retry while the budget allows; otherwise parse what arrived and
-        // say so. The debug line carries finish reason and reasoning tokens
-        // so a user can read the regime off the log (#524).
-        const loop = findRepetitionLoop(response);
-        const reasoningStr = finish.usage?.reasoningTokens !== undefined ? ` reasoning_tokens=${finish.usage.reasoningTokens}` : '';
-        console.debug(`[Batch ${batchNum + 1}] finish=${finish.reason}${reasoningStr}${loop ? ` repetition_loop=${loop.length} chars (unit "${loop.unit}")` : ''}`);
-        // #525 review: a note that repeats a phrase itself — a refrain, a
-        // tabulated column, a quoted chorus — produces a faithful echo that
-        // looks exactly like degeneracy here. Halving changes how many items
-        // are asked for, never the note, so the retry is spent on a certainty
-        // and the same batch is merged afterwards anyway. Check the note
-        // before spending it.
-        if (loop && isSourceBorneLoop(loop, content)) {
-          console.debug(`[Batch ${batchNum + 1}] Repetition loop mirrors the source note (unit "${loop.unit}" occurs there ${REPETITION_LOOP_MIN_REPEATS}+ times) — echo, not damage; no retry spent`);
-        } else if (loop) {
-          console.warn(`[Batch ${batchNum + 1}] Repetition loop in response (${loop.length} chars repeating "${loop.unit}") — treating the batch as damaged (Issue #524)`);
-          if (halveBatchAndRetry(`[Batch ${batchNum + 1}]`, 'repetition loop')) {
-            batchNum--;
-            continue;
-          }
-          console.warn(`[Batch ${batchNum + 1}] No retry budget left for the damaged batch; parsing what arrived`);
-        }
-
-        // Issue #305 follow-up: on a truncated response (finish_reason=length)
-        // the JSON is *incomplete*, not malformed, and a syntax-repair pass
-        // costs another retryCap-sized call re-hitting the same limit
-        // (observed: a ~48k-token repair that itself truncates). Prefer
-        // halve-and-retry, which re-runs the batch smaller.
-        //
-        // Only skip repair while that retry is actually available. Once the
-        // halving budget is spent, repair becomes the last salvage: a truncated
-        // batch is a prefix of complete items followed by one cut-off item, and
-        // closing the brackets around the complete ones is exactly what the
-        // repair prompt asks for. Without it the parse-failure path falls to
-        // `return null` on a first batch — dropping the whole source rather
-        // than the items that did arrive.
-        //
-        // Providers that report no finish reason keep 'unknown' and the repair
-        // path regardless.
-        const repairFn = this.buildRepairFn({
-          client,
-          skipRepair: finish.reason === 'length' && canHalveBatch(),
-          repairCap,
-        });
-        // v1.26.x PATCH follow-up (#443 LMStudio + Qwen3.5): use
-        // parseJsonResult (not parseJsonResponse) so the parse FAILURE
-        // REASON is available. A grammar-constrained reasoning model
-        // emits `{"": ""}` — the placeholder gate rejects it with reason
-        // 'thinking-block-only'. That is the one condition we retry
-        // without halving. Malformed/empty/exception keep the legacy
-        // paths below unchanged.
-        const parseResult = await parseJsonResult(response, repairFn);
-        const analysisData = parseResult.ok
-          ? parseResult.value as Partial<SourceAnalysis>
-          : null;
-        const parseReason = parseResult.ok ? undefined : parseResult.reason;
-
-        if (!analysisData) {
-          const decision = this.afterParseFailure({
-            batchLabel: `[Batch ${batchNum + 1}]`,
-            isFirstBatch,
-            placeholderRetried,
-            parseReason,
-            finishReason: finish.reason,
-            halveAndRetry: cause => halveBatchAndRetry(`[Batch ${batchNum + 1}]`, cause),
-          });
-          placeholderRetried = decision.placeholderRetried;
-          if (decision.action.kind === 'rerun') {
-            batchNum--;
-            continue;
-          }
-          if (decision.action.kind === 'abort') return null;
-          break;
-        }
-
-        // Issue #305 follow-up: the one-retry-per-batch budget must reset once
-        // a batch parses successfully. Otherwise the first halve anywhere
-        // latches `retryingBatch` for the rest of the source, so a later
-        // truncation can no longer halve (halveBatchAndRetry short-circuits)
-        // and its batch is silently dropped — the source finalizes as
-        // complete while missing that batch's items. Resetting here, on the
-        // success path, gives each batch its own retry budget.
-        retryingBatch = false;
-        escalateMaxTokens = false;
-
-        const { validity, data: norm } = normalizeBatchResponse(analysisData, file.path);
-
-        if (isFirstBatch) {
-          const first = this.absorbFirstBatch({
-            validity, norm, analysisData, file, accumulation, customTypeCaps, currentBatchSize,
-          });
-          firstBatchData = first.firstBatchData;
-          if (first.action.kind === 'abort') return null;
-        }
-
-        if (validity === 'empty') {
-          console.debug(`[Batch ${batchNum + 1}] LLM returned empty arrays, stopping iteration`);
-          break;
-        }
-
-        // Later batches: merge batch results using pure function (Phase 3)
-        if (!isFirstBatch) {
-          const outcome = this.mergeLaterBatch({
-            accumulation, norm, customTypeCaps, batchNum,
-            responseLength: response.length,
-            limits, currentBatchSize, batchSizeHalved,
-          });
-          currentBatchSize = outcome.currentBatchSize;
-          batchSizeHalved = outcome.batchSizeHalved;
-          if (outcome.action.kind === 'stop') break;
-        }
-
-        finalBatchNum = batchNum + 1;
-
-      } catch (error) {
-        console.error(`[Batch ${batchNum + 1}] Call failed:`, error);
-        const failure = this.afterBatchError({
-          error,
-          batchLabel: `[Batch ${batchNum + 1}]`,
-          isFirstBatch,
-          effectiveCeiling,
-          ceilingProbes,
-          halveAndRetry: cause => halveBatchAndRetry(`[Batch ${batchNum + 1}]`, cause),
-        });
-        effectiveCeiling = failure.effectiveCeiling;
-        ceilingProbes = failure.ceilingProbes;
-        if (failure.action.kind === 'throw') throw failure.action.error;
-        if (failure.action.kind === 'rerun') {
-          batchNum--;
-          continue;
-        }
-        retryingBatch = false;
-        console.warn(`[Batch ${batchNum + 1}] Non-first-round failure, keeping extracted items`);
-        break;
+    for (let batchNum = 0; batchNum < state.limits.maxBatches; batchNum++) {
+      const action = await this.runBatchIteration(state, batchNum, batchNum === 0, client);
+      if (action.kind === 'abort') return null;
+      if (action.kind === 'rerun') {
+        batchNum--;
+        continue;
       }
+      if (action.kind === 'stop') break;
     }
 
-    if (!firstBatchData && accumulation.entities.length === 0 && accumulation.concepts.length === 0) {
+    if (!state.firstBatchData
+      && state.accumulation.entities.length === 0
+      && state.accumulation.concepts.length === 0) {
       return null;
     }
 
@@ -610,13 +705,13 @@ export class SourceAnalyzer {
     // After extraction, match extracted names against existing wiki pages
     // using slug + alias matching (same logic as resolvePagePath Fast path 2).
     // Replaces the old approach of embedding ~200K chars of page list in prompt.
-    await this.matchRelatedPages(accumulation);
+    await this.matchRelatedPages(state.accumulation);
 
     // Hard-cap accumulation to the configured custom limits (#120).
     // The prompt instruction is a soft hint the LLM may exceed; the
     // convergence detector only stops further batches. This slice ensures
     // the user's limit is actually honoured regardless of LLM behaviour.
-    this.applyCustomCaps(accumulation);
+    this.applyCustomCaps(state.accumulation);
 
     // A note's title is its own: its H1 on the first body line (the #592 rule
     // `getExistingWikiPages` uses) or its file name. The prompt shows the
@@ -629,7 +724,9 @@ export class SourceAnalyzer {
 
     // Build final SourceAnalysis using pure function (Phase 3)
     const analysis = this.buildAnalysisFrom({
-      accumulation, firstBatchData, file, noteTitle, sourceNoteAliases, imageAnalysis,
+      accumulation: state.accumulation,
+      firstBatchData: state.firstBatchData,
+      file, noteTitle, sourceNoteAliases, imageAnalysis,
     });
 
     // patch 16 — lemma guarantee. The extraction prompt asks what a text
@@ -647,10 +744,10 @@ export class SourceAnalyzer {
     await this.repairTypesAgainstVocabulary(analysis);
 
     console.debug('=== Iterative extraction complete ===');
-    console.debug('  - Total batches:', finalBatchNum);
-    console.debug('  - Entities count:', accumulation.entities.length);
-    console.debug('  - Concepts count:', accumulation.concepts.length);
-    console.debug('  - Deduplicated names:', accumulation.extractedNames.size);
+    console.debug('  - Total batches:', state.finalBatchNum);
+    console.debug('  - Entities count:', state.accumulation.entities.length);
+    console.debug('  - Concepts count:', state.accumulation.concepts.length);
+    console.debug('  - Deduplicated names:', state.accumulation.extractedNames.size);
 
     return analysis;
   }
