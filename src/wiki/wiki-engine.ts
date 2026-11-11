@@ -1002,101 +1002,10 @@ export class WikiEngine {
       this.onIngestionStart?.(file.basename);
     }
 
-    // v1.25.0 PR2 redo + Altitude #1/#2 (v1.27.0 MINOR #404 follow-up):
-    // markdown-conversion ingest path. The configured backend (provider's
-    // native PDF handling or MinerU's online API) transcribes the source
-    // file to markdown, the result is cached by content hash, then the
-    // standard ingest path re-runs with the markdown as a virtual body
-    // (contentOverride). No sidecar file is written by this branch — the
-    // `.obsidian` cache is the sole persistent artifact unless the user
-    // has explicitly opted in via `writePdfMarkdownToVault`.
-    //
-    // Routing:
-    // - Native backend: PDF only (Anthropic Vision / OpenAI Vision's
-    //   PDF handling is the established scope; their image / Office
-    //   input surfaces are not exercised by this branch).
-    // - MinerU backend: PDF + images (png/jpg/jpeg/jp2/webp/gif/bmp) +
-    //   Office docs (doc/docx/ppt/pptx/xls/xlsx). Per the MinerU API
-    //   docs, the Precise parser accepts the full set; the routing
-    //   check below uses MINERU_CONVERSION_EXTENSIONS.
-    //
-    // Guard: only dispatch to the conversion branch when the caller has
-    // NOT already provided a converted body — otherwise this would recurse
-    // forever (the conversion result is fed back as contentOverride and
-    // `ingestConversionSource` re-enters this method).
-    if (!opts?.contentOverride) {
-      const ext = file.extension.toLowerCase();
-      const needsMineruConversion = this.settings.markdownConversionBackend === 'mineru'
-        && (MINERU_CONVERSION_EXTENSIONS as readonly string[]).includes(ext);
-      const isPdf = ext === 'pdf';
-      if (needsMineruConversion || isPdf) {
-        try {
-          return await this.ingestConversionSource(file, opts);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          this.wasCancelled = true;
-          new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
-          return;
-        }
-        throw error;
-      } finally {
-        // Successful conversion re-enters this method and clears the shared
-        // controller in the main finally block. Pre-conversion exits do not.
-        if (this.abortController !== null) this.endIngestion();
-      }
-      }
-    }
-
-    // #164 pre-ingest requirements gate. Empty/type are hard skips; a duplicate
-    // auto-skips, except interactive ingest prompts first.
-    //
-    // #688: this gate no longer runs "BEFORE any cancellation/UI setup" — the
-    // controller and the start hook were moved above it in v1.25.0, because the
-    // PDF branch needs them. A skip here therefore has something to tear down,
-    // and the return below sits above the main `try`, so it must do it itself.
-    const fileContent = opts?.contentOverride ?? await this.app.vault.read(file);
-    const rejection = opts?.forceReingest ? null : await this.checkRequirements(file, fileContent, opts?.batchCtx);
-    if (rejection) {
-      const confirmed = rejection.reason === 'duplicate' && opts?.interactive && this.onConfirmReingest
-        ? await this.onConfirmReingest(file, rejection)
-        : false;
-      if (!confirmed) {
-        this.reportSkip(file, rejection, opts);
-        this.endIngestion();
-        return;
-      }
-    }
-
-    const totalStartTime = Date.now();
-    const llmUsageAtStart = snapshotTaskUsage();
-
-    // Setup cancellation support
-    // v1.25.0 PR3 follow-up #7 (Bug C): AbortController / onIngestionStart
-    // already initialized above (line ~700, before PDF dispatch) so the
-    // status bar is correct and cancellation is wired for both PDF and
-    // text flows. We intentionally do NOT re-create the AbortController
-    // here — it would create a race window where cancelIngestion() could
-    // abort the *previous* instance instead of the current one.
-
-    // Long-source warning: large files trigger iterative batch extraction
-    // (multiple LLM passes), which takes significantly longer than small files.
-    const LONG_SOURCE_LINE_THRESHOLD = 1000;
-    const lineCount = fileContent.split('\n').length;
-    if (lineCount > LONG_SOURCE_LINE_THRESHOLD) {
-      const sizeKB = Math.round(fileContent.length / 1024);
-      new Notice(
-        getText(this.settings.language, 'longSourceNotice')
-          .replace('{filename}', file.basename)
-          .replace('{lines}', String(lineCount))
-          .replace('{size}', sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)}MB` : `${sizeKB}KB`),
-        NOTICE_NORMAL
-      );
-      console.debug(`[Long Source] ${file.basename}: ${lineCount} lines, ${sizeKB}KB — long ingestion expected`);
-    }
-
-    this.onProgress?.(
-      getText(this.settings.language, 'ingestAnalyzing').replace('{filename}', file.basename)
-    );
+    if (await this.maybeRunConversion(file, opts)) return;
+    const run = await this.prepareIngestRun(file, opts);
+    if (!run) return;
+    const { fileContent, totalStartTime, llmUsageAtStart } = run;
 
     const failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }> = [];
     let analysis: SourceAnalysis | null = null;
@@ -1112,29 +1021,9 @@ export class WikiEngine {
     try {
       await this.ensureWikiStructure();
 
-      // Stage 1: Source Analysis (contentOverride flows via opts)
-      const analysisStart = Date.now();
-      analysis = await this.sourceAnalyzer.analyzeSource(file, {
-        ...(opts?.contentOverride !== undefined ? { contentOverride: opts.contentOverride } : {}),
-      });
-      if (!analysis) {
-        // When the user opted into a custom repetitionPenalty, append the
-        // localized hint so the failure names the likely cause (see
-        // repetition-penalty-hint.ts for the E2E rationale).
-        throw new Error(
-          `Source analysis failed for "${file.basename}". Check the developer console (Ctrl+Shift+I) for network or API errors. If you see SSL/network errors, verify your provider URL and network connection.` +
-          buildRepetitionPenaltyHint(
-            this.settings.language,
-            this.settings.repetitionPenalty,
-            this.settings.provider,
-          ),
-        );
-      }
-      const analysisTime = Date.now() - analysisStart;
-      console.debug(`[Time] Source analysis phase: ${analysisTime}ms`);
-      console.debug('Analysis result:', JSON.stringify(analysis, null, 2));
-
-      this.checkCancelled('ingest');
+      const analysisPhase = await this.analyzeSourcePhase(file, opts);
+      analysis = analysisPhase.analysis;
+      const analysisTime = analysisPhase.elapsedMs;
 
       // Issue #514: a candidate the source only mentions gets no page. Decided
       // from the text before any page is planned — a name the note never says,
@@ -1151,227 +1040,25 @@ export class WikiEngine {
       const sourceLang = getSourceLanguage(file, this.app);
       const translated = sourceLang !== null && isCrossLanguage(sourceLang, wikiLang);
 
-      // S135 outcome table: with `gateDissentStubs` on, the two gate halves
-      // stop running in series (each with a veto) and become one decision
-      // table — agreement keeps or drops as before, dissent births a stub
-      // from the extraction's own summary (no LLM call). Requires the #514
-      // opt-in, because the table needs the position verdict that setting
-      // opts into; cross-language notes are not gated, same as below. The
-      // full-page set is identical to the serial path's keep set (measured
-      // over 1,153 items, three runs) — the table only converts drops.
-      let stubPlan: StubCandidate[] = [];
-      let tableApplied = false;
-      if (
-        this.settings.gateDissentStubs === true &&
-        this.settings.skipMentionOnlyCandidates === true &&
-        !translated
-      ) {
-        const pages = await this.getExistingWikiPages();
-        const table = applyOutcomeTable(
-          analysis,
-          extractBody(rawSource),
-          wikiLang,
-          buildStubIdentityResolver(pages, this.settings.wikiFolder),
-        );
-        // `!table.applied` (no language profile) falls through to the serial
-        // path, which reports the missing profile itself.
-        if (table.applied) {
-          tableApplied = true;
-          const total = analysis.entities.length + analysis.concepts.length;
-          if (table.dropped.length > 0) {
-            const list = table.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            console.warn(`[candidate-gate] ${file.path}: dropped ${table.dropped.length} of ${total} candidates — ${list}`);
-            this.onProgress?.(`Candidate gate: ${table.dropped.length} dropped — ${list}`);
-          }
-          if (table.existing.length > 0) {
-            const list = table.existing.map(d => `${d.name} (${d.kind}, ${d.cell})`).join('; ');
-            console.debug(`[candidate-gate] ${file.path}: ${table.existing.length} dissent name(s) an existing page answers — ${list}`);
-          }
-          if (table.stubs.length > 0) {
-            const list = table.stubs.map(s => `${s.item.name} (${s.kind}, ${s.cell})`).join('; ');
-            console.warn(`[candidate-gate] ${file.path}: ${table.stubs.length} dissent stub(s) planned — ${list}`);
-            this.onProgress?.(`Candidate gate: ${table.stubs.length} stub(s) from dissent — ${list}`);
-          }
-          analysis.entities = table.entities;
-          analysis.concepts = table.concepts;
-          stubPlan = table.stubs;
-        }
-      }
-
-      if (!tableApplied && this.settings.skipMentionOnlyCandidates === true) {
-        if (!translated) {
-          // A dropped name the vault already has a page for keeps its edge:
-          // the gate judges whether this note earns the page, not whether a
-          // page another note earned may be linked. Same resolver as the
-          // related-link corrector, so "known" means the same thing at both
-          // ends of the pipeline.
-          const resolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
-          const gated = gateCandidates(
-            analysis,
-            extractBody(rawSource),
-            wikiLang,
-            name => resolve(name) !== undefined,
-          );
-          if (!gated.applied) {
-            console.debug(`[candidate-gate] ${file.path}: no language profile for "${wikiLang}" — gate not applied`);
-            this.onProgress?.(`Candidate gate: no language profile for "${wikiLang}" — not applied`);
-          } else if (gated.dropped.length > 0) {
-            const list = gated.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            const kept = gated.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${gated.linkedAnyway.join('; ')}` : '';
-            console.warn(`[candidate-gate] ${file.path}: dropped ${gated.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
-            this.onProgress?.(`Candidate gate: ${gated.dropped.length} dropped — ${list}${kept}`);
-            analysis.entities = gated.entities;
-            analysis.concepts = gated.concepts;
-          }
-        }
-      }
-
-      // domain axis stage 3 (#568): the semantic half follows on the
-      // survivors — the extraction reported per candidate how the source treats
-      // it (`coverage`), the threshold in candidate-gate.ts says what is enough;
-      // a missing value keeps the candidate. Then the per-item domain subset
-      // is validated against the vault's tag vocabulary: a value no note
-      // carries is dropped (logged), not written. Runs regardless of the #521
-      // opt-in — the deterministic gate is upstream's setting, this half is
-      // the local domain-axis design. Under the outcome table the threshold
-      // has already been folded into the routing, so only the domain
-      // validation runs — over the survivors AND the planned stubs, whose
-      // frontmatter carries the same validated subset.
-      let domainVocabulary: string[] = [];
-      {
-        if (!tableApplied) {
-          // #620 parity: a dropped name the vault already has a page for keeps
-          // its edge in the survivors' related_* lists. Without the predicate
-          // behaviour is unchanged. (The author's own link markup is folded
-          // into applyCoverageThreshold's own sourceText path — see candidate-gate.ts.)
-          const coverageResolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
-          const covered = applyCoverageThreshold(
-            analysis,
-            extractBody(rawSource),
-            name => coverageResolve(name) !== undefined,
-          );
-          if (covered.dropped.length > 0) {
-            const list = covered.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            const kept = covered.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${covered.linkedAnyway.join('; ')}` : '';
-            console.warn(`[candidate-gate] ${file.path}: dropped ${covered.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
-            this.onProgress?.(`Candidate gate: ${covered.dropped.length} dropped — ${list}${kept}`);
-            analysis.entities = covered.entities;
-            analysis.concepts = covered.concepts;
-          }
-        }
-        // Stage 5 (#568): validation accepts exactly what the prompt offered —
-        // the one vocabulary of vocabulary.ts (settings list + note tags + page
-        // tags). A value outside it is dropped, not written.
-        domainVocabulary = domainVocabularyOf(this.app, this.settings);
-        for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
-          const selection = selectDomains(item.domains, domainVocabulary);
-          if (selection.rejected.length > 0) {
-            console.debug(`[domain-axis] ${file.path}: "${item.name}" — dropped ${selection.rejected.length} value(s) the vocabulary does not carry: ${selection.rejected.join(', ')}`);
-          }
-          if (selection.kept.length > 0) item.domains = selection.kept;
-          else delete item.domains;
-        }
-      }
-
-      // Every page born from this note links its siblings, a related name
-      // the vault answers is written under the page's own title and kind,
-      // and a name nothing answers stays as written and is counted.
-      // Deterministic, no model call; see core/related-shaping.ts.
-      {
-        const pages = await this.getExistingWikiPages();
-        const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
-        const prefix = this.settings.wikiFolder + '/';
-        const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
-        const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
-        const configDir = this.app.vault.configDir;
-        const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
-          // Issue #872 — this list answers "which note names already exist?", not
-          // "which files may be ingested?". A file the user excluded from
-          // ingestion is still a note in the vault, and a link to it is still a
-          // true link, so the exclusion list must not remove it here. The
-          // function that answers the ingest question is a different one
-          // (`isIngestableSource`), and it consults the exclusion list.
-          .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
-          .map(f => f.basename);
-        const shaped = shapeRelatedLists(analysis, {
-          resolve: name => {
-            const rel = resolvePath(name);
-            if (!rel) return undefined;
-            return { title: titleByRel.get(rel) ?? name, kind: kindOf(rel) };
-          },
-          willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
-          vocabulary: domainVocabulary,
-        });
-        analysis.entities = shaped.entities;
-        analysis.concepts = shaped.concepts;
-        this.pendingUnanswered = shaped.unanswered;
-        if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
-          const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
-          const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
-          console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
-          this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
-        }
-      }
-
-      const totalSteps = 1 + analysis.entities.length + analysis.concepts.length + analysis.related_pages.length + 2;
-      let step = 1;
-
-      const plannedPaths: string[] = [];
-      const preserveCase = this.settings.slugCase === 'preserve';
-      for (const entity of analysis.entities) {
-        plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/entities/${slugify(entity.name, preserveCase)}.md`));
-      }
-      for (const concept of analysis.concepts) {
-        plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/concepts/${slugify(concept.name, preserveCase)}.md`));
-      }
-      // S135: stub pages will exist too — planned like any page, so links
-      // the summary makes to their names land on the canonical path.
-      for (const stub of stubPlan) {
-        plannedPaths.push(stubPath({ wikiFolder: this.settings.wikiFolder, preserveCase, normalizePath }, stub));
-      }
-
-      this.onProgress?.(
-        getText(this.settings.language, 'ingestCreatingSummary')
-          .replace('{step}', String(step))
-          .replace('{totalSteps}', String(totalSteps))
-      );
-      await this.apiDelay();
-
-      // Issue #155: derive the source slug (<basename>-<path fingerprint>) ONCE,
-      // before any page is written, so the summary page, entity/concept backlinks,
-      // and related pages all reference the same canonical [[sources/<slug>]].
-      const sourceSlug = resolveSourceSlug(file.path, { preserveCase });
-
-      // S135: birth the dissent stubs — deterministic writes, no LLM call,
-      // before any generation so every page produced this run can already
-      // link to them. A path that exists is a slug collision and is skipped,
-      // never overwritten (identity was resolved against titles + aliases).
-      if (stubPlan.length > 0) {
-        const stubResult = await createDissentStubs(
-          {
-            wikiFolder: this.settings.wikiFolder,
-            preserveCase,
-            normalizePath,
-            fileExists: (p) => this.app.vault.getAbstractFileByPath(p) !== null,
-            createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
-            // S142: the stub's identity tag faces the same list every other
-            // identity writer's tags do (create/merge/related) — the full
-            // vocabulary, not the domains view: `item.type` is an identity
-            // value and may be a flat settings term.
-            vocabulary: activeVocabulary(this.app, this.settings),
-          },
-          stubPlan,
-          sourceSlug,
-        );
-        analysis.created_pages.push(...stubResult.created);
-        if (stubResult.skipped.length > 0) {
-          console.warn(`[candidate-gate] ${file.path}: ${stubResult.skipped.length} stub(s) skipped (slug already occupied) — ${stubResult.skipped.join('; ')}`);
-        }
-        if (stubResult.created.length > 0) {
-          console.debug(`[candidate-gate] ${file.path}: ${stubResult.created.length} dissent stub(s) written — ${stubResult.created.join('; ')}`);
-        }
-      }
-
+      const { stubPlan, tableApplied } = await this.applyCandidateGates({
+        analysis,
+        rawSource,
+        file,
+        wikiLang,
+        translated,
+      });
+      const domainVocabulary = await this.applyDomainAxis({
+        analysis,
+        rawSource,
+        file,
+        tableApplied,
+        stubPlan,
+      });
+      await this.shapeRelatedListsForRun({ analysis, file, stubPlan, domainVocabulary });
+      const plan = await this.planPageSet({ analysis, file, stubPlan });
+      const { totalSteps, plannedPaths, preserveCase, sourceSlug } = plan;
+      let step = plan.step;
+      await this.createDissentStubsPhase({ analysis, file, stubPlan, preserveCase, sourceSlug });
       // Stage 2: Summary Page Generation (contentOverride flows through opts)
       const summaryStart = Date.now();
       const summaryPage = await this.createSummaryPage(file, analysis, plannedPaths, sourceSlug, opts?.contentOverride);
@@ -1380,175 +1067,17 @@ export class WikiEngine {
       analysis.created_pages.push(summaryPage);
       summaryPagePath = summaryPage;
 
-      // Stage 3: Entity/Concept Page Generation
-      // v1.25.1 Phase C-PR1: retry + rate-limit template extracted to
-      // engine-internals/page-batch-runner.ts (eliminates ~60% duplication
-      // with Stage 4 and makes the retry path unit-testable).
-      const pageGenStart = Date.now();
-      let pageGenCount = 0;
-
-      const concurrency = this.settings.pageGenerationConcurrency ?? 1;
-      const batchDelay = this.settings.batchDelayMs ?? 300;
-
-      if (concurrency > 1) {
-        console.debug(`[Parallel] concurrency: ${concurrency}, batch delay: ${batchDelay}ms, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
-      } else {
-        console.debug(`[Serial] generating pages sequentially, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
-      }
-
-      const pageGenTasks = [
-        ...analysis.entities.map((e, i) => ({
-          id: `entity:${e.name}`,
-          payload: { type: 'entity' as const, name: e.name, index: i },
-        })),
-        ...analysis.concepts.map((c, i) => ({
-          id: `concept:${c.name}`,
-          payload: { type: 'concept' as const, name: c.name, index: i },
-        })),
-      ];
-
-      const pageGenResult = await runBatchedWithRetry<typeof pageGenTasks[number]['payload']>({
-        tasks: pageGenTasks,
-        concurrency,
-        batchDelayMs: batchDelay,
-        checkCancelled: () => this.checkCancelled('ingest'),
-        apiDelay: (ms: number) => this.apiDelay(ms),
-        onProgress: (_id) => {
-          step++;
-          const task = pageGenTasks[step - 1]?.payload;
-          if (task) {
-            this.onProgress?.(
-              getText(this.settings.language, 'ingestCreatingItem')
-                .replace('{step}', String(step))
-                .replace('{totalSteps}', String(totalSteps))
-                .replace('{type}', getText(
-                  this.settings.language,
-                  task.type === 'entity' ? 'ingestItemTypeEntity' : 'ingestItemTypeConcept'
-                ))
-                .replace('{name}', task.name)
-            );
-          }
-        },
-        execute: async (task) => {
-          if (task.type === 'entity') {
-            const entity = analysis!.entities[task.index];
-            try {
-              const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis!, file, [], sourceSlug);
-              if (entityResult.path) {
-                if (entityResult.created) analysis!.created_pages.push(entityResult.path);
-                else recordUpdatedPage(analysis!, entityResult.path);
-              }
-              return { success: true as const };
-            } catch (error) {
-              const reason = error instanceof Error ? error.message : String(error);
-              console.error(`Entity "${entity.name}" failed:`, reason);
-              return { success: false as const, failureReason: reason };
-            }
-          }
-          const concept = analysis!.concepts[task.index];
-          try {
-            const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis!, file, [], sourceSlug);
-            if (conceptResult.path) {
-              if (conceptResult.created) analysis!.created_pages.push(conceptResult.path);
-              else recordUpdatedPage(analysis!, conceptResult.path);
-            }
-            return { success: true as const };
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            console.error(`Concept "${concept.name}" failed:`, reason);
-            return { success: false as const, failureReason: reason };
-          }
-        },
+      const pageGen = await this.generateItemPages({
+        analysis,
+        file,
+        sourceSlug,
+        totalSteps,
+        step,
+        failedItems,
       });
-
-      // Sync state out of the runner result (runner doesn't own our analysis state).
-      pageGenCount = pageGenResult.succeeded + pageGenResult.failed.length;
-      for (const f of pageGenResult.failed) {
-        const isEntity = f.id.startsWith('entity:');
-        failedItems.push({
-          type: isEntity ? 'entity' : 'concept',
-          name: f.id.split(':')[1] ?? f.id,
-          reason: f.reason,
-        });
-      }
-      if (pageGenResult.rateLimitInfo) {
-        console.warn(
-          `[Rate Limit] Page generation: ${pageGenResult.rateLimitInfo.count} item(s) failed with 429, ` +
-          `suggested concurrency=${pageGenResult.rateLimitInfo.suggestedConcurrency}, ` +
-          `delay=${pageGenResult.rateLimitInfo.suggestedDelay}ms`
-        );
-        new Notice(
-          formatRateLimitNotice(pageGenResult.rateLimitInfo, this.settings.language),
-          NOTICE_RATE_LIMIT
-        );
-      }
-      const pageGenTime = Date.now() - pageGenStart;
-      console.debug(`[Time] Page generation phase complete: ${pageGenTime}ms (avg ${pageGenCount > 0 ? Math.round(pageGenTime / pageGenCount) : 0}ms/page)`);
-
-      // Stage 4: Related Pages Update (same runner, different execute fn)
-      const relatedStart = Date.now();
-      const relatedConcurrency = this.settings.pageGenerationConcurrency ?? 1;
-      const relatedDelay = this.settings.batchDelayMs ?? 300;
-
-      const relatedTasks = analysis.related_pages.map((name, idx) => ({
-        id: `related:${name}`,
-        payload: { name, index: idx, stepNum: step + idx + 1 },
-      }));
-
-      const relatedResult = await runBatchedWithRetry<typeof relatedTasks[number]['payload']>({
-        tasks: relatedTasks,
-        concurrency: relatedConcurrency,
-        batchDelayMs: relatedDelay,
-        checkCancelled: () => this.checkCancelled('ingest'),
-        apiDelay: (ms: number) => this.apiDelay(ms),
-        onProgress: (id) => {
-          const task = relatedTasks.find(t => t.id === id);
-          if (task) {
-            this.onProgress?.(
-              getText(this.settings.language, 'ingestUpdating')
-                .replace('{step}', String(task.payload.stepNum))
-                .replace('{totalSteps}', String(totalSteps))
-                .replace('{name}', task.payload.name)
-            );
-          }
-        },
-        execute: async (task) => {
-          try {
-            const updatedPath = await this.pageFactory.updateRelatedPage(task.name, analysis!, file, sourceSlug);
-            if (updatedPath) {
-              recordUpdatedPage(analysis!, updatedPath);
-            }
-            return { success: true as const };
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            console.error(`Related page "${task.name}" update failed:`, reason);
-            return { success: false as const, failureReason: reason };
-          }
-        },
-      });
-
-      const relatedCount = relatedResult.succeeded;
-      const relatedTotal = relatedTasks.length;
-      const relatedTime = Date.now() - relatedStart;
-      const relatedModeLabel = relatedConcurrency > 1 ? `parallel(concurrency:${relatedConcurrency})` : 'serial';
-      console.debug(
-        `[Time] Related page update phase complete: ${relatedTime}ms ` +
-        `(${relatedModeLabel}, ${relatedCount}/${relatedTotal} pages succeeded)`
-      );
-      step += relatedTotal;
-
-      if (relatedResult.rateLimitInfo) {
-        console.warn(
-          `[Rate Limit] Related pages update: ${relatedResult.rateLimitInfo.count} item(s) failed with 429, ` +
-          `suggested concurrency=${relatedResult.rateLimitInfo.suggestedConcurrency}, ` +
-          `delay=${relatedResult.rateLimitInfo.suggestedDelay}ms`
-        );
-        new Notice(
-          formatRateLimitNotice(relatedResult.rateLimitInfo, this.settings.language),
-          NOTICE_RATE_LIMIT
-        );
-      }
-
+      step = pageGen.stepAfter;
+      const related = await this.updateRelatedPagesPhase({ analysis, file, sourceSlug, totalSteps, step });
+      step = related.stepAfter;
       // Stage 5: Contradiction Recording
       // Stage 4.5: re-point folder-typed links on every page this run wrote.
       // A page written early in the run links to a sibling that does not
@@ -1583,113 +1112,854 @@ export class WikiEngine {
       const indexTime = Date.now() - indexStart;
       console.debug(`[Time] Index Index & log update: ${indexTime}ms`);
 
-      const updated = analysis.updated_pages.length;
-      // Issue #173 Symptom B: dedup before counting/listing — a duplicated
-      // surface-form (e.g. the LLM emitting the same path twice) must not
-      // inflate the report count or the "Created" listing.
-      const dedupedCreatedPages = dedupPages(analysis.created_pages);
-      const entitiesCreated = dedupedCreatedPages.filter(p => p.includes('/entities/')).length;
-      const conceptsCreated = dedupedCreatedPages.filter(p => p.includes('/concepts/')).length;
-      const modeLabel = (this.settings.pageGenerationConcurrency ?? 1) > 1 ? `parallel(concurrency:${this.settings.pageGenerationConcurrency})` : 'serial';
-      // totalTime was computed above; do not redeclare here.
-
-      console.debug('=== Ingestion complete ===');
-      console.debug(`Ingestion complete [${modeLabel}]: Created ${dedupedCreatedPages.length} pages (${entitiesCreated} entities + ${conceptsCreated} concepts), Updated ${updated} pages`);
-      console.debug(`[Total time] ${totalTime}ms (${Math.round(totalTime/1000)}s)`);
-      console.debug('[Phase breakdown]:');
-      console.debug(`  - Source analysis: ${analysisTime}ms`);
-      console.debug(`  - Summary page generation: ${summaryTime}ms`);
-      console.debug(`  - Page gen (${concurrency}concurrency): ${pageGenTime}ms`);
-      console.debug(`  - Related page update: ${relatedTime}ms`);
-      console.debug(`  - Index & log: ${indexTime}ms`);
-      // Inside the phases, per step. Page generation is the phase this exists
-      // for: one interval above, four steps below it — path resolution's dedup
-      // call, the page write, the merge triage and the body merge.
-      const llmByTask = formatTaskUsage(taskUsageSince(llmUsageAtStart));
-      if (llmByTask.length > 0) {
-        console.debug('[LLM time by step] (summed per call; concurrent steps overlap)');
-        for (const line of llmByTask) console.debug(line);
-      }
-
-      this.onDone?.({
-        sourceFile: file.path,
-        createdPages: dedupedCreatedPages,
-        updatedPages: analysis.updated_pages,
-        entitiesCreated,
-        conceptsCreated,
+      this.reportIngestSuccess({
+        file,
+        analysis,
         failedItems,
-        contradictionsFound: triageContradictions.length,
-        success: true,
-        elapsedSeconds: Math.round(totalTime / 1000),
-        ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
-        // v1.22.6 #204: Propagate trigger so completion can route UI.
+        triageContradictions,
         trigger: opts?.trigger,
+        llmUsageAtStart,
+        totalTime,
+        analysisTime,
+        summaryTime,
+        pageGen,
+        relatedElapsed: related.elapsedMs,
+        indexTime,
       });
 
     } catch (error) {
-      const createdPages = dedupPages(analysis?.created_pages || []);
+      await this.handleIngestFailure({
+        file,
+        opts,
+        analysis,
+        failedItems,
+        triageContradictions,
+        summaryPagePath,
+        totalStartTime,
+        error,
+      });
+    } finally {
+      this.triageContradictions = null;
+      this.endIngestion();
+    }
+  }
 
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        this.wasCancelled = true;
-        console.debug('=== Ingestion cancelled by user ===');
+  /**
+   * The candidate gate (#514) and its dissent table (S135).
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: the block only
+   * reads the extraction and a vault page list, and answers with the plan.
+   */
+  private async applyCandidateGates(args: {
+    analysis: SourceAnalysis;
+    rawSource: string;
+    file: TFile;
+    wikiLang: string;
+    translated: boolean;
+  }): Promise<{ stubPlan: StubCandidate[]; tableApplied: boolean }> {
+    const { analysis, rawSource, file, wikiLang, translated } = args;
+    // S135 outcome table: with `gateDissentStubs` on, the two gate halves
+    // stop running in series (each with a veto) and become one decision
+    // table — agreement keeps or drops as before, dissent births a stub
+    // from the extraction's own summary (no LLM call). Requires the #514
+    // opt-in, because the table needs the position verdict that setting
+    // opts into; cross-language notes are not gated, same as below. The
+    // full-page set is identical to the serial path's keep set (measured
+    // over 1,153 items, three runs) — the table only converts drops.
+    let stubPlan: StubCandidate[] = [];
+    let tableApplied = false;
+    if (
+      this.settings.gateDissentStubs === true &&
+      this.settings.skipMentionOnlyCandidates === true &&
+      !translated
+    ) {
+      const pages = await this.getExistingWikiPages();
+      const table = applyOutcomeTable(
+        analysis,
+        extractBody(rawSource),
+        wikiLang,
+        buildStubIdentityResolver(pages, this.settings.wikiFolder),
+      );
+      // `!table.applied` (no language profile) falls through to the serial
+      // path, which reports the missing profile itself.
+      if (table.applied) {
+        tableApplied = true;
+        const total = analysis.entities.length + analysis.concepts.length;
+        if (table.dropped.length > 0) {
+          const list = table.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          console.warn(`[candidate-gate] ${file.path}: dropped ${table.dropped.length} of ${total} candidates — ${list}`);
+          this.onProgress?.(`Candidate gate: ${table.dropped.length} dropped — ${list}`);
+        }
+        if (table.existing.length > 0) {
+          const list = table.existing.map(d => `${d.name} (${d.kind}, ${d.cell})`).join('; ');
+          console.debug(`[candidate-gate] ${file.path}: ${table.existing.length} dissent name(s) an existing page answers — ${list}`);
+        }
+        if (table.stubs.length > 0) {
+          const list = table.stubs.map(s => `${s.item.name} (${s.kind}, ${s.cell})`).join('; ');
+          console.warn(`[candidate-gate] ${file.path}: ${table.stubs.length} dissent stub(s) planned — ${list}`);
+          this.onProgress?.(`Candidate gate: ${table.stubs.length} stub(s) from dissent — ${list}`);
+        }
+        analysis.entities = table.entities;
+        analysis.concepts = table.concepts;
+        stubPlan = table.stubs;
+      }
+    }
 
-        // A cancelled ingest must not read as a completed one: the summary
-        // page doubles as the completion marker (isAlreadyIngested checks its
-        // existence), so leaving it behind freezes the half-finished ingest as
-        // done and every later trigger skips the source. Trash it — the next
-        // trigger then re-ingests cleanly. Content pages stay: a re-ingest
-        // merges them additively.
-        if (summaryPagePath) {
+    if (!tableApplied && this.settings.skipMentionOnlyCandidates === true) {
+      if (!translated) {
+        // A dropped name the vault already has a page for keeps its edge:
+        // the gate judges whether this note earns the page, not whether a
+        // page another note earned may be linked. Same resolver as the
+        // related-link corrector, so "known" means the same thing at both
+        // ends of the pipeline.
+        const resolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
+        const gated = gateCandidates(
+          analysis,
+          extractBody(rawSource),
+          wikiLang,
+          name => resolve(name) !== undefined,
+        );
+        if (!gated.applied) {
+          console.debug(`[candidate-gate] ${file.path}: no language profile for "${wikiLang}" — gate not applied`);
+          this.onProgress?.(`Candidate gate: no language profile for "${wikiLang}" — not applied`);
+        } else if (gated.dropped.length > 0) {
+          const list = gated.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          const kept = gated.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${gated.linkedAnyway.join('; ')}` : '';
+          console.warn(`[candidate-gate] ${file.path}: dropped ${gated.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
+          this.onProgress?.(`Candidate gate: ${gated.dropped.length} dropped — ${list}${kept}`);
+          analysis.entities = gated.entities;
+          analysis.concepts = gated.concepts;
+        }
+      }
+    }
+
+    return { stubPlan, tableApplied };
+  }
+
+  /**
+   * The domain axis (#568) stages 3 and 5.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: it reads the
+   * extraction and the vault's tag vocabulary, and answers with the vocabulary
+   * the later phase shapes related lists against.
+   */
+  private async applyDomainAxis(args: {
+    analysis: SourceAnalysis;
+    rawSource: string;
+    file: TFile;
+    tableApplied: boolean;
+    stubPlan: StubCandidate[];
+  }): Promise<string[]> {
+    const { analysis, rawSource, file, tableApplied, stubPlan } = args;
+    // domain axis stage 3 (#568): the semantic half follows on the
+    // survivors — the extraction reported per candidate how the source treats
+    // it (`coverage`), the threshold in candidate-gate.ts says what is enough;
+    // a missing value keeps the candidate. Then the per-item domain subset
+    // is validated against the vault's tag vocabulary: a value no note
+    // carries is dropped (logged), not written. Runs regardless of the #521
+    // opt-in — the deterministic gate is upstream's setting, this half is
+    // the local domain-axis design. Under the outcome table the threshold
+    // has already been folded into the routing, so only the domain
+    // validation runs — over the survivors AND the planned stubs, whose
+    // frontmatter carries the same validated subset.
+    let domainVocabulary: string[];
+    {
+      if (!tableApplied) {
+        // #620 parity: a dropped name the vault already has a page for keeps
+        // its edge in the survivors' related_* lists. Without the predicate
+        // behaviour is unchanged. (The author's own link markup is folded
+        // into applyCoverageThreshold's own sourceText path — see candidate-gate.ts.)
+        const coverageResolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
+        const covered = applyCoverageThreshold(
+          analysis,
+          extractBody(rawSource),
+          name => coverageResolve(name) !== undefined,
+        );
+        if (covered.dropped.length > 0) {
+          const list = covered.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          const kept = covered.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${covered.linkedAnyway.join('; ')}` : '';
+          console.warn(`[candidate-gate] ${file.path}: dropped ${covered.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
+          this.onProgress?.(`Candidate gate: ${covered.dropped.length} dropped — ${list}${kept}`);
+          analysis.entities = covered.entities;
+          analysis.concepts = covered.concepts;
+        }
+      }
+      // Stage 5 (#568): validation accepts exactly what the prompt offered —
+      // the one vocabulary of vocabulary.ts (settings list + note tags + page
+      // tags). A value outside it is dropped, not written.
+      domainVocabulary = domainVocabularyOf(this.app, this.settings);
+      for (const item of [...analysis.entities, ...analysis.concepts, ...stubPlan.map(s => s.item)]) {
+        const selection = selectDomains(item.domains, domainVocabulary);
+        if (selection.rejected.length > 0) {
+          console.debug(`[domain-axis] ${file.path}: "${item.name}" — dropped ${selection.rejected.length} value(s) the vocabulary does not carry: ${selection.rejected.join(', ')}`);
+        }
+        if (selection.kept.length > 0) item.domains = selection.kept;
+        else delete item.domains;
+      }
+    }
+
+    return domainVocabulary;
+  }
+
+  /**
+   * Sibling edges, related-name resolution and the unanswered count.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: deterministic,
+   * no model call, and it writes only `analysis` plus the count the report
+   * reads back.
+   */
+  private async shapeRelatedListsForRun(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+    domainVocabulary: string[];
+  }): Promise<void> {
+    const { analysis, file, stubPlan, domainVocabulary } = args;
+    // Every page born from this note links its siblings, a related name
+    // the vault answers is written under the page's own title and kind,
+    // and a name nothing answers stays as written and is counted.
+    // Deterministic, no model call; see core/related-shaping.ts.
+    {
+      const pages = await this.getExistingWikiPages();
+      const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
+      const prefix = this.settings.wikiFolder + '/';
+      const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
+      const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
+      const configDir = this.app.vault.configDir;
+      const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
+        // Issue #872 — this list answers "which note names already exist?", not
+        // "which files may be ingested?". A file the user excluded from
+        // ingestion is still a note in the vault, and a link to it is still a
+        // true link, so the exclusion list must not remove it here. The
+        // function that answers the ingest question is a different one
+        // (`isIngestableSource`), and it consults the exclusion list.
+        .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
+        .map(f => f.basename);
+      const shaped = shapeRelatedLists(analysis, {
+        resolve: name => {
+          const rel = resolvePath(name);
+          if (!rel) return undefined;
+          return { title: titleByRel.get(rel) ?? name, kind: kindOf(rel) };
+        },
+        willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
+        vocabulary: domainVocabulary,
+      });
+      analysis.entities = shaped.entities;
+      analysis.concepts = shaped.concepts;
+      this.pendingUnanswered = shaped.unanswered;
+      if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
+        const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
+        const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
+        console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
+        this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
+      }
+    }
+  }
+
+  /**
+   * Stage 3: the entity and concept pages.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. The runner owns
+   * the retry and the rate-limit handling; this method owns the task list, the
+   * progress text, and the failures the report lists.
+   */
+  private async generateItemPages(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    sourceSlug: string;
+    totalSteps: number;
+    step: number;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+  }): Promise<{ count: number; elapsedMs: number; concurrency: number; stepAfter: number }> {
+    const { analysis, file, sourceSlug, totalSteps, failedItems } = args;
+    let step = args.step;
+    // Stage 3: Entity/Concept Page Generation
+    // v1.25.1 Phase C-PR1: retry + rate-limit template extracted to
+    // engine-internals/page-batch-runner.ts (eliminates ~60% duplication
+    // with Stage 4 and makes the retry path unit-testable).
+    const pageGenStart = Date.now();
+
+    const concurrency = this.settings.pageGenerationConcurrency ?? 1;
+    const batchDelay = this.settings.batchDelayMs ?? 300;
+
+    if (concurrency > 1) {
+      console.debug(`[Parallel] concurrency: ${concurrency}, batch delay: ${batchDelay}ms, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
+    } else {
+      console.debug(`[Serial] generating pages sequentially, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
+    }
+
+    const pageGenTasks = [
+      ...analysis.entities.map((e, i) => ({
+        id: `entity:${e.name}`,
+        payload: { type: 'entity' as const, name: e.name, index: i },
+      })),
+      ...analysis.concepts.map((c, i) => ({
+        id: `concept:${c.name}`,
+        payload: { type: 'concept' as const, name: c.name, index: i },
+      })),
+    ];
+
+    const pageGenResult = await runBatchedWithRetry<typeof pageGenTasks[number]['payload']>({
+      tasks: pageGenTasks,
+      concurrency,
+      batchDelayMs: batchDelay,
+      checkCancelled: () => this.checkCancelled('ingest'),
+      apiDelay: (ms: number) => this.apiDelay(ms),
+      onProgress: (_id) => {
+        step++;
+        const task = pageGenTasks[step - 1]?.payload;
+        if (task) {
+          this.onProgress?.(
+            getText(this.settings.language, 'ingestCreatingItem')
+              .replace('{step}', String(step))
+              .replace('{totalSteps}', String(totalSteps))
+              .replace('{type}', getText(
+                this.settings.language,
+                task.type === 'entity' ? 'ingestItemTypeEntity' : 'ingestItemTypeConcept'
+              ))
+              .replace('{name}', task.name)
+          );
+        }
+      },
+      execute: async (task) => {
+        if (task.type === 'entity') {
+          const entity = analysis.entities[task.index];
           try {
-            await this.deleteFile(summaryPagePath);
-            console.debug('Cancelled ingest: removed summary page so the source re-ingests:', summaryPagePath);
-          } catch (cleanupError) {
-            console.warn('Cancelled ingest: could not remove summary page:', summaryPagePath, cleanupError);
+            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug);
+            if (entityResult.path) {
+              if (entityResult.created) analysis.created_pages.push(entityResult.path);
+              else recordUpdatedPage(analysis, entityResult.path);
+            }
+            return { success: true as const };
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            console.error(`Entity "${entity.name}" failed:`, reason);
+            return { success: false as const, failureReason: reason };
           }
         }
-        const reportedCreated = createdPages.filter(p => p !== summaryPagePath);
+        const concept = analysis.concepts[task.index];
+        try {
+          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug);
+          if (conceptResult.path) {
+            if (conceptResult.created) analysis.created_pages.push(conceptResult.path);
+            else recordUpdatedPage(analysis, conceptResult.path);
+          }
+          return { success: true as const };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`Concept "${concept.name}" failed:`, reason);
+          return { success: false as const, failureReason: reason };
+        }
+      },
+    });
 
-        new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
-        this.onDone?.({
-          sourceFile: file.path,
-          createdPages: reportedCreated,
-          updatedPages: analysis?.updated_pages || [],
-          entitiesCreated: reportedCreated.filter(p => p.includes('/entities/')).length,
-          conceptsCreated: reportedCreated.filter(p => p.includes('/concepts/')).length,
-          failedItems,
-          contradictionsFound: triageContradictions.length,
-          success: false,
-          cancelled: true,
-          errorMessage: 'Cancelled by user',
-          elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
-          // v1.22.6 #204: Propagate trigger so completion can route UI.
-          trigger: opts?.trigger,
-        });
-        return;
+    // Sync state out of the runner result (runner doesn't own our analysis state).
+    const count = pageGenResult.succeeded + pageGenResult.failed.length;
+    for (const f of pageGenResult.failed) {
+      const isEntity = f.id.startsWith('entity:');
+      failedItems.push({
+        type: isEntity ? 'entity' : 'concept',
+        name: f.id.split(':')[1] ?? f.id,
+        reason: f.reason,
+      });
+    }
+    if (pageGenResult.rateLimitInfo) {
+      console.warn(
+        `[Rate Limit] Page generation: ${pageGenResult.rateLimitInfo.count} item(s) failed with 429, ` +
+        `suggested concurrency=${pageGenResult.rateLimitInfo.suggestedConcurrency}, ` +
+        `delay=${pageGenResult.rateLimitInfo.suggestedDelay}ms`
+      );
+      new Notice(
+        formatRateLimitNotice(pageGenResult.rateLimitInfo, this.settings.language),
+        NOTICE_RATE_LIMIT
+      );
+    }
+    const elapsedMs = Date.now() - pageGenStart;
+    console.debug(`[Time] Page generation phase complete: ${elapsedMs}ms (avg ${count > 0 ? Math.round(elapsedMs / count) : 0}ms/page)`);
+
+    return { count, elapsedMs, concurrency, stepAfter: step };
+  }
+
+  /**
+   * Stage 4: the related-page updates, on the same runner as Stage 3.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Its progress
+   * text is numbered from the caller's `step`, so the phase is told where it
+   * starts.
+   */
+  private async updateRelatedPagesPhase(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    sourceSlug: string;
+    totalSteps: number;
+    step: number;
+  }): Promise<{ elapsedMs: number; stepAfter: number }> {
+    const { analysis, file, sourceSlug, totalSteps } = args;
+    let step = args.step;
+    // Stage 4: Related Pages Update (same runner, different execute fn)
+    const relatedStart = Date.now();
+    const relatedConcurrency = this.settings.pageGenerationConcurrency ?? 1;
+    const relatedDelay = this.settings.batchDelayMs ?? 300;
+
+    const relatedTasks = analysis.related_pages.map((name, idx) => ({
+      id: `related:${name}`,
+      payload: { name, index: idx, stepNum: step + idx + 1 },
+    }));
+
+    const relatedResult = await runBatchedWithRetry<typeof relatedTasks[number]['payload']>({
+      tasks: relatedTasks,
+      concurrency: relatedConcurrency,
+      batchDelayMs: relatedDelay,
+      checkCancelled: () => this.checkCancelled('ingest'),
+      apiDelay: (ms: number) => this.apiDelay(ms),
+      onProgress: (id) => {
+        const task = relatedTasks.find(t => t.id === id);
+        if (task) {
+          this.onProgress?.(
+            getText(this.settings.language, 'ingestUpdating')
+              .replace('{step}', String(task.payload.stepNum))
+              .replace('{totalSteps}', String(totalSteps))
+              .replace('{name}', task.payload.name)
+          );
+        }
+      },
+      execute: async (task) => {
+        try {
+          const updatedPath = await this.pageFactory.updateRelatedPage(task.name, analysis, file, sourceSlug);
+          if (updatedPath) {
+            recordUpdatedPage(analysis, updatedPath);
+          }
+          return { success: true as const };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`Related page "${task.name}" update failed:`, reason);
+          return { success: false as const, failureReason: reason };
+        }
+      },
+    });
+
+    const relatedCount = relatedResult.succeeded;
+    const relatedTotal = relatedTasks.length;
+    const relatedTime = Date.now() - relatedStart;
+    const relatedModeLabel = relatedConcurrency > 1 ? `parallel(concurrency:${relatedConcurrency})` : 'serial';
+    console.debug(
+      `[Time] Related page update phase complete: ${relatedTime}ms ` +
+      `(${relatedModeLabel}, ${relatedCount}/${relatedTotal} pages succeeded)`
+    );
+    step += relatedTotal;
+
+    if (relatedResult.rateLimitInfo) {
+      console.warn(
+        `[Rate Limit] Related pages update: ${relatedResult.rateLimitInfo.count} item(s) failed with 429, ` +
+        `suggested concurrency=${relatedResult.rateLimitInfo.suggestedConcurrency}, ` +
+        `delay=${relatedResult.rateLimitInfo.suggestedDelay}ms`
+      );
+      new Notice(
+        formatRateLimitNotice(relatedResult.rateLimitInfo, this.settings.language),
+        NOTICE_RATE_LIMIT
+      );
+    }
+
+    return { elapsedMs: relatedTime, stepAfter: step };
+  }
+
+  /**
+   * The console summary and the completion report for a successful run.
+   *
+   * Moved out of `ingestSource` by #932. Two facts are worth naming because
+   * they are easy to lose here: the page counts dedup first (#173 Symptom B),
+   * and the per-step LLM table is summed per call, so concurrent steps overlap
+   * rather than partition the total.
+   */
+  private reportIngestSuccess(args: {
+    file: TFile;
+    analysis: SourceAnalysis;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+    triageContradictions: ContradictionInfo[];
+    trigger: 'auto' | 'manual' | undefined;
+    llmUsageAtStart: ReturnType<typeof snapshotTaskUsage>;
+    totalTime: number;
+    analysisTime: number;
+    summaryTime: number;
+    pageGen: { count: number; elapsedMs: number; concurrency: number };
+    relatedElapsed: number;
+    indexTime: number;
+  }): void {
+    const {
+      file, analysis, failedItems, triageContradictions, trigger, llmUsageAtStart,
+      totalTime, analysisTime, summaryTime, pageGen, relatedElapsed, indexTime,
+    } = args;
+    const updated = analysis.updated_pages.length;
+    // Issue #173 Symptom B: dedup before counting/listing — a duplicated
+    // surface-form (e.g. the LLM emitting the same path twice) must not
+    // inflate the report count or the "Created" listing.
+    const dedupedCreatedPages = dedupPages(analysis.created_pages);
+    const entitiesCreated = dedupedCreatedPages.filter(p => p.includes('/entities/')).length;
+    const conceptsCreated = dedupedCreatedPages.filter(p => p.includes('/concepts/')).length;
+    const modeLabel = (this.settings.pageGenerationConcurrency ?? 1) > 1 ? `parallel(concurrency:${this.settings.pageGenerationConcurrency})` : 'serial';
+    // totalTime was computed above; do not redeclare here.
+
+    console.debug('=== Ingestion complete ===');
+    console.debug(`Ingestion complete [${modeLabel}]: Created ${dedupedCreatedPages.length} pages (${entitiesCreated} entities + ${conceptsCreated} concepts), Updated ${updated} pages`);
+    console.debug(`[Total time] ${totalTime}ms (${Math.round(totalTime/1000)}s)`);
+    console.debug('[Phase breakdown]:');
+    console.debug(`  - Source analysis: ${analysisTime}ms`);
+    console.debug(`  - Summary page generation: ${summaryTime}ms`);
+    console.debug(`  - Page gen (${pageGen.concurrency}concurrency): ${pageGen.elapsedMs}ms`);
+    console.debug(`  - Related page update: ${relatedElapsed}ms`);
+    console.debug(`  - Index & log: ${indexTime}ms`);
+    // Inside the phases, per step. Page generation is the phase this exists
+    // for: one interval above, four steps below it — path resolution's dedup
+    // call, the page write, the merge triage and the body merge.
+    const llmByTask = formatTaskUsage(taskUsageSince(llmUsageAtStart));
+    if (llmByTask.length > 0) {
+      console.debug('[LLM time by step] (summed per call; concurrent steps overlap)');
+      for (const line of llmByTask) console.debug(line);
+    }
+
+    this.onDone?.({
+      sourceFile: file.path,
+      createdPages: dedupedCreatedPages,
+      updatedPages: analysis.updated_pages,
+      entitiesCreated,
+      conceptsCreated,
+      failedItems,
+      contradictionsFound: triageContradictions.length,
+      success: true,
+      elapsedSeconds: Math.round(totalTime / 1000),
+      ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
+      // v1.22.6 #204: Propagate trigger so completion can route UI.
+      trigger,
+    });
+  }
+
+  /**
+   * What a failed or cancelled run leaves behind.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Two exits share
+   * one entry point: a cancel reports a partial success and returns, any other
+   * error reports and re-throws so the caller's retry and log semantics apply.
+   */
+  private async handleIngestFailure(args: {
+    file: TFile;
+    opts: IngestOptions | undefined;
+    analysis: SourceAnalysis | null;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+    triageContradictions: ContradictionInfo[];
+    summaryPagePath: string | null;
+    totalStartTime: number;
+    error: unknown;
+  }): Promise<void> {
+    const { file, opts, analysis, failedItems, triageContradictions, summaryPagePath, totalStartTime, error } = args;
+    const createdPages = dedupPages(analysis?.created_pages || []);
+
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      this.wasCancelled = true;
+      console.debug('=== Ingestion cancelled by user ===');
+
+      // A cancelled ingest must not read as a completed one: the summary
+      // page doubles as the completion marker (isAlreadyIngested checks its
+      // existence), so leaving it behind freezes the half-finished ingest as
+      // done and every later trigger skips the source. Trash it — the next
+      // trigger then re-ingests cleanly. Content pages stay: a re-ingest
+      // merges them additively.
+      if (summaryPagePath) {
+        try {
+          await this.deleteFile(summaryPagePath);
+          console.debug('Cancelled ingest: removed summary page so the source re-ingests:', summaryPagePath);
+        } catch (cleanupError) {
+          console.warn('Cancelled ingest: could not remove summary page:', summaryPagePath, cleanupError);
+        }
       }
+      const reportedCreated = createdPages.filter(p => p !== summaryPagePath);
 
-      console.error('=== Ingestion failed ===');
-      console.error('Error:', error);
-      const errorMsg = error instanceof Error ? error.message : String(error);
-
+      new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
       this.onDone?.({
         sourceFile: file.path,
-        createdPages,
+        createdPages: reportedCreated,
         updatedPages: analysis?.updated_pages || [],
-        entitiesCreated: createdPages.filter(p => p.includes('/entities/')).length,
-        conceptsCreated: createdPages.filter(p => p.includes('/concepts/')).length,
+        entitiesCreated: reportedCreated.filter(p => p.includes('/entities/')).length,
+        conceptsCreated: reportedCreated.filter(p => p.includes('/concepts/')).length,
         failedItems,
         contradictionsFound: triageContradictions.length,
         success: false,
-        errorMessage: errorMsg,
+        cancelled: true,
+        errorMessage: 'Cancelled by user',
         elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
         // v1.22.6 #204: Propagate trigger so completion can route UI.
         trigger: opts?.trigger,
       });
-      throw error;
-    } finally {
-      this.triageContradictions = null;
-      this.endIngestion();
+      return;
+    }
+
+    console.error('=== Ingestion failed ===');
+    console.error('Error:', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    this.onDone?.({
+      sourceFile: file.path,
+      createdPages,
+      updatedPages: analysis?.updated_pages || [],
+      entitiesCreated: createdPages.filter(p => p.includes('/entities/')).length,
+      conceptsCreated: createdPages.filter(p => p.includes('/concepts/')).length,
+      failedItems,
+      contradictionsFound: triageContradictions.length,
+      success: false,
+      errorMessage: errorMsg,
+      elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
+      // v1.22.6 #204: Propagate trigger so completion can route UI.
+      trigger: opts?.trigger,
+    });
+    throw error;
+  }
+
+  /**
+   * The markdown-conversion branch, and the routing that decides to enter it.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Answers true
+   * when this call already handled the ingest, so the caller returns.
+   */
+  private async maybeRunConversion(file: TFile, opts: IngestOptions | undefined): Promise<boolean> {
+    // v1.25.0 PR2 redo + Altitude #1/#2 (v1.27.0 MINOR #404 follow-up):
+    // markdown-conversion ingest path. The configured backend (provider's
+    // native PDF handling or MinerU's online API) transcribes the source
+    // file to markdown, the result is cached by content hash, then the
+    // standard ingest path re-runs with the markdown as a virtual body
+    // (contentOverride). No sidecar file is written by this branch — the
+    // `.obsidian` cache is the sole persistent artifact unless the user
+    // has explicitly opted in via `writePdfMarkdownToVault`.
+    //
+    // Routing:
+    // - Native backend: PDF only (Anthropic Vision / OpenAI Vision's
+    //   PDF handling is the established scope; their image / Office
+    //   input surfaces are not exercised by this branch).
+    // - MinerU backend: PDF + images (png/jpg/jpeg/jp2/webp/gif/bmp) +
+    //   Office docs (doc/docx/ppt/pptx/xls/xlsx). Per the MinerU API
+    //   docs, the Precise parser accepts the full set; the routing
+    //   check below uses MINERU_CONVERSION_EXTENSIONS.
+    //
+    // Guard: only dispatch to the conversion branch when the caller has
+    // NOT already provided a converted body — otherwise this would recurse
+    // forever (the conversion result is fed back as contentOverride and
+    // `ingestConversionSource` re-enters this method).
+    if (!opts?.contentOverride) {
+      const ext = file.extension.toLowerCase();
+      const needsMineruConversion = this.settings.markdownConversionBackend === 'mineru'
+        && (MINERU_CONVERSION_EXTENSIONS as readonly string[]).includes(ext);
+      const isPdf = ext === 'pdf';
+      if (needsMineruConversion || isPdf) {
+        try {
+          await this.ingestConversionSource(file, opts);
+          return true;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          this.wasCancelled = true;
+          new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
+          return true;
+        }
+        throw error;
+      } finally {
+        // Successful conversion re-enters this method and clears the shared
+        // controller in the main finally block. Pre-conversion exits do not.
+        if (this.abortController !== null) this.endIngestion();
+      }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Read the body, apply the #164 requirements gate, and arm the run.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Answers null
+   * when the source is skipped, in which case the skip has already been
+   * reported and torn down.
+   */
+  private async prepareIngestRun(
+    file: TFile,
+    opts: IngestOptions | undefined,
+  ): Promise<{ fileContent: string; totalStartTime: number; llmUsageAtStart: ReturnType<typeof snapshotTaskUsage> } | null> {
+    // #164 pre-ingest requirements gate. Empty/type are hard skips; a duplicate
+    // auto-skips, except interactive ingest prompts first.
+    //
+    // #688: this gate no longer runs "BEFORE any cancellation/UI setup" — the
+    // controller and the start hook were moved above it in v1.25.0, because the
+    // PDF branch needs them. A skip here therefore has something to tear down,
+    // and the return below sits above the main `try`, so it must do it itself.
+    const fileContent = opts?.contentOverride ?? await this.app.vault.read(file);
+    const rejection = opts?.forceReingest ? null : await this.checkRequirements(file, fileContent, opts?.batchCtx);
+    if (rejection) {
+      const confirmed = rejection.reason === 'duplicate' && opts?.interactive && this.onConfirmReingest
+        ? await this.onConfirmReingest(file, rejection)
+        : false;
+      if (!confirmed) {
+        this.reportSkip(file, rejection, opts);
+        this.endIngestion();
+        return null;
+      }
+    }
+
+    const totalStartTime = Date.now();
+    const llmUsageAtStart = snapshotTaskUsage();
+
+    // Setup cancellation support
+    // v1.25.0 PR3 follow-up #7 (Bug C): AbortController / onIngestionStart
+    // already initialized above (line ~700, before PDF dispatch) so the
+    // status bar is correct and cancellation is wired for both PDF and
+    // text flows. We intentionally do NOT re-create the AbortController
+    // here — it would create a race window where cancelIngestion() could
+    // abort the *previous* instance instead of the current one.
+
+    // Long-source warning: large files trigger iterative batch extraction
+    // (multiple LLM passes), which takes significantly longer than small files.
+    const LONG_SOURCE_LINE_THRESHOLD = 1000;
+    const lineCount = fileContent.split('\n').length;
+    if (lineCount > LONG_SOURCE_LINE_THRESHOLD) {
+      const sizeKB = Math.round(fileContent.length / 1024);
+      new Notice(
+        getText(this.settings.language, 'longSourceNotice')
+          .replace('{filename}', file.basename)
+          .replace('{lines}', String(lineCount))
+          .replace('{size}', sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)}MB` : `${sizeKB}KB`),
+        NOTICE_NORMAL
+      );
+      console.debug(`[Long Source] ${file.basename}: ${lineCount} lines, ${sizeKB}KB — long ingestion expected`);
+    }
+
+    this.onProgress?.(
+      getText(this.settings.language, 'ingestAnalyzing').replace('{filename}', file.basename)
+    );
+
+    return { fileContent, totalStartTime, llmUsageAtStart };
+  }
+
+  /**
+   * The step total, the planned page paths, and the canonical source slug.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. The paths are
+   * planned before any write so the summary page's links land on canonical
+   * paths, and the slug is derived once so every page of the run agrees.
+   */
+  private async planPageSet(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+  }): Promise<{ totalSteps: number; step: number; plannedPaths: string[]; preserveCase: boolean; sourceSlug: string }> {
+    const { analysis, file, stubPlan } = args;
+    const totalSteps = 1 + analysis.entities.length + analysis.concepts.length + analysis.related_pages.length + 2;
+    const step = 1;
+
+    const plannedPaths: string[] = [];
+    const preserveCase = this.settings.slugCase === 'preserve';
+    for (const entity of analysis.entities) {
+      plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/entities/${slugify(entity.name, preserveCase)}.md`));
+    }
+    for (const concept of analysis.concepts) {
+      plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/concepts/${slugify(concept.name, preserveCase)}.md`));
+    }
+    // S135: stub pages will exist too — planned like any page, so links
+    // the summary makes to their names land on the canonical path.
+    for (const stub of stubPlan) {
+      plannedPaths.push(stubPath({ wikiFolder: this.settings.wikiFolder, preserveCase, normalizePath }, stub));
+    }
+
+    this.onProgress?.(
+      getText(this.settings.language, 'ingestCreatingSummary')
+        .replace('{step}', String(step))
+        .replace('{totalSteps}', String(totalSteps))
+    );
+    await this.apiDelay();
+
+    // Issue #155: derive the source slug (<basename>-<path fingerprint>) ONCE,
+    // before any page is written, so the summary page, entity/concept backlinks,
+    // and related pages all reference the same canonical [[sources/<slug>]].
+    const sourceSlug = resolveSourceSlug(file.path, { preserveCase });
+
+    return { totalSteps, step, plannedPaths, preserveCase, sourceSlug };
+  }
+
+  /**
+   * Stage 1: the extraction, and the failure message when it comes back empty.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. A null answer is
+   * an error, not a skip: the message names the console and, when the user
+   * opted into a custom repetition penalty, the likely cause.
+   */
+  private async analyzeSourcePhase(
+    file: TFile,
+    opts: IngestOptions | undefined,
+  ): Promise<{ analysis: SourceAnalysis; elapsedMs: number }> {
+    // Stage 1: Source Analysis (contentOverride flows via opts)
+    const analysisStart = Date.now();
+    const analysis = await this.sourceAnalyzer.analyzeSource(file, {
+      ...(opts?.contentOverride !== undefined ? { contentOverride: opts.contentOverride } : {}),
+    });
+    if (!analysis) {
+      // When the user opted into a custom repetitionPenalty, append the
+      // localized hint so the failure names the likely cause (see
+      // repetition-penalty-hint.ts for the E2E rationale).
+      throw new Error(
+        `Source analysis failed for "${file.basename}". Check the developer console (Ctrl+Shift+I) for network or API errors. If you see SSL/network errors, verify your provider URL and network connection.` +
+        buildRepetitionPenaltyHint(
+          this.settings.language,
+          this.settings.repetitionPenalty,
+          this.settings.provider,
+        ),
+      );
+    }
+    const elapsedMs = Date.now() - analysisStart;
+    console.debug(`[Time] Source analysis phase: ${elapsedMs}ms`);
+    console.debug('Analysis result:', JSON.stringify(analysis, null, 2));
+
+    this.checkCancelled('ingest');
+
+    return { analysis, elapsedMs };
+  }
+
+  /**
+   * S135: write the dissent stubs before any generation.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Deterministic
+   * writes, no model call, and a path that already exists is a slug collision
+   * that is skipped rather than overwritten.
+   */
+  private async createDissentStubsPhase(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+    preserveCase: boolean;
+    sourceSlug: string;
+  }): Promise<void> {
+    const { analysis, file, stubPlan, preserveCase, sourceSlug } = args;
+    // S135: birth the dissent stubs — deterministic writes, no LLM call,
+    // before any generation so every page produced this run can already
+    // link to them. A path that exists is a slug collision and is skipped,
+    // never overwritten (identity was resolved against titles + aliases).
+    if (stubPlan.length > 0) {
+      const stubResult = await createDissentStubs(
+        {
+          wikiFolder: this.settings.wikiFolder,
+          preserveCase,
+          normalizePath,
+          fileExists: (p) => this.app.vault.getAbstractFileByPath(p) !== null,
+          createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
+          // S142: the stub's identity tag faces the same list every other
+          // identity writer's tags do (create/merge/related) — the full
+          // vocabulary, not the domains view: `item.type` is an identity
+          // value and may be a flat settings term.
+          vocabulary: activeVocabulary(this.app, this.settings),
+        },
+        stubPlan,
+        sourceSlug,
+      );
+      analysis.created_pages.push(...stubResult.created);
+      if (stubResult.skipped.length > 0) {
+        console.warn(`[candidate-gate] ${file.path}: ${stubResult.skipped.length} stub(s) skipped (slug already occupied) — ${stubResult.skipped.join('; ')}`);
+      }
+      if (stubResult.created.length > 0) {
+        console.debug(`[candidate-gate] ${file.path}: ${stubResult.created.length} dissent stub(s) written — ${stubResult.created.join('; ')}`);
+      }
     }
   }
 
