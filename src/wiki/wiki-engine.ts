@@ -1021,29 +1021,9 @@ export class WikiEngine {
     try {
       await this.ensureWikiStructure();
 
-      // Stage 1: Source Analysis (contentOverride flows via opts)
-      const analysisStart = Date.now();
-      analysis = await this.sourceAnalyzer.analyzeSource(file, {
-        ...(opts?.contentOverride !== undefined ? { contentOverride: opts.contentOverride } : {}),
-      });
-      if (!analysis) {
-        // When the user opted into a custom repetitionPenalty, append the
-        // localized hint so the failure names the likely cause (see
-        // repetition-penalty-hint.ts for the E2E rationale).
-        throw new Error(
-          `Source analysis failed for "${file.basename}". Check the developer console (Ctrl+Shift+I) for network or API errors. If you see SSL/network errors, verify your provider URL and network connection.` +
-          buildRepetitionPenaltyHint(
-            this.settings.language,
-            this.settings.repetitionPenalty,
-            this.settings.provider,
-          ),
-        );
-      }
-      const analysisTime = Date.now() - analysisStart;
-      console.debug(`[Time] Source analysis phase: ${analysisTime}ms`);
-      console.debug('Analysis result:', JSON.stringify(analysis, null, 2));
-
-      this.checkCancelled('ingest');
+      const analysisPhase = await this.analyzeSourcePhase(file, opts);
+      analysis = analysisPhase.analysis;
+      const analysisTime = analysisPhase.elapsedMs;
 
       // Issue #514: a candidate the source only mentions gets no page. Decided
       // from the text before any page is planned — a name the note never says,
@@ -1078,36 +1058,7 @@ export class WikiEngine {
       const plan = await this.planPageSet({ analysis, file, stubPlan });
       const { totalSteps, plannedPaths, preserveCase, sourceSlug } = plan;
       let step = plan.step;
-      // S135: birth the dissent stubs — deterministic writes, no LLM call,
-      // before any generation so every page produced this run can already
-      // link to them. A path that exists is a slug collision and is skipped,
-      // never overwritten (identity was resolved against titles + aliases).
-      if (stubPlan.length > 0) {
-        const stubResult = await createDissentStubs(
-          {
-            wikiFolder: this.settings.wikiFolder,
-            preserveCase,
-            normalizePath,
-            fileExists: (p) => this.app.vault.getAbstractFileByPath(p) !== null,
-            createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
-            // S142: the stub's identity tag faces the same list every other
-            // identity writer's tags do (create/merge/related) — the full
-            // vocabulary, not the domains view: `item.type` is an identity
-            // value and may be a flat settings term.
-            vocabulary: activeVocabulary(this.app, this.settings),
-          },
-          stubPlan,
-          sourceSlug,
-        );
-        analysis.created_pages.push(...stubResult.created);
-        if (stubResult.skipped.length > 0) {
-          console.warn(`[candidate-gate] ${file.path}: ${stubResult.skipped.length} stub(s) skipped (slug already occupied) — ${stubResult.skipped.join('; ')}`);
-        }
-        if (stubResult.created.length > 0) {
-          console.debug(`[candidate-gate] ${file.path}: ${stubResult.created.length} dissent stub(s) written — ${stubResult.created.join('; ')}`);
-        }
-      }
-
+      await this.createDissentStubsPhase({ analysis, file, stubPlan, preserveCase, sourceSlug });
       // Stage 2: Summary Page Generation (contentOverride flows through opts)
       const summaryStart = Date.now();
       const summaryPage = await this.createSummaryPage(file, analysis, plannedPaths, sourceSlug, opts?.contentOverride);
@@ -1926,6 +1877,90 @@ export class WikiEngine {
     const sourceSlug = resolveSourceSlug(file.path, { preserveCase });
 
     return { totalSteps, step, plannedPaths, preserveCase, sourceSlug };
+  }
+
+  /**
+   * Stage 1: the extraction, and the failure message when it comes back empty.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. A null answer is
+   * an error, not a skip: the message names the console and, when the user
+   * opted into a custom repetition penalty, the likely cause.
+   */
+  private async analyzeSourcePhase(
+    file: TFile,
+    opts: IngestOptions | undefined,
+  ): Promise<{ analysis: SourceAnalysis; elapsedMs: number }> {
+    // Stage 1: Source Analysis (contentOverride flows via opts)
+    const analysisStart = Date.now();
+    const analysis = await this.sourceAnalyzer.analyzeSource(file, {
+      ...(opts?.contentOverride !== undefined ? { contentOverride: opts.contentOverride } : {}),
+    });
+    if (!analysis) {
+      // When the user opted into a custom repetitionPenalty, append the
+      // localized hint so the failure names the likely cause (see
+      // repetition-penalty-hint.ts for the E2E rationale).
+      throw new Error(
+        `Source analysis failed for "${file.basename}". Check the developer console (Ctrl+Shift+I) for network or API errors. If you see SSL/network errors, verify your provider URL and network connection.` +
+        buildRepetitionPenaltyHint(
+          this.settings.language,
+          this.settings.repetitionPenalty,
+          this.settings.provider,
+        ),
+      );
+    }
+    const elapsedMs = Date.now() - analysisStart;
+    console.debug(`[Time] Source analysis phase: ${elapsedMs}ms`);
+    console.debug('Analysis result:', JSON.stringify(analysis, null, 2));
+
+    this.checkCancelled('ingest');
+
+    return { analysis, elapsedMs };
+  }
+
+  /**
+   * S135: write the dissent stubs before any generation.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Deterministic
+   * writes, no model call, and a path that already exists is a slug collision
+   * that is skipped rather than overwritten.
+   */
+  private async createDissentStubsPhase(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+    preserveCase: boolean;
+    sourceSlug: string;
+  }): Promise<void> {
+    const { analysis, file, stubPlan, preserveCase, sourceSlug } = args;
+    // S135: birth the dissent stubs — deterministic writes, no LLM call,
+    // before any generation so every page produced this run can already
+    // link to them. A path that exists is a slug collision and is skipped,
+    // never overwritten (identity was resolved against titles + aliases).
+    if (stubPlan.length > 0) {
+      const stubResult = await createDissentStubs(
+        {
+          wikiFolder: this.settings.wikiFolder,
+          preserveCase,
+          normalizePath,
+          fileExists: (p) => this.app.vault.getAbstractFileByPath(p) !== null,
+          createOrUpdateFile: (p, c) => this.createOrUpdateFile(p, c),
+          // S142: the stub's identity tag faces the same list every other
+          // identity writer's tags do (create/merge/related) — the full
+          // vocabulary, not the domains view: `item.type` is an identity
+          // value and may be a flat settings term.
+          vocabulary: activeVocabulary(this.app, this.settings),
+        },
+        stubPlan,
+        sourceSlug,
+      );
+      analysis.created_pages.push(...stubResult.created);
+      if (stubResult.skipped.length > 0) {
+        console.warn(`[candidate-gate] ${file.path}: ${stubResult.skipped.length} stub(s) skipped (slug already occupied) — ${stubResult.skipped.join('; ')}`);
+      }
+      if (stubResult.created.length > 0) {
+        console.debug(`[candidate-gate] ${file.path}: ${stubResult.created.length} dissent stub(s) written — ${stubResult.created.join('; ')}`);
+      }
+    }
   }
 
   private async apiDelay(ms?: number): Promise<void> {
