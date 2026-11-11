@@ -19,7 +19,6 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/ui/settings-sections/provider-section.ts": 238,
 	"src/ui/settings-sections/wiki-config-section.ts": 200,
 	"src/wiki/conversation-ingest.ts": 221,
-	"src/wiki/source-analyzer.ts": 145,
 	"src/wiki/lint/fix-dead-link.ts": 143,
 	"src/wiki/lint/fix-runners.ts": 127,
 	"src/wiki/lint/merge-duplicates.ts": 172,
