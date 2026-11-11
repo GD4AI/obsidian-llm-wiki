@@ -29,8 +29,8 @@ import {
   DEFAULT_FIELD_WEIGHTS,
 } from '../../src/core/term-index.ts';
 import { rrfFuse, assembleWithCoverage } from '../../src/core/assembly.ts';
-import { calibrateFieldWeights, runHarness, rankPages } from '../../src/core/recall-harness.ts';
-import { builtInFixtures } from '../../src/core/recall-fixtures.ts';
+import { calibrateFieldWeights, runHarness, rankPages } from './src/recall-harness.ts';
+import { builtInFixtures } from './src/recall-fixtures.ts';
 
 const [, , wikiDir] = process.argv;
 if (!wikiDir) {

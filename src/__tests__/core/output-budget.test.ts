@@ -10,7 +10,6 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveOutputCeiling,
   computeExtractionBudget,
-  isReasoningPossible,
 } from '../../core/output-budget';
 import {
   DEFAULT_MODEL_OUTPUT_TOKENS,
@@ -52,91 +51,31 @@ describe('resolveOutputCeiling', () => {
 describe('computeExtractionBudget', () => {
   const ceiling = DEFAULT_MODEL_OUTPUT_TOKENS;
 
-  it('declares the whole ceiling while reasoning is possible', () => {
+  it('declares the whole ceiling, whatever the batch needs', () => {
     // The #904 regression: 20 items x 400 = 8,000 needed, 16,000 declared,
     // 16,000 spent on reasoning, nothing left for the answer.
-    expect(computeExtractionBudget({
-      taskNeed: 20 * 400,
-      ceiling,
-      reasoningPossible: true,
-    })).toBe(ceiling);
+    expect(computeExtractionBudget({ taskNeed: 20 * 400, ceiling })).toBe(ceiling);
+    // 50 items would ask for 20,000 on the old scaling rule.
+    expect(computeExtractionBudget({ taskNeed: 50 * 400, ceiling })).toBe(ceiling);
   });
 
-  it('does not scale the declared ceiling with batch size', () => {
-    // 50 items would ask for 20,000 on the old rule. Declaring 20,000 against
-    // a thinking model reproduces the bug at a larger number.
-    expect(computeExtractionBudget({
-      taskNeed: 50 * 400,
-      ceiling,
-      reasoningPossible: true,
-    })).toBe(ceiling);
+  it('stays at the ceiling when the user asked for silence (#912)', () => {
+    // Asking for silence is not evidence of silence. Claude Opus 5.5 refuses
+    // `thinking: disabled` and reasons anyway; a narrow budget then starves
+    // the answer and the batch comes back empty. The request still carries the
+    // lowest level the SDK offers, so a model that does obey spends nothing —
+    // `max_tokens` is a cap, not a reservation.
+    expect(computeExtractionBudget({ taskNeed: 20 * 400, ceiling })).toBe(ceiling);
+    expect(computeExtractionBudget({ taskNeed: 40_000, ceiling })).toBe(ceiling);
   });
 
-  it('narrows to the answer need once thinking is off', () => {
-    expect(computeExtractionBudget({
-      taskNeed: 20 * 400,
-      ceiling,
-      reasoningPossible: false,
-    })).toBe(MAX_TOKENS_BATCH);
-  });
-
-  it('keeps a large answer need when thinking is off', () => {
-    expect(computeExtractionBudget({
-      taskNeed: 40_000,
-      ceiling,
-      reasoningPossible: false,
-    })).toBe(40_000);
-  });
-
-  it('never declares more than the ceiling in either branch', () => {
-    // A 4K-output model: exceeding its limit is a guaranteed 400, and the
-    // floor must not push the request over it.
-    expect(computeExtractionBudget({
-      taskNeed: 8_000,
-      ceiling: 4_096,
-      reasoningPossible: true,
-    })).toBe(4_096);
-    expect(computeExtractionBudget({
-      taskNeed: 8_000,
-      ceiling: 4_096,
-      reasoningPossible: false,
-    })).toBe(4_096);
+  it('never declares more than the ceiling', () => {
+    // A 4K-output model: exceeding its limit is a guaranteed 400.
+    expect(computeExtractionBudget({ taskNeed: 8_000, ceiling: 4_096 })).toBe(4_096);
   });
 
   it('honours a user-chosen ceiling below the default', () => {
-    expect(computeExtractionBudget({
-      taskNeed: 8_000,
-      ceiling: 32_768,
-      reasoningPossible: true,
-    })).toBe(32_768);
+    expect(computeExtractionBudget({ taskNeed: 8_000, ceiling: 32_768 })).toBe(32_768);
   });
 });
 
-// The budget and the wire must agree on whether reasoning may happen. If this
-// said "off" while the request still permitted thinking, the wide ceiling
-// would be withheld from a model about to think — #904 all over again.
-describe('isReasoningPossible', () => {
-  it('is true by default, which is the state every existing install is in', () => {
-    expect(isReasoningPossible({}, 'extract')).toBe(true);
-  });
-
-  it('is false when the global toggle asks for silence', () => {
-    expect(isReasoningPossible({ disableThinking: true }, 'extract')).toBe(false);
-  });
-
-  it('is true for every named global level', () => {
-    for (const thinkingEffort of ['default', 'low', 'medium', 'high'] as const) {
-      expect(isReasoningPossible({ thinkingEffort }, 'extract')).toBe(true);
-    }
-  });
-
-  it('lets a per-task policy override the global toggle', () => {
-    // `extract=text` with no thinking suffix resolves to the built-in
-    // baseline, whose thinking is 'default' — the toggle then decides.
-    const on = { taskPolicies: { extract: { outputMode: 'text_prompt' as const, thinking: 'low' as const } } };
-    expect(isReasoningPossible({ ...on, disableThinking: true }, 'extract')).toBe(true);
-
-    const off = { taskPolicies: { extract: { outputMode: 'text_prompt' as const, thinking: 'off' as const } } };
-    expect(isReasoningPossible(off, 'extract')).toBe(false);
-  });
-});

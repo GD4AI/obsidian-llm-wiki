@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockContext, createMockFile } from '../__support__/engine-context';
 import { SourceAnalyzer } from '../../wiki/source-analyzer';
 import { normalizeFinishReason } from '../../llm-sdk/finish-reason';
 import { SOURCE_ANALYZER_RETRY_MULTIPLIER, DEFAULT_MODEL_OUTPUT_TOKENS } from '../../constants';
 import type { LLMClient, LLMFinishReason } from '../../types';
 import { TFile } from 'obsidian';
+import { outputCeilingCache } from '../../core/output-ceiling-cache';
 
 // Issue #305 — a truncated batch response is not an error.
 //
@@ -99,6 +100,12 @@ function batchSizeOf(prompt: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+beforeEach(() => {
+  // #912: the ceiling cache is process-wide, so one case must not inherit the
+  // verdict another one learned.
+  outputCeilingCache.invalidate();
+});
+
 describe('SourceAnalyzer truncation retry (#305)', () => {
   it('retries with a halved batch instead of dropping a truncated first batch', async () => {
     // 1st extraction: truncated + finish_reason=length
@@ -147,9 +154,12 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
     expect(maxTokens[1]).toBeLessThanOrEqual(DEFAULT_MODEL_OUTPUT_TOKENS);
   });
 
-  it('still triples a narrow budget when thinking is off', async () => {
-    // The pre-#904 invariant survives where it still has room: a request that
-    // declares only the answer need can grow on retry.
+  it('declares the ceiling even with thinking off, so a retry has nothing to add (#912)', async () => {
+    // Asking for silence is not evidence of silence — a model that refuses to
+    // stop thinking spends the whole budget on reasoning and returns an empty
+    // batch. #912 therefore stopped narrowing the budget when the toggle is on.
+    // The old invariant ("only a narrow request can grow on retry") has no
+    // subject left: no extraction request declares less than the ceiling.
     const { client, maxTokens } = scriptedClient([
       { text: TRUNCATED, finishReason: 'length' },
       { text: VALID, finishReason: 'stop' },
@@ -158,8 +168,11 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
     const result = await run(analyzerWith(client, { disableThinking: true }));
 
     expect(result).not.toBeNull();
+    expect(maxTokens[0], 'the first attempt already declares the ceiling').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS,
+    );
     expect(maxTokens.length).toBeGreaterThanOrEqual(2);
-    expect(maxTokens[1]).toBe(maxTokens[0] * SOURCE_ANALYZER_RETRY_MULTIPLIER);
+    expect(maxTokens[1], 'escalation may only add room, and there is none').toBe(maxTokens[0]);
   });
 
   // Issue #904: the ceiling is a starting assumption. A provider whose real
@@ -376,5 +389,160 @@ describe('normalizeFinishReason (#305)', () => {
     // Total on purpose: an unrecognized value must not be mistaken for
     // 'length', so the worst case is "no signal", i.e. pre-#305 behavior.
     expect(normalizeFinishReason(raw)).toBe('unknown');
+  });
+});
+
+// Issue #912: the ceiling learned from a rejection is a property of the
+// (baseURL, model) pair, not of the note that happened to discover it. Before
+// the cache, a 20-note ingest paid the same two rejected requests 20 times.
+describe('SourceAnalyzer — a learned ceiling outlives the note (#912)', () => {
+  const LIMIT = 65_536;
+  const REJECTS_CEILING = `Invalid value for max_tokens: must be less than or equal to ${LIMIT}`;
+
+  /**
+   * A client that rejects a request above a real limit, and says which limit,
+   * the way a gateway does. Rejecting unconditionally would prove nothing: the
+   * second note passing only matters if its lower ceiling is also accepted.
+   */
+  function clientWithLimit(): { client: LLMClient; maxTokens: number[]; rejected: () => number } {
+    const scripted = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    let rejections = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      if ((params.max_tokens as number) > LIMIT) {
+        rejections++;
+        throw new Error(REJECTS_CEILING);
+      }
+      return scripted.client.createMessage(params);
+    };
+    return { client: wrapped, maxTokens: scripted.maxTokens, rejected: () => rejections };
+  }
+
+  it('starts the next note from what the previous note learned', async () => {
+    const firstRun = clientWithLimit();
+    expect(await run(analyzerWith(firstRun.client))).not.toBeNull();
+    expect(firstRun.rejected(), 'the first note pays one rejection').toBe(1);
+    expect(firstRun.maxTokens[0]).toBe(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+
+    const secondRun = clientWithLimit();
+    expect(await run(analyzerWith(secondRun.client))).not.toBeNull();
+    expect(secondRun.rejected(), 'the second note pays none').toBe(0);
+    expect(secondRun.maxTokens[0], 'and starts where the first one ended').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS / 2,
+    );
+    expect(secondRun.maxTokens[0], 'below the limit the provider named').toBeLessThanOrEqual(LIMIT);
+  });
+
+  it('pays the probe again once the verdict is dropped', async () => {
+    const firstRun = clientWithLimit();
+    await run(analyzerWith(firstRun.client));
+    outputCeilingCache.invalidate();
+
+    const secondRun = clientWithLimit();
+    await run(analyzerWith(secondRun.client));
+    expect(secondRun.rejected(), 'a changed gateway or account re-learns').toBe(1);
+    expect(secondRun.maxTokens[0]).toBe(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+  });
+
+  it('never lets a learned ceiling raise what the user asked for', async () => {
+    const firstRun = clientWithLimit();
+    await run(analyzerWith(firstRun.client));
+
+    const asked = scriptedClient([{ text: VALID, finishReason: 'stop' }]);
+    await run(analyzerWith(asked.client, { maxTokensPerCall: 4000 }));
+    expect(asked.maxTokens[0], 'the smaller of the two wins').toBeLessThanOrEqual(4000);
+  });
+});
+
+// Issue #970: the ceiling probe was gated on `isFirstBatch`, so a note whose
+// first batch was accepted and whose second was rejected for naming
+// `max_tokens` took the truncation branch instead — it halved the batch size
+// and, when that did not apply, dropped the batch while keeping the items
+// already extracted. Nothing was learned either.
+describe('SourceAnalyzer — a rejection on a later batch (#970)', () => {
+  const LIMIT = 65_536;
+  const NAMES_CEILING = `Invalid value for max_tokens: must be less than or equal to ${LIMIT}`;
+
+  it('lowers the ceiling when the later batch is the rejected one', async () => {
+    const scripted = scriptedClient([
+      { text: VALID, finishReason: 'stop' }, // batch 1 accepted at the default ceiling
+      { text: VALID, finishReason: 'stop' }, // batch 2, retried after the ceiling halved
+    ]);
+    let calls = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      calls++;
+      // Only the second batch is over the limit; the first one is accepted.
+      if (calls === 2 && (params.max_tokens as number) > LIMIT) {
+        throw new Error(NAMES_CEILING);
+      }
+      return scripted.client.createMessage(params);
+    };
+
+    const result = await run(analyzerWith(wrapped));
+
+    expect(result, 'the note still completes').not.toBeNull();
+    expect(scripted.maxTokens[0], 'batch 1 went out at the default ceiling').toBe(
+      DEFAULT_MODEL_OUTPUT_TOKENS,
+    );
+    expect(scripted.maxTokens[1], 'the retry went out lower').toBeLessThanOrEqual(
+      DEFAULT_MODEL_OUTPUT_TOKENS / 2,
+    );
+  });
+
+  it('hands what a later batch learned to the next note', async () => {
+    const first = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    let calls = 0;
+    const wrapped = Object.create(first.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      calls++;
+      if (calls === 2 && (params.max_tokens as number) > LIMIT) throw new Error(NAMES_CEILING);
+      return first.client.createMessage(params);
+    };
+    await run(analyzerWith(wrapped));
+
+    // Second note, second analyzer, same (baseURL, model): it starts lower.
+    const second = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    await run(analyzerWith(second.client));
+    expect(second.maxTokens[0]).toBeLessThanOrEqual(DEFAULT_MODEL_OUTPUT_TOKENS / 2);
+  });
+
+  it('still ignores a later failure that does not name the ceiling', async () => {
+    // Only a message that names the ceiling qualifies. This one names nothing
+    // the ceiling logic can act on, so no ceiling retry may be issued.
+    //
+    // Deliberately not a context-length message: `isTruncation` matches the
+    // substring `length`, so "maximum context length" is handled by the
+    // batch-halving branch that predates #904. That overlap is recorded in
+    // #970 rather than changed here.
+    const scripted = scriptedClient([
+      { text: VALID, finishReason: 'stop' },
+      { text: VALID, finishReason: 'stop' },
+    ]);
+    let extractionAttempts = 0;
+    const wrapped = Object.create(scripted.client) as LLMClient;
+    wrapped.createMessage = async (params) => {
+      const first = params.messages[0].content;
+      // The analyzer's own client also carries later tasks (page creation),
+      // so only the extraction prompt counts as a batch attempt.
+      if (typeof first === 'string' && first.startsWith('You are a Wiki knowledge base maintainer')) {
+        extractionAttempts++;
+        if (extractionAttempts === 2) {
+          throw new Error('Unprocessable entity: field messages is invalid');
+        }
+      }
+      return scripted.client.createMessage(params);
+    };
+
+    const result = await run(analyzerWith(wrapped));
+    expect(result).not.toBeNull();
+    expect(extractionAttempts, 'batch 2 was attempted once and not retried').toBe(2);
+    expect(outputCeilingCache.size, 'nothing was learned from it').toBe(0);
   });
 });

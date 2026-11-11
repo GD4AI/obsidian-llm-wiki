@@ -198,7 +198,18 @@ function needleOf(name: string, profile: GateLanguageProfile): RegExp | null {
   }
   const inflection = profile.inflection.length > 0 ? `(?:${profile.inflection.map(escapeRe).join('|')})?` : '';
   const body = parts.map(p => escapeRe(p) + inflection).join('\\s+');
-  return new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, 'giu');
+  // The trailing assertion stays a lookahead — every engine we support has it.
+  // The leading boundary is checked by `atWordStart` instead of `(?<!…)`: a
+  // lookbehind throws when the pattern is constructed on iOS before 16.4, and
+  // `new RegExp` builds this one from a page name, so no lint rule can see it.
+  return new RegExp(`${body}(?![\\p{L}\\p{N}])`, 'giu');
+}
+
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/** A name is whole: `Transferrin` is not named inside `Transferrinsättigung`. */
+function atWordStart(text: string, pos: number): boolean {
+  return pos === 0 || !WORD_CHAR.test(text[pos - 1]);
 }
 
 /** Link markup, whose brackets are syntax: `[[wikilink]]`, `![[embed]]`, `[text](url)`. */
@@ -305,7 +316,7 @@ function isGlossSpan(text: string, span: [number, number], needle: RegExp): bool
   const inner = text.slice(span[0] + 1, span[1] - 1).replace(/[*_`]/g, ' ').trim();
   const re = new RegExp(needle.source, needle.flags);
   const m = re.exec(inner);
-  return m !== null && m.index <= 1 && m.index + m[0].length >= inner.length - 1;
+  return m !== null && atWordStart(inner, m.index) && m.index <= 1 && m.index + m[0].length >= inner.length - 1;
 }
 
 function lineAt(text: string, pos: number): string {
@@ -392,6 +403,9 @@ export function classifyCandidate(text: string, name: string, profile: GateLangu
   while ((m = needle.exec(t)) !== null) {
     const pos = m.index, end = pos + m[0].length;
     if (m[0].length === 0) { needle.lastIndex++; continue; }
+    // Reject a name that continues a word, then resume one character later so
+    // an overlapping occurrence is not skipped.
+    if (!atWordStart(t, pos)) { needle.lastIndex = pos + 1; continue; }
     // A name inside link markup was linked by the author — the most explicit
     // relevance statement a note makes, prose wherever the link stands.
     if (links.some(([a, b]) => pos >= a && end <= b)) return 'prose';

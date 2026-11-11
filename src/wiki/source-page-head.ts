@@ -6,8 +6,8 @@
 // Same route as the Mentions section (#244): what the model wrote there is
 // replaced, not trusted.
 
-import { stripMentionsSection } from './mentions-parser';
-import type { SourcePageHeadLabels } from '../wiki/system-prompts';
+import { stripMentionsSection } from '../core/mentions-parser';
+import type { SourcePageHeadLabels } from './system-prompts';
 
 export interface SourcePageHead {
   title: string;

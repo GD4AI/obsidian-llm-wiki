@@ -30,6 +30,8 @@ import {
   type LLMMessage,
 } from '../types';
 import { obsidianFetchBridge, streamWithFallback } from '../core/obsidian-fetch-bridge';
+import type { generateText } from 'ai';
+import { generateBuffered } from './buffered-generation';
 import { mapAiSdkError } from './openai-sdk-client';
 import {
   getCachedUrl,
@@ -317,8 +319,7 @@ export class OpenAICompatSdkClient implements LLMClient {
   private async probeBaseURL(baseURL: string): Promise<boolean> {
     try {
       const languageModel = this.getProvider('gpt-4o-mini', this.fetchImpl, baseURL);
-      const { generateText } = await import('ai');
-      await generateText({
+      await generateBuffered({
         model: languageModel,
         messages: [{ role: 'user', content: 'hi' }],
         maxOutputTokens: 1,
@@ -386,9 +387,8 @@ export class OpenAICompatSdkClient implements LLMClient {
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
-      const { generateText } = await import('ai');
 
-      const result = await generateText({
+      const result = await generateBuffered({
         model: languageModel,
         ...(system ? { system } : {}),
         messages,
@@ -557,8 +557,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           originalError: mappedErr,
         });
         const retryLanguageModel = this.getProvider(model, this.fetchImpl, resolved);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+          const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
@@ -633,8 +632,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           `→ retrying with enableThinking=true (no reasoningEffort on wire)`,
         );
         const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-        const { generateText } = await import('ai');
-        // Retry without reasoningEffort — pass enableThinking=true so
+          // Retry without reasoningEffort — pass enableThinking=true so
         // buildProviderOptions does not re-add the field. A per-task policy's
         // named effort (#481) is dropped here for the same reason: the backend
         // just rejected that wire field, so re-sending it at another value
@@ -643,7 +641,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         // attempt; on the retry we accept whatever the backend's
         // default reasoning behavior is, since the field itself is
         // rejected.
-        const result = await generateText({
+        const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
@@ -744,7 +742,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         const currentMode = this.outputModeProber.getMode(this.baseURL, model);
 
         // Determine target tier based on current mode and last error body.
-        let demotedMode: OutputMode | null = null;
+        let demotedMode: OutputMode;
         if (currentMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
           // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
           demotedMode = 'json_schema_strict';
@@ -773,15 +771,14 @@ export class OpenAICompatSdkClient implements LLMClient {
 
         try {
           const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-          const { generateText } = await import('ai');
-          // Tier 2 retry injects the JSON enforcement prefix; Tier 1
+              // Tier 2 retry injects the JSON enforcement prefix; Tier 1
           // does not (Output.json() is a wire-shape constraint; no
           // prompt change needed).
           const retrySystem =
             demotedMode === 'text_prompt'
               ? (system ? `${JSON_ENFORCEMENT_SYSTEM_PREFIX}\n\n${system}` : JSON_ENFORCEMENT_SYSTEM_PREFIX)
               : system;
-          const result = await generateText({
+          const result = await generateBuffered({
             model: retryLanguageModel,
             ...(retrySystem ? { system: retrySystem } : {}),
             messages,
@@ -843,8 +840,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         // rejected it, try `max_completion_tokens`.
         this.tokenKeyProber.setCachedKey(this.baseURL, model, 'max_completion_tokens');
         const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+          const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
@@ -962,8 +958,7 @@ export class OpenAICompatSdkClient implements LLMClient {
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
-      const { generateText } = await import('ai');
-      const result = await generateText({
+      const result = await generateBuffered({
         model: languageModel,
         ...(system ? { system } : {}),
         messages,
@@ -1075,11 +1070,10 @@ export class OpenAICompatSdkClient implements LLMClient {
             );
             try {
               const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-              const { generateText } = await import('ai');
-              const retrySystem = system
+                      const retrySystem = system
                 ? `${JSON_ENFORCEMENT_SYSTEM_PREFIX}\n\n${system}`
                 : JSON_ENFORCEMENT_SYSTEM_PREFIX;
-              const retryResult = await generateText({
+              const retryResult = await generateBuffered({
                 model: retryLanguageModel,
                 ...(retrySystem ? { system: retrySystem } : {}),
                 messages,
@@ -1179,8 +1173,7 @@ export class OpenAICompatSdkClient implements LLMClient {
           originalError: mappedErr,
         });
         const retryLanguageModel = this.getProvider(model, this.fetchImpl, resolved);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+          const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,
@@ -1216,7 +1209,7 @@ export class OpenAICompatSdkClient implements LLMClient {
         let tentativeDemotion: OutputMode | null = null;
         for (let chainAttempt = 0; chainAttempt < 3; chainAttempt++) {
           const iterMode = this.outputModeProber.getMode(this.baseURL, model);
-          let demotedMode: OutputMode | null = null;
+          let demotedMode: OutputMode;
           if (iterMode === 'json_schema' && OutputModeProber.isStrictSchemaRejection(lastErrBody)) {
             // Issue #658: same tier, strict dialect — one 400 per (baseURL, model).
             demotedMode = 'json_schema_strict';
@@ -1239,12 +1232,11 @@ export class OpenAICompatSdkClient implements LLMClient {
 
           try {
             const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-            const { generateText } = await import('ai');
-            const retrySystem =
+                  const retrySystem =
               demotedMode === 'text_prompt'
                 ? (system ? `${JSON_ENFORCEMENT_SYSTEM_PREFIX}\n\n${system}` : JSON_ENFORCEMENT_SYSTEM_PREFIX)
                 : system;
-            const result = await generateText({
+            const result = await generateBuffered({
               model: retryLanguageModel,
               ...(retrySystem ? { system: retrySystem } : {}),
               messages,
@@ -1283,8 +1275,7 @@ export class OpenAICompatSdkClient implements LLMClient {
       if (APICallError.isInstance(err) && err.statusCode === 400 && !this.tokenKeyProber.getCachedKey(this.baseURL, model)) {
         this.tokenKeyProber.setCachedKey(this.baseURL, model, 'max_completion_tokens');
         const retryLanguageModel = this.getProvider(model, this.fetchImpl);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+          const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages,

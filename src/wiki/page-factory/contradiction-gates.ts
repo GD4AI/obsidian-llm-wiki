@@ -29,7 +29,7 @@
 // here — one lane measured, one lane changed.
 
 import type { LLMClient, LLMWikiSettings, SourceContext } from '../../types';
-import type { ComplementaryItem } from './merge-triage';
+import type { ComplementaryItem } from './merge-shared';
 import { PROMPTS } from '../../prompts';
 import { renderTemplate } from '../../core/template-renderer';
 import { parseJsonResponse } from '../../core/json';
@@ -123,7 +123,7 @@ export async function verifySourceStance(
 
   // Same two-path shape as classifyMergeNeed: typed output when the client
   // offers it, JSON text otherwise.
-  let parsed: SourceStance | null = null;
+  let parsed: SourceStance | null;
   try {
     if (client.createMessageWithOutput) {
       const result = await client.createMessageWithOutput<SourceStance>({

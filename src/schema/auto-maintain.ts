@@ -18,6 +18,40 @@ import { isIngestableSource } from '../core/folder-scope';
 import { makeUserIgnorePredicate } from '../core/user-ignore';
 import { localDateStamp } from '../core/format';
 
+/**
+ * Issue #957 — the periodic lint period for a setting value, in milliseconds.
+ *
+ * `monthly` is 2,592,000,000. That value cannot be a timer delay: the HTML timer spec converts a delay
+ * to a signed 32-bit integer, so it wraps negative and is clamped to 0, and the callback then runs as
+ * fast as the event loop allows. With no watched folders configured, `hasSourceFilesChanged()` returns
+ * true, so every one of those ticks started a full vault lint — a reported renderer OOM on a 313k-file
+ * vault, ~85 s after launch.
+ *
+ * A switch rather than a lookup table: the return type is honestly `number | undefined`, so the caller's
+ * guard is real code instead of a check the compiler can prove dead. `default` is how a value from a
+ * hand-edited `data.json`, or from a newer version that was then downgraded, is caught and reported.
+ */
+function periodicLintPeriodMs(mode: LLMWikiSettings['periodicLint']): number | undefined {
+  switch (mode) {
+    case 'daily':
+      return 24 * 60 * 60 * 1000;
+    case 'weekly':
+      return 7 * 24 * 60 * 60 * 1000;
+    case 'monthly':
+      return 30 * 24 * 60 * 60 * 1000;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * The delay actually handed to `setInterval`, which must stay inside 2^31 − 1 ms.
+ *
+ * One hour is short enough to hold every period above and long enough that the check costs nothing.
+ * Each tick compares `Date.now()` against the period instead of trusting the timer to represent it.
+ */
+const PERIODIC_LINT_TICK_MS = 60 * 60 * 1000;
+
 export class AutoMaintainManager {
   private app: App;
   settings: LLMWikiSettings;
@@ -35,6 +69,10 @@ export class AutoMaintainManager {
   private lintIntervalId: number | null = null;
   private lastLintTimestamp = 0;
   private lintCallback: (() => Promise<void>) | null = null;
+  /** Start of the current period, compared against `Date.now()` on every tick. */
+  private periodicLintBaseline = 0;
+  /** True while a scheduled lint is still running, so ticks cannot stack. */
+  private lintInFlight = false;
 
   // Whether watchers are currently active
   private watching = false;
@@ -281,27 +319,75 @@ export class AutoMaintainManager {
     if (this.lintScheduled) return;
     if (this.settings.periodicLint === 'off') return;
 
-    const intervalMs = this.settings.periodicLint === 'daily'
-      ? 24 * 60 * 60 * 1000
-      : this.settings.periodicLint === 'weekly'
-        ? 7 * 24 * 60 * 60 * 1000
-        : 30 * 24 * 60 * 60 * 1000;
+    const period = periodicLintPeriodMs(this.settings.periodicLint);
+    if (period === undefined) {
+      console.warn(
+        `AutoMaintain: unknown periodicLint value "${String(this.settings.periodicLint)}", periodic lint disabled`
+      );
+      return;
+    }
 
+    // Issue #961: the clock measures time since the last periodic run, not time
+    // since this call. `main.ts` re-arms on every settings save, and resetting
+    // here is what made a `monthly` gate unreachable for anyone who saved twice
+    // a month. Seeded once, then advanced only by a run.
+    if (this.periodicLintBaseline === 0) {
+      this.periodicLintBaseline = this.settings.lastPeriodicLintAt || Date.now();
+    }
     this.lintIntervalId = this.plugin.registerInterval(
       window.setInterval(() => {
         void (async () => {
-          console.debug('AutoMaintain: Periodic lint tick...');
           try {
-            await this.runLint();
+            await this.periodicLintTick(period);
           } catch (error) {
             console.error('Scheduled lint failed:', error);
           }
         })();
-      }, intervalMs)
+      }, PERIODIC_LINT_TICK_MS)
     );
 
     this.lintScheduled = true;
     console.debug(`AutoMaintain: Periodic lint scheduled (${this.settings.periodicLint})`);
+  }
+
+  /**
+   * One timer tick. The period is compared here instead of being handed to `setInterval`, because a
+   * monthly period cannot be expressed as a timer delay — see `PERIODIC_LINT_TICK_MS`.
+   *
+   * The in-flight guard is the second half of Issue #957: without it a lint that outlives its period
+   * starts a second copy of itself, and on a large vault the two of them exhaust the heap.
+   */
+  private async periodicLintTick(period: number): Promise<void> {
+    if (this.lintInFlight) return;
+    if (Date.now() - this.periodicLintBaseline < period) return;
+
+    this.lintInFlight = true;
+    try {
+      console.debug('AutoMaintain: Periodic lint tick...');
+      await this.runLint();
+    } finally {
+      this.lintInFlight = false;
+      this.periodicLintBaseline = Date.now();
+      await this.persistPeriodicLintClock();
+    }
+  }
+
+  /**
+   * Write the run to settings so the next session starts where this one ended
+   * (Issue #961). Best-effort on purpose: a failed write must not throw out of a
+   * timer callback, and the in-memory baseline has already moved, so the run
+   * itself is not lost for this session.
+   */
+  private async persistPeriodicLintClock(): Promise<void> {
+    this.settings.lastPeriodicLintAt = this.periodicLintBaseline;
+    try {
+      // `saveData`, not `plugin.saveSettings()`: the plugin method also rebuilds
+      // the LLM client, re-syncs the schema manager and may invalidate query
+      // graphs. A clock tick must write one field and touch nothing else.
+      await this.plugin.saveData(this.settings);
+    } catch (error) {
+      console.warn('AutoMaintain: could not persist the periodic lint clock:', error);
+    }
   }
 
   clearPeriodicLint(): void {
@@ -437,7 +523,7 @@ export class AutoMaintainManager {
     // flag is stuck at `false` (interrupted ingest, partial write). Archive them
     // so the user can recover from .trash if needed. Pages WITHOUT the field
     // are treated as legacy (preserved) — never wipe existing wikis on upgrade.
-    let incompleteFilesScanned = 0;
+    let incompleteFilesScanned: number;
     let incompleteFilesArchived = 0;
     try {
       const incomplete = await findIncompletePages(this.app, wikiFolder);

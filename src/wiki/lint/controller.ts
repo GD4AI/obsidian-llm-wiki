@@ -20,7 +20,7 @@
 // sequences the phases and builds the fix-callback dispatch.
 
 import { Notice } from 'obsidian';
-import { LintFixCallbacks, LintCounts, LintReportModal, FixReportPhase } from '../../ui/modals';
+import { LintFixCallbacks, LintCounts, LintReportModal } from '../../ui/modals';
 import { TEXTS } from '../../texts';
 import { getText } from '../../core/i18n';
 import { nestReportUnderParent } from '../../core/report';
@@ -40,6 +40,637 @@ import { SchemaTask } from '../../schema/schema-manager';
 // Re-export LintContext for back-compat — external callers (e.g. main.ts,
 // ui/modals/ indirect import) still reference `LintContext` from this file.
 export type { LintContext } from './types';
+
+export interface LintScanResult {
+  prep: Awaited<ReturnType<typeof runPreparationPhase>>;
+  findings: ProgrammaticFindings;
+  findingsWithEmpty: ProgrammaticFindings;
+  duplicates: Awaited<ReturnType<typeof runDedupPhase>>;
+  emptyPages: Array<{ path: string; content: string }>;
+  contradictionsReport: Awaited<ReturnType<typeof runContradictionPhase>>['report'];
+}
+
+/**
+ * The read-only half of a lint run: four phases in a fixed order, then the
+ * empty-page list and the report fragment they feed.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only. The phase call
+ * order is the observable contract — each phase emits its own progress — so
+ * nothing was reordered, merged or made conditional. `phaseCtx` is built by the
+ * caller because phase 1 writes `totalPages` back onto it and the fix callbacks
+ * later read it.
+ */
+async function runLintScanPhases(
+  ctx: LintContext,
+  phaseCtx: LintPhaseContext,
+): Promise<LintScanResult> {
+
+    // ---- Phase 1: Preparation (read pages, fix links, normalize sources) ----
+    const prep = await runPreparationPhase(phaseCtx);
+    phaseCtx.totalPages = prep.wikiFiles.length;
+
+    // ---- Build wiki-link graph (v1.23.0 P1-6, for hub-link density scanner) ----
+    // Pure function: derives edges from in-memory pageMap. No IO.
+    const allPaths = new Set<string>(prep.pageMap.keys());
+    const loadedPages = Array.from(prep.pageMap.values()).map(p => ({
+      path: p.path,
+      content: p.content,
+    }));
+    const graph = buildGraphFromContent(loadedPages, allPaths, ctx.settings.wikiFolder);
+
+    // ---- Phase 2: Programmatic + source-IO checks ----
+    // #496: async now — cited primary notes are read here so quote grounding
+    // runs against underlying documents, not generated summaries.
+    const findings: ProgrammaticFindings = await runProgrammaticPhase(phaseCtx, {
+      wikiFiles: prep.wikiFiles,
+      pageMap: prep.pageMap,
+      knownTargets: prep.knownTargets,
+      knownTargetsLower: prep.knownTargetsLower,
+      graph,
+    });
+    findings.sourcesNormalizedFiles = prep.sourcesNormalizedFiles;
+    findings.sourcesNormalizedEntries = prep.sourcesNormalizedEntries;
+    findings.doubleNestFixes = prep.doubleNestFixes;
+
+    const wikiFiles = prep.wikiFiles;
+    const pageMap = prep.pageMap;
+
+    // Extract findings from programmatic phase
+    // emptyPages initialized empty; populated below after we know duplicate paths
+    const emptyPages: Array<{ path: string; content: string }> = [];
+
+    // ---- 3. LLM-assisted checks (high latency / token cost) ----
+    //
+    // v1.24.0: extracted to lint/llm-phases/dedup-phase.ts.
+    // Behavior is identical to the previous inline implementation; see
+    // that file for the tier-classification + rate-limit details.
+    //
+    // v1.25.1 Phase F1 (closes controller.ts:151 TODO from v1.18.0+):
+    // dedup-phase.ts already runs batches in parallel with concurrency
+    // limit (see `for (let i = 0; i < batches.length; i += concurrency)`
+    // + `Promise.allSettled` at dedup-phase.ts:197-282). The roadmap
+    // items (a-d) below remain future work — open question for v1.26.0
+    // lint perf opening (ROADMAP §v1.26.0 row 3).
+    //
+    // Historical TODO (now resolved for parallel batches; remaining items
+    // deferred to v1.26.0):
+    //   a. Hash-bucket dedup: hash titles (n-gram or phonetic) and only LLM-verify
+    //      pairs that share a bucket. Reduces Tier 1 pair count by 5-10x.
+    //   b. Embedding-based prefilter: use a local embedding model to compute
+    //      Tier 2 candidate pairs, replace the title-similarity heuristic.
+    //   c. Cache LLM verify results in a per-lint-run memo so re-runs don't
+    //      re-verify unchanged pairs.
+    //   d. Skip the second LLM pass if the Tier 1 confidence score is below
+    //      a threshold AND no new entries appeared since the last lint.
+    //
+    // See ROADMAP.md "Lint performance" section for the larger picture.
+    const duplicates = await runDedupPhase(
+      phaseCtx,
+      { wikiFiles, pageMap },
+      phaseCtx.checkCancelled,
+    );
+
+    // ---- 3.5 Build empty-page list now that duplicates are known ----
+    const emptyPageDuplicates = new Set<string>();
+    for (const d of duplicates) {
+      emptyPageDuplicates.add(d.target);
+      emptyPageDuplicates.add(d.source);
+    }
+
+    for (const { path, content } of pageMap.values()) {
+      // Skip if this page is a duplicate source (will be deleted after merge)
+      if (emptyPageDuplicates.has(path)) continue;
+      if (isPageEmpty(content)) {
+        emptyPages.push({path, content});
+      }
+    }
+
+    // ---- 4. Contradiction scanning (LLM-assisted / mixed) ----
+    //
+    // v1.24.0: extracted to lint/llm-phases/contradiction-phase.ts.
+    // Behavior is identical to the previous inline implementation; see
+    // that file for the report-render details.
+    //
+    // v1.27.x audit (Phase 3 T3-1): the contradiction phase now runs
+    // BEFORE the report is built. Historically it ran after a throwaway
+    // buildLintReport call whose output was stripped (extractProgReport)
+    // for the LLM analysis prompt — deleted in v1.26.4 #473. With that
+    // consumer gone, the strip-then-re-add round-trip (and the duplicate
+    // summaryText / aliasPre re-derivation in this file) is dead weight:
+    // the builder already emits `# title + summary + aliasPre + body` in
+    // one pass. One call, real elapsed time, contradictions appended.
+    const findingsWithEmpty: ProgrammaticFindings = {
+      ...findings,
+      emptyPages,
+    };
+    const { report: contradictionsReport } = await runContradictionPhase(phaseCtx);
+  return {
+    prep,
+    findings,
+    findingsWithEmpty,
+    duplicates,
+    emptyPages,
+    contradictionsReport,
+  };
+}
+
+
+/**
+ * The report and the counts that the completion modal reads.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only: the same
+ * `buildLintReport` call with the same arguments, and the same six counts.
+ * Elapsed time is rounded to whole seconds because sub-second precision is
+ * noise in a user-facing summary, and floored at one because "0 seconds" reads
+ * as a failure.
+ */
+function buildLintRunReport(
+  ctx: LintContext,
+  scan: LintScanResult,
+  lintStartTime: number,
+): { fullReport: ReturnType<typeof buildLintReport>; counts: LintCounts } {
+  const elapsedSeconds = Math.max(1, Math.round((Date.now() - lintStartTime) / 1000));
+  const fullReport = buildLintReport({
+    settings: ctx.settings,
+    findings: scan.findingsWithEmpty,
+    duplicates: scan.duplicates,
+    contradictionsReport: scan.contradictionsReport,
+    elapsedSeconds,
+    totalPages: scan.prep.wikiFiles.length,
+  });
+  const counts: LintCounts = {
+    deadLinks: scan.findings.deadLinks.length,
+    emptyPages: scan.emptyPages.length,
+    pollutedPages: scan.findings.pollutedPages.length,
+    orphans: scan.findings.orphans.length,
+    duplicates: scan.duplicates.length,
+    pagesMissingAliases: scan.findings.aliasDeficientPages.length,
+    tagViolations: scan.findings.tagViolations.length,
+    ungroundedQuotes: scan.findings.ungroundedQuotes.length,
+  };
+  return { fullReport, counts };
+}
+
+interface FixAllDeps {
+  ctx: LintContext;
+  t: (typeof TEXTS)[keyof typeof TEXTS];
+  pollutedPages: LintScanResult['findings']['pollutedPages'];
+  aliasDeficientPages: LintScanResult['findings']['aliasDeficientPages'];
+  duplicates: LintScanResult['duplicates'];
+  deadLinks: LintScanResult['findings']['deadLinks'];
+  orphans: LintScanResult['findings']['orphans'];
+  emptyPages: LintScanResult['emptyPages'];
+  tagViolations: LintScanResult['findings']['tagViolations'];
+}
+
+/**
+ * The "smart fix all" callback: six phases in a fixed causal order, one
+ * lint-operation lifecycle around all of them so the status bar keeps a working
+ * cancel button (#94), and one summary at the end.
+ *
+ * Extracted from `runLintWiki` by #932 as extract-method only. The phase order
+ * is the observable contract and is unchanged: polluted pages, aliases,
+ * duplicate merges, dead links, orphans, empty pages, retagging. Each phase's
+ * `setMessage` text is unchanged, because that string is what the user reads
+ * while the run happens.
+ *
+ * Body indentation moved down four spaces with the function; the statements are
+ * byte-identical, so `git diff -w` shows only the wrapper.
+ */
+function buildFixAllCallback(deps: FixAllDeps): () => void {
+  const {
+    ctx, t, pollutedPages, aliasDeficientPages, duplicates,
+    deadLinks, orphans, emptyPages, tagViolations,
+  } = deps;
+  return () => {
+    void (async () => {
+      // Issue: Smart Fix All was NOT wrapped in startLintOperation/endLintOperation
+      // (unlike single-phase fixes via runFixPhase). This meant the status bar
+      // never appeared, so the user had no way to cancel a long-running batch.
+      // Fix: wrap the entire IIFE in a single lint-operation lifecycle so the
+      // status bar stays visible throughout all 6 phases.
+      const signal = ctx.wikiEngine.startLintOperation();
+      try {
+      const allResults: string[] = [];
+      const fixAllNotice = makeMirroredNotice(ctx);
+
+      // Track per-phase counts for final summary
+      let pollutedFixed = 0;
+
+      // Smart fix strategy: follow causality chain with aliases as foundation
+      // Phase -1: Fix polluted pages (structural root cause before everything else)
+      fixAllNotice.setMessage('Smart fix: Phase -1 — Fixing polluted pages...');
+      if (pollutedPages.length > 0) {
+        for (const pp of pollutedPages) {
+          try {
+            const result = await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
+            console.debug(`[Pollution Fix] ${result}`);
+            pollutedFixed++;
+          } catch (e) {
+            console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
+          }
+        }
+        if (pollutedFixed > 0) {
+          allResults.push(`## Fix Polluted Pages\nFixed ${pollutedFixed}/${pollutedPages.length} polluted pages`);
+        }
+      }
+
+      // Phase 0: Complete aliases (pre-flight, ensures duplicate detection accuracy)
+      // → Aliases are required for Tier 1 duplicate signals (crossLang)
+      // → Missing aliases → duplicate detection misses true duplicates → downstream fixes incomplete
+      fixAllNotice.setMessage('Smart fix: Phase 0 — Completing aliases...');
+      if (aliasDeficientPages.length > 0) {
+        const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
+        if (filled > 0) {
+          allResults.push(`## Complete Aliases\n${results.join('\n')}`);
+          console.debug(`Smart fix: Completed ${filled} aliases, improving duplicate detection accuracy`);
+        }
+      }
+
+      // Phase 1: Merge duplicates (root cause)
+      // → Eliminates redundant pages, resolves many dead links and orphans automatically via link rewriting
+      // → Duplicate detection now uses complete aliases (Tier 1 crossLang signals active)
+      fixAllNotice.setMessage('Smart fix: Phase 1 — Merging duplicates...');
+      if (duplicates.length > 0) {
+        const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
+        if (merged > 0) {
+          allResults.push(`## Merge Duplicate Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Merged ${merged} duplicates, dead links and orphans may be auto-resolved`);
+        }
+      }
+
+      // Phase 2: Fix remaining dead links
+      // → Links to deleted source pages were already rewritten during merge
+      // → This phase fixes any remaining dead links (pointing to non-existent pages)
+      // → Dead link fallback uses aliases to find existing pages (avoiding stub creation)
+      fixAllNotice.setMessage('Smart fix: Phase 2 — Fixing dead links...');
+      if (deadLinks.length > 0) {
+        const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
+        if (fixed > 0) {
+          allResults.push(`## Fix Dead Links\n${results.join('\n')}`);
+          console.debug(`Smart fix: Fixed ${fixed} dead links`);
+        }
+      }
+
+      // Phase 3: Link remaining orphan pages
+      // → Some orphans may be auto-resolved after duplicate merge (source page deleted, target page now has incoming links)
+      // → This phase links any remaining orphan pages
+      fixAllNotice.setMessage('Smart fix: Phase 3 — Linking orphan pages...');
+      if (orphans.length > 0) {
+        const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
+        if (linked > 0) {
+          allResults.push(`## Link Orphan Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Linked ${linked} orphan pages`);
+        }
+      }
+
+      // Phase 4: Expand empty pages (last, independent of other issues)
+      fixAllNotice.setMessage('Smart fix: Phase 4 — Expanding empty pages...');
+      if (emptyPages.length > 0) {
+        const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
+        if (filled > 0) {
+          allResults.push(`## Expand Empty Pages\n${results.join('\n')}`);
+          console.debug(`Smart fix: Expanded ${filled} empty pages`);
+        }
+      }
+
+      // Issue #85 v7 — Phase 5: retag out-of-vocabulary tag pages.
+      // LLMs may invent types that don't match the active
+      // vocabulary; this phase asks the LLM to re-emit valid
+      // tags using only values from the active vocabulary.
+      fixAllNotice.setMessage('Smart fix: Phase 5 — Retagging out-of-vocabulary tag pages...');
+      if (tagViolations.length > 0) {
+        const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
+        if (fixed > 0) {
+          allResults.push(`## Retag Tag Violations\n${results.join('\n')}`);
+          console.debug(`Smart fix: Retagged ${fixed} tag violations`);
+        }
+      }
+
+      fixAllNotice.hide();
+      if (allResults.length > 0) {
+        await ctx.wikiEngine.generateIndexFromEngine();
+        await ctx.wikiEngine.logLintFix('Smart Fix All (Causality-Aware with Aliases)', allResults.join('\n\n'));
+      }
+
+      // Build phase result data for modal report
+      // NOTE: must be inside the try block so the closure-captured counters
+      // (pollutedFixed, aliasesFilled, etc.) are still in scope when the
+      // modal renders.
+      // v1.25.1: smarter completion summary.
+      // - phasesRun = phases the user kicked off (input lengths > 0).
+      // - phasesModified = phases that actually wrote changes.
+      // If phasesModified === 0, every phase failed silently — surface
+      // that distinctly so the user doesn't think Fix All did nothing.
+      // Also: NOTICE_NORMAL (5s) instead of NOTICE_ERROR (8s) to match
+      // the non-blocking convention of other fix callbacks.
+      const historyHint = getText(ctx.settings.language, 'ingestionNoticeHistoryHint');
+      const phasesModified = allResults.filter(r => r !== 'skipped').length;
+      const summary = phasesModified === 0
+        ? `${t.lintFixAllComplete}: ${t.lintFixAllNoChanges}`
+        : `${t.lintFixAllComplete}: ${phasesModified} ${t.lintFixPhasesLabel}. ${historyHint}`;
+      new Notice(summary, NOTICE_NORMAL);
+      } finally {
+        // Issue: status bar must persist throughout all 6 phases. Match the
+        // startLintOperation call above so the user can click "cancel" at any point.
+        ctx.wikiEngine.endLintOperation();
+      }
+    })();
+  };
+}
+
+
+type FixPhaseBody = (signal: AbortSignal | undefined) => Promise<void>;
+
+/**
+ * Run one fix phase inside its own lint operation so the status-bar cancel
+ * button survives the phase (#94). Both halves of the callback table need it, so
+ * it is a module function rather than a closure in one of them; the body is the
+ * original block, unchanged.
+ */
+async function runFixPhaseOp(ctx: LintContext, fn: FixPhaseBody): Promise<void> {
+  const signal = ctx.wikiEngine.startLintOperation();
+  try {
+    await fn(signal);
+  } finally {
+    ctx.wikiEngine.endLintOperation();
+  }
+}
+
+interface LintFixBuildDeps {
+  ctx: LintContext;
+  scan: LintScanResult;
+  t: (typeof TEXTS)[keyof typeof TEXTS];
+}
+
+/**
+ * The ten fix callbacks the report modal offers, and the smart-fix-all one
+ * among them.
+ *
+ * Extracted from `runLintWiki` by #932. The callback bodies, their conditions
+ * and their order are unchanged; every captured value arrives through `deps`
+ * instead of through a closure that no longer exists.
+ *
+ * `runFixPhase` is the reason these live together: each phase is its own lint
+ * operation so the status-bar cancel button survives it (#94), and the
+ * smart-fix-all callback does the same around all six of its phases (#97). That
+ * lifecycle is the behaviour.
+ */
+function buildLintFixCallbacks(deps: LintFixBuildDeps): LintFixCallbacks {
+  const { ctx, scan, t } = deps;
+  const { findings, duplicates, emptyPages, contradictionsReport } = scan;
+  const wikiFiles = scan.prep.wikiFiles;
+  const orphans = findings.orphans;
+  const tagViolations = findings.tagViolations;
+  const pollutedPages = findings.pollutedPages;
+  const deadLinks = findings.deadLinks;
+  const ungroundedQuotes = findings.ungroundedQuotes;
+
+  // ---- Build callbacks ----
+
+  // Issue #94 regression: each fix phase is its own lint operation
+  // lifecycle so the status-bar cancel affordance persists throughout
+  // the fix. The modal closes immediately (preserving original UX);
+  // the user gets a top-right progress notice from the fix runner +
+  // the bottom-right status bar for cancellation.
+  const runFixPhase = (fn: FixPhaseBody) => runFixPhaseOp(ctx, fn);
+
+  const fixCallbacks: LintFixCallbacks = {};
+  // v1.22.0 #97: build a compact lint analysis summary from the
+  // findings so the LLM schema suggestion prompt receives real data
+  // (orphan counts, dead links, etc.) instead of the hardcoded
+  // string 'Wiki lint analysis'. The summary is ~100 tokens and
+  // fits comfortably in the LLM's context window.
+  const lintSummary = buildLintAnalysisContext({
+    orphanCount: orphans.length,
+    deadLinkCount: deadLinks.length,
+    pollutedPageCount: pollutedPages.length,
+    tagViolationCount: tagViolations.length,
+    duplicateCount: duplicates.length,
+    ungroundedQuoteCount: ungroundedQuotes.length,
+    emptyPageCount: emptyPages.length,
+    contradictionReport: contradictionsReport,
+    sampleOrphans: orphans.slice(0, 5),
+    sampleDeadLinks: deadLinks.slice(0, 5).map(dl => dl.target),
+    sampleTagViolations: tagViolations.slice(0, 5).map(tv => tv.path),
+    hubLinkDensityCount: findings.hubLinkDensityIssues.length,
+    sampleHubLinkDensity: findings.hubLinkDensityIssues.slice(0, 3).map(h => h.pagePath),
+    totalWikiPages: wikiFiles.length,
+  });
+  fixCallbacks.onAnalyzeSchema = () => { void ctx.onAnalyzeSchema(lintSummary); };
+
+  // Polluted page repair (structural root cause — similar to aliases)
+  if (pollutedPages.length > 0) {
+    fixCallbacks.onFixPollutedPages = () => {
+      void runFixPhase(async (signal) => {
+        let fixed = 0;
+        const fixNotice = makeMirroredNotice(ctx);
+        try {
+          for (const pp of pollutedPages) {
+            if (signal?.aborted) break;
+            fixNotice.setMessage(t.lintFixingPolluted
+              .replace('{current}', String(fixed + 1))
+              .replace('{total}', String(pollutedPages.length))
+              .replace('{title}', pp.title)
+              .replace('{newTitle}', pp.cleanTitle));
+            try {
+              await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
+              fixed++;
+            } catch (e) {
+              console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
+            }
+          }
+          if (fixed > 0) {
+            await ctx.wikiEngine.generateIndexFromEngine();
+          }
+          const msg = getText(ctx.settings.language, 'lintPollutedFixed')
+            .replace('{fixed}', String(fixed))
+            .replace('{total}', String(pollutedPages.length));
+          new Notice(msg, NOTICE_NORMAL);
+        } finally {
+          fixNotice.hide();
+        }
+      });
+    };
+  }
+
+  Object.assign(fixCallbacks, buildContentFixCallbacks(deps));
+
+  return fixCallbacks;
+}
+
+/**
+ * The content fixes: aliases, dead links, empty pages, orphan links, duplicate
+ * merges, tag retagging, stub deletion, and the smart-fix-all wrapper.
+ *
+ * Split from `buildLintFixCallbacks` by #932 so both halves stay readable. The
+ * split is at a seam, not inside a callback: the first half sets the analysis
+ * callback and the structural polluted-page fix, this half sets the rest, and
+ * `Object.assign` merges them onto one table. The keys do not overlap, so the
+ * merge order cannot matter.
+ */
+function buildContentFixCallbacks(deps: LintFixBuildDeps): LintFixCallbacks {
+  const { ctx, scan, t } = deps;
+  const { findings, duplicates, emptyPages } = scan;
+  const aliasDeficientPages = findings.aliasDeficientPages;
+  const orphans = findings.orphans;
+  const tagViolations = findings.tagViolations;
+  const deadLinks = findings.deadLinks;
+  const pollutedPages = findings.pollutedPages;
+  const fixCallbacks: LintFixCallbacks = {};
+  const runFixPhase = (fn: FixPhaseBody) => runFixPhaseOp(ctx, fn);
+
+  // Alias completion (runs first — improves duplicate detection for future Lint runs)
+  if (aliasDeficientPages.length > 0) {
+    fixCallbacks.onCompleteAliases = () => {
+      void runFixPhase(async (signal) => {
+        const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
+        if (filled > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Complete Aliases', results.join('\n'));
+        }
+        const msg = t.lintAliasesFilled.replace('{filled}', String(filled)).replace('{total}', String(aliasDeficientPages.length))
+          + (filled > 0 ? '\n' + t.lintFixIndexUpdated : '');
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  if (deadLinks.length > 0) {
+    fixCallbacks.onFixDeadLinks = () => {
+      void runFixPhase(async (signal) => {
+        const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
+        if (fixed > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Fix Dead Links', results.join('\n'));
+        }
+        const msg = t.lintFixDeadComplete.replace('{fixed}', String(fixed)).replace('{total}', String(deadLinks.length))
+          + (fixed > 0 ? '\n' + t.lintFixIndexUpdated : '');
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  if (emptyPages.length > 0) {
+    fixCallbacks.onFillEmptyPages = () => {
+      void runFixPhase(async (signal) => {
+        const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
+        if (filled > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Expand Empty Pages', results.join('\n'));
+        }
+        const msg = t.lintFillComplete.replace('{filled}', String(filled)).replace('{total}', String(emptyPages.length))
+          + (filled > 0 ? '\n' + t.lintFixIndexUpdated : '');
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  fixCallbacks.onDeleteEmptyStubs = buildDeleteStubsCallback(ctx, t);
+
+  if (orphans.length > 0) {
+    fixCallbacks.onLinkOrphans = () => {
+      void runFixPhase(async (signal) => {
+        const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
+        if (linked > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Link Orphan Pages', results.join('\n'));
+        }
+        const msg = t.lintLinkComplete.replace('{linked}', String(linked))
+          + (linked > 0 ? '\n' + t.lintFixIndexUpdated : '');
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  if (duplicates.length > 0) {
+    fixCallbacks.onMergeDuplicates = () => {
+      void runFixPhase(async (signal) => {
+        const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
+        if (merged > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Merge Duplicate Pages', results.join('\n'));
+        }
+        const msg = t.lintMergeComplete.replace('{merged}', String(merged)).replace('{total}', String(duplicates.length))
+          + (merged > 0 ? '\n' + t.lintFixIndexUpdated : '');
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  // Issue #85 v7: LLM-assisted retag of pages whose tags fall outside
+  // the active vocabulary. The user gets a single bulk button "Retag
+  // N page(s) with LLM" — no per-page approval. Each violation's
+  // frontmatter tags: line is rewritten in place; the body is
+  // untouched. Defensive: every LLM-returned tag is re-validated
+  // against the active vocabulary before write (runRetagViolations).
+  if (tagViolations.length > 0) {
+    fixCallbacks.onRetagViolations = () => {
+      void runFixPhase(async (signal) => {
+        const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
+        if (fixed > 0) {
+          await ctx.wikiEngine.generateIndexFromEngine();
+          await ctx.wikiEngine.logLintFix('Retag Tag Violations', results.join('\n'));
+        }
+        const msg = fixed > 0
+          ? t.lintTagViolationFixed.replace('{fixed}', String(fixed)).replace('{total}', String(tagViolations.length))
+          : t.lintTagViolationFixedNone;
+        new Notice(msg, NOTICE_NORMAL);
+      });
+    };
+  }
+
+  const totalFixable = deadLinks.length + emptyPages.length + orphans.length + duplicates.length;
+  const totalFixableIncludingAliases = totalFixable + aliasDeficientPages.length + pollutedPages.length;
+  if (totalFixableIncludingAliases > 0) {
+    fixCallbacks.onFixAll = buildFixAllCallback({
+      ctx, t, pollutedPages, aliasDeficientPages, duplicates,
+      deadLinks, orphans, emptyPages, tagViolations,
+    });
+  }
+
+  return fixCallbacks;
+}
+
+/**
+ * "Delete empty stubs" (#103): an independent action, not a fix phase, so it is
+ * offered whether or not anything else was found.
+ *
+ * Split out of `buildContentFixCallbacks` by #932 while bringing that function
+ * under the line limit. One callback, one body, unchanged.
+ */
+function buildDeleteStubsCallback(
+  ctx: LintContext,
+  t: (typeof TEXTS)[keyof typeof TEXTS],
+): () => void {
+  const runFixPhase = (fn: FixPhaseBody) => runFixPhaseOp(ctx, fn);
+  return () => {
+  void runFixPhase(async (signal) => {
+    const result = await ctx.wikiEngine.deleteEmptyStubs(ctx.settings.wikiFolder);
+    if (result.deleted > 0) {
+      await ctx.wikiEngine.generateIndexFromEngine();
+      const linkNote = result.linksRestored > 0 || result.linksLeftDead > 0
+        ? ` (${result.linksRestored} link(s) restored to their display name, ${result.linksLeftDead} left dead)`
+        : '';
+      await ctx.wikiEngine.logLintFix('Delete Empty Stubs', `Deleted ${result.deleted} empty stubs${linkNote}`);
+    }
+    // Issue #244: surface success + failure breakdown to the user.
+    const parts: string[] = [];
+    if (result.deleted > 0) {
+      parts.push(t.lintDeleteCompleted.replace('{count}', String(result.deleted)));
+    }
+    if (result.failed > 0) {
+      parts.push(t.lintDeleteFailed
+        .replace('{failed}', String(result.failed))
+        .replace('{total}', String(result.deleted + result.failed)));
+    }
+    if (parts.length === 0) {
+      parts.push(t.lintDeleteCompleted.replace('{count}', '0'));
+    }
+    new Notice(parts.join('\n'), NOTICE_NORMAL);
+  });
+};
+}
 
 export async function runLintWiki(
   ctx: LintContext,
@@ -84,538 +715,20 @@ export async function runLintWiki(
       buildSystemPrompt: (task: string) => ctx.wikiEngine.buildSystemPrompt(task as SchemaTask),
     };
 
-    // ---- Phase 1: Preparation (read pages, fix links, normalize sources) ----
-    const prep = await runPreparationPhase(phaseCtx);
-    phaseCtx.totalPages = prep.wikiFiles.length;
 
-    // ---- Build wiki-link graph (v1.23.0 P1-6, for hub-link density scanner) ----
-    // Pure function: derives edges from in-memory pageMap. No IO.
-    const allPaths = new Set<string>(prep.pageMap.keys());
-    const loadedPages = Array.from(prep.pageMap.values()).map(p => ({
-      path: p.path,
-      content: p.content,
-    }));
-    const graph = buildGraphFromContent(loadedPages, allPaths, ctx.settings.wikiFolder);
-
-    // ---- Phase 2: Programmatic + source-IO checks ----
-    // #496: async now — cited primary notes are read here so quote grounding
-    // runs against underlying documents, not generated summaries.
-    const findings: ProgrammaticFindings = await runProgrammaticPhase(phaseCtx, {
-      wikiFiles: prep.wikiFiles,
-      pageMap: prep.pageMap,
-      knownTargets: prep.knownTargets,
-      knownTargetsLower: prep.knownTargetsLower,
-      graph,
-    });
-    findings.sourcesNormalizedFiles = prep.sourcesNormalizedFiles;
-    findings.sourcesNormalizedEntries = prep.sourcesNormalizedEntries;
-    findings.doubleNestFixes = prep.doubleNestFixes;
-
-    const wikiFiles = prep.wikiFiles;
-    const pageMap = prep.pageMap;
+    const scan = await runLintScanPhases(ctx, phaseCtx);
     const t = TEXTS[ctx.settings.language];
 
-    // Extract findings from programmatic phase
-    const aliasDeficientPages = findings.aliasDeficientPages;
-    const orphans = findings.orphans;
-    const tagViolations = findings.tagViolations;
-    const pollutedPages = findings.pollutedPages;
-    const deadLinks = findings.deadLinks;
-    const ungroundedQuotes = findings.ungroundedQuotes;
-    // emptyPages initialized empty; populated below after we know duplicate paths
-    const emptyPages: Array<{ path: string; content: string }> = [];
-
-    // ---- 3. LLM-assisted checks (high latency / token cost) ----
-    //
-    // v1.24.0: extracted to lint/llm-phases/dedup-phase.ts.
-    // Behavior is identical to the previous inline implementation; see
-    // that file for the tier-classification + rate-limit details.
-    //
-    // v1.25.1 Phase F1 (closes controller.ts:151 TODO from v1.18.0+):
-    // dedup-phase.ts already runs batches in parallel with concurrency
-    // limit (see `for (let i = 0; i < batches.length; i += concurrency)`
-    // + `Promise.allSettled` at dedup-phase.ts:197-282). The roadmap
-    // items (a-d) below remain future work — open question for v1.26.0
-    // lint perf opening (ROADMAP §v1.26.0 row 3).
-    //
-    // Historical TODO (now resolved for parallel batches; remaining items
-    // deferred to v1.26.0):
-    //   a. Hash-bucket dedup: hash titles (n-gram or phonetic) and only LLM-verify
-    //      pairs that share a bucket. Reduces Tier 1 pair count by 5-10x.
-    //   b. Embedding-based prefilter: use a local embedding model to compute
-    //      Tier 2 candidate pairs, replace the title-similarity heuristic.
-    //   c. Cache LLM verify results in a per-lint-run memo so re-runs don't
-    //      re-verify unchanged pairs.
-    //   d. Skip the second LLM pass if the Tier 1 confidence score is below
-    //      a threshold AND no new entries appeared since the last lint.
-    //
-    // See ROADMAP.md "Lint performance" section for the larger picture.
-    const duplicates = await runDedupPhase(
-      phaseCtx,
-      { wikiFiles, pageMap },
-      checkCancelled,
-    );
-
-    // ---- 3.5 Build empty-page list now that duplicates are known ----
-    const emptyPageDuplicates = new Set<string>();
-    for (const d of duplicates) {
-      emptyPageDuplicates.add(d.target);
-      emptyPageDuplicates.add(d.source);
-    }
-
-    for (const { path, content } of pageMap.values()) {
-      // Skip if this page is a duplicate source (will be deleted after merge)
-      if (emptyPageDuplicates.has(path)) continue;
-      if (isPageEmpty(content)) {
-        emptyPages.push({path, content});
-      }
-    }
-
-    // ---- 4. Contradiction scanning (LLM-assisted / mixed) ----
-    //
-    // v1.24.0: extracted to lint/llm-phases/contradiction-phase.ts.
-    // Behavior is identical to the previous inline implementation; see
-    // that file for the report-render details.
-    //
-    // v1.27.x audit (Phase 3 T3-1): the contradiction phase now runs
-    // BEFORE the report is built. Historically it ran after a throwaway
-    // buildLintReport call whose output was stripped (extractProgReport)
-    // for the LLM analysis prompt — deleted in v1.26.4 #473. With that
-    // consumer gone, the strip-then-re-add round-trip (and the duplicate
-    // summaryText / aliasPre re-derivation in this file) is dead weight:
-    // the builder already emits `# title + summary + aliasPre + body` in
-    // one pass. One call, real elapsed time, contradictions appended.
-    const findingsWithEmpty: ProgrammaticFindings = {
-      ...findings,
-      emptyPages,
-    };
-    const { report: contradictionsReport } = await runContradictionPhase(phaseCtx);
-
     // ---- 5. Build the full report (delegated to report-builder) ----
-    // Measure elapsed wall time since runLintWiki started. Round to whole
-    // seconds for the user-facing summary; sub-second precision is noise here.
-    const elapsedSeconds = Math.max(1, Math.round((Date.now() - lintStartTime) / 1000));
-    const fullReport = buildLintReport({
-      settings: ctx.settings,
-      findings: findingsWithEmpty,
-      duplicates,
-      contradictionsReport,
-      elapsedSeconds,
-      totalPages: wikiFiles.length,
-    });
+    const { fullReport, counts } = buildLintRunReport(ctx, scan, lintStartTime);
 
     // v1.24.0: removed the v1.18.0-era "Missing Concept Pages tracker" TODO
     // (24 lines of design notes that had been parked here since 2026-07 and
     // never implemented). If/when the missing-concept-pages feature is
     // designed, see ROADMAP.md for the placeholder.
 
-    const counts: LintCounts = {
-      deadLinks: deadLinks.length,
-      emptyPages: emptyPages.length,
-      pollutedPages: pollutedPages.length,
-      orphans: orphans.length,
-      duplicates: duplicates.length,
-      pagesMissingAliases: aliasDeficientPages.length,
-      tagViolations: tagViolations.length,
-      ungroundedQuotes: ungroundedQuotes.length,
-    };
 
-    // ---- Build callbacks ----
-
-    // Issue #94 regression: each fix phase is its own lint operation
-    // lifecycle so the status-bar cancel affordance persists throughout
-    // the fix. The modal closes immediately (preserving original UX);
-    // the user gets a top-right progress notice from the fix runner +
-    // the bottom-right status bar for cancellation.
-    const runFixPhase = async (fn: (signal: AbortSignal | undefined) => Promise<void>) => {
-      const signal = ctx.wikiEngine.startLintOperation();
-      try {
-        await fn(signal);
-      } finally {
-        ctx.wikiEngine.endLintOperation();
-      }
-    };
-
-    const fixCallbacks: LintFixCallbacks = {};
-    // v1.22.0 #97: build a compact lint analysis summary from the
-    // findings so the LLM schema suggestion prompt receives real data
-    // (orphan counts, dead links, etc.) instead of the hardcoded
-    // string 'Wiki lint analysis'. The summary is ~100 tokens and
-    // fits comfortably in the LLM's context window.
-    const lintSummary = buildLintAnalysisContext({
-      orphanCount: orphans.length,
-      deadLinkCount: deadLinks.length,
-      pollutedPageCount: pollutedPages.length,
-      tagViolationCount: tagViolations.length,
-      duplicateCount: duplicates.length,
-      ungroundedQuoteCount: ungroundedQuotes.length,
-      emptyPageCount: emptyPages.length,
-      contradictionReport: contradictionsReport,
-      sampleOrphans: orphans.slice(0, 5),
-      sampleDeadLinks: deadLinks.slice(0, 5).map(dl => dl.target),
-      sampleTagViolations: tagViolations.slice(0, 5).map(tv => tv.path),
-      hubLinkDensityCount: findings.hubLinkDensityIssues.length,
-      sampleHubLinkDensity: findings.hubLinkDensityIssues.slice(0, 3).map(h => h.pagePath),
-      totalWikiPages: wikiFiles.length,
-    });
-    fixCallbacks.onAnalyzeSchema = () => { void ctx.onAnalyzeSchema(lintSummary); };
-
-    // Polluted page repair (structural root cause — similar to aliases)
-    if (pollutedPages.length > 0) {
-      fixCallbacks.onFixPollutedPages = () => {
-        void runFixPhase(async (signal) => {
-          let fixed = 0;
-          const fixNotice = makeMirroredNotice(ctx);
-          try {
-            for (const pp of pollutedPages) {
-              if (signal?.aborted) break;
-              fixNotice.setMessage(t.lintFixingPolluted
-                .replace('{current}', String(fixed + 1))
-                .replace('{total}', String(pollutedPages.length))
-                .replace('{title}', pp.title)
-                .replace('{newTitle}', pp.cleanTitle));
-              try {
-                await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
-                fixed++;
-              } catch (e) {
-                console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
-              }
-            }
-            if (fixed > 0) {
-              await ctx.wikiEngine.generateIndexFromEngine();
-            }
-            const msg = getText(ctx.settings.language, 'lintPollutedFixed')
-              .replace('{fixed}', String(fixed))
-              .replace('{total}', String(pollutedPages.length));
-            new Notice(msg, NOTICE_NORMAL);
-          } finally {
-            fixNotice.hide();
-          }
-        });
-      };
-    }
-
-    // Alias completion (runs first — improves duplicate detection for future Lint runs)
-    if (aliasDeficientPages.length > 0) {
-      fixCallbacks.onCompleteAliases = () => {
-        void runFixPhase(async (signal) => {
-          const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
-          if (filled > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Complete Aliases', results.join('\n'));
-          }
-          const msg = t.lintAliasesFilled.replace('{filled}', String(filled)).replace('{total}', String(aliasDeficientPages.length))
-            + (filled > 0 ? '\n' + t.lintFixIndexUpdated : '');
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    if (deadLinks.length > 0) {
-      fixCallbacks.onFixDeadLinks = () => {
-        void runFixPhase(async (signal) => {
-          const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
-          if (fixed > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Fix Dead Links', results.join('\n'));
-          }
-          const msg = t.lintFixDeadComplete.replace('{fixed}', String(fixed)).replace('{total}', String(deadLinks.length))
-            + (fixed > 0 ? '\n' + t.lintFixIndexUpdated : '');
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    if (emptyPages.length > 0) {
-      fixCallbacks.onFillEmptyPages = () => {
-        void runFixPhase(async (signal) => {
-          const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
-          if (filled > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Expand Empty Pages', results.join('\n'));
-          }
-          const msg = t.lintFillComplete.replace('{filled}', String(filled)).replace('{total}', String(emptyPages.length))
-            + (filled > 0 ? '\n' + t.lintFixIndexUpdated : '');
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    // Issue #103: independent delete action (not a fix phase) — always available
-    fixCallbacks.onDeleteEmptyStubs = () => {
-      void runFixPhase(async (signal) => {
-        const result = await ctx.wikiEngine.deleteEmptyStubs(ctx.settings.wikiFolder);
-        if (result.deleted > 0) {
-          await ctx.wikiEngine.generateIndexFromEngine();
-          const linkNote = result.linksRestored > 0 || result.linksLeftDead > 0
-            ? ` (${result.linksRestored} link(s) restored to their display name, ${result.linksLeftDead} left dead)`
-            : '';
-          await ctx.wikiEngine.logLintFix('Delete Empty Stubs', `Deleted ${result.deleted} empty stubs${linkNote}`);
-        }
-        // Issue #244: surface success + failure breakdown to the user.
-        const parts: string[] = [];
-        if (result.deleted > 0) {
-          parts.push(t.lintDeleteCompleted.replace('{count}', String(result.deleted)));
-        }
-        if (result.failed > 0) {
-          parts.push(t.lintDeleteFailed
-            .replace('{failed}', String(result.failed))
-            .replace('{total}', String(result.deleted + result.failed)));
-        }
-        if (parts.length === 0) {
-          parts.push(t.lintDeleteCompleted.replace('{count}', '0'));
-        }
-        new Notice(parts.join('\n'), NOTICE_NORMAL);
-      });
-    };
-
-    if (orphans.length > 0) {
-      fixCallbacks.onLinkOrphans = () => {
-        void runFixPhase(async (signal) => {
-          const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
-          if (linked > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Link Orphan Pages', results.join('\n'));
-          }
-          const msg = t.lintLinkComplete.replace('{linked}', String(linked))
-            + (linked > 0 ? '\n' + t.lintFixIndexUpdated : '');
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    if (duplicates.length > 0) {
-      fixCallbacks.onMergeDuplicates = () => {
-        void runFixPhase(async (signal) => {
-          const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
-          if (merged > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Merge Duplicate Pages', results.join('\n'));
-          }
-          const msg = t.lintMergeComplete.replace('{merged}', String(merged)).replace('{total}', String(duplicates.length))
-            + (merged > 0 ? '\n' + t.lintFixIndexUpdated : '');
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    // Issue #85 v7: LLM-assisted retag of pages whose tags fall outside
-    // the active vocabulary. The user gets a single bulk button "Retag
-    // N page(s) with LLM" — no per-page approval. Each violation's
-    // frontmatter tags: line is rewritten in place; the body is
-    // untouched. Defensive: every LLM-returned tag is re-validated
-    // against the active vocabulary before write (runRetagViolations).
-    if (tagViolations.length > 0) {
-      fixCallbacks.onRetagViolations = () => {
-        void runFixPhase(async (signal) => {
-          const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
-          if (fixed > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Retag Tag Violations', results.join('\n'));
-          }
-          const msg = fixed > 0
-            ? t.lintTagViolationFixed.replace('{fixed}', String(fixed)).replace('{total}', String(tagViolations.length))
-            : t.lintTagViolationFixedNone;
-          new Notice(msg, NOTICE_NORMAL);
-        });
-      };
-    }
-
-    const totalFixable = deadLinks.length + emptyPages.length + orphans.length + duplicates.length;
-    const totalFixableIncludingAliases = totalFixable + aliasDeficientPages.length + pollutedPages.length;
-    if (totalFixableIncludingAliases > 0) {
-      fixCallbacks.onFixAll = () => {
-        void (async () => {
-          // Issue: Smart Fix All was NOT wrapped in startLintOperation/endLintOperation
-          // (unlike single-phase fixes via runFixPhase). This meant the status bar
-          // never appeared, so the user had no way to cancel a long-running batch.
-          // Fix: wrap the entire IIFE in a single lint-operation lifecycle so the
-          // status bar stays visible throughout all 6 phases.
-          const signal = ctx.wikiEngine.startLintOperation();
-          try {
-          const allResults: string[] = [];
-          const fixAllNotice = makeMirroredNotice(ctx);
-
-          // Track per-phase counts for final summary
-          let pollutedFixed = 0;
-          let aliasesFilled = 0;
-          let duplicatesMerged = 0;
-          let deadLinksFixed = 0;
-          let orphansLinked = 0;
-          let emptyPagesFilled = 0;
-          let tagsRetagged = 0;
-
-          // Smart fix strategy: follow causality chain with aliases as foundation
-          // Phase -1: Fix polluted pages (structural root cause before everything else)
-          fixAllNotice.setMessage('Smart fix: Phase -1 — Fixing polluted pages...');
-          if (pollutedPages.length > 0) {
-            for (const pp of pollutedPages) {
-              try {
-                const result = await ctx.wikiEngine.fixPollutedPage(pp.path, pp.cleanTitle);
-                console.debug(`[Pollution Fix] ${result}`);
-                pollutedFixed++;
-              } catch (e) {
-                console.error(`[Pollution Fix] Failed: ${pp.path}`, e);
-              }
-            }
-            if (pollutedFixed > 0) {
-              allResults.push(`## Fix Polluted Pages\nFixed ${pollutedFixed}/${pollutedPages.length} polluted pages`);
-            }
-          }
-
-          // Phase 0: Complete aliases (pre-flight, ensures duplicate detection accuracy)
-          // → Aliases are required for Tier 1 duplicate signals (crossLang)
-          // → Missing aliases → duplicate detection misses true duplicates → downstream fixes incomplete
-          fixAllNotice.setMessage('Smart fix: Phase 0 — Completing aliases...');
-          if (aliasDeficientPages.length > 0) {
-            const { filled, results } = await runAliasCompletion(ctx, signal, aliasDeficientPages);
-            aliasesFilled = filled;
-            if (filled > 0) {
-              allResults.push(`## Complete Aliases\n${results.join('\n')}`);
-              console.debug(`Smart fix: Completed ${filled} aliases, improving duplicate detection accuracy`);
-            }
-          }
-
-          // Phase 1: Merge duplicates (root cause)
-          // → Eliminates redundant pages, resolves many dead links and orphans automatically via link rewriting
-          // → Duplicate detection now uses complete aliases (Tier 1 crossLang signals active)
-          fixAllNotice.setMessage('Smart fix: Phase 1 — Merging duplicates...');
-          if (duplicates.length > 0) {
-            const { merged, results } = await runDuplicateMerges(ctx, signal, duplicates);
-            duplicatesMerged = merged;
-            if (merged > 0) {
-              allResults.push(`## Merge Duplicate Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Merged ${merged} duplicates, dead links and orphans may be auto-resolved`);
-            }
-          }
-
-          // Phase 2: Fix remaining dead links
-          // → Links to deleted source pages were already rewritten during merge
-          // → This phase fixes any remaining dead links (pointing to non-existent pages)
-          // → Dead link fallback uses aliases to find existing pages (avoiding stub creation)
-          fixAllNotice.setMessage('Smart fix: Phase 2 — Fixing dead links...');
-          if (deadLinks.length > 0) {
-            const { fixed, results } = await runDeadLinkFixes(ctx, signal, deadLinks);
-            deadLinksFixed = fixed;
-            if (fixed > 0) {
-              allResults.push(`## Fix Dead Links\n${results.join('\n')}`);
-              console.debug(`Smart fix: Fixed ${fixed} dead links`);
-            }
-          }
-
-          // Phase 3: Link remaining orphan pages
-          // → Some orphans may be auto-resolved after duplicate merge (source page deleted, target page now has incoming links)
-          // → This phase links any remaining orphan pages
-          fixAllNotice.setMessage('Smart fix: Phase 3 — Linking orphan pages...');
-          if (orphans.length > 0) {
-            const { linked, results } = await runOrphanFixes(ctx, signal, orphans);
-            orphansLinked = linked;
-            if (linked > 0) {
-              allResults.push(`## Link Orphan Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Linked ${linked} orphan pages`);
-            }
-          }
-
-          // Phase 4: Expand empty pages (last, independent of other issues)
-          fixAllNotice.setMessage('Smart fix: Phase 4 — Expanding empty pages...');
-          if (emptyPages.length > 0) {
-            const { filled, results } = await runEmptyPageFixes(ctx, signal, emptyPages);
-            emptyPagesFilled = filled;
-            if (filled > 0) {
-              allResults.push(`## Expand Empty Pages\n${results.join('\n')}`);
-              console.debug(`Smart fix: Expanded ${filled} empty pages`);
-            }
-          }
-
-          // Issue #85 v7 — Phase 5: retag out-of-vocabulary tag pages.
-          // LLMs may invent types that don't match the active
-          // vocabulary; this phase asks the LLM to re-emit valid
-          // tags using only values from the active vocabulary.
-          fixAllNotice.setMessage('Smart fix: Phase 5 — Retagging out-of-vocabulary tag pages...');
-          if (tagViolations.length > 0) {
-            const { fixed, results } = await runRetagViolations(ctx, signal, tagViolations);
-            tagsRetagged = fixed;
-            if (fixed > 0) {
-              allResults.push(`## Retag Tag Violations\n${results.join('\n')}`);
-              console.debug(`Smart fix: Retagged ${fixed} tag violations`);
-            }
-          }
-
-          fixAllNotice.hide();
-          if (allResults.length > 0) {
-            await ctx.wikiEngine.generateIndexFromEngine();
-            await ctx.wikiEngine.logLintFix('Smart Fix All (Causality-Aware with Aliases)', allResults.join('\n\n'));
-          }
-
-          // Build phase result data for modal report
-          // NOTE: must be inside the try block so the closure-captured counters
-          // (pollutedFixed, aliasesFilled, etc.) are still in scope when the
-          // modal renders.
-          const phases: FixReportPhase[] = [];
-          if (pollutedPages.length > 0) {
-            phases.push({
-              label: `🧹 Fix polluted pages (${pollutedPages.length})`,
-              detail: `${pollutedFixed}/${pollutedPages.length}`
-            });
-          }
-          if (aliasDeficientPages.length > 0) {
-            phases.push({
-              label: t.lintAliasesCompleteBtn.replace('{count}', String(aliasDeficientPages.length)),
-              detail: `${aliasesFilled}/${aliasDeficientPages.length}`
-            });
-          }
-          if (duplicates.length > 0) {
-            phases.push({
-              label: t.lintModalMergeDuplicates.replace('{count}', String(duplicates.length)),
-              detail: `${duplicatesMerged}/${duplicates.length}`
-            });
-          }
-          if (deadLinks.length > 0) {
-            phases.push({
-              label: t.lintModalFixDeadLinks.replace('{count}', String(deadLinks.length)),
-              detail: `${deadLinksFixed}/${deadLinks.length}`
-            });
-          }
-          // Issue #85 v7: tag-violation retag phase summary
-          if (tagViolations.length > 0) {
-            phases.push({
-              label: t.lintTagViolationRetagBtn.replace('{count}', String(tagViolations.length)),
-              detail: `${tagsRetagged}/${tagViolations.length}`
-            });
-          }
-          if (orphans.length > 0) {
-            phases.push({
-              label: t.lintModalLinkOrphans.replace('{count}', String(orphans.length)),
-              detail: `${orphansLinked}/${orphans.length}`
-            });
-          }
-          if (emptyPages.length > 0) {
-            phases.push({
-              label: t.lintModalExpandEmpty.replace('{count}', String(emptyPages.length)),
-              detail: `${emptyPagesFilled}/${emptyPages.length}`
-            });
-          }
-          // v1.25.1: smarter completion summary.
-          // - phasesRun = phases the user kicked off (input lengths > 0).
-          // - phasesModified = phases that actually wrote changes.
-          // If phasesModified === 0, every phase failed silently — surface
-          // that distinctly so the user doesn't think Fix All did nothing.
-          // Also: NOTICE_NORMAL (5s) instead of NOTICE_ERROR (8s) to match
-          // the non-blocking convention of other fix callbacks.
-          const historyHint = getText(ctx.settings.language, 'ingestionNoticeHistoryHint');
-          const phasesModified = allResults.filter(r => r !== 'skipped').length;
-          const summary = phasesModified === 0
-            ? `${t.lintFixAllComplete}: ${t.lintFixAllNoChanges}`
-            : `${t.lintFixAllComplete}: ${phasesModified} ${t.lintFixPhasesLabel}. ${historyHint}`;
-          new Notice(summary, NOTICE_NORMAL);
-          } finally {
-            // Issue: status bar must persist throughout all 6 phases. Match the
-            // startLintOperation call above so the user can click "cancel" at any point.
-            ctx.wikiEngine.endLintOperation();
-          }
-        })();
-      };
-    }
+    const fixCallbacks = buildLintFixCallbacks({ ctx, scan, t });
 
     stageNotice.hide();
     // Persist the full lint report to log.md before showing the modal.

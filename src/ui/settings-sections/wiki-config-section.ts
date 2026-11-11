@@ -161,8 +161,8 @@ export function renderWikiConfigSection(tab: LLMWikiSettingTab, containerEl: HTM
     tempSettings.extractionGranularity === 'custom' ? 'flex' : 'none';
 
   // Tag Vocabulary
-  let customEntityTagsSetting: Setting | null = null;
-  let customConceptTagsSetting: Setting | null = null;
+  let customEntityTagsSetting: Setting | null;
+  let customConceptTagsSetting: Setting | null;
 
   const customEntities = (tempSettings.customEntityTags ?? '').trim();
   const customConcepts = (tempSettings.customConceptTags ?? '').trim();

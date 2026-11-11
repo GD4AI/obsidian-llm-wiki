@@ -131,7 +131,7 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
               if (error instanceof Error && /^HTTP \d+/.test(error.message)) {
                 throw error;
               }
-              throw new Error(`Network error: ${error instanceof Error ? error.message : String(error)}`);
+              throw new Error(`Network error: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
             }
           };
 
@@ -159,7 +159,7 @@ export function renderModelSection(tab: LLMWikiSettingTab, containerEl: HTMLElem
             if (err instanceof Error) {
               throw err;
             }
-            throw new Error('All URL candidates failed');
+            throw new Error('All URL candidates failed', { cause: err });
           }
 
           tempSettings.availableModels = filterModelIds(tempSettings.provider, models).sort();

@@ -25,49 +25,13 @@
 
 import { requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { nodeHttpsFetch } from './node-https-fetch';
+import { headersToObject, type ObsidianFetchInit } from './fetch-shared';
 
-export interface ObsidianFetchInit {
-  method?: string;
-  /** Fetch-API HeadersInit: plain object, Headers instance, or tuple array. */
-  headers?: HeadersInit;
-  body?: string | Uint8Array | undefined;
-  signal?: AbortSignal;
-  // Note: AI-SDK doesn't pass these but we accept them defensively.
-  timeout?: number;
-}
+// Re-exported so the call sites that read these from this module keep working.
+export type { ObsidianFetchInit };
+export { headersToObject };
 
-/**
- * Convert a Fetch API HeadersInit to a plain object that `requestUrl`
- * understands. AI-SDK passes either a Headers instance, a plain object,
- * or an array of tuples.
- *
- * Exported since v1.27.0 (#425): the Bedrock SigV4 signing wrapper
- * reuses this normalization so wrapped and unwrapped paths see
- * identical header shapes.
- */
-export function headersToObject(headers: HeadersInit | undefined): Record<string, string> {
-  if (!headers) return {};
-  if (headers instanceof Headers) {
-    const obj: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      obj[key] = value;
-    });
-    return obj;
-  }
-  if (Array.isArray(headers)) {
-    const obj: Record<string, string> = {};
-    for (const [key, value] of headers) {
-      obj[key] = value;
-    }
-    return obj;
-  }
-  // Plain object — shallow copy to avoid aliasing caller's object.
-  const obj: Record<string, string> = {};
-  for (const [key, value] of Object.entries(headers)) {
-    obj[key] = value;
-  }
-  return obj;
-}
+
 
 // v1.23.0 P1-7: debug logging for fetch adapter path selection.
 // Matched with "STREAM-FETCH" prefix so it's greppable in DevTools.
@@ -135,7 +99,7 @@ export async function obsidianFetchBridge(
     // Re-throw as a fetch-like TypeError so AI-SDK treats it as a
     // network failure (vs. an API error with a body).
     if (err instanceof Error) {
-      throw new TypeError(`obsidianFetchBridge network error: ${err.message}`);
+      throw new TypeError(`obsidianFetchBridge network error: ${err.message}`, { cause: err });
     }
     throw err;
   }
@@ -339,9 +303,6 @@ export function __resetCorsMemory(): void {
  * Stream-or-fetch with automatic CORS fallback.
  *
  * Decision tree:
- *   - If baseURL is local (Ollama / LMStudio / private IP):
- *     use obsidianFetchBridge (requestUrl). No CORS issue but
- *     "fake streaming" (whole body in one chunk).
  *   - If this origin has already failed a cross-origin request this
  *     session (Issue #741): skip the gamble and go straight to
  *     requestUrl. The attempt is known to be blocked; retrying it
@@ -351,6 +312,23 @@ export function __resetCorsMemory(): void {
  *     back to obsidianFetchBridge (requestUrl). Caller gets a
  *     Response either way; AI-SDK handles single-chunk vs
  *     multi-chunk transparently.
+ *
+ * **A local base URL is not exempt from that.** Until 2026-11-10 a
+ * `isLocalBaseURL` branch returned `requestUrl` before the streaming attempt,
+ * on the belief that local servers refuse cross-origin requests. That belief
+ * was the last URL-shape guess in this module, and #741 is the reason it had to
+ * go: the same block already records that whether a server permits a
+ * cross-origin request is an **observed** outcome, because it is a function of
+ * method, URL and header set rather than of the host.
+ *
+ * The guess was not free. `requestUrl` cannot stream, and iOS aborts a request
+ * after 60 s with no bytes, so every LAN provider was forced onto a transport
+ * that dies during a long generation (#980) while llama.cpp and other local
+ * servers answer a preflight with `204` and `Access-Control-Allow-Origin: *`.
+ *
+ * The cost of removing it is one refused attempt per origin per session, which
+ * the block below already records and remembers. A server that does refuse
+ * lands in exactly the state the old branch produced, minus the guess.
  *
  * This is the function the SDK clients should use — it picks the
  * right strategy per provider and gracefully degrades.
@@ -372,12 +350,6 @@ export async function streamWithFallback(
   init?: ObsidianFetchInit
 ): Promise<Response> {
   const origin = originOf(url);
-
-  // Local providers: skip the CORS gamble. Use requestUrl directly.
-  if (isLocalBaseURL(url)) {
-    console.debug(`[${STREAM_FETCH_LOG}] isLocal, using obsidianFetchBridge (requestUrl): ${origin}`);
-    return obsidianFetchBridge(url, init);
-  }
 
   // This origin is known to refuse cross-origin requests: do not gamble again.
   if (corsBlockedOrigins.has(origin)) {
@@ -444,39 +416,4 @@ async function viaFallbackTransport(
     }
   }
   return obsidianFetchBridge(url, init);
-}
-
-/**
- * Heuristic: is the given baseURL a localhost / private IP?
- *
- * Used to pick the streaming strategy for createMessageStream:
- *   - true  → use obsidianFetchBridge (requestUrl, no CORS, fake streaming)
- *   - false → use streamingObsidianFetch (window.fetch, real streaming)
- *
- * Local baseURLs (Ollama, LMStudio) don't return CORS headers
- * by default, so window.fetch fails. Cloud providers all support
- * CORS, so window.fetch works.
- */
-export function isLocalBaseURL(baseURL: string | undefined): boolean {
-  if (!baseURL) return false;
-  try {
-    const u = new URL(baseURL);
-    if (u.hostname === 'localhost') return true;
-    if (u.hostname === '127.0.0.1' || u.hostname === '[::1]' || u.hostname === '::1') return true;
-    // IPv4 private ranges (RFC 1918): 10.x, 172.16-31.x, 192.168.x
-    const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-    const m = u.hostname.match(ipv4);
-    if (m) {
-      const a = Number(m[1]);
-      const b = Number(m[2]);
-      if (a === 10) return true;
-      if (a === 172 && b >= 16 && b <= 31) return true;
-      if (a === 192 && b === 168) return true;
-    }
-    return false;
-  } catch {
-    // Malformed URL — defensively treat as cloud (safer default;
-    // streaming is the better UX when uncertain).
-    return false;
-  }
 }

@@ -52,13 +52,11 @@ export interface SectionExtractOptions {
 
 const FRONTMATTER_RE = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const WIKILINK_RE = /\[\[([^\]|#]+?)(?:#[^\]]+)?(?:\|([^\]]+))?\]\]/g;
+import { escapeRegex } from './regex-escape';
+
 const PURE_ANCHOR_RE = /\[\[#\^[^\]]+\]\]/g;
 const SENTENCE_BOUNDARY_RE = /[.!?](?=\s|$)/g;
 const ELLIPSIS = '…'; // UTF-8 1 char
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function stripFrontmatter(body: string): string {
   return body.replace(FRONTMATTER_RE, '');

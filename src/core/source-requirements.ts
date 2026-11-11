@@ -12,8 +12,7 @@
 // vault or batch context (uniqueness/dedup) live in the engine, not here.
 
 import { isBlankSource } from './frontmatter';
-
-export type RejectionReason = 'empty' | 'incompatible-type' | 'duplicate' | 'injection' | 'unsupported-pdf' | 'mineru-page-limit' | 'mineru-size-limit';
+import type { RejectionReason } from '../types';
 
 export interface SourceRejection {
   reason: RejectionReason;

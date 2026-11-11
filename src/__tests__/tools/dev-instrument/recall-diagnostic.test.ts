@@ -16,8 +16,8 @@ import {
   prepare,
   type DiagnosticPage,
 } from '../../../../tools/dev-instrument/src/recall-diagnostic';
-import { builtInFixtures } from '../../../core/recall-fixtures';
-import type { Fixture, SourcedPage } from '../../../core/recall-harness';
+import { builtInFixtures } from '../../../../tools/dev-instrument/src/recall-fixtures';
+import type { Fixture, SourcedPage } from '../../../../tools/dev-instrument/src/recall-harness';
 
 function dp(path: string, title: string, opts: {
   summary?: string; body?: string; aliases?: string[]; sourceSlug?: string;

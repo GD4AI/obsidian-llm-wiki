@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — the lexical stage now reads page bodies and scores title/alias/summary/body with BM25F, the single largest recall change in the project; on top of it a two-stage Rocchio query expansion whose claim its own measurement narrowed; related-page shaping so one hub cannot drag every page toward it; a `legacyScorer` switch in Advanced settings as the way back; and a correctness wave covering the watcher's Obsidian exclusion list, the log header's command hint, the legacy log-header cut, and error normalization by SDK marker)
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0 (MINOR — the lexical stage reads page bodies and scores title/alias/summary/body with BM25F, plus two-stage Rocchio expansion, related-page shaping, a `legacyScorer` way back, and a correctness wave)
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -32,7 +34,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Obsidian Review Perfect Score • Zero-embedding graph retrieval • 11-language native • Native PDF + images + Office ingest • Works with every provider • Local-first • No backend • GDPR-Friendly**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -40,9 +42,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [Official Site](https://llmwiki.greenerai.top/) | [Obsidian Marketplace](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [Why this plugin?](#-why-this-plugin) | 🚀 [Quick Start](#-quick-start) | ✨ [Features](#-features) | 🌐 [Ecosystem](#-ecosystem) | 🛠️ [Headless CLI](#-headless-cli) | 🔍 [How Retrieval Works](#-how-retrieval-works) | 🤖 [Models](#-models) | ❓ [FAQ](#-faq)
+🤔 [Why this plugin?](#-why-this-plugin) | 🚀 [Quick Start](#-quick-start) | ✨ [Features](#-features) | 🌐 [Ecosystem](#-ecosystem) | 🛠️ [Headless CLI](#-headless-cli) | 🔍 [How Retrieval Works](#-how-retrieval-works) | 🤖 [Models](#-models) | ❓ [FAQ](#-faq) | 🎯 [Is it for me?](#-is-it-for-me) | 🔒 [Privacy](#-privacy)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← If this plugin has helped you, feel free to buy me a coffee♥️ or drop a star🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki is free, self-hosted, and has no backend of its own. If it saves you time, a one-off coffee keeps it maintained — and a ⭐ helps just as much.
 
 ---
 
@@ -127,7 +131,7 @@ That's it. The plugin modifies nothing in your original notes — only creates n
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary |
 | **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, maintenance runs |
 
-![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 
 | Before | After |
 |--------|-------|
@@ -185,13 +189,6 @@ Five on-ramps, switchable per ingest:
 - **🛡️ Pre-ingest gate** — empty / whitespace / frontmatter-only notes are rejected before any LLM call; content-hash dedup catches identical files across paths.
 - **🆕 Ingest candidate gate (v1.27.0, #514 / PR #521)** — opt-in toggle (`skipMentionOnlyCandidates`, default off, Settings → Advanced). For sources whose language has a measured profile (de measured; en/fr/es/pt/nl/ko estimated with pinned edge cases; zh/ja character-script thresholds unmeasured), candidates named only inside parentheses / enumerations / short list items are pruned before they cost a page plus dedup and generation calls. Cross-language notes are not gated; wiki languages without a profile report once per ingest and never silently skip.
 - **🆕 Per-step task policies (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies field; override the per-step text-mode/thinking setting without code changes. Built-in baseline stays intact for steps you don't list.
-
-### 🔒 Privacy
-
-- **🚫 No backend, no tracking, no analytics.** Runs entirely inside Obsidian. Network is used only to communicate with the LLM provider you configure.
-- **📁 Source files are read-only.** The plugin never modifies your original vault notes — only creates new pages under `wiki/`.
-- **🦙 Full local mode.** Ollama, LM Studio, or any local OpenAI-compatible endpoint → your notes never leave your machine.
-- **🔐 Minimal permissions.** Vault file access for wiki management. Clipboard access only when you click the "Copy" button in the Query modal.
 
 ### 🦙 Local-first
 
@@ -259,7 +256,7 @@ Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned lin
 
 We use Monte Carlo PPR (Fogaras 2005) — 3,000 random walks × 50 steps each — with the dead-end rule from Haveliwala 2002. Cost is **O(K × L)** (K = walks, L = steps per walk), independent of the number of pages, so a 2,000-page vault sees the same expansion latency as a 200-page one.
 
-**PPR @5 = 27.1% vs pure-kNN baseline 24.1%** on the project's own benchmark corpus (the only published retrieval benchmark in this open-source LLM-Wiki space).
+**PPR @5 = 27.1% vs pure-kNN baseline 24.1%** on the project's own benchmark corpus (the only published retrieval benchmark in this open-source wiki-plugin space).
 
 ### Why no embeddings
 
@@ -387,7 +384,7 @@ For complete data locality, use Ollama or LM Studio. With a local provider, your
 
 ## 💖 Support
 
-If LLM-Wiki has become a meaningful part of your knowledge workflow:
+If Karpathy LLM Wiki has become a meaningful part of your knowledge workflow:
 
 - ☕ **[Buy me a Ko-fi](https://ko-fi.com/greenerdalii)** — one-time or monthly
 - 💳 **[Tip via PayPal](https://paypal.me/greenerdalii)** — one-time tip

@@ -1,9 +1,9 @@
 # LLM Wiki Plugin Project Development Standards
 
-**Last Updated:** 2026-10-06
+**Last Updated:** 2026-11-06
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.29.0 MINOR (2026-10-26, 5040 tests / 368 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
@@ -33,20 +33,20 @@ Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer the co
 
 | Gate | Constraint | How |
 |------|-----------|-----|
-| **1. Code correct** | `pnpm lint` 0/0 + `npx tsc --noEmit` 0/0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 | Five-Gate script (build BEFORE test — see §"Gate 1: Five-Gate automated") |
+| **1. Code correct** | `pnpm lint` 0/0 + `pnpm arch-check` clean + `npx tsc --noEmit` 0/0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 | Six-Gate script (build BEFORE test — see §"Gate 1: Six-Gate automated") |
 | **2. No side effects** | Call-site audit + data flow + state mutation + error propagation | Structured review |
 | **3. No breaking changes** | API/Schema/File format/Default behavior/Command IDs/Obsidian API | Breaking-change matrix |
 | **4. No performance regression** | CPU/memory/IO/network/token — 5-dim written assessment | `/review` (pi-review) + Gate 4 table |
 | **5. Docs complete** | 10 READMEs + ROADMAP + AGENTS + CHANGELOG + memory | pre-release-gate |
 | **6. Release clean** | Supersets 1-5 + TOC + i18n + Release Notes + Contributors + git hygiene | pre-release-gate |
 
-### Gate 1: Five-Gate automated
+### Gate 1: Six-Gate automated
 
 ```bash
-pnpm lint && npx tsc --noEmit && pnpm build && pnpm test && pnpm css-lint
+pnpm lint && pnpm arch-check && npx tsc --noEmit && pnpm build && pnpm test && pnpm css-lint
 ```
 
-All five must pass, and the three checks are complementary, so one tool passing is not enough: ESLint checks style, TypeScript checks types, css-lint checks Obsidian review compliance. Never use `@ts-ignore` or `eslint-disable` to silence a failure.
+All six must pass, and the checks are complementary, so one tool passing is not enough: ESLint checks style, `arch-check` checks the import graph (`scripts/arch-check.mjs`, added by #927 — it fails by name on a new cycle or a new `core/` → upper-layer edge), TypeScript checks types, css-lint checks Obsidian review compliance. Never use `@ts-ignore` or `eslint-disable` to silence a failure.
 
 **Order is non-negotiable**: `pnpm build` MUST run before `pnpm test`.
 The suite reads build artifacts — `src/__tests__/llm-sdk/openai-codex/openai-codex-loopback-flow.test.ts:39` reads `main.js` to assert the esbuild bundle shape — so a test-first run fails with ENOENT on a fresh clone. Local Gate 1 usually has `main.js` from a prior `pnpm build:dev`, so the bug was missed before PR #487's first CI run on 2026-08-18.
@@ -199,7 +199,7 @@ main (protected) ────► tag → release
 
   | Gate | Question | Evidence |
   |------|----------|----------|
-  | **1. Gate 1** | lint 0 / tsc 0 / build clean / tests all pass / css-lint 0 | the five-command run, build BEFORE test |
+  | **1. Gate 1** | lint 0 / arch-check clean / tsc 0 / build clean / tests all pass / css-lint 0 | the six-command run, build BEFORE test |
   | **2. Side effects** | call-site audit, data flow, state mutation, error propagation | 3-5 sentences, per §Gate 2 |
   | **3. Breaking changes** | API signature, settings schema, file format, default behaviour, command IDs, Obsidian API | "none detected" or a migration plan, per §Gate 3 |
   | **4. Performance** | CPU / memory / IO / network / token | the Gate 4 table with measured numbers, per §Gate 4 |
@@ -270,22 +270,22 @@ If a signal is present, post a short comment asking instead of a review. To undo
 ## 📦 Development Workflow
 
 ```bash
-pnpm gate:1                    # Gate 1: lint + typecheck + test + build + css-lint (preferred)
-pnpm lint && pnpm test && pnpm typecheck && pnpm build && pnpm css-lint   # WRONG ORDER — see §"Gate 1: Five-Gate automated"; build must precede test
+pnpm gate:1                    # Gate 1: lint + arch-check + typecheck + build + test + css-lint (preferred)
+pnpm lint && pnpm test && pnpm typecheck && pnpm build && pnpm css-lint   # WRONG ORDER — see §"Gate 1: Six-Gate automated"; build must precede test
 ```
 
 `pnpm gate:1` is a composite alias added 2026-08-18; both forms are equivalent. Prefer `pnpm gate:1` for one-shot local verification.
 
 ### Gate 1 CI (added 2026-08-18)
 
-`.github/workflows/pr-ci.yml` runs the full Five-Gate on every PR to `main` and on every push to `main`; the second trigger was added 2026-09-12. A PR is green against the base it branched from, so a break that exists only in the merged pair is invisible until a later PR reports it.
-Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: false`).
+`.github/workflows/pr-ci.yml` runs the full Six-Gate on every PR to `main` and on every push to `main`; the second trigger was added 2026-09-12. `arch-check` joined the CI job on 2026-11-06 — before that, the ratchet from #927 existed only in the local alias, so `main` was gated by five commands while the standards said six. A PR is green against the base it branched from, so a break that exists only in the merged pair is invisible until a later PR reports it.
+Status check: `Gate 1 / Five-Gate`. Branch protection requires it (`strict: false`, `require_last_push_approval: false`) **by that exact string**, which is why the job name still says Five-Gate while it runs six: renaming it would silently unrequire the check instead of tightening it.
 
 CI is a **defense-in-depth** layer on top of the per-fix E2E handoff manual Gate 1, which is still required before `git push`. CI does NOT enable auto-merge — explicit "merge it" / "合并" is still required per §"⚠️ Git Safety Protocol".
 
 Obsidian Bot review remains a separate pipeline (not a GitHub status check); CI green ≠ Bot-approved. See `feedback_obsidian_bot_double_lint` for the double-lint invariant.
 
-Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI. The Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Five-Gate automated". `npm ci` is intentionally NOT used — the project pins `pnpm@10.14.0`, and pnpm `overrides` are flat, so npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`.
+Lockfile-pinned install (`pnpm install --frozen-lockfile`) prevents `eslint-plugin-obsidianmd` drift between local Gate 1 and CI. The Bot alignment step at release time remains the final word on plugin version per "Bot alignment (pre-release)" under §"Gate 1: Six-Gate automated". `npm ci` is intentionally NOT used — the project pins `pnpm@10.14.0`, and pnpm `overrides` are flat, so npm cannot honor them per `feedback_pnpm_vs_npm_overrides_incompatibility`.
 
 **Dependency pins live in two files, and neither package manager reads the other's (Issue #907).** `package.json` → `overrides` is npm's home; `.github/workflows/release.yml` builds the released `main.js` from the npm tree. `pnpm-workspace.yaml` → `overrides` is pnpm's home — #557 (`bd992f8c`) moved pnpm settings out of `package.json` because pnpm ≥ 11 stopped reading the `pnpm` field, and Gate 1 runs on the pnpm tree. Adding `pnpm.overrides` back to `package.json` works on pnpm 10 and would break on 11; do not do it.
 
@@ -333,6 +333,17 @@ Every change via `Read` + `Edit` — no sed/awk/python for code or document edit
 - **Verify with `git diff`** after every multi-file edit pass (check unintended deletions).
 - **grep alone is NOT sufficient** — grep tells you *where* a pattern exists, not what surrounds it. Always Read full context before Edit.
 - **Verify idempotency** — surrounding content intact, no swallowed bullets, no broken headings.
+
+**Large-function extraction — read, classify, write, then verify (2026-11-09, #932).**
+A block of 400+ lines cannot be moved by scripted line slicing. On `runLintWiki` the first two cuts
+worked because each block had one role. The third failed and was reverted: that block holds three
+roles at once — lines the caller owns (`logReport`, `logLintFix`), preludes the callbacks share
+(`runFixPhase`, the analysis summary), and the callbacks themselves. A slicer cannot tell them
+apart, and the repair pass then patched the wrong occurrence and declared one const twice.
+Fixed order: (1) read the whole block, (2) write down each line's role, (3) derive the parameter
+list from that classification, (4) write the function in one piece, (5) golden snapshot, then the
+full suite. Never `tsc`-guided trial and error at this size: the compiler names what is *missing*
+and says nothing about what was captured wrongly.
 
 ## 📋 Karpathy Philosophy Compliance
 
@@ -533,15 +544,15 @@ This section supplies that reason.
 **Deliverable:** every docs commit and PR body states the numbers — `docs: MEMORY.md net −1259 lines (added 78, removed 1337)`.
 A docs change that only adds lines says why the addition cannot be an edit to text already there.
 
-**Ceilings, so "under control" is measurable.** Re-measured 2026-10-07:
+**Ceilings, so "under control" is measurable.** Re-measured 2026-11-06:
 
-| File | Ceiling | Now (2026-10-07) | Over the ceiling |
+| File | Ceiling | Now (2026-11-06) | Over the ceiling |
 |---|---|---|---|
-| `MEMORY.md` | **1500 lines** | 1096 | the pruning pass is part of the next change, not a follow-up |
-| `AGENTS.md` | **600 lines** | 516 | same |
-| `ROADMAP.md` | **500 lines** | 417 | same — and shipped sections move to CHANGELOG, not stay |
-| `CONTRIBUTING.md` | **450 lines** | 363 | same |
-| `CHANGELOG.md` | **no ceiling** | 1159 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
+| `MEMORY.md` | **1500 lines** | 1462 | under, and rising — the pruning pass is part of the next change, not a follow-up |
+| `AGENTS.md` | **600 lines** | 556 | same |
+| `ROADMAP.md` | **500 lines** | 500 | **at the ceiling**: the next addition has to remove a line in the same commit |
+| `CONTRIBUTING.md` | **450 lines** | 384 | same |
+| `CHANGELOG.md` | **no ceiling** | 1372 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
 | 11 READMEs | 13 H2 each, in step across locales | 13/13 ✓ | structural drift between locales is a defect, not a translation choice |
 
 **Where it is enforced:** `doc-review` (release Step 4b) checks the ceilings and the numbers, and `pre-release-gate` re-runs at release time.

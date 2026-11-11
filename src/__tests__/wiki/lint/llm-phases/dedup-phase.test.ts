@@ -7,6 +7,7 @@
 // to exercise the parallel-batch + rate-limit path.
 
 import { describe, it, expect, vi } from 'vitest';
+import { Notice } from 'obsidian';
 import {
   classifyTiers,
   computeVerifyBatch,
@@ -1252,5 +1253,365 @@ describe('runDedupPhase — a self-pair must not survive normalization (#826)', 
     const ctx = makeLintPhaseContext({ llmClient: () => client });
     const result = await runDedupPhase(ctx, { wikiFiles: files, pageMap }, () => {});
     expect(result).toHaveLength(1);
+  });
+});
+
+// === characterization before the #932 extraction ===
+// The retry wrapper is about to move out of `runDedupPhase`. Its only observable
+// outputs are the recovered-batch Notice and the warn line that summarises
+// `retryEvents`; nothing asserted either of them before this block, so the move
+// would have been unguarded. These tests pass before the move and must pass
+// after it — their value is proven by mutation afterwards, not by colour here.
+describe('runDedupPhase — retry recovery is reported (#932 characterization)', () => {
+  // The setup mock records every construction; `hide()` marks the last one.
+  const NoticeMock = Notice as unknown as { instances: Array<{ message: string; hidden: boolean }> };
+  const noticedTexts = (): string[] => NoticeMock.instances.map(entry => entry.message);
+  const clearNotices = (): void => { NoticeMock.instances.length = 0; };
+
+  const CANDIDATES = [
+    { path: 'wiki/entities/alpha.md', basename: 'alpha.md' },
+    { path: 'wiki/entities/Alpha.md', basename: 'Alpha.md' },
+  ];
+
+  function harness(responses: string[]) {
+    // The mock records every construction for the whole file, so a Notice left
+    // by an earlier test would satisfy an assertion about this one.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const pageMap = makePageMap(
+      CANDIDATES.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept`,
+      ]),
+    );
+    const callCounts = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const n = (callCounts.get(key) ?? 0) + 1;
+      callCounts.set(key, n);
+      return responses[Math.min(n - 1, responses.length - 1)];
+    });
+    const ctx = makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    return { warnSpy, createMessage, ctx, pageMap };
+  }
+
+  it('reports one recovered batch, counting only the ones that recovered', async () => {
+    const { warnSpy, createMessage, ctx, pageMap } = harness(['', '{"duplicates":[]}']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      // The empty answer must have been retried, not accepted.
+      expect(createMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      const summary = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered after an empty LLM response'));
+      expect(summary).toHaveLength(1);
+      // #993: the count is how many batches recovered, and no delay tier is
+      // asserted, because one recovered batch may have succeeded on either tier.
+      // The old text printed "(1 with 2s backoff)" for a retry that took 500 ms.
+      expect(summary[0]).toContain('1 batch(es) recovered after an empty LLM response.');
+      // No halving happened in this scenario, so the sentence must not claim one.
+      expect(summary[0]).not.toContain('Concurrency was');
+
+      // The user-facing half: one Notice, not one per retry.
+      const retryNotices = noticedTexts().filter(text => text.includes('needed retry'));
+      expect(retryNotices).toHaveLength(1);
+      expect(retryNotices[0]).toContain('1 batch(es)');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('does not report a recovery when every attempt returned nothing (#993)', async () => {
+    const { warnSpy, ctx, pageMap } = harness(['', '', '']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      // The retry ran and failed. Announcing a recovery here told the user the
+      // opposite of the truth, and the same batch was simultaneously counted in
+      // `dedupFailures` — one run printed both "recovered" and "failed".
+      const recovered = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered after an empty LLM response'));
+      expect(recovered).toHaveLength(0);
+      expect(noticedTexts().filter(text => text.includes('needed retry'))).toHaveLength(0);
+
+      // And the failure is still reported, so silence is not the fix.
+      const failed = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('failed for non-rate-limit reasons'));
+      expect(failed.length).toBeGreaterThan(0);
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('waits 500 ms before the second attempt and 2 s before the third', async () => {
+    // The two delay values are the part of the retry policy that no other test can
+    // see: the recovered-batch assertions count attempts, not spacing. A move that
+    // dropped a delay would leave every other test green and hammer a provider that
+    // is throttling us — so the numbers are pinned here before the code moves.
+    const { warnSpy, ctx, pageMap } = harness(['', '', '{"duplicates":[]}']);
+    const timeouts = vi.spyOn(window, 'setTimeout');
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      const delays = timeouts.mock.calls
+        .map(call => call[1])
+        .filter((ms): ms is number => typeof ms === 'number' && ms >= 500);
+      expect(delays.slice(0, 2)).toEqual([500, 2000]);
+    } finally {
+      timeouts.mockRestore();
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('counts a batch that recovered on the third attempt exactly once', async () => {
+    // Two empty answers then content: the 2-second tier succeeded, so the batch
+    // recovered, and it is one batch — not one per attempt.
+    const { warnSpy, ctx, pageMap } = harness(['', '', '{"duplicates":[]}']);
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap }, () => {});
+
+      const recovered = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('recovered after an empty LLM response'));
+      expect(recovered).toHaveLength(1);
+      expect(recovered[0]).toContain('1 batch(es) recovered');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+});
+
+// === the extracted batch worker (#932) ===
+// `runDedupBatch` used to be the `chunk.map` worker inside `runDedupPhase`. Two of
+// its behaviours had no test at all, which the mutation pass found after the move:
+// the page count rendered into the prompt, and the guard for a client that returns
+// null after the early-return check. Both are pinned here so the worker's move is
+// guarded from the next change onwards.
+describe('runDedupBatch — the worker the run loop calls (#932)', () => {
+  const NoticeMock = Notice as unknown as { instances: Array<{ message: string; hidden: boolean }> };
+  const clearNotices = (): void => { NoticeMock.instances.length = 0; };
+
+  const CANDIDATES = [
+    { path: 'wiki/entities/alpha.md', basename: 'alpha.md' },
+    { path: 'wiki/entities/Alpha.md', basename: 'Alpha.md' },
+  ];
+
+  function pageMapOf() {
+    return makePageMap(
+      CANDIDATES.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept`,
+      ]),
+    );
+  }
+
+  it('renders the eligible page count into the prompt it sends', async () => {
+    // The model reads this number as the corpus size when deciding whether a pair
+    // is worth confirming. Passing 0 instead of the real count changed no test
+    // before this one existed.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    const ctx = makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap: pageMapOf() }, () => {});
+
+      expect(createMessage).toHaveBeenCalled();
+      const prompt = String(
+        (createMessage.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content,
+      );
+      expect(prompt).toContain('**Total entity/concept pages in wiki:** 2');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('records a batch failure when the LLM client disappears mid-run', async () => {
+    // The early guard calls the getter once; each batch then calls it again. A
+    // client that vanishes between those two points must throw inside the worker,
+    // so the batch lands in `dedupFailures` instead of being silently skipped.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    let calls = 0;
+    const ctx = makeLintPhaseContext({
+      llmClient: () => {
+        calls += 1;
+        return calls === 1 ? ({ createMessage } as unknown as LLMClient) : null;
+      },
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    try {
+      const result = await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap: pageMapOf() }, () => {});
+
+      expect(result).toEqual([]);
+      expect(createMessage).not.toHaveBeenCalled();
+      const failures = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('Duplicate Batch Failures'));
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toContain('1 duplicate detection bat');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+});
+
+// === chunk iteration and the halving counter (#932) ===
+// The flow tests above assert what the run reports, which survives a loop that
+// visits a batch twice. These two assert the loop's own two invariants: each batch
+// runs once, and an isolated retry does not count toward the halving threshold.
+// Both were found by mutating `runDedupChunks` after it moved out of `runDedupPhase`.
+describe('runDedupChunks — iteration and halving counter (#932)', () => {
+  // 4 caseVariant pairs → 4 tier-1 candidates → 4 batches of one candidate each
+  // (the system prompt is 7000 chars, which forces the splitter down to size 1).
+  const WIKI_FILES = ['alpha', 'beta', 'gamma', 'delta'].flatMap(name => [
+    { path: `wiki/entities/${name}.md`, basename: `${name}.md` },
+    { path: `wiki/entities/${name[0].toUpperCase()}${name.slice(1)}.md`, basename: `${name[0].toUpperCase()}${name.slice(1)}.md` },
+  ]);
+  const pageMapOf = () => makePageMap(
+    WIKI_FILES.map(f => [
+      f.path,
+      `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept for duplicate detection`,
+    ])
+  );
+
+  function ctxAt(concurrency: number, createMessage: unknown) {
+    return makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: concurrency,
+      } as LintPhaseContext['settings'],
+    });
+  }
+
+  const batchLines = (debugSpy: { mock: { calls: unknown[][] } }): string[] =>
+    debugSpy.mock.calls
+      .map(args => String(args[0]))
+      .filter(line => /lintWiki: batch \d+\/\d+ — /.test(line));
+
+  it('runs each batch exactly once when the chunk is wider than one', async () => {
+    // The loop advances `i` by the concurrency that was in force, not by 1. Advancing
+    // by 1 re-reads overlapping batches: invisible in a report that only counts
+    // duplicates, but the same pairs get processed and written twice.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: WIKI_FILES, pageMap: pageMapOf() }, () => {});
+
+      const lines = batchLines(debugSpy);
+      expect(lines).toHaveLength(4);
+      const batchNumbers = lines.map(line => Number(/batch (\d+)\//.exec(line)?.[1]));
+      expect(new Set(batchNumbers).size).toBe(4);
+      expect(createMessage).toHaveBeenCalledTimes(4);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not count a clean chunk after a throttled one toward halving', async () => {
+    // The counter resets on any chunk that reported no soft-throttle. Without the
+    // reset, two chunks separated by a clean one still add up, and the run halves
+    // its concurrency on evidence that is not consecutive.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Only the first two distinct prompts throttle (chunk 1); chunk 2 is clean.
+    const seen = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const isNew = !seen.has(key);
+      const ordinal = seen.size;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+      if (isNew && ordinal < 2) return '';
+      return '{"duplicates":[]}';
+    });
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: WIKI_FILES, pageMap: pageMapOf() }, () => {});
+
+      // Both chunks ran, so the fixture reached the halving logic twice.
+      expect(batchLines(debugSpy)).toHaveLength(4);
+      const halving = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('temporarily reducing in-scan concurrency'));
+      expect(halving).toEqual([]);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('resets the counter on a clean chunk, so throttled-clean-throttled does not halve', async () => {
+    // The counter means CONSECUTIVE. A clean chunk in the middle must break the run,
+    // otherwise three chunks with one retry each add up to two and the run halves on
+    // evidence that was never consecutive. The CR-1 fix already made this counter a
+    // scoping hazard once (it lived inside the loop body and never accumulated), so
+    // both directions are pinned.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const files = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'].flatMap(name => [
+      { path: `wiki/entities/${name}.md`, basename: `${name}.md` },
+      { path: `wiki/entities/${name[0].toUpperCase()}${name.slice(1)}.md`, basename: `${name[0].toUpperCase()}${name.slice(1)}.md` },
+    ]);
+    const pageMap = makePageMap(
+      files.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept for duplicate detection`,
+      ])
+    );
+    // 6 batches at concurrency 2 → 3 chunks. Throttle the first two and the last two
+    // prompts; leave the middle chunk clean.
+    const seen = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const isNew = !seen.has(key);
+      const ordinal = seen.size;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+      if (isNew && (ordinal < 2 || ordinal >= 4)) return '';
+      return '{"duplicates":[]}';
+    });
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: files, pageMap }, () => {});
+
+      expect(batchLines(debugSpy)).toHaveLength(6);
+      const halving = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('temporarily reducing in-scan concurrency'));
+      expect(halving).toEqual([]);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
   });
 });

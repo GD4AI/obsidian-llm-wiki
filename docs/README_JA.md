@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 語彙段がページ本文を読み、タイトル/エイリアス/要約/本文を BM25F でスコアリングするようになりました。これは本プロジェクト最大の検索改善です。その上に二段階 Rocchio クエリ拡張が乗り、その主張は自身の計測によって狭められています。1つの hub が他ページを引き寄せない Related ページ整形。戻す手段として詳細設定の `legacyScorer` スイッチ。加えて正確性の一波：watcher が Obsidian の除外リストを守る、ログヘッダーのコマンドヒント、legacy ログ切り取り、エラー正規化を SDK marker 基準に）
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0（MINOR — 語彙段がページ本文を読み BM25F で評価、加えて Rocchio 拡張・Related ページ整形・`legacyScorer` の戻し道）
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
 - search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 11 言語プラグイン", "Obsidian 16+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
 - features: グラフベース検索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 段階シード選択カスケード, Tier 1/Tier 2 重複検出, 11 言語 UI + 11 言語 Wiki 出力（独立設定）, 16+ LLM プロバイダー（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-互換, Codex OAuth）, MinerU マルチフォーマット取り込み（PDF + 画像 + Office）, PDF 取り込み（キャッシュのみ、OCR パス）, Lint ヘルススキャン, Smart Fix All, ソースページ逐語引用, 取り込み候補ゲート, ステップ別 taskPolicies UI, Obsidian Graph View 連携, ゼロ埋め込み・ゼロベクトル DB アーキテクチャ, ローカルファーストモード
@@ -31,7 +33,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 **Obsidian公式マーケット満点評価 • 埋め込み不要のグラフ検索 • 11言語ネイティブ対応 • ネイティブ PDF + 画像 + Office 取り込み • あらゆるLLMプロバイダー対応 • ローカルファースト • バックエンドなし • GDPR フレンドリー**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian Compatibility](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian Compatibility](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -39,9 +41,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 [公式サイト](https://llmwiki.greenerai.top/) | [Obsidianマーケットプレース](https://community.obsidian.md/plugins/karpathywiki) | [ブログ](https://llmwiki.greenerai.top/blog/) | [Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [なぜこのプラグインなのか？](#-なぜこのプラグインなのか) | 🚀 [クイックスタート](#-クイックスタート) | ✨ [特徴](#-特徴) | 🌐 [エコシステム](#-エコシステム) | 🔍 [検索の仕組み](#-検索の仕組み) | 🤖 [モデル](#-モデル) | ❓ [FAQ](#-faq)
+🤔 [なぜこのプラグインなのか？](#-なぜこのプラグインなのか) | 🚀 [クイックスタート](#-クイックスタート) | ✨ [特徴](#-特徴) | 🌐 [エコシステム](#-エコシステム) | 🔍 [検索の仕組み](#-検索の仕組み) | 🤖 [モデル](#-モデル) | ❓ [FAQ](#-faq) | 🎯 [こんな方に](#-こんな方に) | 🔒 [プライバシー](#-プライバシー)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← このプラグインが役に立ったら、コーヒー一杯♥️を奢ってくれたら嬉しいです、またはスター🌟を付けてね↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki は無料・セルフホスト・自前のバックエンドなし。時間の節約になっているなら、コーヒー一杯が保守の支えになります — ⭐ も同じくらい助かります。
 
 ---
 
@@ -125,7 +129,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → 「現在の取り込みをキャンセル」またはステータスバーをクリック — 次のバッチ境界でクリーンに停止 |
 | **📊 Ingestion history** | `Cmd+P/Ctrl+P` → 「取り込み履歴を表示」 — 過去の取り込み・Lintレポート・メンテナンス実行を検索可能なUIで表示 |
 
-![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Before | After |
 |--------|-------|
 | `notes/machine-learning.md`（フラットなファイル） | `wiki/concepts/supervised-learning.md` — `[[双方向リンク]]`、エイリアス、ソース帰属、`wiki/index.md`のエントリ付き |
@@ -181,13 +185,6 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - **🛡️ 取り込み前ゲート** — 空・空白・frontmatterのみのノートはLLM呼び出し前に拒否。コンテンツハッシュによる重複排除でパス間の同一ファイルを検出。
 - **🆕 Ingest candidate gate（v1.27.0、#514 / PR #521）** — オプトイントグル（`skipMentionOnlyCandidates`、デフォルト OFF、設定→Advanced）。言語に測定済みプロファイルがあるソースに対し（de は測定済み；en/fr/es/pt/nl/ko はエッジケース固定で推定；zh/ja の文字体系しきい値は未測定）、括弧内・列挙内・短いリスト項目のみで言及されている候補は、ページ作成 + dedup + 生成呼び出しを消費する前に刈り込みます。言語横断ノートはゲート対象外；プロファイルなしの Wiki 言語は取り込みごとに 1 回レポートされ、暗黙的にスキップされません。
 - **🆕 ステップ別 task policies（v1.27.0、#525 / #490）** — LLM Advanced→Task Policies フィールドで、ステージ別のテキストモード / thinking 設定をコード変更なしに上書きできます。リストにないステップの組み込みベースラインはそのまま維持されます。
-
-### 🔒 プライバシー
-
-- **🚫 バックエンドなし、トラッキングなし、分析なし。** Obsidian内部でのみ動作。ネットワークは設定したLLMプロバイダーとの通信のみに使用。
-- **📁 ソースファイルは読み取り専用。** プラグインは元のvaultノートを決して変更せず、`wiki/`以下に新しいページを作成するのみ。
-- **🦙 完全ローカルモード。** Ollama、LM Studio、または任意のローカルOpenAI互換エンドポイントで — ノートがマシンを離れることはありません。
-- **🔐 最小限の権限。** VaultファイルアクセスはWiki管理用。クリップボードアクセスはQueryモーダルの「コピー」ボタンをクリックした時のみ。
 
 ### 🦙 ローカルファースト
 
@@ -255,7 +252,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 Monte Carlo PPR（Fogaras 2005）を使用 — 3,000ランダムウォーク×50ステップ、Haveliwala 2002のデッドエンドルール付き。コストは**O(K×L)**（K = ウォーク数、L = 1 ウォークあたりのステップ数）でページ数に依存しないため、2,000ページのvaultでも200ページのvaultと同じ拡張レイテンシです。
 
-**PPR @5 = 27.1%（純粋kNNベースライン24.1%を上回る）** — このオープンソースLLM-Wiki分野で唯一公開されている検索ベンチマーク数値です。
+**PPR @5 = 27.1%（純粋kNNベースライン24.1%を上回る）** — このオープンソース wiki プラグイン分野で唯一公開されている検索ベンチマーク数値です。
 
 ### なぜ埋め込みを使わないのか
 
@@ -384,7 +381,7 @@ Obsidianコミュニティプラグインからインストール → プロバ�
 
 ## 💖 サポート
 
-LLM-Wikiがあなたのナレッジワークフローの重要な一部になっているなら：
+Karpathy LLM Wiki があなたのナレッジワークフローの重要な一部になっているなら：
 
 - ☕ **[Ko-fiでコーヒーを](https://ko-fi.com/greenerdalii)** — 単発または月額サポート
 - 💳 **[PayPalでチップを](https://paypal.me/greenerdalii)** — 単発チップ

@@ -22,6 +22,7 @@ import { type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { LLMClient } from '../types';
 import { obsidianFetchBridge, streamWithFallback } from '../core/obsidian-fetch-bridge';
+import { generateBuffered } from './buffered-generation';
 import { mapAiSdkError } from './openai-sdk-client';
 import {
   getCachedUrl,
@@ -184,8 +185,7 @@ export class AnthropicSdkClient implements LLMClient {
       // test connection passed, a wiki query failed with 404 on
       // `/anthropic/messages`, and the URL fallback never resolved.
       const languageModel = this.getProvider(probeModel ?? 'claude-haiku-4-5', this.fetchImpl, baseURL);
-      const { generateText } = await import('ai');
-      await generateText({
+      await generateBuffered({
         model: languageModel,
         messages: [{ role: 'user', content: 'hi' }],
         maxOutputTokens: 1,
@@ -217,9 +217,9 @@ export class AnthropicSdkClient implements LLMClient {
 
     try {
       const languageModel = this.getProvider(model, this.fetchImpl);
-      const { generateText } = await import('ai');
 
-      const result = await generateText({
+      // #980: streams on mobile, returns generateText's result on desktop.
+      const result = await generateBuffered({
         model: languageModel,
         // Anthropic accepts system at top-level; AI-SDK abstracts this.
         // Truthy-check drops `system: ''` so it cannot consume one of
@@ -251,8 +251,7 @@ export class AnthropicSdkClient implements LLMClient {
         // Retry with the resolved URL — separate try block so the
         // fallback result is returned even if the retry somehow fails.
         const retryLanguageModel = this.getProvider(model, this.fetchImpl, resolved);
-        const { generateText } = await import('ai');
-        const result = await generateText({
+        const result = await generateBuffered({
           model: retryLanguageModel,
           ...(system ? { system } : {}),
           messages: messagesWithCacheControl,

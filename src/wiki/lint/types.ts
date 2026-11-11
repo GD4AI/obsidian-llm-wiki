@@ -106,6 +106,8 @@ export interface ProgrammaticFindings {
   ungroundedQuotes: import('./scanners').QuoteGroundingIssue[];
   /** v1.23.0 P1-6 — hub pages with redundant links in ## Related (Issue #157 / #175). */
   hubLinkDensityIssues: import('./scanners').HubLinkDensityIssue[];
+  /** Issue #954 — hubs whose neighbourhood crystallized; report-only, nothing is written. */
+  crystallizedHubs: import('./scanners').CrystallizedHub[];
   /** Issue #220 Tier 0 (read half) — source pages whose origin note changed since ingest. */
   sourceDriftIssues: import('./scanners').SourceDriftIssue[];
   /** #575 read half — pages carrying the triage-stamped `contradictions:` marker. */

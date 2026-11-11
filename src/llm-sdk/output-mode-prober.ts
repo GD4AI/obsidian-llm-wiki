@@ -65,7 +65,10 @@ import { classifyFieldError } from './shared-rejection-verbs';
 // only by rejecting the plain schema with a strict-mode complaint, so
 // backends that accept today's body never see it. Task policies can pin it
 // (`extract=strict:off`).
-export type OutputMode = 'json_schema' | 'json_schema_strict' | 'json_object' | 'text_prompt';
+import type { OutputMode } from '../types';
+
+// Re-exported so callers that read the type here keep their import.
+export type { OutputMode };
 
 /**
  * Field markers for the Tier 1 demotion classifier (json_object /

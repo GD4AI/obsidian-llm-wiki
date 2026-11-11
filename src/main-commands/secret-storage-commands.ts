@@ -28,7 +28,7 @@ export interface SecretStorageCommandsMethods {
 export const secretStorageCommands = {
   async migrateApiKeyToSettings(this: SecretStorageCommandsHost): Promise<void> {
     // Read the live key from Obsidian SecretStorage (OS keychain).
-    let stored: string | null = null;
+    let stored: string | null;
     try {
       stored = new ProviderSecretStore(this.app.secretStorage, this.settings.providerApiKeySecretId).load();
     } catch (error: unknown) {

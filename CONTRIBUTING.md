@@ -66,14 +66,14 @@ src/
 │   ├── openai-sdk-client.ts        # OpenAI via @ai-sdk/openai (Responses API for reasoning models)
 │   ├── anthropic-sdk-client.ts     # Anthropic via @ai-sdk/anthropic (baseURL support for Coding Plan / z.ai / GLM)
 │   ├── openai-compat-sdk-client.ts # OpenAI-compatible via @ai-sdk/openai-compatible — every preset except `openai` / `openai-codex` / `anthropic` / `anthropic-compatible` / `bedrock-anthropic`, and anything declaring `apiShape: 'responses'`
-│   ├── openai-codex-sdk-client.ts  # ChatGPT Plan (Codex OAuth) — separate Codex Responses client (v1.25.2, OAuth device-code + loopback)
+│   ├── openai-codex-sdk-client.ts  # ChatGPT Plan (Codex OAuth) — separate Codex Responses client (OAuth device-code + loopback)
 │   ├── openai-codex/               # Codex OAuth private modules (adapter + token store)
-│   ├── compat-headers.ts           # Per-provider request headers + preset header factory (v1.28.0, #723/#735)
+│ ├── compat-headers.ts # Per-provider request headers + preset header factory
 │   ├── reasoning-strip-probe.ts    # Per-baseURL 400-strip cache + two-marker (verb+field) classifier (v1.26.0 Batch 6)
 │   ├── token-key-probe.ts          # max_tokens ↔ max_completion_tokens runtime fallback (KISS, no regex)
-│   ├── sampling-args.ts            # Shared sampling-args builder for cross-SDK createMessage (v1.26.0)
-│   ├── provider-api-key-resolver.ts # resolveProviderApiKey + resolveInitialApiKey precedence (v1.25.7, #182)
-│   ├── provider-secret-store.ts    # Obsidian SecretStorage adapter (v1.25.3)
+│ ├── sampling-args.ts # Shared sampling-args builder for cross-SDK createMessage
+│ ├── provider-api-key-resolver.ts # resolveProviderApiKey + resolveInitialApiKey precedence
+│ ├── provider-secret-store.ts # Obsidian SecretStorage adapter
 │   └── finish-reason.ts            # Shared finish-reason extraction helper
 ├── core/                # Pure function modules (zero IO, fully testable)
 │   ├── i18n.ts                 # Type-safe i18n accessor
@@ -86,14 +86,12 @@ src/
 │   ├── report.ts               # Report truncation + heading nesting
 │   ├── arrays.ts               # Array coercion + source tag extraction
 │   ├── markdown.ts             # Markdown cleanup + thinking block extraction/encoding
-│   ├── embedded-image-resolver.ts  # Local `![[...]]` / `![](...)` image resolution through Obsidian (v1.28.0, #608)
-│   ├── embedded-image-evidence.ts  # Per-image context / evidence / skip reasons for the source-page audit section (v1.28.0, #608)
-│   ├── node-https-fetch.ts     # Desktop `node:https` transport for origins that block the renderer (v1.28.0, #741)
-│   ├── vocabulary.ts           # One tag vocabulary read by the prompt, the gate, the lint and the retag paths (v1.28.0, #672)
-│   ├── diff.ts                 # LCS line-level diff (schema diff Modal, v1.22.0)
-│   ├── detail-renderer.ts      # Wiki page detail rendering
+│ ├── embedded-image-resolver.ts # Local `![[...]]` / `![](...)` image resolution through Obsidian
+│ ├── embedded-image-evidence.ts # Per-image context / evidence / skip reasons for the source-page audit section
+│ ├── node-https-fetch.ts # Desktop `node:https` transport for origins that block the renderer
+│ ├── vocabulary.ts # One tag vocabulary read by the prompt, the gate, the lint and the retag paths
+│   ├── diff.ts                 # LCS line-level diff (schema diff Modal)
 │   ├── token-cap.ts            # max_tokens cap helper
-│   ├── truncation-retry.ts     # Shared truncation retry policy
 │   ├── batch-limits.ts         # Adaptive batch sizing
 │   ├── batch-merger.ts         # Multi-batch result merging
 │   ├── convergence-detector.ts # Early-stop on low-yield batches
@@ -102,62 +100,64 @@ src/
 │   ├── prompt-builders.ts      # Prompt template builders
 │   ├── sources-normalizer.ts   # Frontmatter sources field normalization
 │   ├── source-slug.ts          # FNV-1a source-slug fingerprinting
-│   ├── source-requirements.ts  # Pre-ingest content validation (#164, v1.21.0)
-│   ├── status-bar.ts           # Ingest status bar text builder (v1.22.0)
-│   ├── log-header.ts           # i18n log.md header builder (v1.22.2)
-│   ├── log-parser.ts           # Pure-function log.md → structured data parser (v1.21.0)
-│   ├── incomplete-page-cleaner.ts # Orphaned page auto-cleanup (#170, v1.21.0)
-│   ├── settings-migrations.ts  # Pure-function settings migration pipeline (v1.22.1)
-│   ├── backup-rotation.ts      # Schema backup rotation, max 3 (v1.22.0)
-│   ├── related-link-corrector.ts # Deterministic related-link prefix correction (v1.22.1, full-vault resolver v1.26.4 PR #484)
-│   ├── localize-welcome-note.ts # D8 LLM dynamic welcome-note translation (v1.23.0)
-│   ├── obsidian-fetch-bridge.ts # window.fetch bridge for real streaming (v1.23.0, 326 LOC)
-│   ├── url-fallback.ts         # Custom baseURL /v1 auto-resolution (v1.23.0, 395 LOC)
-│   ├── build-folder-tree.ts    # Recursive folder tree for Multi-File Ingest (v1.23.0)
-│   ├── ingest-queue.ts         # IngestQueue pub/sub store (v1.23.0, Issue #130)
-│   ├── build-graph.ts          # Wiki-link graph builder (v1.23.0)
-│   ├── monte-carlo-ppr.ts      # Fogaras 2005 MC-PPR engine (v1.23.0)
-│   ├── ppr-cascade.ts          # Hybrid 3-tier retrieval cascade (v1.23.0, 213 LOC; v1.27.x PATCH PR #625: Unicode word runs, needleHits word-start, PPR-ranked merge)
-│   ├── section-extractor.ts    # Zero-LLM Tier B section parser (v1.23.0)
-│   ├── hub-detection.ts        # Hub-link distinctiveness scanner (v1.23.0)
-│   ├── hub-link-distinctiveness.ts # Link distinctiveness scoring (v1.23.0, #157/#175)
-│   ├── hub-retirement.ts       # Hub crystallization retirement signal (v1.23.0, PR #215 @DocTpoint)
-│   ├── tier-detection.ts       # Three-tier onboarding decision logic (v1.23.0)
-│   ├── welcome-note-template.ts # Welcome note template builder (v1.23.0)
-│   ├── ensure-welcome-note.ts  # First-run Welcome note orchestrator (v1.23.0)
-│   ├── smoke-test.ts           # LLM configuration verification wrapper (v1.23.0)
-│   ├── transient-retry.ts      # Project-wide withTransientRetry<T> helper (v1.24.0, 3× exp backoff)
-│   ├── model-resolver.ts       # resolveModelForTask(settings, task) #208 per-task routing helper (v1.24.0)
-│   ├── pdf-cache.ts            # Content-hash PDF conversion cache + LRU eviction (v1.25.0)
-│   ├── pdf-converter.ts        # PDF→Markdown via LLM FilePart + OCR-style prompt (v1.25.0)
-│   ├── pdf-metadata.ts         # Pure-function PDF Info dict parser (title/author/pageCount, v1.25.0)
-│   ├── folder-scope.ts         # Folder-boundary predicate (#364, v1.25.10) — anchor on trailing slash, root wildcard
-│   ├── contradicted-marker.ts  # `contradictions:` frontmatter marker (#312 §4, v1.25.10)
-│   ├── source-language.ts      # Source-frontmatter language directive builder (#350 follow-on, v1.25.10)
-│   ├── template-renderer.ts    # {{placeholder}} substitution with named keys (#244/v1.25.10)
+│ ├── source-requirements.ts # Pre-ingest content validation
+│ ├── status-bar.ts # Ingest status bar text builder
+│ ├── log-header.ts # i18n log.md header builder
+│ ├── log-parser.ts # Pure-function log.md → structured data parser
+│ ├── incomplete-page-cleaner.ts # Orphaned page auto-cleanup
+│ ├── settings-migrations.ts # Pure-function settings migration pipeline
+│ ├── backup-rotation.ts # Schema backup rotation, max 3
+│   ├── related-link-corrector.ts # Deterministic related-link prefix correction (full-vault resolver v1.26.4 PR #484)
+│ ├── localize-welcome-note.ts # D8 LLM dynamic welcome-note translation
+│   ├── obsidian-fetch-bridge.ts # window.fetch bridge for real streaming (326 LOC)
+│   ├── url-fallback.ts         # Custom baseURL /v1 auto-resolution (395 LOC)
+│ ├── build-folder-tree.ts # Recursive folder tree for Multi-File Ingest
+│ ├── ingest-queue.ts # IngestQueue pub/sub store
+│ ├── build-graph.ts # Wiki-link graph builder
+│ ├── monte-carlo-ppr.ts # Fogaras 2005 MC-PPR engine
+│   ├── ppr-cascade.ts          # Hybrid 3-tier retrieval cascade (213 LOC; v1.27.x PATCH PR #625: Unicode word runs, needleHits word-start, PPR-ranked merge)
+│ ├── section-extractor.ts # Zero-LLM Tier B section parser
+│ ├── hub-detection.ts # Hub-link distinctiveness scanner
+│ ├── hub-link-distinctiveness.ts # Link distinctiveness scoring
+│   ├── hub-retirement.ts       # Hub crystallization retirement signal (PR #215 @DocTpoint)
+│ ├── tier-detection.ts # Three-tier onboarding decision logic
+│ ├── welcome-note-template.ts # Welcome note template builder
+│ ├── ensure-welcome-note.ts # First-run Welcome note orchestrator
+│ ├── smoke-test.ts # LLM configuration verification wrapper
+│   ├── transient-retry.ts      # Project-wide withTransientRetry<T> helper (3× exp backoff)
+│ ├── model-resolver.ts # resolveModelForTask(settings, task) #208 per-task routing helper
+│ ├── pdf-cache.ts # Content-hash PDF conversion cache + LRU eviction
+│ ├── pdf-converter.ts # PDF→Markdown via LLM FilePart + OCR-style prompt
+│   ├── pdf-metadata.ts         # Pure-function PDF Info dict parser (title/author/pageCount)
+│ ├── folder-scope.ts # Folder-boundary predicate — anchor on trailing slash, root wildcard
+│   ├── contradicted-marker.ts  # `contradictions:` frontmatter marker (#312 §4)
+│   ├── source-language.ts      # Source-frontmatter language directive builder (#350 follow-on)
+│ ├── template-renderer.ts # {{placeholder}} substitution with named keys
 │   ├── source-lemma.ts         # Source-slug = page-lemma deterministic merge (#348, v1.26.0 PR #357 DocTpoint)
 │   ├── link-retarget.ts        # Vault-wide link retarget for mergeDuplicates (#386, v1.26.0 PR #392 DocTpoint)
 │   ├── llm-task-usage.ts       # Per-step LLM call + wall-time ledger (PR #409, v1.26.1 eucher)
 │   ├── task-policy.ts          # Per-step output mode + thinking policy (#481, v1.26.4 PR #490) — settings taskPolicies
-│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragr
-│   ├── assembly.ts            # Deterministic seed assembly + tie-break rules (v1.29.0, #837)
-│   ├── citation-format.ts     # Academic citation rendering for query answers (v1.29.0, #857)
-│   ├── conversation-hash.ts   # Conversation-history fingerprint for the query cache key (v1.29.0)
-│   ├── model-id-filter.ts     # Namespaced model-id filter for the provider pickers (v1.29.0, #758)
-│   ├── query-expansion.ts     # Two-stage Rocchio expansion (v1.29.0, #855)
-│   ├── recall-fixtures.ts     # Retrieval recall fixtures (v1.29.0, #837)
-│   ├── recall-harness.ts      # Retrieval recall harness (v1.29.0, #837)
-│   ├── retrieval-profile.ts   # Per-task retrieval profile (v1.29.0)
-│   ├── retrieval-query.ts     # Query → retrieval terms (v1.29.0)
-│   ├── term-index.ts          # BM25F field terms + IDF over a document-frequency table (v1.29.0, #837)
-│   ├── term-index-cache.ts    # Per-session term-index cache (v1.29.0, #843)
-│   ├── user-ignore.ts         # Obsidian "Excluded files" predicate adapter (v1.29.0, #872)aphs + guardBodyRewrite)
+│   ├── paragraph-provenance.ts # Sourced-paragraph guard for rewrites (PR #631, v1.27.x PATCH — footnote-owned paragraphs + guardBodyRewrite)
+│ ├── assembly.ts # Deterministic seed assembly + tie-break rules
+│ ├── citation-format.ts # Academic citation rendering for query answers
+│ ├── conversation-hash.ts # Conversation-history fingerprint for the query cache key
+│ ├── model-id-filter.ts # Namespaced model-id filter for the provider pickers
+│ ├── query-expansion.ts # Two-stage Rocchio expansion
+│ ├── recall-fixtures.ts # Retrieval recall fixtures
+│ ├── recall-harness.ts # Retrieval recall harness
+│ ├── retrieval-profile.ts # Per-task retrieval profile
+│ ├── retrieval-query.ts # Query → retrieval terms
+│ ├── term-index.ts # BM25F field terms + IDF over a document-frequency table
+│ ├── term-index-cache.ts # Per-session term-index cache
+│ ├── user-ignore.ts # Obsidian "Excluded files" predicate adapter
 ├── wiki/                # Wiki engine modules
-│   ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer (v1.28.0, #603/#750)
+│ ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
-│   ├── graph-cache.ts   # (v1.25.1) `_cachedGraph` + invalidate logic
-│   ├── index-generation.ts # (v1.25.1) generateFlatIndex + helpers
-│   ├── log-writer.ts    # (v1.25.1) updateLog + formatters
+│ ├── graph-cache.ts # `_cachedGraph` + invalidate logic
+│ ├── index-generator.ts # generateFlatIndex + helpers
+│   ├── page-batch-runner.ts # Per-batch ingest runner
+│   ├── dedup-pages.ts   # Page-level dedup helpers
+│ ├── log-writer.ts # updateLog + formatters
 │   ├── query-engine/    # Conversational query with streaming + thinking UI
 │   │   ├── index.ts                           # re-export shim
 │   │   ├── types.ts + state.ts                # type declarations + InternalView
@@ -180,13 +180,13 @@ src/
 │   ├── conversation-ingest.ts # Chat → wiki knowledge
 │   ├── contradictions.ts # Contradiction detection
 │   ├── system-prompts.ts # Language directive + section labels
-│   ├── turn-indicator.ts # Right-edge vertical dot conversation nav (v1.23.2, #221)
+│ ├── turn-indicator.ts # Right-edge vertical dot conversation nav
 │   ├── lint/            # Lint subsystem
 │   │   ├── controller.ts         # Lint orchestration + 3 phase modules
 │   │   ├── fix-runners.ts        # Batch fix execution helpers (pageGenerationConcurrency batching, v1.25.10 PATCH #367)
 │   │   ├── scanners.ts           # Scanners (dead links, orphans, aliases, quote grounding)
 │   │   ├── duplicate-detection.ts # Programmatic candidate generation — dual-key bucketed dedup (v1.26.0 Batch 1, PR #401)
-│   │   ├── lint-analysis-context.ts # Phase context shared by analysis + dedup phases (v1.26.0)
+│ │ ├── lint-analysis-context.ts # Phase context shared by analysis + dedup phases
 │   │   ├── report-builder.ts     # Pure-function report markdown builder
 │   │   ├── types.ts              # LintContext, LintPhaseContext, findings
 │   │   ├── utils.ts              # Shared lint helpers
@@ -198,33 +198,31 @@ src/
 │   │   ├── merge-duplicates.ts   # Duplicate page merge (vault-wide link retarget, #386, v1.26.0 PR #392 DocTpoint)
 │   │   ├── fix-polluted-page.ts  # Polluted basename rename
 │   │   ├── llm-phases/
-│   │   │   ├── scoring-phase.ts     # PR #248
-│   │   │   ├── synthesis-phase.ts   # PR #248
 │   │   │   ├── dedup-phase.ts       # Lint dedup phase — inline retry/backoff/halving + force-disable thinking (v1.26.0 Batches 2+6+7)
-│   │   │   └── contradiction-phase.ts # Contradiction detection phase (v1.26.0)
+│ │ │ └── contradiction-phase.ts # Contradiction detection phase
 │   │   └── phases/
 │   │       ├── preparation.ts    # Page read, link fix, sources normalize
 │   │       └── programmatic.ts   # Fast programmatic scanners
-│   └── prompts/         # LLM prompt templates by domain (INGESTION / GENERATION / MERGE / FIX / LINT / CONVERSATION / PDF, v1.25.0)
+│   └── prompts/         # LLM prompt templates by domain (INGESTION / GENERATION / MERGE / FIX / LINT / CONVERSATION / PDF)
 │       ├── ingestion.ts
 │       ├── generation.ts
 │       ├── merge.ts
 │       ├── fixes.ts
 │       ├── lint.ts
 │       ├── conversation.ts
-│       └── pdf.ts        # OCR-style verbatim transcriber + unwrapFencedMarkdown helper (v1.25.0)
+│ └── pdf.ts # OCR-style verbatim transcriber + unwrapFencedMarkdown helper
 ├── schema/              # Schema co-evolution
 │   ├── schema-manager.ts # SchemaManager (read/write schema config)
 │   ├── auto-maintain.ts # File watcher, periodic lint, startup quick fixes
 │   └── analyze.ts       # Schema-analyze with cancel wiring
-├── ui/                  # Settings + history-modal/ (14-file split, v1.24.0) + modals/ (7-file split, v1.24.0)
+├── ui/                  # Settings + history-modal/ (14-file split) + modals/ (7-file split)
 │   ├── settings.ts      # LLMWikiSettingTab + tempSettings (v1.25.1: split into 10 settings-sections/ + helpers)
 │   ├── settings-helpers.ts        # Pure helpers (commitTempSettings logic, classification, etc.)
-│   ├── settings-per-task-helpers.ts # Per-task model dropdown rendering (v1.24.0)
+│ ├── settings-per-task-helpers.ts # Per-task model dropdown rendering
 │   ├── settings-sections/  # Per-section renderers, v1.25.1 + v1.26.0
-│   │   ├── shared-inputs.ts            # Consolidated renderNumberInput (v1.26.0)
+│ │ ├── shared-inputs.ts # Consolidated renderNumberInput
 │   │   ├── advanced-section.ts         # LLM Advanced (Custom mode: temperature, repetitionPenalty, forcePdfSupport)
-│   │   ├── advanced-settings-section.ts # Bottom "Advanced settings" panel — dedup thresholds + lintDedupIncludeSources (v1.26.0)
+│ │ ├── advanced-settings-section.ts # Bottom "Advanced settings" panel — dedup thresholds + lintDedupIncludeSources
 │   │   ├── provider-section.ts
 │   │   ├── model-section.ts
 │   │   ├── language-section.ts
@@ -239,10 +237,10 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
-└── __tests__/           # Unit tests (vitest, 5040 tests / 368 files; v1.29.0 MINOR 2026-10-26)
+└── __tests__/           # Unit tests (vitest, 5,243 tests / 386 files)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
-└── dev-instrument/     # UPSTREAM DEV-ONLY INSTRUMENT (v1.27.0, PR #511) — engine contributors only
+└── dev-instrument/ # UPSTREAM DEV-ONLY INSTRUMENT — engine contributors only
     ├── run-instrument.mjs # Entry point: `node tools/dev-instrument/run-instrument.mjs <vault> <source>`
     ├── README.md        # Measurement-arm reference (WIKI_THINKING_MODE / WIKI_TEMP / WIKI_TOP_P)
     ├── tsconfig.json    # Separate tsconfig (@types/node@22)
@@ -254,16 +252,16 @@ tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-
     │   ├── vault-fs.ts          # Node `fs/promises` vault adapter + link cache
     │   ├── shim.ts              # Obsidian API shim (vault + app stubs)
     │   ├── exit-code.ts         # Exit-code mapping
-    │   ├── graph-audit.ts       # Graph audit over a real vault (v1.29.0, #837)
+ │ ├── graph-audit.ts # Graph audit over a real vault
     │   ├── graph-audit-cli.ts   # CLI wrapper for graph-audit
-    │   ├── recall-diagnostic.ts # Per-query recall diagnostic (v1.29.0, #837)
+ │ ├── recall-diagnostic.ts # Per-query recall diagnostic
     │   └── recall-diagnostic-cli.ts # CLI wrapper for recall-diagnostic
-    └── run-*.mjs        # Measurement harnesses, one per question. v1.29.0 added the
+    └── run-*.mjs        # Measurement harnesses, one per question: the
                          # context-cost, follow-up-rate, layered and expansion-strata arms
                          # alongside the older retrieval/assembly/answer-path A/B arms.
 ```
 
-> **Note on `tools/`:** since v1.27.0 (PR #511) the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors. It runs the real `WikiEngine` against real LLM spend. It also keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
+> **Note on `tools/`:** the in-tree CLI is **gone** — `package.json` carries no `bin` and no `llm-wiki` script. Production headless ingest is the sibling repo [`green-dalii/obsidian-llm-wiki-cli`](https://github.com/green-dalii/obsidian-llm-wiki-cli) (`npx karpathywiki-cli ingest …`). What remains in-tree is `tools/dev-instrument/`, an **upstream dev-only instrument** for engine contributors. It runs the real `WikiEngine` against real LLM spend. It also keeps the per-step token/latency accounting (the 979s → 365s → 151s evidence chain). The pre-migration CLI is preserved at branch `legacy/cli-v1.26.4-snapshot` for anyone mid-transition. Removing the user-facing CLI also eliminated 49 of ~52 Obsidian Bot findings on `tools/`.
 
 ## Internationalization
 

@@ -29,8 +29,8 @@ import {
   type PageTerms,
   type CorpusTerms,
 } from '../../../src/core/term-index';
-import type { SourcedPage, Fixture } from '../../../src/core/recall-harness';
-import { rankPages, scoreFixture } from '../../../src/core/recall-harness';
+import type { SourcedPage, Fixture } from './recall-harness';
+import { rankPages, scoreFixture } from './recall-harness';
 
 /** A page with the raw text the diagnostic needs. */
 export interface DiagnosticPage extends SourcedPage {

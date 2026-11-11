@@ -17,16 +17,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Notice, TFile, TFolder } from 'obsidian';
 import { createWikiEngineHarness, wikiPagesWritten } from '../__support__/wiki-engine-harness';
-import * as pdfConverter from '../../core/pdf-converter';
-import { convertPdfToMarkdown } from '../../core/pdf-converter';
+import * as pdfConverter from '../../wiki/pdf-converter';
+import { convertPdfToMarkdown } from '../../wiki/pdf-converter';
 import { MineruPdfError } from '../../core/mineru-converter';
 
 // Mock pdf-converter so we don't need real PDF bytes / SubtleCrypto / LLM call.
 // Tests assert on WikiEngine's integration with the converter's return value.
 // NOTE: vi.mock factory must NOT reference top-level variables (hoisted to top
 // of file before declarations). Tests reach into the mock via vi.mocked().
-vi.mock('../../core/pdf-converter', async () => {
-  const actual = await vi.importActual<typeof import('../../core/pdf-converter')>('../../core/pdf-converter');
+vi.mock('../../wiki/pdf-converter', async () => {
+  const actual = await vi.importActual<typeof import('../../wiki/pdf-converter')>('../../wiki/pdf-converter');
   return {
     ...actual,
     convertPdfToMarkdown: vi.fn(),

@@ -141,6 +141,59 @@ describe('SourceAnalyzer', () => {
     expect(spy.mock.calls[1][0].messages[0].content).not.toContain('Embedded Image Visual Evidence');
   });
 
+  // #932: the two branches below survived mutation when the embedded-image phases
+  // were extracted, so nothing pinned them. Both are written against the current
+  // behaviour on purpose — they are characterisation tests, not new claims.
+  it('counts no package when every image in it fails to read', async () => {
+    const { ctx } = createMockContext({
+      vaultFiles: { [TEST_PATH]: '# Test\n![[assets/missing.png]]' },
+      settings: { analyzeEmbeddedImages: true },
+      llmResponses: [JSON.stringify({ entities: [], concepts: [] })],
+    });
+    const app = ctx.app as unknown as {
+      metadataCache: { getFirstLinkpathDest: () => { path: string } | null };
+      vault: { adapter: { readBinary: () => Promise<ArrayBuffer>; stat: () => Promise<{ size: number }> } };
+    };
+    app.metadataCache.getFirstLinkpathDest = () => ({ path: 'assets/missing.png' });
+    app.vault.adapter = {
+      readBinary: async () => { throw new Error('ENOENT'); },
+      stat: async () => ({ size: 1 }),
+    };
+    const client = ctx.getClient()!;
+    const spy = vi.spyOn(client, 'createMessage');
+
+    const result = await run(new SourceAnalyzer(ctx), TEST_PATH);
+
+    expect(result?.embedded_image_analysis).toMatchObject({ discovered: 1, queued: 1, packages: 0, sent: 0 });
+    expect(result?.embedded_image_analysis?.skipped).toEqual([{ path: 'assets/missing.png', reason: 'missing' }]);
+    expect(result?.embedded_image_analysis?.evidence[0]).toMatchObject({ status: 'skipped', reason: 'missing' });
+    // Only the text extraction ran: an empty package is not sent to the model.
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('names a GIF decode failure as such when the frame cannot be extracted', async () => {
+    const { ctx } = createMockContext({
+      vaultFiles: { [TEST_PATH]: '# Test\n![[assets/anim.gif]]' },
+      settings: { analyzeEmbeddedImages: true },
+      llmResponses: [JSON.stringify({ entities: [], concepts: [] })],
+    });
+    const app = ctx.app as unknown as {
+      metadataCache: { getFirstLinkpathDest: () => { path: string } | null };
+      vault: { adapter: { readBinary: () => Promise<ArrayBuffer>; stat: () => Promise<{ size: number }> } };
+    };
+    app.metadataCache.getFirstLinkpathDest = () => ({ path: 'assets/anim.gif' });
+    app.vault.adapter = {
+      // Not a GIF stream: the decoder must refuse it rather than send bytes.
+      readBinary: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+      stat: async () => ({ size: 4 }),
+    };
+
+    const result = await run(new SourceAnalyzer(ctx), TEST_PATH);
+
+    expect(result?.embedded_image_analysis?.skipped).toEqual([{ path: 'assets/anim.gif', reason: 'gif-decode-failed' }]);
+    expect(result?.embedded_image_analysis?.evidence[0]).toMatchObject({ status: 'skipped', reason: 'gif-decode-failed' });
+  });
+
   it('propagates non-vision image-analysis errors', async () => {
     const { ctx } = createMockContext({
       vaultFiles: { [TEST_PATH]: '# Test\n![[assets/chart.png]]' },

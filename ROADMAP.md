@@ -2,16 +2,13 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.29.0 MINOR (2026-10-26, 68 commits / 5040 tests). See [CHANGELOG.md §1.29.0](./CHANGELOG.md#1290---2026-10-26) for the canonical composition record. | **Updated:** 2026-10-26
-**Next MINOR candidate:** **v1.30.0 MINOR**, opened 2026-10-26 with three items: **#895** (prompt customization, split out of #755 — held on a design question, see below), **#886** (the answer context's token ceiling), and **#781** (the M0 co-citation projection). #729 Phase 1 was v1.29.0's named head and **v1.29.0 shipped without it**; the ordering was **decided: direction A** — one measurement pass comes first, then M0. The measurement ran and narrowed the claim (CHANGELOG §1.29.0), and what it did NOT settle is the design question #781 implements, so #781 is the one item of the three still blocked on a decision rather than on code.
+**Latest shipped:** v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files). See [CHANGELOG.md §1.30.0](./CHANGELOG.md#1300---2026-11-07) for the canonical composition record. | **Updated:** 2026-11-10 — `main` at `21e7a6b9`, 5,307 tests / 394 files
+**Next MINOR candidate:** **v1.31.0 MINOR**, opened 2026-11-07. `v1.30.0` shipped its three named items — #895 (prompt customization), #886 (the answer context's token ceiling), #955 (crystallized hub candidates) — plus #957's renderer crash fix. What did not land stays open on its own issue rather than as milestone debt: **#781** (blocked on a decision, not on code), **#729** (waiting on the scoring model and prompt), **#873** (the taxonomy change that would fire MAJOR, and now the home of #902's Option B), **#980** (the iOS transport ceiling, filed 2026-11-09).
+**#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 11 locales.
 
 **Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
 
-**v1.29.0 shipped the read side of the retrieval rewrite.** The lexical stage now reads page bodies and scores title, alias, summary and body with BM25F (#837); the two-stage Rocchio expansion sits on top of it, with its claim narrowed by its own measurement (#855); Related pages are shaped so one hub cannot drag every page toward it (#841); and `legacyScorer` gives a reader whose results got worse a way back (#842). The correctness wave in the same release was quieter and just as load-bearing: the watcher honours Obsidian's excluded-files list (#879), the log header's command hint refreshes (#887), the legacy log-header cut no longer deletes the first entry (#889), and error normalization keys off the SDK's marker rather than class identity (#893) — that last one because a dependency bump had silently stopped `instanceof` matching across a duplicate copy.
-
-**#895 is held on a design question, not on code.** The prompt-customization settings shipped with the English text in eight of eleven locales (fixed in #895's follow-up) and, more seriously, a requested section is stripped after generation and merges run without the requirement at all — both reported by @KvikullSigurdur and both independently reproduced here. The section list is plugin-owned, so the open question is whether `contentRequirements` may add sections or only shape the known ones. See the PR thread.
-
-**Of the four PRs that paragraph named as open, two have landed or closed:** #786 shipped as `f41a39d0` (AI SDK v7), and #701 was closed with the analysis that its premise does not hold.
+**v1.29.0's composition record is the CHANGELOG's, not this file's.** The read side of the retrieval rewrite (BM25F body scoring #837, two-stage Rocchio #855, Related-page shaping #841, `legacyScorer` #842) and its correctness wave (#879 #887 #889 #893) are recorded there in full.
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
@@ -67,12 +64,12 @@ This is the first section to read after a compact. Each row is a decision, not a
 The work is done or scoped, and the missing piece is a call. Everything here now sits on
 `v1.30.0 MINOR` or `v1.29.x PATCH`; nothing here blocks v1.29.0, which shipped 2026-10-26.
 
-**Milestone map (restructured 2026-10-26).** Four windows are open, and every open issue and PR is assigned to one of them.
+**Milestone map (restructured 2026-11-10).** Three windows are open, and every open issue is assigned to one of them.
 
 | Milestone | What belongs in it |
 |---|---|
-| `v1.29.x PATCH` | Bug fixes, docs and engineering hygiene. No new features |
-| `v1.30.0 MINOR` | New capabilities, and the #729 design track's head |
+| `v1.31.0` | New capabilities, and the hardening that protects them |
+| `Architecture refactor` | The refactor track only, one issue per layer, per #925 |
 | `v1.27.0+ research` | Ideas with no committed version — experimental, or awaiting a design conversation |
 
 **The per-milestone counts are deliberately not carried here.** This table held them until 2026-10-12, when they were found **wrong across all three rows** — the previous figures read 12 / 16 / 16 and `v1.29.0 MINOR` was five items high, because the move of #729's work into PRs (#781, #819) and the closure of #764 #752 #608 #687 by release had never been subtracted. Re-deriving them fixed that, and then they moved again inside the hour as four PRs and one issue arrived. **A number that changes hourly does not belong in a planning document; it belongs in a command.** Read them with `gh api "/repos/GD4AI/obsidian-llm-wiki/milestones?state=open" --jq '.[] | "\(.title): \(.open_issues)"'`.
@@ -92,39 +89,31 @@ before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINO
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note. `decideSourceLemma` is a pure function, so the opt-out is one setting plus one union member | **Accepted** — answered 2026-10-28; implement |
 | **#785** | "Full Reindex" request | Two requests bundled: re-extract with current settings (accepted) and "clear everything" (declined — no undo, and a partial failure leaves nothing) | Implement the re-extract half; keep the clear-out half declined |
 
-**Not waiting on a decision, just unstarted:** **#907** (two items left after criterion 6 shipped), **#567**, **#468**, **#668**, **#664**, **#677**, **#890**. **#914** shipped as #919 and is no longer on this list.
+**Not waiting on a decision, just unstarted:** **#567**, **#468**, **#668**, **#664**, **#677**, **#890**. **#907**, **#755**, **#793** and **#872** have since closed; **#914** shipped as #919.
 
 **Waiting on someone else, not on a decision:** **#793** — the `good first issue` label came off on 2026-10-04, and the work remains documentation. The ten translated READMEs quote English command names, and the command name
 is stored twice per locale. A verification pass on 2026-10-04 corrected its own table. `README_RU.md` and `README_ZH-Hant.md` are already clean, so the count is 7 files
 rather than 10. `README_RU.md` is the better reference, because it already quotes translated names.
 **Shipped, and where that record lives:** [CHANGELOG.md](./CHANGELOG.md). A "resolved since this queue was written" list used to sit here. It was removed on 2026-10-12: it had been frozen at 2026-10-03, and a frozen resolve list reads as current state long after it stops being true. The per-version composition record is canonical in CHANGELOG, and a second copy here is a second place to be wrong.
 
-### The next-work order — 2026-10-29, re-ranked by ROI
+### The next-work order — 2026-11-10, ranked by what the guardrail proves
 
-The rule is [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived): **ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost ranks below a medium-impact one that is measured, because the second actually ships.
+The ROI rule is [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived). It ranks by impact, certainty and effort. It cannot see one property, and that property decides the order below: **does the item replace a proxy with the thing the proxy stands in for?**
 
-Tier 0 is work that is already done and waiting for a merge decision, so its effort is zero and its impact is known.
+The reason is measured, not preferred. A lint snapshot was cited as the guard for about 430 moved lines, three mutations passed the full suite, and #981 had to build the coverage afterwards. The same shape sits in three more places: a line count where size matters, a context budget where the whole request mattered, an `import` scan where module loading mattered. Work that ends one of those four is worth more than work of equal effort that does not.
 
-| Tier | Item | Impact | Certainty | Effort | Why here |
-|---|---|---|---|---|---|
-| **1** | **#907 — two items left after criterion 6 shipped** | `npm ci` fails in this repo on a `@types/node` peer range, and `package-lock.json` carries 313 `registry.npmmirror.com` URLs that `.npmrc` did not prevent. Criterion 6 itself shipped as #921 + #920 | High — both measured here | Small, two records |
-| **2** | **#880 (reopened) — the request has no ceiling, only its wiki part does** | #886 shipped a budget over `assembleWikiContext`; history, custom instructions and the answer budget are outside it, so "the answer fits" is still unenforced | High — measured on the same vault | Medium, it is a budgeting decision |
-| **2** | **#891** — align the four AI SDK packages so one provider-utils copy is bundled | `instanceof` across copies silently disabled the whole error normalisation once already (#892) | High | Medium-high | Bigger than #914 and the same family of defect |
-| **2** | **#915** — math in answers does not render | Anyone reading a paper hits it; the same renderer serves generated pages | High | Medium | Needs a normaliser plus one prompt line |
-| **2** | **#677** — a classification move makes untouched notes read as edited | Data-integrity perception on the write path | Medium | Medium | Read before scheduling |
-| **3** | **#910** — does an exact value survive ingest? | Unknown | — | Medium | The maintainer does not require an ingest change, so the measurement's decision value is zero today; keep it open and re-run when someone asks why a value is missing |
-| **3** | **#912** — the three #904 leftovers | The OpenAI reasoning path, a cross-call ceiling cache, `disableThinking` under a forced-thinking model | High | Medium, three items | Independent of each other |
-| **3** | **#873** — user-defined page types and folder layout | A MAJOR trigger under the version rule | High | Large | Design first; it is the trigger-1 shape |
-| **4** | **#468** — Anthropic `createMessageStream` lacks `cacheBreakpoint` parity | **Zero today.** The plumbing is one call, but no caller sets a breakpoint on the stream path, and the query path's system prompt carries page bodies that change every query, so a cache would miss every time | High | Tiny | It needs a design decision — what the cacheable prefix is — not code |
-| **4** | #112 #142 #168 #184 #220 #285 #295 #326 #330 #358 #479 #480 #791 #787 #816 #822 #911 #91 | Community requests and research threads | Varies | Varies | Answered where a decision was owed; the rest wait on a design conversation |
+| # | Item | The proxy it replaces | Effort | Why here |
+|---|---|---|---|---|
+| **1** | The golden net checks itself — a script applying known mutations and asserting the net fails — plus recording the frontmatter values the plugin itself writes | "the net exists" → "the net fails when the code breaks" | ~half a day | It decides whether the other 5,307 tests mean anything |
+| **2** | **#980** — iOS aborts any ingest call that runs 60 s without data | "the transport works" → "the transport keeps the connection alive". The other end of #886's axis: the context has a ceiling, the request has none | ~1 hour for the private-IP half | The only open defect that stops a user finishing the task |
+| **3** | **#872's residue** — the exclusion predicate is silent when the parser is absent | "a missing parser falls open" → "it says so". The throwing branch has a test and a warning; the absent branch has neither | ~20 minutes | A review named it untested; that was half true, and this is the true half |
+| **4** | **#932's remaining two functions** — `runDedupPhase` (739), `ingestSource` (726) | "the function is shorter" → "the behaviour is pinned" | one PR each | Cannot start before item 1, or the move is again verified by reading |
+| **5** | **#729's decision rule** — `n ≥ 40`, and write down what failing means | "a p-value" → "a test able to detect the effect". 15/20 is p=0.041 and power 0.42 at a true 0.70 | ~10 minutes | Text only, and it waits on @DocTpoint |
+| **6** | **arch-check** prints a new cross-layer edge before the cycle it causes; **ROADMAP**'s ceiling moves to bytes | "the 79-file cycle first" → "the reason first" | low | Both are read on every failure |
 
-**Both questions this section was waiting on are answered, and neither needed a code change.** #908's criterion 5 asked the
-prompt not to hardcode English headings while the renderer names the native heading first and English as the fallback; the
-criterion was reworded and the issue closed with the six forms the renderer matches. #916's report shipped as #917 — the
-gateway defects stay named as the gateway's, and the plugin now sends `stream: false` explicitly.
+**Two things named here as *not* work, so a review does not re-open them.** `arch-check` does not scan `require()`; `src/` holds three, all pointing at Node built-ins through `createRequire`, so the gap is theoretical and closing it costs more than the risk. And **#880 shipped as #886 with one half missing** — the context got a token ceiling, `max_tokens` is still not clamped to the remaining window, and `usage` never calibrates the estimate. That is a new defect and needs its own issue, not a row here.
 
-**Next up, 2026-11-01:** the table above in order, with the refactor track's #926/#927 ahead of its own later items
-because every other item in that track depends on them. #781 stays held until #729's decision rule is answered.
+**#781 stays held** until #729's rule is answered, and **#873** is the MAJOR trigger waiting on the design thread. The refactor track's status lives in #925.
 
 ### The lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
@@ -152,27 +141,30 @@ The **idempotency** requirement is worth naming separately because it is not a d
 
 **#816** claims dependabot now ignores TypeScript 6.x, and `.github/dependabot.yml` carries no such entry — confirm or add it, or the bot reopens the same PR.
 
-### The refactor track — recorded 2026-11-01
+### The refactor track — status lives in the issues, not here
 
-Approved as a plan, not started. The plan, the re-measured baseline, the frozen area and the stop
-conditions are in **#925**; scope is one issue per layer: **#926** snapshot, **#927** ratchet,
-**#928** subtraction, **#929** types, **#930** settings tab, **#931** `core/` layering, **#932** long
-functions, **#933** settings inventory. Nothing starts before #886, #895 and #924 land.
+Plan, re-measured baseline, frozen area and stop conditions are in **#925**; one issue per layer, and each
+carries its own current state. This section restated that state until 2026-11-10, by which time three of its
+claims were wrong — #929 and #931 had merged, and an item it listed as outstanding had been deleted.
 
-**Two rows survived the superseded 2026-10-16 order, recorded here so they are not lost**: the real-question benchmark (20 hand-labelled
-answer pages in a synthetic fixture that runs by default — the largest evidence gap the project has), and the E1 escalation gate (a decision,
-not a fix; it needs the `coverage` and `lexCount` distributions before there is a rule to apply).
+The rule is worth keeping because it decides order rather than status: **a subtraction without the golden
+net is a deletion verified by reading**, which is why #926 came first. **A move needs the same net.** #979
+moved about 430 lines of lint fix callbacks and cited the net as its guard; the net does not reach them,
+three mutations passed the full suite, and PR #981 adds the coverage and re-runs all six. The ratchet in
+`eslint.config.mjs` is the enforcement, not the line count: every cut lowers its own ceiling in the same
+commit.
 
-**The token ceiling was measured, and the number that matters is the after-state.** On the two vaults that describe the current write path, answers over an 8k window went from 9/30 to **0/30** (test8) and 27/30 to **0/30** (test10), with p50 falling 7,067 → 5,332 and 11,015 → 5,873. The third vault on disk was written by an earlier release and is deliberately not quoted as evidence.
+Still unstarted, carried over from the superseded 2026-10-16 order: the real-question benchmark (20
+hand-labelled answer pages in a synthetic fixture that runs by default — the largest evidence gap) and the
+E1 escalation gate.
 
-**Reclassified: #781 is held, not rejected.** It was called "denied by measurement". That was wrong, and it was wrong in the expensive direction — closing it would have discarded unfinished work on the strength of a claim nobody checked. #729 chose direction A on 2026-10-05 on the terms "M0 proceeds, with one measurement in front of it. #781 stays held **until that measurement lands**" — and **that measurement has never run.** DocTpoint's `CHANGES_REQUESTED` says so in his own words: "I am marking this as 'Request changes' so that it does not merge before #729 has an answer. This is a statement about the order of the steps, not about your code."
-
-All four of its prerequisites are now in (**#878**), and their reachability is not uniform — @DocTpoint checked, and the correction matters because "a fix that fixes nothing" is worse than no fix.
-
-The query path was seeded first (`ppr-cascade.ts:539` → `seededRngFrom(query, seeds)`) and its BM25F sort broke ties by breadth and then by path (`:184`). #878 closed the rest:
+**#781 is held, not rejected**, and the three debts its `CHANGES_REQUESTED` named are fixed: the tie-break is rarity-weighted,
+the strength floor is two shared targets, the hub problem shrinks twice. On two real vaults the "A" share went from 9.1 %
+against a 17.1 % pull to 6.9 % against 5.1 % (test8) and 6.1 % against 6.2 % (test10); the floor withholds 49.5 % and 59.5 %
+of candidate pairs. It merges when #729's measurement lands, which has still never run. Prerequisites in (**#878**).
 
 - **`hub-link-distinctiveness.ts` — live.** The lint scan runs it, and its PPR reached `Math.random` through `options.pprOptions ?? {}`. The distinctiveness is what the recommendation to strip a link is built from, so the number moved on every run.
-- **`hub-detection.ts` — guarded but unreachable in production.** `detectHubs` runs PPR only when `options.pprSeed` is set, and its one production caller (`scanHubLinkDensity`) passes `minInDegree` and `pprOptions` but no seed — so the hub's `pprScore` is never computed in production and that `Math.random` path was never taken. The guard is still right for the function's other callers; it is not a live defect.
+- **`hub-detection.ts` — guarded but unreachable in production.** `detectHubs` runs PPR only when `options.pprSeed` is set, and both production callers (`scanHubLinkDensity` and, since #955, `scanCrystallizedHubs`) pass `minInDegree` and no seed — so the hub's `pprScore` is never computed in production and that `Math.random` path was never taken. The guard is still right for the function's other callers; it is not a live defect.
 - **`ppr-cascade.ts` (`lexMatch`) — live.** The order decides the seed list (`lex.slice(0, 3)`), the score (`lexScoreOf` reads the position) and the rank (`mergeWithPPR` sets `rank: i + 1`).
 - **`index-search.ts` (`localKeywordMatch`) — guarded, and it changes no production behaviour.** Its only caller, `selectCandidateWindow`, turns the result into a `Map` from path to score, so the order is dropped; it then sorts by its own combined score with ties in the caller's pool order, and **that pool order is a documented contract** (ctime-ascending, for the dedup prompt's KV-prefix cache — a path-ascending change was tried and reverted on 2026-10-07). The function is now deterministic on its own; the window's order is not, and deliberately so.
 
@@ -425,7 +417,7 @@ Its tier 3 was a milestone reconciliation that the 2026-10-04 milestone move res
 
 ### Other follow-ups
 
-- **#872 — the auto-maintain watcher ignores the excluded-files list.** `AutoMaintain.isWatched` (`auto-maintain.ts:116`) calls `isIngestableSource` without the predicate PR #865 added, so a file the user excluded is still ingested automatically — only the manual folder ingest skips it. All four automatic paths go through it (change, rename, batch, periodic). Six acceptance criteria in the issue; the predicate is the one PR #865 introduced, not a second implementation. **The related-shaping note-title count (`wiki-engine.ts:1279`) is a different question and must not take the predicate** — that list answers "which note names already exist?", and a file excluded from ingestion is still a note in the vault, so a link to it is still a true link. The two questions are now two functions (`isInSourceScope` for existence, `isIngestableSource` for ingest intent), and the predicate is required rather than optional so a call site cannot forget it.
+- **#872 — CLOSED; the design decision survives, and one branch does not.** The auto-maintain watcher now takes the exclusion predicate PR #865 introduced. The decision worth keeping: **the related-shaping note-title count (`wiki-engine.ts:1279`) must not take that predicate** — it answers "which note names already exist?", and a file excluded from ingestion is still a note, so a link to it is still true. Existence and ingest intent are two functions (`isInSourceScope`, `isIngestableSource`), and the predicate is required rather than optional so a call site cannot forget it. **What closed without a net:** `makeUserIgnorePredicate` (`user-ignore.ts:42`) returns `() => false` when the cache exposes no `isUserIgnored`, with no warning and no test. The branch where the predicate *throws* has both (`user-ignore.test.ts:53`), and its fail-open is deliberate. Queue item 3.
 - **#876 — the log header's command hint is never refreshed.** `migrateLogHeader` returns early once the marker is present, so every existing vault's `log.md` keeps the old, wrong hint — the drifted string, and for a vault whose interface language and wiki language differ, a name the palette does not carry. The fix in PR #866 reaches headers written from now on. The open design question is how to refresh an existing one: the header's language is not recoverable from its content without guessing, so the surgical option is to replace only the quoted name inside the first bullet, leaving the title, the subtitle, the second bullet and the quote characters untouched.
 - **#407 Stages 2** — `conversation-ingest.ts:337` and remaining 7 silent-failure sites, one PR per blast radius.
 - **#438 Finding 2** — `extractPassthroughLines` whole-class passthrough (separate commit on `fix/438-frontmatter-...`, filed as new issue to track).

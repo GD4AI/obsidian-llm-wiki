@@ -13,7 +13,11 @@
 // v1.23.0 P1-7 follow-up (true streaming):
 //   - streamingObsidianFetch: returns native Response with body stream
 //   - CORS / network error → throws TypeError (caller falls back)
-//   - isLocalBaseURL: localhost / 127. / RFC 1918 private IPs
+//
+// `isLocalBaseURL` was removed on 2026-11-10 (#980). It classified a URL as
+// localhost / RFC 1918 so that `streamWithFallback` could skip the streaming
+// attempt, and the guess cost a user their whole ingest path: `requestUrl`
+// cannot stream, and iOS aborts a request after 60 s with no bytes.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { requestUrl } from 'obsidian';
@@ -22,7 +26,6 @@ import {
   isObsidianFetchBridge,
   streamingObsidianFetch,
   streamWithFallback,
-  isLocalBaseURL,
   __resetCorsMemory,
 } from '../../core/obsidian-fetch-bridge';
 
@@ -485,39 +488,6 @@ describe('streamingObsidianFetch (true streaming via window.fetch)', () => {
   });
 });
 
-describe('isLocalBaseURL', () => {
-  // Determines whether to use streamingObsidianFetch (cloud) or
-  // obsidianFetchBridge (local) for createMessageStream. Local URLs
-  // (Ollama / LMStudio) fail CORS on window.fetch.
-  it('returns true for http://localhost:* (Ollama default)', () => {
-    expect(isLocalBaseURL('http://localhost:11434/v1')).toBe(true);
-  });
-
-  it('returns true for http://127.0.0.1:* (LMStudio default)', () => {
-    expect(isLocalBaseURL('http://127.0.0.1:1234/v1')).toBe(true);
-  });
-
-  it('returns true for http://[::1]:* (IPv6 loopback)', () => {
-    expect(isLocalBaseURL('http://[::1]:11434/v1')).toBe(true);
-  });
-
-  it('returns true for RFC 1918 private IPs (10.x / 172.16-31.x / 192.168.x)', () => {
-    expect(isLocalBaseURL('http://10.0.0.5:11434/v1')).toBe(true);
-    expect(isLocalBaseURL('http://172.20.1.1:1234/v1')).toBe(true);
-    expect(isLocalBaseURL('http://192.168.1.100:8080/v1')).toBe(true);
-  });
-
-  it('returns false for cloud providers (api.openai.com etc.)', () => {
-    expect(isLocalBaseURL('https://api.openai.com/v1')).toBe(false);
-    expect(isLocalBaseURL('https://api.anthropic.com/v1')).toBe(false);
-    expect(isLocalBaseURL('https://api.deepseek.com/v1')).toBe(false);
-  });
-
-  it('returns false for empty / malformed baseURL (defensive: cloud is safer default)', () => {
-    expect(isLocalBaseURL('')).toBe(false);
-    expect(isLocalBaseURL('not-a-url')).toBe(false);
-  });
-});
 
 describe('streamWithFallback (CORS memory — #741)', () => {
   // #741: the transport used to be chosen from the URL shape alone
@@ -702,13 +672,36 @@ describe('streamWithFallback (CORS memory — #741)', () => {
     expect(warn.mock.calls.length).toBe(afterFirst);
   });
 
-  it('sends local providers straight to requestUrl without touching window.fetch', async () => {
-    const mockFetch = vi.spyOn(window, 'fetch');
+  it('tries window.fetch first for a local provider, because the URL shape is not evidence', async () => {
+    // Inverted 2026-11-10 for #980. This test used to require the opposite, and
+    // the reason it changed is the sentence already at the top of this block:
+    // whether a server permits a cross-origin request is an observed outcome,
+    // not a property of the URL. The `isLocalBaseURL` shortcut was the last place
+    // still guessing from the URL.
+    //
+    // The guess cost a user their whole ingest path. A llama.cpp server answers a
+    // preflight with `204` and `Access-Control-Allow-Origin: *`, so it would have
+    // streamed, while the shortcut sent every LAN request to `requestUrl`, which
+    // cannot stream and which iOS aborts after 60 s with no bytes (#980).
+    const mockFetch = vi.spyOn(window, 'fetch').mockResolvedValue(new Response('ok'));
 
     await streamWithFallback('http://localhost:11434/v1/chat/completions', { method: 'POST' });
 
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalled();
+    expect(mockRequestUrl).not.toHaveBeenCalled();
+  });
+
+  it('falls back for a local provider that really does refuse, and says so once', async () => {
+    // The other half of the same change: removing the guess must not turn a
+    // refusal into a failure. The origin is remembered, so the gamble is paid
+    // once per origin rather than once per call.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await streamWithFallback('http://192.168.1.50:8080/v1/chat/completions', { method: 'POST' });
+
     expect(mockRequestUrl).toHaveBeenCalled();
+    expect(warn.mock.calls.some((call) => String(call[0]).includes('192.168.1.50'))).toBe(true);
   });
 
   it('treats an unparseable URL as its own origin rather than trusting it', async () => {

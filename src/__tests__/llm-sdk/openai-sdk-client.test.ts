@@ -241,14 +241,17 @@ describe('OpenAISdkClient', () => {
       expect(call.providerOptions).toEqual({});
     });
 
-    it('sends reasoningEffort="none" when enableThinking is false (v1.26.0 Batch 6)', async () => {
-      // v1.26.0 Batch 6: switched from 'low' to 'none' for the official
-      // OpenAI Responses path. On GPT-5.1+ models (supportsNonReasoning
-      // Parameters=true) the AI SDK skips the reasoning path entirely
-      // when effort is 'none' (line 943 of @ai-sdk/openai@3.0.86/
-      // dist/index.mjs) — no reasoning tokens billed, no sampling-param
-      // validation overhead. For dedup-phase / fix-runners / merge /
-      // ingest JSON-decision calls this is the right tradeoff.
+    it('asks the SDK for silence when enableThinking is false (v1.26.0 Batch 6, #912)', async () => {
+      // 'none' skips the reasoning path on GPT-5.1+ models — no reasoning
+      // tokens billed, no sampling-param validation overhead — which is the
+      // right trade for dedup, fix-runners, merge and the ingest
+      // JSON-decision calls.
+      //
+      // #912 moved the level from a hand-built `providerOptions.openai.
+      // reasoningEffort` to the SDK's own `reasoning` call option, so this
+      // asserts the argument handed to the SDK. The request body is pinned in
+      // openai-reasoning-wire.test.ts, because this layer cannot tell whether
+      // the SDK delivered the value.
       const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
       await client.createMessage({
         model: 'gpt-5.5',
@@ -258,9 +261,8 @@ describe('OpenAISdkClient', () => {
       });
 
       const call = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
-      expect(call.providerOptions).toEqual({
-        openai: { reasoningEffort: 'none' },
-      });
+      expect(call.reasoning).toBe('none');
+      expect(call.providerOptions, 'the field is no longer written by hand').toEqual({});
     });
   });
 
@@ -550,7 +552,7 @@ describe('OpenAISdkClient', () => {
       expect(chunks.join('')).not.toContain('reasoning-content');
     });
 
-    it('sends reasoningEffort="none" when enableThinking is false (v1.26.0 Batch 6)', async () => {
+    it('asks the SDK for silence on the stream path too (#912)', async () => {
       mockStreamText.mockReturnValue(makeStreamTextResult(['hi']));
 
       const client = new OpenAISdkClient({ apiKey: 'sk-test', baseURL: 'https://api.openai.com/v1' });
@@ -567,11 +569,9 @@ describe('OpenAISdkClient', () => {
       });
 
       const call = mockStreamText.mock.calls[0][0] as Record<string, unknown>;
-      // v1.26.0 Batch 6: stream path uses the same buildProviderOptions
-      // as non-stream, so reasoningEffort='none' applies here too.
-      expect(call.providerOptions).toEqual({
-        openai: { reasoningEffort: 'none' },
-      });
+      // Same option on both paths, so a streamed answer reasons like a
+      // non-streamed one.
+      expect(call.reasoning).toBe('none');
     });
 
     it('forwards temperature at top level', async () => {

@@ -18,6 +18,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraphFromContent } from '../../core/build-graph';
 import { buildCoCitationGraph, coCitationCandidates } from '../../core/co-citation';
+import { RELATED_BUDGET } from '../../constants';
+
+// The cap the product applies at write time (`shapeRelatedLists` receives
+// `RELATED_BUDGET[granularity].crossSource`). Measuring without it was the defect
+// @DocTpoint found on 2026-11-10: an uncapped call returns a set, and no ordering
+// can change a set, so the "A" share showed only what the floor removed.
+const CROSS_SOURCE_CAP = RELATED_BUDGET.standard.crossSource;
 
 // No personal path is committed. Point the run at a vault root that holds
 // `test8/` and `test10/`, or set the variable to a folder that holds any vault:
@@ -50,8 +57,12 @@ interface Measurement {
 	candidatesOffered: number;
 	/** Entries the floor withholds — pairs whose whole evidence is one target. */
 	withheldByFloor: number;
-	/** Share of offered entries whose path starts with "A". */
+	/** Pages where the cap removed at least one candidate. */
+	cutApplied: number;
+	/** Share of offered entries whose path starts with "A", under the production cap. */
 	aShare: number;
+	/** The same share without the cap, so the cut's own bias is visible. */
+	aShareUncapped: number;
 	/** Share of all pages whose path starts with "A" — the base rate it must match. */
 	aBaseRate: number;
 	/** The most-cited target and how many pages cite it. */
@@ -65,15 +76,22 @@ function measure(vault: { name: string; dir: string }): Measurement {
 	const co = buildCoCitationGraph(graph);
 
 	const offered: string[] = [];
+	const offeredUncapped: string[] = [];
 	let withheldByFloor = 0;
+	let cutApplied = 0;
 	for (const page of pages) {
-		const kept = coCitationCandidates(page.path, co);
+		// What the product offers: the floor and the cap, as `shapeRelatedLists` calls it.
+		const kept = coCitationCandidates(page.path, co, { limit: CROSS_SOURCE_CAP });
 		offered.push(...kept);
-		// What the floor takes away, measured against the same call with the floor
-		// lowered. On a real vault this must be a large number: every pair whose
-		// only evidence is one hub lands here, and that was a sixth of all pairs on
-		// the vault the review measured.
-		const keptSet = new Set(kept);
+		// The same call without the cap, so the cut's own effect is separable from the
+		// floor's.
+		const uncapped = coCitationCandidates(page.path, co);
+		offeredUncapped.push(...uncapped);
+		if (uncapped.length > kept.length) cutApplied += 1;
+		// What the floor takes away, measured against a call with the floor lowered and
+		// no cap on either side. On a real vault this must be a large number: every pair
+		// whose only evidence is one hub lands here.
+		const keptSet = new Set(uncapped);
 		for (const candidate of coCitationCandidates(page.path, co, { minShared: 1 })) {
 			if (!keptSet.has(candidate)) withheldByFloor += 1;
 		}
@@ -90,7 +108,9 @@ function measure(vault: { name: string; dir: string }): Measurement {
 		pages: pages.length,
 		candidatesOffered: offered.length,
 		withheldByFloor,
+		cutApplied,
 		aShare: offered.length === 0 ? 0 : aOf(offered) / offered.length,
+		aShareUncapped: offeredUncapped.length === 0 ? 0 : aOf(offeredUncapped) / offeredUncapped.length,
 		aBaseRate: pages.length === 0 ? 0 : aOf(pages.map((p) => p.path)) / pages.length,
 		busiestTarget: busiest,
 	};
@@ -114,16 +134,27 @@ describe.skipIf(available.length === 0)('#781 — co-citation on a real vault', 
 				// The measured defect: "A" pages were 9.1 % of the vault and 17.1 % of
 				// the chosen entries. The margin allowed here is generous on purpose —
 				// this is a distribution, not a constant, and the vault is not fixed.
+				// The cap is applied, because a set has no order and an uncapped
+				// measurement cannot see the tie-break at all.
 				expect(m.aShare).toBeLessThanOrEqual(m.aBaseRate * 1.5 + 0.02);
+			});
+
+			it('does not make the bias worse by cutting at the cap', () => {
+				// The cut keeps the head of a ranked list, so it can only amplify an
+				// ordering bias. This asserts the direction, not a magnitude: a vault whose
+				// capped share exceeds the uncapped one would mean the ranking compounds
+				// the defect the floor removed.
+				expect(m.aShare).toBeLessThanOrEqual(m.aShareUncapped + 0.05);
 			});
 
 			it('reports the numbers this file measured, so a change is visible', () => {
 				// Printed, not asserted. The baseline for the next change is what this
 				// line says today.
 				console.log(
-					`[co-citation] ${m.vault}: ${m.pages} pages, ${m.candidatesOffered} entries offered, ` +
-						`A share ${(m.aShare * 100).toFixed(1)}% vs base ${(m.aBaseRate * 100).toFixed(1)}%, ` +
-						`${m.withheldByFloor} withheld by the floor, ` +
+					`[co-citation] ${m.vault}: ${m.pages} pages, ${m.candidatesOffered} entries offered at cap ${CROSS_SOURCE_CAP}, ` +
+						`A share ${(m.aShare * 100).toFixed(1)}% (uncapped ${(m.aShareUncapped * 100).toFixed(1)}%) ` +
+						`vs base ${(m.aBaseRate * 100).toFixed(1)}%, ` +
+						`${m.withheldByFloor} withheld by the floor, cap applied on ${m.cutApplied} pages, ` +
 						`busiest target cited by ${m.busiestTarget?.citers ?? 0}`,
 				);
 				expect(m.pages).toBeGreaterThan(0);

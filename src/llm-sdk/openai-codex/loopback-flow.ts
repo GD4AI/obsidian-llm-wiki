@@ -155,7 +155,8 @@ async function requireNodeHttp(): Promise<typeof import('node:http')> {
   // to this single return statement, so `any` does not propagate downstream.
   if (!Platform.isDesktop) throw new Error('Codex browser login is available only on desktop');
   const nodeModule = await import('node:module');
-  // eslint-disable-next-line no-undef -- __filename is a CJS global injected by esbuild's CJS bundler; not a browser global - desktop-only, guarded by Platform.isDesktop above
+  // `__filename` is a CJS global injected by esbuild's CJS bundler, not a
+  // browser global; this path is desktop-only and guarded above.
   const nodeRequire = nodeModule.Module.createRequire(__filename);
   return nodeRequire('node:http') as typeof import('node:http');
 }

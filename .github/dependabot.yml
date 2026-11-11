@@ -84,6 +84,28 @@ updates:
       # neither is worth a type package with no runtime surface. Measured in #768.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # The four AI SDK packages share ONE pinned `@ai-sdk/provider-utils`
+      # (5.0.61, declared in both `package.json` and `pnpm-workspace.yaml` and
+      # guarded by `override-parity.test.ts`). Moving one of them alone is not a
+      # bump, it is a broken build: #942 took `@ai-sdk/openai` 4.0.91 -> 4.0.105,
+      # and 4.0.105 imports `encodePathSegment` from provider-utils 5.0.61, which
+      # does not export it. `main` went red on `pnpm build` at 05:24 UTC on
+      # 2026-11-05 and stayed red until the revert (#947).
+      #
+      # The lockfile diff could not have shown this — it was clean, one version
+      # moved and the pin stayed single-instance. Only a build answers a runtime
+      # contract question, and Dependabot branches report NO checks, so nothing
+      # ran. That is the whole mechanism of the failure: a mergeable-looking PR
+      # with an inspection that could not cover the claim.
+      #
+      # These arrive through #891 instead, which moves all four plus the pin in
+      # one change that a build verifies. **Remove these four entries when #891's
+      # acceptance holds** and a single-package bump is safe again.
+      - dependency-name: "ai"
+      - dependency-name: "@ai-sdk/openai"
+      - dependency-name: "@ai-sdk/anthropic"
+      - dependency-name: "@ai-sdk/openai-compatible"
+      - dependency-name: "@ai-sdk/provider-utils"
 
   # GitHub Actions themselves (checkout/setup-node/attest-build-provenance)
   # are supply-chain surface too — a vulnerable action version is as bad as a

@@ -19,22 +19,13 @@ const LONG_FUNCTION_CEILINGS = {
 	"src/ui/settings-sections/provider-section.ts": 238,
 	"src/ui/settings-sections/wiki-config-section.ts": 200,
 	"src/wiki/conversation-ingest.ts": 221,
-	"src/wiki/lint/controller.ts": 444,
 	"src/wiki/lint/fix-dead-link.ts": 143,
 	"src/wiki/lint/fix-runners.ts": 127,
-	"src/wiki/lint/llm-phases/dedup-phase.ts": 277,
 	"src/wiki/lint/merge-duplicates.ts": 172,
 	"src/wiki/lint/report-builder.ts": 199,
 	"src/wiki/page-factory/merge-page.ts": 199,
 	"src/wiki/page-factory/path-resolution.ts": 126,
 	"src/wiki/query-engine/QueryView-class.ts": 246,
-	"src/wiki/source-analyzer.ts": 377,
-	// 510 -> 534 on #781: the co-citation provider adds wiring to , and that
-	// function is #932's last item by design (risk-last, because it is the only one that emits
-	// cross-stage progress). Extracting it here would mean writing the extraction twice.
-	// The ratchet has no notion of "a feature branch may legitimately grow a function", which
-	// is a gap in #927 rather than a licence to raise ceilings: this entry comes down with #932.
-	"src/wiki/wiki-engine.ts": 534,
 };
 
 export default [

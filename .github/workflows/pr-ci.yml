@@ -23,6 +23,19 @@ name: Gate 1 (Five-Gate)
 on:
   pull_request:
     branches: [main]
+  # Dispatch exists for one case: a commit pushed by a bot cannot trigger itself.
+  #
+  # `dependabot-lockfile.yml` pushes the regenerated `package-lock.json` onto the
+  # Dependabot branch with `github-actions[bot]` as the author. The `synchronize`
+  # event that push produces does not start a workflow run, so the commit that
+  # would actually be merged carries no check at all — which is what #974 records
+  # against #949, #950 and #951. The sync workflow dispatches this one on the new
+  # head instead, so the gate runs on the commit under review rather than on the
+  # one before it.
+  #
+  # The job name below must not change: branch protection requires the status
+  # context `Gate 1 / Five-Gate` by that exact string.
+  workflow_dispatch:
   # Also on `main` itself. Until 2026-09-12 nothing ran Gate 1 after a merge,
   # so the state of `main` was only ever observable through some later PR's
   # CI. That is how #681 and #684 broke it: each was green against the `main`
@@ -78,7 +91,11 @@ jobs:
         # config) are the fix path; this gate only catches drift before merge.
         run: pnpm audit --audit-level high --ignore-registry-errors
 
-      - name: Five-Gate (lint + typecheck + build + test + css-lint)
+      # The job name is frozen: branch protection requires the status context
+      # `Gate 1 / Five-Gate` by that exact string (ruleset 16884813), so renaming
+      # it to match the six commands below would silently unrequire the check
+      # rather than tighten it. The name is history; the steps are the gate.
+      - name: Five-Gate (lint + arch-check + typecheck + build + test + css-lint)
         # Order is non-negotiable: `build` MUST run before `test`. The test
         # suite contains build-artifact verifications (e.g.
         # `src/__tests__/llm-sdk/openai-codex-loopback-flow.test.ts:39` reads
@@ -91,6 +108,7 @@ jobs:
         run: |
           set -e
           pnpm lint
+          pnpm arch-check
           pnpm typecheck
           pnpm build
           pnpm test

@@ -36,6 +36,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PREDEFINED_PROVIDERS } from '../../types';
 
 // __dirname shim for ESM-vitest context (vitest provides `import.meta.url`).
 const HERE = fileURLToPath(new URL('.', import.meta.url));
@@ -191,5 +192,36 @@ describe('v1.25.11 PATCH #375 — README links are absolute https:// or known-sa
       const wrongPrefix = anchors.find((url) => !url.startsWith('https://github.com/GD4AI/obsidian-llm-wiki/blob/main/'));
       expect(wrongPrefix, `non-canonical absolute prefix in ${label}: ${wrongPrefix}`).toBeUndefined();
     }
+  });
+});
+
+/**
+ * The `Providers` badge states a floor, so it must never fall behind the code.
+ *
+ * `PREDEFINED_PROVIDERS` is the one list of providers the picker offers. The
+ * badge said `16+` while that list held 15 named entries plus two `custom`
+ * escape hatches — a number nobody could reproduce from the source. It is now
+ * `15+` in every locale, `+` because any OpenAI-compatible endpoint also works
+ * and that set has no ceiling. This test counts the list and compares, so the
+ * next provider added fails here instead of shipping a stale claim.
+ */
+describe('Providers badge matches the provider list', () => {
+  const NAMED = Object.keys(PREDEFINED_PROVIDERS).filter((id) => !id.startsWith('custom'));
+
+  it.each(README_FILES)('$label states the real floor', ({ label, path }) => {
+    const body = readFileSync(path, 'utf8');
+    const match = /providers-([0-9]+)%2B-/.exec(body);
+    expect(match, `no "providers-N%2B" badge in ${label}`).not.toBeNull();
+    expect(Number(match?.[1]), `badge floor in ${label} vs ${NAMED.length} named providers`).toBe(
+      NAMED.length,
+    );
+  });
+
+  it('counts only providers a user can pick by name', () => {
+    // `custom` and `custom-responses` are escape hatches, not services: they
+    // point at whatever URL the user types, so counting them would inflate a
+    // number that is supposed to describe out-of-the-box support.
+    expect(NAMED).not.toContain('custom');
+    expect(NAMED.length).toBeGreaterThan(10);
   });
 });

@@ -24,7 +24,7 @@
 import { Setting, Notice } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 import { NOTICE_NORMAL, NOTICE_ERROR } from '../../constants';
-import { preserveCodexRuntimeModelState } from '../../core/openai-codex-model-policy';
+import { preserveCodexRuntimeModelState } from '../../llm-sdk/openai-codex/model-policy';
 
 export function renderTestConnectionSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   // v1.25.1 Phase C-PR2 simplify pass: applySettings triad (assign

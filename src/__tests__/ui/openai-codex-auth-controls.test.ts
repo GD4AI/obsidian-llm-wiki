@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CODEX_MODELS } from '../../llm-sdk/openai-codex/constants';
 import { copyCodexDeviceCode, getCodexAuthUiState, openCodexExternalUrl, runCodexDeviceAuth, runCodexModelRefresh, runCodexSignOut } from '../../ui/openai-codex-auth-controls';
-import { applyCodexModelPolicy, preserveCodexRuntimeModelState } from '../../core/openai-codex-model-policy';
+import { applyCodexModelPolicy, preserveCodexRuntimeModelState } from '../../llm-sdk/openai-codex/model-policy';
 import type { CodexDevicePrompt } from '../../ui/openai-codex-auth-controls';
 
 function deferred<T>(): { promise: Promise<T>; resolve(value: T): void; reject(error: unknown): void } {

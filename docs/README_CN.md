@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md（11 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0（MINOR — 词法阶段现在读取页面正文，用 BM25F 对标题/别名/摘要/正文打分，是本项目最大的一次召回改进；其上叠加两阶段 Rocchio 查询扩展，其结论被自身测量收窄；Related 页塑形，使单个 hub 不再把其他页面全拉向自己；高级设置中的 `legacyScorer` 开关作为退路；以及一轮正确性修复：watcher 遵守 Obsidian 排除列表、日志头部的命令提示、legacy 日志切法、错误归一化改用 SDK marker）
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0（MINOR — 词法阶段读取页面正文并用 BM25F 打分，叠加两阶段 Rocchio 扩展、Related 页塑形与 `legacyScorer` 退路）
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
 - search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 11 语言插件", "Obsidian 16+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
 - features: 基于图谱的检索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 级种子选择级联, Tier 1/Tier 2 重复检测, 11 语言界面 + 11 语言 Wiki 输出（独立设置）, 16+ LLM 提供商（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-兼容, Codex OAuth）,MinerU 多格式导入（PDF + 图像 + Office）, PDF 摄入（仅缓存、OCR 路径）, Lint 健康扫描, 一键智能修复, 源页原句引用, 摄入候选门, 按步骤任务策略 UI, Obsidian 图谱视图集成, 零嵌入零向量数据库架构, 本地优先模式
@@ -31,7 +33,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 **Obsidian 官方市场满分评分 • 零嵌入图谱检索 • 原生 11 种语言 • 原生 PDF + 图片 + Office 摄入 • 兼容所有 LLM 提供商 • 本地优先 • 无后端 • GDPR 友好**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -39,10 +41,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 [官网](https://llmwiki.greenerai.top/) | [Obsidian 插件市场](https://community.obsidian.md/plugins/karpathywiki) | [博客](https://llmwiki.greenerai.top/zh/blog/) | [反馈讨论](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [为什么使用此插件？](#-为什么使用此插件) | 🚀 [快速开始](#-快速开始) | ✨ [核心特性](#-核心特性) | 🌐 [生态](#-生态) | 🔍 [检索工作原理](#-检索工作原理) | 🤖 [模型推荐](#-模型推荐) | ❓ [常见问题](#-常见问题)
+🤔 [为什么使用此插件？](#-为什么使用此插件) | 🚀 [快速开始](#-快速开始) | ✨ [核心特性](#-核心特性) | 🌐 [生态](#-生态) | 🔍 [检索工作原理](#-检索工作原理) | 🤖 [模型推荐](#-模型推荐) | ❓ [常见问题](#-常见问题) | 🎯 [适合我吗？](#-适合我吗) | 🔒 [隐私](#-隐私)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← 如果你觉得项目帮到了你，欢迎请我杯咖啡♥️或为项目点亮🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
 
+> Karpathy LLM Wiki 免费、自托管、没有自己的后端。如果它替你省下了时间，一杯咖啡能让它继续被维护 —— 点个 ⭐ 同样有帮助。
 
 ---
 
@@ -130,7 +133,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 | **⏹ 取消** | `Cmd+P/Ctrl+P` → "取消当前摄入" 或点击状态栏 — 在下一个批次边界干净停止 |
 | **📊 摄入历史** | `Cmd+P/Ctrl+P` → "查看摄入历史" — 可搜索的 UI，浏览历史摄入、Lint 报告和维护运行 |
 
-![命令面板 — 所有 LLM Wiki 命令都在 Obsidian 的命令面板中](/docs/assets/command-panel.png)
+![命令面板 — 所有 Karpathy LLM Wiki 命令都在 Obsidian 的命令面板中](/docs/assets/command-panel.png)
 
 **从一篇笔记到互联 Wiki：**
 
@@ -189,13 +192,6 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 - **🛡️ 摄入前置检查** — 空/空白/仅 frontmatter 的笔记在任何 LLM 调用前被拒绝；内容哈希去重捕获跨路径的相同文件。
 - **🆕 摄入候选门 (v1.27.0, #514 / PR #521)** — 可选开关（`skipMentionOnlyCandidates`，默认关闭，设置 → 高级）。对于语言已建立测量画像的源（de 已测量；en/fr/es/pt/nl/ko 用固定边界条件估计；zh/ja 字符脚本阈值未测量），那些只出现在括号/枚举/短列表项中的候选在消耗页面+去重+生成调用之前被剪除。跨语言笔记不进入此门；没有画像的 Wiki 语言每次摄入只报告一次且从不静默跳过。
 - **🆕 按步骤任务策略 (v1.27.0, #525 / #490)** — LLM 高级 → 任务策略字段；无需改代码即可覆盖各步骤的文本模式与思考设置。未列出的步骤保持内置基线不变。
-
-### 🔒 隐私
-
-- **🚫 无后端、无追踪、无分析。** 完全在 Obsidian 内部运行。网络仅用于与你配置的 LLM 提供商通信。
-- **📁 源文件只读。** 插件永不修改你的原始 vault 笔记——仅在 `wiki/` 下创建新页面。
-- **🦙 完全本地模式。** Ollama、LM Studio 或任何本地 OpenAI 兼容端点——你的笔记永不离开你的机器。
-- **🔐 最小化权限。** Vault 文件访问用于 Wiki 管理。剪贴板访问仅在你在查询弹窗中点击"复制"按钮时。
 
 ### 🦙 本地优先
 
@@ -263,7 +259,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 我们使用 Monte Carlo PPR（Fogaras 2005）——3,000 次随机游走 × 每次 50 步——配合 Haveliwala 2002 的死端规则。开销为 **O(K × L)**（K = 游走次数，L = 每次游走的步数），与页面数量无关，因此 2000 页 vault 的扩展延迟与 200 页 vault 相同。
 
-**PPR @5 = 27.1% vs 纯 knn 基线 24.1%** —— 基于项目自有基准语料（该开源 LLM-Wiki 领域唯一已发布的检索基准）。
+**PPR @5 = 27.1% vs 纯 knn 基线 24.1%** —— 基于项目自有基准语料（该开源 wiki 插件领域唯一已发布的检索基准）。
 
 ### 为什么不需要嵌入
 
@@ -392,7 +388,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ## 💖 支持项目
 
-如果 LLM-Wiki 已成为你知识工作流中重要的一部分，你可以通过以下方式支持其持续开发：
+如果 Karpathy LLM Wiki 已成为你知识工作流中重要的一部分，你可以通过以下方式支持其持续开发：
 
 - ☕ **[在 Ko-fi 上请我喝杯咖啡](https://ko-fi.com/greenerdalii)** — 一次性或月度支持
 - 💳 **[通过 PayPal 打赏](https://paypal.me/greenerdalii)** — 一次性打赏

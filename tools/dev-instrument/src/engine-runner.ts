@@ -35,7 +35,7 @@ import { EXIT_USAGE, exitCodeForReport } from './exit-code';
 import { type App, TFile, normalizePath } from 'obsidian';
 import { WikiEngine } from '../../../src/wiki/wiki-engine';
 import { SchemaManager } from '../../../src/schema/schema-manager';
-import { createLLMClient } from '../../../src/core/create-plugin-llm-client';
+import { createLLMClient } from '../../../src/llm-sdk/create-plugin-llm-client';
 import { preloadLLMClientModules } from '../../../src/llm-sdk/create-llm-client';
 import { applySettingsMigrations } from '../../../src/core/settings-migrations';
 import { isLocalNoKeyProvider } from '../../../src/core/local-no-key-provider';
@@ -61,6 +61,7 @@ async function loadSettings(vaultRoot: string): Promise<LLMWikiSettings> {
       throw new Error(
         `Plugin data not found at ${dataPath}.\n` +
         `Open the vault in Obsidian once and run the plugin to write data.json, then re-run the instrument.`,
+        { cause: err },
       );
     }
     throw err;
@@ -72,6 +73,7 @@ async function loadSettings(vaultRoot: string): Promise<LLMWikiSettings> {
     throw new Error(
       `Plugin data at ${dataPath} is not valid JSON: ${(err as Error).message}\n` +
       `The file exists but cannot be parsed. Inspect it manually or re-create it via the Obsidian settings tab.`,
+      { cause: err },
     );
   }
   const { settings } = applySettingsMigrations(savedData);
@@ -233,7 +235,7 @@ export async function runIngest(vaultRoot: string, sourcePath: string): Promise<
     vaultStat = nodeFs.statSync(vaultRoot);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(`Vault does not exist: ${vaultRoot}`);
+      throw new Error(`Vault does not exist: ${vaultRoot}`, { cause: err });
     }
     throw err;
   }

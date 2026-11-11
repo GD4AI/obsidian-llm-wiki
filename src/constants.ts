@@ -9,8 +9,16 @@
  * maintainability, discoverability, and type safety.
  */
 
-// Type-only: `types.ts` does not import this module, so there is no cycle.
-import type { ExtractionGranularity } from './types';
+/**
+ * How much one extraction pass asks a model to pull out of a source.
+ *
+ * Declared here, not in `types.ts`, because the two tables keyed by it —
+ * `EXTRACTION_LIMITS` and `RELATED_BUDGET` — also live here. `types.ts`
+ * imports this module, so the declaration has to sit on this side of that
+ * edge; the other way round closed a seven-file import cycle (#929).
+ * `types.ts` re-exports it, so no caller's import changes.
+ */
+export type ExtractionGranularity = 'fine' | 'standard' | 'coarse' | 'minimal' | 'custom';
 
 // ============================================================================
 // Wiki Folder Structure
@@ -189,14 +197,15 @@ export const MAX_TOKENS_BATCH = 16000;
 export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
 
 /**
- * Ceiling for the truncation-retry double-up (Issue #904).
+ * Issue #954 — how many hubs the crystallization assessment ranks, so the
+ * percentile means something.
  *
- * Was borrowed from `MAX_TOKENS_BATCH`. Decoupled so that raising the
- * extraction budget cannot silently raise this one, and vice versa: they
- * answer different questions ("how much may one call declare" vs "how far
- * may a retry grow a truncated response").
+ * `detectHubs` defaults to `topN = 10`, and a 0.75 percentile over ten nodes is
+ * "the top two or three of an arbitrary ten". That is not a measurement, it is a
+ * position in a list nobody chose for this purpose. Fifty is wide enough that the
+ * top quarter is a dozen candidates and narrow enough that a scan stays cheap.
  */
-export const TRUNCATION_RETRY_MAX_CAP = 16000;
+export const RETIREMENT_HUB_TOP_N = 50;
 
 /**
  * Token budget for full page generation (entity/concept/source-summary).

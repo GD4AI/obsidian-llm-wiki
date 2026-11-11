@@ -12,8 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.29.0 (MINOR — die lexikalische Stufe liest jetzt den Fließtext und bewertet Titel/Alias/Zusammenfassung/Fließtext mit BM25F, die größte Recall-Änderung des Projekts; darüber eine zweistufige Rocchio-Query-Erweiterung, deren Aussage durch die eigene Messung eingeengt wurde; Related-Seiten-Shaping, damit eine Hub-Seite nicht mehr alle anderen zu sich zieht; ein `legacyScorer`-Schalter in den erweiterten Einstellungen als Weg zurück; dazu eine Korrektheitswelle: der Watcher beachtet Obsidians Ausschlussliste, der Befehlshinweis im Log-Header, der Legacy-Log-Schnitt, und Fehlernormalisierung über den SDK-Marker)
-- last-updated: 2026-10-26
+- latest: v1.30.0
+- release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
+- previous: v1.29.0 (MINOR — die lexikalische Stufe liest den Fließtext und bewertet ihn mit BM25F, dazu Rocchio-Query-Erweiterung, Related-Seiten-Shaping und der `legacyScorer`-Weg zurück)
+- last-updated: 2026-11-07
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -32,7 +34,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 **Obsidian-Review Perfekte Bewertung • Null-Embedding-Graph-Suche • Native Unterstützung für 11 Sprachen • Nativer PDF-, Bild- und Office-Ingest • Kompatibel mit jedem LLM-Anbieter • Lokal zuerst • Kein Backend • DSGVO-freundlich**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-16%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen?style=flat-square) ![Build Status](https://img.shields.io/github/actions/workflow/status/GD4AI/obsidian-llm-wiki/release.yml?style=flat-square) ![Author](https://img.shields.io/badge/author-Greener--Dalii-blue?style=flat-square) <br>
 ![GitHub Stars](https://img.shields.io/github/stars/GD4AI/obsidian-llm-wiki?style=flat-square) ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GD4AI/obsidian-llm-wiki)
 
@@ -40,9 +42,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 [Offizielle Website](https://llmwiki.greenerai.top/) | [Obsidian-Marktplatz](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Diskussionen](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
-🤔 [Warum dieses Plugin?](#-warum-dieses-plugin) | 🚀 [Schnellstart](#-schnellstart) | ✨ [Funktionen](#-funktionen) | 🌐 [Ökosystem](#-ökosystem) | 🔍 [Wie die Suche funktioniert](#-wie-die-suche-funktioniert) | 🤖 [Modelle](#-modelle) | ❓ [FAQ](#-faq)
+🤔 [Warum dieses Plugin?](#-warum-dieses-plugin) | 🚀 [Schnellstart](#-schnellstart) | ✨ [Funktionen](#-funktionen) | 🌐 [Ökosystem](#-ökosystem) | 🔍 [Wie die Suche funktioniert](#-wie-die-suche-funktioniert) | 🤖 [Modelle](#-modelle) | ❓ [FAQ](#-faq) | 🎯 [Ist es etwas für mich?](#-ist-es-etwas-für-mich) | 🔒 [Privatsphäre](#-privatsphäre)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD) ← Wenn dir dieses Plugin geholfen hat, lad mich gerne auf einen Kaffee♥️ ein oder vergib einen Stern🌟↗
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H7V1228WMD)
+
+> Karpathy LLM Wiki ist kostenlos, selbst gehostet und ohne eigenes Backend. Wenn es dir Zeit spart, hält ein Kaffee die Wartung am Laufen — und ein ⭐ hilft genauso.
 
 ---
 
@@ -128,7 +132,7 @@ Das war's. Das Plugin ändert nichts an deinen ursprünglichen Notizen — es er
 | **⏹ Abbrechen** | `Cmd+P/Ctrl+P` → „Aktuelle Aufnahme abbrechen" oder auf die Statusleiste klicken — stoppt sauber an der nächsten Batch-Grenze |
 | **📊 Aufnahmeverlauf** | `Cmd+P/Ctrl+P` → „Ingestionsverlauf anzeigen" — durchsuchbare UI für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe |
 
-![Command panel — all LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
 | Vorher | Nachher |
 |--------|-------|
 | `notes/machine-learning.md` (eine flache Datei) | `wiki/concepts/supervised-learning.md` mit `[[bidirektionalen Links]]`, Aliasen, Quellenangabe und einem Eintrag in `wiki/index.md` |
@@ -184,13 +188,6 @@ Fünf On-Ramps, pro Ingest umschaltbar:
 - **🛡️ Pre-Ingest-Gate** — leere/Whitespace-/Nur-Frontmatter-Notizen werden vor jedem LLM-Aufruf abgelehnt; Content-Hash-Dedup erkennt identische Dateien über Pfade hinweg.
 - **🆕 Ingest-Candidate-Gate (v1.27.0, #514 / PR #521)** — Opt-in-Toggle (`skipMentionOnlyCandidates`, standardmäßig aus, Einstellungen → Advanced). Für Quellen, deren Sprache ein gemessenes Profil hat (de gemessen; en/fr/es/pt/nl/ko geschätzt mit gepinnten Edge-Cases; zh/ja Schwellenwerte für Zeichensprachen ungemessen), werden Kandidaten, die nur innerhalb von Klammern / Aufzählungen / kurzen Listen-Items vorkommen, aussortiert, bevor sie eine Seite plus Dedup- und Generierungs-Aufrufe kosten. Sprachübergreifende Notizen werden nicht gegated; Wiki-Sprachen ohne Profil melden sich einmal pro Ingest und überspringen nie stillschweigend.
 - **🆕 Per-Step-Task-Policies (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies-Feld; überschreibt die Per-Step Text-Mode/Thinking-Einstellung ohne Code-Änderungen. Die eingebaute Baseline bleibt für nicht gelistete Steps unangetastet.
-
-### 🔒 Privatsphäre
-
-- **🚫 Kein Backend, kein Tracking, keine Analysen.** Läuft vollständig innerhalb von Obsidian. Netzwerk wird nur für die Kommunikation mit dem von dir konfigurierten LLM-Anbieter genutzt.
-- **📁 Quelldateien sind schreibgeschützt.** Das Plugin ändert niemals deine ursprünglichen Vault-Notizen — es erstellt nur neue Seiten unter `wiki/`.
-- **🦙 Vollständiger lokaler Modus.** Ollama, LM Studio oder ein beliebiger lokaler OpenAI-kompatibler Endpunkt → deine Notizen verlassen niemals deinen Rechner.
-- **🔐 Minimale Berechtigungen.** Vault-Dateizugriff für die Wiki-Verwaltung. Zwischenablage-Zugriff nur, wenn du auf die Schaltfläche „Kopieren" im Abfrage-Modal klickst.
 
 ### 🦙 Lokal-first
 
@@ -258,7 +255,7 @@ Einstellungen → Erweitert → *Legacy query scorer* verwendet den bisherigen h
 
 Wir verwenden Monte-Carlo-PPR (Fogaras 2005) — 3.000 zufällige Walks × 50 Schritte — mit der Dead-End-Regel von Haveliwala 2002. Die Kosten sind **O(K × L)** (K = Walks, L = Schritte pro Walk), unabhängig von der Seitenzahl, sodass ein 2.000-Seiten-Vault die gleiche Expansionslatenz wie ein 200-Seiten-Vault hat.
 
-**PPR @5 = 27,1 % vs. reine-kNN-Baseline 24,1 %** auf dem projekteigenen Benchmark-Korpus (dem einzigen veröffentlichten Such-Benchmark in diesem Open-Source-LLM-Wiki-Bereich).
+**PPR @5 = 27,1 % vs. reine-kNN-Baseline 24,1 %** auf dem projekteigenen Benchmark-Korpus (dem einzigen veröffentlichten Such-Benchmark in diesem Open-Source-Wiki-Plugin-Bereich).
 
 ### Warum keine Embeddings
 
@@ -385,7 +382,7 @@ Für vollständige Datenlokalität verwende Ollama oder LM Studio. Mit einem lok
 
 ## 💖 Unterstützung
 
-Wenn LLM-Wiki zu einem wichtigen Teil deines Wissens-Workflows geworden ist:
+Wenn Karpathy LLM Wiki zu einem wichtigen Teil deines Wissens-Workflows geworden ist:
 
 - ☕ **[Kauf mir einen Kaffee auf Ko-fi](https://ko-fi.com/greenerdalii)** — einmalig oder monatlich
 - 💳 **[Trinkgeld via PayPal](https://paypal.me/greenerdalii)** — einmaliges Trinkgeld

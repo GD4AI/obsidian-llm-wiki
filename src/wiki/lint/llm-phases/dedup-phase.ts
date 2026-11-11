@@ -121,6 +121,596 @@ export function computeVerifyBatch(
  *
  * On any error, returns `[]` and logs. Does NOT throw.
  */
+/** One retry that produced an answer, for the post-loop Notice. */
+interface RetryEvent {
+  batchNum: number;
+  attempt: 1 | 2;
+  delayMs: number;
+}
+
+/** What the dedup phase has to say once every batch is done (#932). */
+interface DedupOutcome {
+  dedupFailures: Array<{ name: string; reason: string; type?: string }>;
+  /** The concurrency the run started with, from settings. */
+  concurrency: number;
+  settings: LintPhaseContext['settings'];
+  retryEvents: RetryEvent[];
+  /** What the user set. Printed beside the reduced value so the difference shows. */
+  userConcurrency: number;
+  /** What the in-scan halving left it at. */
+  finalConcurrency: number;
+}
+
+/**
+ * Record a retry that produced an answer, and hand the answer back (#993).
+ *
+ * One line at the call site on purpose: `runDedupPhase` is under a line ceiling,
+ * and the difference between "this retry worked" and "this retry ran" is the whole
+ * of #993.
+ */
+function recordRecovery(
+  events: RetryEvent[],
+  batchNum: number,
+  attempt: 1 | 2,
+  delayMs: number,
+  answer: string,
+): string {
+  events.push({ batchNum, attempt, delayMs });
+  return answer;
+}
+
+/**
+ * Report the run's failures and retries. Extracted from `runDedupPhase` (#932).
+ *
+ * Three signals, each with one audience: the rate-limit Notice for the user, the
+ * non-rate-limit warn line for whoever reads the log, and the retry Notice for the
+ * user. They were the tail of a 739-line function and nothing tested them — a
+ * mutation that dropped the whole block changed no assertion. The characterization
+ * tests in `dedup-phase.test.ts` were written before this move, so they guard it.
+ */
+function reportDedupOutcome(outcome: DedupOutcome): void {
+  const { dedupFailures, retryEvents, settings } = outcome;
+  // Rate-limit detection for duplicate detection
+  const dedupRateInfo = detectRateLimitFailures(
+    dedupFailures,
+    outcome.concurrency,
+    settings.batchDelayMs ?? 300,
+  );
+  if (dedupRateInfo) {
+    console.warn(
+      `[Duplicate Rate Limit] ${dedupRateInfo.count} duplicate detection batch(es) failed with 429, `
+      + `suggested concurrency=${dedupRateInfo.suggestedConcurrency}, delay=${dedupRateInfo.suggestedDelay}ms`,
+    );
+    new Notice(formatRateLimitNotice(dedupRateInfo, settings.language), NOTICE_RATE_LIMIT);
+  }
+  // v1.26.0 (#382 item 1, Batch 2): log non-rate-limit failures
+  // separately so DocTpoint's batch-expansion truncation hypothesis
+  // is measurable across dedup runs.
+  //
+  // v1.26.0 Batch 7 + CR-3 fix (PR #411 simplify review 2026-08-05):
+  // pass the FULL failure item, not just `f.reason`. The structured
+  // `type: 'parse-failure'` discriminator on dedupFailures (added in
+  // commit 6e6388a) was being dropped at every consumer — the
+  // `isRateLimitFailure` structured-form branch was unreachable from
+  // production. Without the fix, a future edit to the parse-failure
+  // reason string that mentions "throttl" or "rate limit" would
+  // silently misclassify parse-failures as 429s, vanish the
+  // [Duplicate Batch Failures] truncation counter, AND fire a
+  // spurious [Duplicate Rate Limit] Notice. The CR-3 regression
+  // guarantee was on the test page; this wiring puts it on the
+  // running plugin's call path too.
+  const nonRateLimitFailures = dedupFailures.filter(f =>
+    !isRateLimitFailure(f),
+  );
+  if (nonRateLimitFailures.length > 0) {
+    console.warn(
+      `[Duplicate Batch Failures] ${nonRateLimitFailures.length} duplicate detection batch(es) failed for non-rate-limit reasons (parse failure / empty response / etc.) — see preceding 'lintWiki: duplicate detection batch failed' lines for details`,
+    );
+  }
+
+  // v1.26.0 (#382 item 1, Batch 2): user-facing Notice when the
+  // dedup-phase retry / concurrency-halving mechanism kicked in.
+  // This is the only user-visible signal — the log has full detail,
+  // but most users won't read it. The Notice fires only when at
+  // least one batch triggered a retry (so a clean run stays quiet)
+  // AND only once per scan (one Toast, not one per retry). It is
+  // informational, not a failure — duplicate detection still
+  // completed successfully for the batches that recovered.
+  //
+  // The Notice text comes from the `llmRetryRecoveredToast` i18n key
+  // (10 locales). v1.27.0 follow-up: extract the retry/backoff into
+  // a reusable `core/llm-retry.ts` helper that any LLM business
+  // path (dedup, analysis, fix-runners) can use; this Toast key is
+  // designed to be reused by those callers too.
+  if (retryEvents.length > 0) {
+    // #993: `retryEvents` now holds recovered batches only, so the count means
+    // what the sentence says. The old parenthetical counted every retry that had
+    // a delay, which labelled a 500 ms recovery as "2s backoff".
+    const concurrencyNote = outcome.finalConcurrency < outcome.userConcurrency
+      ? ` Concurrency was reduced from ${outcome.userConcurrency} → ${outcome.finalConcurrency} for the rest of the scan.`
+      : '';
+    const summary = `${retryEvents.length} batch(es) recovered after an empty LLM response.${concurrencyNote} See console for detail.`;
+    console.warn(
+      `[Dedup LLM] ${summary}`,
+    );
+    new Notice(
+      getText(settings.language, 'llmRetryRecoveredToast')
+        .replace('{count}', String(retryEvents.length)),
+      NOTICE_RATE_LIMIT,
+    );
+  }
+}
+
+/**
+ * Retry state the batch loop shares with the retry helper (#932).
+ *
+ * Both fields are written by `callLlmWithRetry` and read elsewhere in the loop, so
+ * they travel as one object rather than two closures: the loop halves concurrency
+ * when the first attempt of a chunk came back empty, and the run's reporting counts
+ * the retries that actually recovered.
+ */
+interface DedupRetryState {
+  events: RetryEvent[];
+  softThrottleDetected: boolean;
+}
+
+/** Everything the retry needs. Nothing is captured, so nothing goes stale. */
+interface DedupRetryRequest {
+  batchNum: number;
+  prompt: string;
+  llm: LLMClient;
+  /** Read per call, because a task policy can change between batches. */
+  settings: LintPhaseContext['settings'];
+  systemPrompt?: string;
+  state: DedupRetryState;
+}
+
+const RETRY_ATTEMPT_2_DELAY_MS = 500;
+const RETRY_ATTEMPT_3_DELAY_MS = 2000;
+
+/**
+ * Dedup force-disables thinking for its own calls.
+ *
+ * The full reasoning — why this is hard-coded rather than a setting, and why the
+ * 4-layer fallback below it is live — is recorded beside the concurrency setup in
+ * `runDedupPhase`. The constant sits here because `callLlmWithRetry` is its only
+ * reader (#932).
+ */
+const FORCE_DISABLE_THINKING = true;
+
+/**
+ * Call the LLM for one dedup batch, retrying an empty answer (#932).
+ *
+ * Some providers (notably deepseek-v4-flash in thinking mode) return 200 OK with a
+ * 0-byte body under burst load — a soft-throttle rather than a hard 429. The retry
+ * policy is tiered: attempt 1 is the original request, attempt 2 waits 500 ms and
+ * retries the same request, attempt 3 waits 2 s. The 500 ms is short enough not to
+ * slow the happy path and long enough to let one in-flight request drain; the 2 s
+ * tier empirically clears the soft-throttle.
+ *
+ * If attempt 3 is still empty the final empty string is returned, `parseJsonResponse`
+ * throws `EmptyResponseError`, and the batch lands in `dedupFailures`. A batch that
+ * recovered on either retry is recorded in `state.events`, so the post-loop reporting
+ * can print one Notice for the run instead of one per batch.
+ */
+async function callLlmWithRetry(request: DedupRetryRequest): Promise<string> {
+  const { batchNum, prompt, llm, settings, systemPrompt, state } = request;
+  const retryEvents = state.events;
+  const lintModel = resolveModelForTask(settings, 'lint');
+  const llmArgs = {
+    task: 'lint-dedup' as const,
+    model: lintModel,
+    max_tokens: TOKENS_LINT_DEDUP_LLM,
+    messages: [{ role: 'user' as const, content: prompt }],
+    ...(systemPrompt ? { system: systemPrompt } : {}),
+    // v1.26.3 PATCH Issue #443 expanded scope: typed-output path.
+    // DedupResultLLMSchema ({duplicates?: [{target, source, reason}]})
+    // travels on the wire as Tier 0 json_schema — LMStudio accepts,
+    // no parse-error fallback to empty.
+    response_format: { type: 'json_object' as const, schema: DedupResultLLMSchema },
+    // v1.26.0 Batch 7 follow-up (eucher): the previous
+    // `enableThinkingOverride ? … : {}` ternary silently sent
+    // nothing because `override = false` always picks the empty
+    // branch. The flag is now `FORCE_DISABLE_THINKING = true` and
+    // the spread is unconditional so `enableThinking: false`
+    // actually enters llmArgs and reaches buildProviderOptions
+    // (which then maps it to `reasoningEffort: 'none'` /
+    // `thinking: {type: 'disabled'}` per SDK).
+    ...(FORCE_DISABLE_THINKING ? { enableThinking: false } : {}),
+  };
+
+  const logResponse = (response: string, attempt: 1 | 2 | 3, delayMs: number) => {
+    console.debug(
+      `[Dedup LLM batch ${batchNum}] request: prompt_chars=${prompt.length} ` +
+      `system_chars=${systemPrompt?.length ?? 0} ` +
+      `model=${lintModel} ` +
+      `max_tokens=${TOKENS_LINT_DEDUP_LLM} ` +
+      `disableThinking=${FORCE_DISABLE_THINKING ? 'force' : 'inherit-user'} ` +
+      `response_format=json_object attempt=${attempt} delay_ms=${delayMs} | ` +
+      `response: raw_length=${response.length} ` +
+      `first_100_chars="${response.substring(0, 100).replace(/\n/g, '\\n')}"`
+    );
+  };
+
+  // v1.26.3 PATCH Issue #443 expanded scope: typed-output dispatch via the
+  // centralized core/llm-dispatch helper. The retry tier logic is
+  // unchanged — only the wire shape gains schema enforcement.
+  const callOnce = () => callLlm(llm, llmArgs);
+
+  // Attempt 1: original request.
+  const first = await callOnce();
+  logResponse(first, 1, 0);
+  if (first.length > 0) return first;
+
+  // Attempt 2: 500ms-delayed retry of the same request.
+  //
+  // #993: the recovery is recorded after this attempt returns, not before it.
+  // The old order counted a retry that also came back empty, so a batch that
+  // failed every attempt was still announced as recovered.
+  state.softThrottleDetected = true;
+  console.warn(
+    `[Dedup LLM batch ${batchNum}] empty response (attempt 1) — ` +
+    `retrying after ${RETRY_ATTEMPT_2_DELAY_MS}ms. enableThinking_sent=${FORCE_DISABLE_THINKING ? 'false' : 'unset'} ` +
+    `prompt_chars=${prompt.length} max_tokens=${TOKENS_LINT_DEDUP_LLM} model=${lintModel}`
+  );
+  await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_2_DELAY_MS));
+  const second = await callOnce();
+  logResponse(second, 2, RETRY_ATTEMPT_2_DELAY_MS);
+  if (second.length > 0) return recordRecovery(retryEvents, batchNum, 1, RETRY_ATTEMPT_2_DELAY_MS, second);
+
+  // Attempt 3: 2-second delayed retry (final attempt).
+  console.warn(
+    `[Dedup LLM batch ${batchNum}] empty response (attempt 2) — ` +
+    `retrying after ${RETRY_ATTEMPT_3_DELAY_MS}ms delay (likely provider soft-throttle).`
+  );
+  await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_3_DELAY_MS));
+  const third = await callOnce();
+  logResponse(third, 3, RETRY_ATTEMPT_3_DELAY_MS);
+  if (third.length > 0) return recordRecovery(retryEvents, batchNum, 2, RETRY_ATTEMPT_3_DELAY_MS, third);
+  return third;
+}
+
+/** What one batch worker needs beyond `ctx` (#932). */
+interface DedupBatchRequest {
+  batch: DuplicateCandidate[];
+  batchNum: number;
+  totalBatches: number;
+  /** Pages in the run, printed in the prompt so the model knows the corpus size. */
+  pageCount: number;
+  systemPrompt?: string;
+  state: DedupRetryState;
+  /** The run's failure accumulator, so a skipped batch is recorded once, by its owner. */
+  failures: Array<{ name: string; reason: string; type?: string }>;
+}
+
+/**
+ * Build the prompt for one batch, verify it, and return the confirmed pairs (#932).
+ *
+ * Extracted from the `chunk.map` worker inside `runDedupPhase`. A parse failure is
+ * recorded in `request.failures` and yields `[]`; a thrown error escapes to
+ * `Promise.allSettled` so the caller records it as a rejected batch. That split is
+ * unchanged by the move: an empty answer is a shape problem and carries
+ * `type: 'parse-failure'`, while a thrown error does not.
+ */
+async function runDedupBatch(
+  ctx: LintPhaseContext,
+  request: DedupBatchRequest,
+): Promise<DuplicateResult[] | undefined> {
+  const { batch, batchNum, totalBatches, pageCount, systemPrompt, state, failures } = request;
+  const candidateList = batch.map(c =>
+    `- Candidate A: ${c.target}\n  Candidate B: ${c.source}\n  Signal: ${c.reason}`
+  ).join('\n');
+
+  const dedupPrompt = renderTemplate(PROMPTS.lintDuplicateDetection, {
+    wikiFolder: ctx.settings.wikiFolder,
+    candidates: candidateList,
+    total: String(pageCount),
+  });
+
+  console.debug(`lintWiki: batch ${batchNum}/${totalBatches} — ${batch.length} candidates`);
+
+  // B3 fix: capture the result of the getter so subsequent await
+  // calls don't re-invoke (also narrows the non-null assertion
+  // away — ctx.llmClient() returned null only at the early-return
+  // guard; this loop is unreachable in that case).
+  const llm = ctx.llmClient();
+  if (!llm) {
+    throw new Error('runDedupPhase: LLM client became null mid-run');
+  }
+
+  const dedupResponse = await callLlmWithRetry({
+    batchNum,
+    prompt: dedupPrompt,
+    llm,
+    settings: ctx.settings,
+    systemPrompt,
+    state,
+  });
+
+  // v1.26.0 (#382 item 1, Batch 2): throwOnEmpty surfaces 0-byte
+  // LLM responses as batch failures instead of silently masking
+  // them as `{duplicates: []}` (DocTpoint's #382 review). After
+  // the 2-retry tier, if the response is still empty,
+  // parseJsonResponse throws EmptyResponseError and the batch
+  // is recorded as a dedupFailure.
+  //
+  // v1.26.0 Batch 7 (DocTpoint #382 comment 1): the null-vs-empty
+  // distinction. parseJsonResponse returns null in two distinct
+  // outcomes:
+  //   1. Legitimate empty: LLM returned `{"duplicates": []}`
+  //      correctly → no duplicates in this batch.
+  //   2. Parse failure / truncated: response was non-empty but
+  //      JSON was malformed OR truncated by max_tokens. The
+  //      retry tier above already exhausted the empty-body case;
+  //      the null here means "got body but couldn't parse it".
+  //
+  // Before Batch 7, both outcomes collapsed to the same `[]`
+  // return. parse-failures inside the success branch NEVER
+  // entered dedupFailures, so the [Duplicate Batch Failures]
+  // log line was blind to mid-response truncation. As traffic
+  // through this call scales up (post-Batch 2 cross-type
+  // expansion), we need a real truncation count before tuning
+  // max_tokens / batch size.
+  //
+  // Approach: keep parseJsonResponse contract stable (silent on
+  // parse-fail, throws on empty — 10+ other call sites depend
+  // on the silent contract). Check `=== null` here and route
+  // into dedupFailures with a distinct reason tag. The
+  // `throwOnEmpty: true` option above handles the empty-body
+  // case; this handles the "got body but parse failed" case.
+  //
+  // v1.26.0 Batch 7 follow-up (DocTpoint Item 5): also route
+  // shape-mismatches (`{duplicates: 'yes'}` / `{duplicates: 42}`
+  // / `{duplicates: null}` — parsed successfully but the
+  // `duplicates` field is not an array) into dedupFailures with
+  // the same `type: 'parse-failure'` discriminator. Same root
+  // cause as the `=== null` branch (LLM didn't return the shape
+  // we asked for), same operator consequence (truncation /
+  // prompt-format mismatch we need to count for tuning), and
+  // the previous `Array.isArray(rawDumps) ? rawDups : []` line
+  // silently masked it — operators lost the real signal. See
+  // the regression guard test in
+  // `__tests__/wiki/lint/llm-phases/dedup-phase.test.ts`.
+  const dedupResult = await parseJsonResponse(dedupResponse, undefined, {
+    throwOnEmpty: true,
+    silentOnEmpty: false,
+  }) as { duplicates?: DuplicateResult[] } | null;
+
+  // One parse-failure branch covers BOTH outcome kinds — the
+  // whole-response failure (null) and the shape-mismatch (parsed
+  // but `duplicates` is not an array). Same reason tag, same
+  // `type` discriminator so the rate-limit classifier excludes
+  // both from the 429 grouping.
+  const rawDups = dedupResult?.duplicates;
+  const shapeMismatch =
+    dedupResult !== null && !Array.isArray(rawDups);
+  if (dedupResult === null || shapeMismatch) {
+    // Parse failure / truncated / shape mismatch — NOT a
+    // legitimate empty. Route into dedupFailures with a
+    // distinct reason tag so the [Duplicate Batch Failures]
+    // warning can distinguish this from network/429 errors.
+    // The fulfilled/rejected branch downstream treats
+    // dedupFailures as a record of skipped batches; the
+    // post-loop summary line
+    // (`[Duplicate Batch Failures] ${count} batches`) will
+    // surface this. `failures` is the array this run passed in,
+    // so the push here is the canonical record path.
+    const reason = shapeMismatch
+      ? `parse-failure: response parsed but 'duplicates' is not an array (got ${rawDups === null ? 'null' : typeof rawDups})`
+      : 'parse-failure: response present but JSON unparseable or truncated';
+    console.warn(`lintWiki: batch ${batchNum} ${reason}`);
+    // CR-3 fix: explicit `type: 'parse-failure'` discriminator
+    // so the rate-limit classifier excludes this entry from the
+    // rate-limit grouping. The free-text reason can change
+    // without affecting the classifier.
+    failures.push({ name: `batch-${batchNum}`, reason, type: 'parse-failure' });
+    return [];
+  }
+
+  console.debug(`lintWiki: batch ${batchNum}/${totalBatches} → ${rawDups?.length || 0} duplicates confirmed`);
+  return rawDups;
+}
+
+/** What the chunk loop needs from the run (#932). */
+interface DedupChunkRequest {
+  batches: DuplicateCandidate[][];
+  /** The starting in-scan concurrency, from settings. */
+  concurrency: number;
+  /** The user's value, printed beside the reduced one so the difference shows. */
+  userConcurrency: number;
+  /** Pages in the run, forwarded to each batch prompt. */
+  pageCount: number;
+  systemPrompt?: string;
+  checkCancelled: () => void;
+}
+
+/** What the chunk loop leaves behind for the run's reporting. */
+interface DedupChunkOutcome {
+  duplicates: DuplicateResult[];
+  failures: Array<{ name: string; reason: string; type?: string }>;
+  retryEvents: RetryEvent[];
+  /** Where the halving left it, so the report can show user value vs actual. */
+  finalConcurrency: number;
+}
+
+/**
+ * Run every batch in chunks, halving concurrency when throttling persists (#932).
+ *
+ * Extracted from `runDedupPhase`, which was doing candidate generation, batching,
+ * the LLM loop and the reporting in one body. Three things stay local here because
+ * they are the loop's own state: the adapted concurrency, the consecutive-throttle
+ * counter, and the retry accumulator the batches share.
+ *
+ * The order inside the loop is load-bearing and is unchanged by the move: settle the
+ * chunk, adapt concurrency from what the chunk reported, then advance `i` by the
+ * concurrency that was in force. Advancing before the adaptation would skip or
+ * repeat batches when the value changes mid-run.
+ */
+async function runDedupChunks(
+  ctx: LintPhaseContext,
+  request: DedupChunkRequest,
+): Promise<DedupChunkOutcome> {
+  const { batches, concurrency, userConcurrency, pageCount, systemPrompt, checkCancelled } = request;
+  const t = TEXTS[ctx.settings.language];
+  let currentConcurrency = concurrency;
+
+  // v1.26.x PATCH CR-1: in-scan halving counter hoisted ABOVE the
+  // chunk-iteration for-loop. Previously declared inside the loop body
+  // (after Promise.allSettled resolved), which reset both `consecutive
+  // ThrottleChunks` and the `HALVE_AFTER_CONSECUTIVE_CHUNKS` constant
+  // to their initial values at the start of every chunk — the counter
+  // could never reach 2 across chunks and the halving branch was
+  // dead code in practice. Fix: hoist above the loop alongside
+  // `currentConcurrency` so the counter accumulates across chunks.
+  let consecutiveThrottleChunks = 0;
+  const HALVE_AFTER_CONSECUTIVE_CHUNKS = 2;
+
+  // The retry policy, its delays and the recovered-batch accumulator live in
+  // `callLlmWithRetry` (#932). What stays here is the shared state: the batch
+  // loop reads `softThrottleDetected` to halve concurrency, and the run's
+  // reporting reads `events` for the recovered-batch Notice.
+  const retryState: DedupRetryState = { events: [], softThrottleDetected: false };
+
+  // Process batches in parallel with concurrency limit
+  const allDuplicates: DuplicateResult[] = [];
+  // v1.26.0 Batch 7 + CR-3 fix: structured `type` discriminator on the
+  // failure record, alongside the free-text `reason`. The rate-limit
+  // classifier (src/core/rate-limit.ts:34) groups failures by string
+  // match on `reason` today; a future wording tweak on the parse-
+  // failure reason ("response was throttled mid-flight" would match
+  // the rate-limit regex, e.g.) would silently misclassify the parse
+  // failure as a rate-limit failure — vanishing from the truncation
+  // counter AND firing a spurious [Duplicate Rate Limit] Notice.
+  //
+  // Setting `type: 'parse-failure'` explicitly excludes the entry
+  // from the rate-limit grouping: rate-limit failures come from
+  // network/429 (which arrive as rejected Promise.allSettled
+  // promises with an Error-shaped reason); parse-failures are
+  // mid-response and have a known discriminator.
+  const dedupFailures: Array<{ name: string; reason: string; type?: string }> = [];
+  for (let i = 0; i < batches.length; ) {
+    checkCancelled();
+    const chunk = batches.slice(i, i + currentConcurrency);
+    const batchStart = i + 1;
+    const batchEnd = Math.min(i + currentConcurrency, batches.length);
+    const progressLabel = batchEnd > batchStart
+      ? `${batchStart}-${batchEnd}/${batches.length}`
+      : `${batchStart}/${batches.length}`;
+    ctx.stageNotice?.setMessage(t.lintCheckingDuplicatesProgress
+      .replace('{current}', progressLabel));
+    const results = await Promise.allSettled(
+      chunk.map((batch, bi) => runDedupBatch(ctx, {
+        batch,
+        batchNum: batchStart + bi,
+        totalBatches: batches.length,
+        pageCount,
+        systemPrompt,
+        state: retryState,
+        failures: dedupFailures,
+      }))
+    );
+
+    // v1.26.0 (#382 item 1, Batch 2 follow-up): in-scan concurrency
+  // halving — ELEVATED threshold.
+  //
+  // Previous behavior: any single retry triggered immediate halving.
+  // On the 2141-page vault (Aug 2026) this caused 4 → 2 → 1 cascade
+  // after just 3 bursts, forcing the remaining 17 batches to run
+  // serially and stretching wall-time to ~979s.
+  //
+  // New behavior: only halve when TWO CONSECUTIVE chunks have at
+  // least one retry each. A single isolated retry (which attempt 2
+  // or attempt 3 reliably recovers — see the e2e log) is treated as
+  // a transient blip, not a sustained soft-throttle pattern. The
+  // counter resets to 0 after any chunk that has zero retries, so
+  // sustained throttling still gets halved — just one chunk later
+  // than before.
+  //
+  // Why not "halve on every retry" as a simpler rule: each halving
+  // step costs wall-time (chunks run serially at concurrency=1
+  // instead of in parallel). On this vault, a single early
+  // false-positive halve adds ~100s. Skipping halving on isolated
+  // retries preserves the parallel chunking for the common case
+  // where retries recover cleanly via attempt 2's 500ms backoff.
+  //
+  // Floor at 1. The user's settings value is unaffected
+  // (currentConcurrency is a local that resets every run).
+  // CR-1: `consecutiveThrottleChunks` and `HALVE_AFTER_CONSECUTIVE_CHUNKS`
+  // were hoisted ABOVE this loop alongside `currentConcurrency` so the
+  // counter accumulates across chunks instead of resetting every chunk.
+
+  // v1.26.0 (#382 item 1, Batch 2): in-scan concurrency halving.
+  // When this chunk produced any retry events (i.e. soft-throttle
+  // detected), halve the in-scan concurrency for the rest of the
+  // loop. Floor at 1. The user's settings value is unaffected
+  // (currentConcurrency is a local that resets every run).
+  i += currentConcurrency;
+  if (retryState.softThrottleDetected) {
+    consecutiveThrottleChunks += 1;
+    if (consecutiveThrottleChunks >= HALVE_AFTER_CONSECUTIVE_CHUNKS && currentConcurrency > 1) {
+      const newConcurrency = Math.max(1, Math.floor(currentConcurrency / 2));
+      console.warn(
+        `[Dedup LLM] soft-throttle detected in ${consecutiveThrottleChunks} consecutive chunks — ` +
+        `temporarily reducing in-scan concurrency ${currentConcurrency} → ${newConcurrency} ` +
+        `(user setting ${userConcurrency} is preserved; this adaptation is in-memory only)`
+      );
+      currentConcurrency = newConcurrency;
+      consecutiveThrottleChunks = 0;
+    }
+  } else {
+    consecutiveThrottleChunks = 0;
+  }
+  retryState.softThrottleDetected = false;
+
+    for (let resultIdx = 0; resultIdx < results.length; resultIdx++) {
+      const result = results[resultIdx];
+      // v1.24.0: capture the real batch number via the closure. `batchNum`
+      // for the bi'th result in this chunk is `batchStart + bi`. We
+      // re-derive from `resultIdx` instead of `results.indexOf(result)`
+      // to avoid relying on Promise.allSettled result identity.
+      const batchNum = batchStart + resultIdx;
+      if (result.status === 'fulfilled') {
+        const rawDups = Array.isArray(result.value) ? result.value : [];
+        const validDups = rawDups.filter(
+          // v1.24.0 W5: include `typeof d.reason === 'string'` so LLMs that
+          // return null/42 for `reason` are filtered out (not silently
+          // passed through to DuplicateResult.reason: string).
+          d => typeof d.target === 'string' && d.target.length > 0 &&
+               typeof d.source === 'string' && d.source.length > 0 &&
+               typeof d.reason === 'string'
+        ).map(d => ({
+          target: normalizeLLMPath(d.target, ctx.settings.wikiFolder),
+          source: normalizeLLMPath(d.source, ctx.settings.wikiFolder),
+          reason: d.reason,
+        }))
+        // Issue #826: the filter above runs BEFORE `normalizeLLMPath`, so it
+        // never compares target to source — and two distinct strings that
+        // resolve to one page both pass it. `wiki/entities/a.md` and
+        // `entities/a.md` become the same path, and a literally repeated pair
+        // needs no transformation at all. The self-pair then reaches the
+        // merge path, which writes the target and deletes it. Normalise first,
+        // compare second: that is what makes the filter mean what it reads as.
+        .filter(d => d.target !== d.source);
+        allDuplicates.push(...validDups);
+      } else {
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason || 'unknown');
+        console.error('lintWiki: duplicate detection batch failed:', reason);
+        // Real batch number (was `batch-${i + 1}` — the outer chunk-loop
+        // index — which collided with sibling batches in the same chunk
+        // at concurrency > 1; v1.24.0 review finding B4).
+        dedupFailures.push({ name: `batch-${batchNum}`, reason });
+      }
+    }
+  }
+
+  return {
+    duplicates: allDuplicates,
+    failures: dedupFailures,
+    retryEvents: retryState.events,
+    finalConcurrency: currentConcurrency,
+  };
+}
+
 export async function runDedupPhase(
   ctx: LintPhaseContext,
   input: DedupPhaseInput,
@@ -399,7 +989,8 @@ export async function runDedupPhase(
     // reason step by step"), not from Layers 1-3 (which were never sent
     // before this fix). After this fix Layers 1-3 will be live and the
     // expectation is real wall-time reduction, not just retry recovery.
-    const FORCE_DISABLE_THINKING = true;
+    // Dedup force-disables thinking. The flag itself is at module scope
+    // (`FORCE_DISABLE_THINKING`), because the retry helper is now its only reader.
     //
     // The user-set `pageGenerationConcurrency` is the starting point.
     // When an empty-response soft-throttle is detected (deepseek-v4-flash
@@ -409,426 +1000,30 @@ export async function runDedupPhase(
     // modified — the adaptation lives only in this `currentConcurrency`
     // local, which resets to the user value at the start of every
     // runDedupPhase invocation.
-    let currentConcurrency = ctx.settings.pageGenerationConcurrency || 1;
-    const userConcurrency = currentConcurrency;
+    // The in-scan concurrency adaptation and the retry state live in
+    // `runDedupChunks` (#932) — the loop that uses them.
+    const userConcurrency = concurrency;
 
-    // v1.26.x PATCH CR-1: in-scan halving counter hoisted ABOVE the
-    // chunk-iteration for-loop. Previously declared inside the loop body
-    // (after Promise.allSettled resolved), which reset both `consecutive
-    // ThrottleChunks` and the `HALVE_AFTER_CONSECUTIVE_CHUNKS` constant
-    // to their initial values at the start of every chunk — the counter
-    // could never reach 2 across chunks and the halving branch was
-    // dead code in practice. Fix: hoist above the loop alongside
-    // `currentConcurrency` so the counter accumulates across chunks.
-    let consecutiveThrottleChunks = 0;
-    const HALVE_AFTER_CONSECUTIVE_CHUNKS = 2;
-
-    // v1.26.0 (#382 item 1, Batch 2): empty-response retry helper.
-    //
-    // Some providers (notably deepseek-v4-flash in thinking mode)
-    // return 200 OK with a 0-byte body under burst load — a
-    // soft-throttle rather than a hard 429. The retry policy is
-    // tiered:
-    //   attempt 1: original request.
-    //   attempt 2: 500ms-delayed retry of the SAME request.
-    //               (v1.26.0 Batch 2 follow-up: previously immediate;
-    //                added 500ms backoff so we don't hard-collide
-    //                with the provider's request queue immediately
-    //                after the burst. 500ms is short enough not to
-    //                slow the happy path noticeably, long enough to
-    //                let one in-flight request drain.)
-    //   attempt 3: 2-second delayed retry (final attempt — lets the
-    //               provider's request queue drain — empirically
-    //               clears the soft-throttle on deepseek-v4-flash).
-    //
-    // If attempt 3 is still empty, the batch is recorded as a
-    // dedupFailure. The function returns the final response (empty
-    // string = permanent failure), the parseJsonResponse call below
-    // throws EmptyResponseError, and the batch lands in
-    // `dedupFailures`. The retryEvents accumulator lets the post-loop
-    // code surface a single user-facing Notice if retries were
-    // triggered, rather than 1 Notice per batch.
-    const RETRY_ATTEMPT_2_DELAY_MS = 500;
-    const RETRY_ATTEMPT_3_DELAY_MS = 2000;
-    const retryEvents: Array<{ batchNum: number; attempt: 1 | 2; delayMs: number }> = [];
-    let softThrottleDetected = false;
-
-    async function callLlmWithRetry(
-      batchNum: number,
-      prompt: string,
-      llm: LLMClient,
-    ): Promise<string> {
-      const lintModel = resolveModelForTask(ctx.settings, 'lint');
-      const llmArgs = {
-        task: 'lint-dedup' as const,
-        model: lintModel,
-        max_tokens: TOKENS_LINT_DEDUP_LLM,
-        messages: [{ role: 'user' as const, content: prompt }],
-        ...(systemPrompt ? { system: systemPrompt } : {}),
-        // v1.26.3 PATCH Issue #443 expanded scope: typed-output path.
-        // DedupResultLLMSchema ({duplicates?: [{target, source, reason}]})
-        // travels on the wire as Tier 0 json_schema — LMStudio accepts,
-        // no parse-error fallback to empty.
-        response_format: { type: 'json_object' as const, schema: DedupResultLLMSchema },
-        // v1.26.0 Batch 7 follow-up (eucher): the previous
-        // `enableThinkingOverride ? … : {}` ternary silently sent
-        // nothing because `override = false` always picks the empty
-        // branch. The flag is now `FORCE_DISABLE_THINKING = true` and
-        // the spread is unconditional so `enableThinking: false`
-        // actually enters llmArgs and reaches buildProviderOptions
-        // (which then maps it to `reasoningEffort: 'none'` /
-        // `thinking: {type: 'disabled'}` per SDK).
-        ...(FORCE_DISABLE_THINKING ? { enableThinking: false } : {}),
-      };
-
-      const logResponse = (response: string, attempt: 1 | 2 | 3, delayMs: number) => {
-        console.debug(
-          `[Dedup LLM batch ${batchNum}] request: prompt_chars=${prompt.length} ` +
-          `system_chars=${systemPrompt?.length ?? 0} ` +
-          `model=${lintModel} ` +
-          `max_tokens=${TOKENS_LINT_DEDUP_LLM} ` +
-          `disableThinking=${FORCE_DISABLE_THINKING ? 'force' : 'inherit-user'} ` +
-          `response_format=json_object attempt=${attempt} delay_ms=${delayMs} | ` +
-          `response: raw_length=${response.length} ` +
-          `first_100_chars="${response.substring(0, 100).replace(/\n/g, '\\n')}"`
-        );
-      };
-
-      // v1.26.3 PATCH Issue #443 expanded scope: typed-output dispatch via the
-      // centralized core/llm-dispatch helper. The retry tier logic is
-      // unchanged — only the wire shape gains schema enforcement.
-      const callOnce = () => callLlm(llm, llmArgs);
-
-      // Attempt 1: original request.
-      const first = await callOnce();
-      logResponse(first, 1, 0);
-      if (first.length > 0) return first;
-
-      // Attempt 2: 500ms-delayed retry of the same request.
-      softThrottleDetected = true;
-      retryEvents.push({ batchNum, attempt: 1, delayMs: RETRY_ATTEMPT_2_DELAY_MS });
-      console.warn(
-        `[Dedup LLM batch ${batchNum}] empty response (attempt 1) — ` +
-        `retrying after ${RETRY_ATTEMPT_2_DELAY_MS}ms. enableThinking_sent=${FORCE_DISABLE_THINKING ? 'false' : 'unset'} ` +
-        `prompt_chars=${prompt.length} max_tokens=${TOKENS_LINT_DEDUP_LLM} model=${lintModel}`
-      );
-      await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_2_DELAY_MS));
-      const second = await callOnce();
-      logResponse(second, 2, RETRY_ATTEMPT_2_DELAY_MS);
-      if (second.length > 0) return second;
-
-      // Attempt 3: 2-second delayed retry (final attempt).
-      retryEvents.push({ batchNum, attempt: 2, delayMs: RETRY_ATTEMPT_3_DELAY_MS });
-      console.warn(
-        `[Dedup LLM batch ${batchNum}] empty response (attempt 2) — ` +
-        `retrying after ${RETRY_ATTEMPT_3_DELAY_MS}ms delay (likely provider soft-throttle).`
-      );
-      await new Promise(resolve => window.setTimeout(resolve, RETRY_ATTEMPT_3_DELAY_MS));
-      const third = await callOnce();
-      logResponse(third, 3, RETRY_ATTEMPT_3_DELAY_MS);
-      return third;
-    }
-
-    // Process batches in parallel with concurrency limit
-    const allDuplicates: DuplicateResult[] = [];
-    // v1.26.0 Batch 7 + CR-3 fix: structured `type` discriminator on the
-    // failure record, alongside the free-text `reason`. The rate-limit
-    // classifier (src/core/rate-limit.ts:34) groups failures by string
-    // match on `reason` today; a future wording tweak on the parse-
-    // failure reason ("response was throttled mid-flight" would match
-    // the rate-limit regex, e.g.) would silently misclassify the parse
-    // failure as a rate-limit failure — vanishing from the truncation
-    // counter AND firing a spurious [Duplicate Rate Limit] Notice.
-    //
-    // Setting `type: 'parse-failure'` explicitly excludes the entry
-    // from the rate-limit grouping: rate-limit failures come from
-    // network/429 (which arrive as rejected Promise.allSettled
-    // promises with an Error-shaped reason); parse-failures are
-    // mid-response and have a known discriminator.
-    const dedupFailures: Array<{ name: string; reason: string; type?: string }> = [];
-    for (let i = 0; i < batches.length; ) {
-      checkCancelled();
-      const chunk = batches.slice(i, i + currentConcurrency);
-      const batchStart = i + 1;
-      const batchEnd = Math.min(i + currentConcurrency, batches.length);
-      const progressLabel = batchEnd > batchStart
-        ? `${batchStart}-${batchEnd}/${batches.length}`
-        : `${batchStart}/${batches.length}`;
-      ctx.stageNotice?.setMessage(t.lintCheckingDuplicatesProgress
-        .replace('{current}', progressLabel));
-      const results = await Promise.allSettled(
-        chunk.map(async (batch, bi) => {
-          const batchNum = i + bi + 1;
-          const candidateList = batch.map(c =>
-            `- Candidate A: ${c.target}\n  Candidate B: ${c.source}\n  Signal: ${c.reason}`
-          ).join('\n');
-
-          const dedupPrompt = renderTemplate(PROMPTS.lintDuplicateDetection, {
-            wikiFolder: ctx.settings.wikiFolder,
-            candidates: candidateList,
-            total: String(pagesForDedup.length),
-          });
-
-          console.debug(`lintWiki: batch ${batchNum}/${batches.length} — ${batch.length} candidates`);
-
-          // B3 fix: capture the result of the getter so subsequent await
-          // calls don't re-invoke (also narrows the non-null assertion
-          // away — ctx.llmClient() returned null only at the early-return
-          // guard; this loop is unreachable in that case).
-          const llm = ctx.llmClient();
-          if (!llm) {
-            throw new Error('runDedupPhase: LLM client became null mid-run');
-          }
-
-          const dedupResponse = await callLlmWithRetry(batchNum, dedupPrompt, llm);
-
-          // v1.26.0 (#382 item 1, Batch 2): throwOnEmpty surfaces 0-byte
-          // LLM responses as batch failures instead of silently masking
-          // them as `{duplicates: []}` (DocTpoint's #382 review). After
-          // the 2-retry tier, if the response is still empty,
-          // parseJsonResponse throws EmptyResponseError and the batch
-          // is recorded as a dedupFailure.
-          //
-          // v1.26.0 Batch 7 (DocTpoint #382 comment 1): the null-vs-empty
-          // distinction. parseJsonResponse returns null in two distinct
-          // outcomes:
-          //   1. Legitimate empty: LLM returned `{"duplicates": []}`
-          //      correctly → no duplicates in this batch.
-          //   2. Parse failure / truncated: response was non-empty but
-          //      JSON was malformed OR truncated by max_tokens. The
-          //      retry tier above already exhausted the empty-body case;
-          //      the null here means "got body but couldn't parse it".
-          //
-          // Before Batch 7, both outcomes collapsed to the same `[]`
-          // return. parse-failures inside the success branch NEVER
-          // entered dedupFailures, so the [Duplicate Batch Failures]
-          // log line was blind to mid-response truncation. As traffic
-          // through this call scales up (post-Batch 2 cross-type
-          // expansion), we need a real truncation count before tuning
-          // max_tokens / batch size.
-          //
-          // Approach: keep parseJsonResponse contract stable (silent on
-          // parse-fail, throws on empty — 10+ other call sites depend
-          // on the silent contract). Check `=== null` here and route
-          // into dedupFailures with a distinct reason tag. The
-          // `throwOnEmpty: true` option above handles the empty-body
-          // case; this handles the "got body but parse failed" case.
-          //
-          // v1.26.0 Batch 7 follow-up (DocTpoint Item 5): also route
-          // shape-mismatches (`{duplicates: 'yes'}` / `{duplicates: 42}`
-          // / `{duplicates: null}` — parsed successfully but the
-          // `duplicates` field is not an array) into dedupFailures with
-          // the same `type: 'parse-failure'` discriminator. Same root
-          // cause as the `=== null` branch (LLM didn't return the shape
-          // we asked for), same operator consequence (truncation /
-          // prompt-format mismatch we need to count for tuning), and
-          // the previous `Array.isArray(rawDumps) ? rawDups : []` line
-          // silently masked it — operators lost the real signal. See
-          // the regression guard test in
-          // `__tests__/wiki/lint/llm-phases/dedup-phase.test.ts`.
-          const dedupResult = await parseJsonResponse(dedupResponse, undefined, {
-            throwOnEmpty: true,
-            silentOnEmpty: false,
-          }) as { duplicates?: DuplicateResult[] } | null;
-
-          // One parse-failure branch covers BOTH outcome kinds — the
-          // whole-response failure (null) and the shape-mismatch (parsed
-          // but `duplicates` is not an array). Same reason tag, same
-          // `type` discriminator so the rate-limit classifier excludes
-          // both from the 429 grouping.
-          const rawDups = dedupResult?.duplicates;
-          const shapeMismatch =
-            dedupResult !== null && !Array.isArray(rawDups);
-          if (dedupResult === null || shapeMismatch) {
-            // Parse failure / truncated / shape mismatch — NOT a
-            // legitimate empty. Route into dedupFailures with a
-            // distinct reason tag so the [Duplicate Batch Failures]
-            // warning can distinguish this from network/429 errors.
-            // The fulfilled/rejected branch downstream treats
-            // dedupFailures as a record of skipped batches; the
-            // post-loop summary line
-            // (`[Duplicate Batch Failures] ${count} batches`) will
-            // surface this. dedupFailures is captured by closure on
-            // line 470; the push here is the canonical record path.
-            const reason = shapeMismatch
-              ? `parse-failure: response parsed but 'duplicates' is not an array (got ${rawDups === null ? 'null' : typeof rawDups})`
-              : 'parse-failure: response present but JSON unparseable or truncated';
-            console.warn(`lintWiki: batch ${batchNum} ${reason}`);
-            // CR-3 fix: explicit `type: 'parse-failure'` discriminator
-            // so the rate-limit classifier excludes this entry from the
-            // rate-limit grouping. The free-text reason can change
-            // without affecting the classifier.
-            dedupFailures.push({ name: `batch-${batchNum}`, reason, type: 'parse-failure' });
-            return [];
-          }
-
-          console.debug(`lintWiki: batch ${batchNum}/${batches.length} → ${rawDups?.length || 0} duplicates confirmed`);
-          return rawDups;
-        })
-      );
-
-      // v1.26.0 (#382 item 1, Batch 2 follow-up): in-scan concurrency
-    // halving — ELEVATED threshold.
-    //
-    // Previous behavior: any single retry triggered immediate halving.
-    // On the 2141-page vault (Aug 2026) this caused 4 → 2 → 1 cascade
-    // after just 3 bursts, forcing the remaining 17 batches to run
-    // serially and stretching wall-time to ~979s.
-    //
-    // New behavior: only halve when TWO CONSECUTIVE chunks have at
-    // least one retry each. A single isolated retry (which attempt 2
-    // or attempt 3 reliably recovers — see the e2e log) is treated as
-    // a transient blip, not a sustained soft-throttle pattern. The
-    // counter resets to 0 after any chunk that has zero retries, so
-    // sustained throttling still gets halved — just one chunk later
-    // than before.
-    //
-    // Why not "halve on every retry" as a simpler rule: each halving
-    // step costs wall-time (chunks run serially at concurrency=1
-    // instead of in parallel). On this vault, a single early
-    // false-positive halve adds ~100s. Skipping halving on isolated
-    // retries preserves the parallel chunking for the common case
-    // where retries recover cleanly via attempt 2's 500ms backoff.
-    //
-    // Floor at 1. The user's settings value is unaffected
-    // (currentConcurrency is a local that resets every run).
-    // CR-1: `consecutiveThrottleChunks` and `HALVE_AFTER_CONSECUTIVE_CHUNKS`
-    // were hoisted ABOVE this loop alongside `currentConcurrency` so the
-    // counter accumulates across chunks instead of resetting every chunk.
-
-    // v1.26.0 (#382 item 1, Batch 2): in-scan concurrency halving.
-    // When this chunk produced any retry events (i.e. soft-throttle
-    // detected), halve the in-scan concurrency for the rest of the
-    // loop. Floor at 1. The user's settings value is unaffected
-    // (currentConcurrency is a local that resets every run).
-    i += currentConcurrency;
-    if (softThrottleDetected) {
-      consecutiveThrottleChunks += 1;
-      if (consecutiveThrottleChunks >= HALVE_AFTER_CONSECUTIVE_CHUNKS && currentConcurrency > 1) {
-        const newConcurrency = Math.max(1, Math.floor(currentConcurrency / 2));
-        console.warn(
-          `[Dedup LLM] soft-throttle detected in ${consecutiveThrottleChunks} consecutive chunks — ` +
-          `temporarily reducing in-scan concurrency ${currentConcurrency} → ${newConcurrency} ` +
-          `(user setting ${userConcurrency} is preserved; this adaptation is in-memory only)`
-        );
-        currentConcurrency = newConcurrency;
-        consecutiveThrottleChunks = 0;
-      }
-    } else {
-      consecutiveThrottleChunks = 0;
-    }
-    softThrottleDetected = false;
-
-      for (let resultIdx = 0; resultIdx < results.length; resultIdx++) {
-        const result = results[resultIdx];
-        // v1.24.0: capture the real batch number via the closure. `batchNum`
-        // for the bi'th result in this chunk is `batchStart + bi`. We
-        // re-derive from `resultIdx` instead of `results.indexOf(result)`
-        // to avoid relying on Promise.allSettled result identity.
-        const batchNum = batchStart + resultIdx;
-        if (result.status === 'fulfilled') {
-          const rawDups = Array.isArray(result.value) ? result.value : [];
-          const validDups = rawDups.filter(
-            // v1.24.0 W5: include `typeof d.reason === 'string'` so LLMs that
-            // return null/42 for `reason` are filtered out (not silently
-            // passed through to DuplicateResult.reason: string).
-            d => typeof d.target === 'string' && d.target.length > 0 &&
-                 typeof d.source === 'string' && d.source.length > 0 &&
-                 typeof d.reason === 'string'
-          ).map(d => ({
-            target: normalizeLLMPath(d.target, ctx.settings.wikiFolder),
-            source: normalizeLLMPath(d.source, ctx.settings.wikiFolder),
-            reason: d.reason,
-          }))
-          // Issue #826: the filter above runs BEFORE `normalizeLLMPath`, so it
-          // never compares target to source — and two distinct strings that
-          // resolve to one page both pass it. `wiki/entities/a.md` and
-          // `entities/a.md` become the same path, and a literally repeated pair
-          // needs no transformation at all. The self-pair then reaches the
-          // merge path, which writes the target and deletes it. Normalise first,
-          // compare second: that is what makes the filter mean what it reads as.
-          .filter(d => d.target !== d.source);
-          allDuplicates.push(...validDups);
-        } else {
-          const reason = result.reason instanceof Error ? result.reason.message : String(result.reason || 'unknown');
-          console.error('lintWiki: duplicate detection batch failed:', reason);
-          // Real batch number (was `batch-${i + 1}` — the outer chunk-loop
-          // index — which collided with sibling batches in the same chunk
-          // at concurrency > 1; v1.24.0 review finding B4).
-          dedupFailures.push({ name: `batch-${batchNum}`, reason });
-        }
-      }
-    }
-
-    // Rate-limit detection for duplicate detection
-    const dedupRateInfo = detectRateLimitFailures(
-      dedupFailures,
+    const chunkOutcome = await runDedupChunks(ctx, {
+      batches,
       concurrency,
-      ctx.settings.batchDelayMs ?? 300,
-    );
-    if (dedupRateInfo) {
-      console.warn(
-        `[Duplicate Rate Limit] ${dedupRateInfo.count} duplicate detection batch(es) failed with 429, ` +
-        `suggested concurrency=${dedupRateInfo.suggestedConcurrency}, delay=${dedupRateInfo.suggestedDelay}ms`
-      );
-      new Notice(formatRateLimitNotice(dedupRateInfo, ctx.settings.language), NOTICE_RATE_LIMIT);
-    }
-    // v1.26.0 (#382 item 1, Batch 2): log non-rate-limit failures
-    // separately so DocTpoint's batch-expansion truncation hypothesis
-    // is measurable across dedup runs.
-    //
-    // v1.26.0 Batch 7 + CR-3 fix (PR #411 simplify review 2026-08-05):
-    // pass the FULL failure item, not just `f.reason`. The structured
-    // `type: 'parse-failure'` discriminator on dedupFailures (added in
-    // commit 6e6388a) was being dropped at every consumer — the
-    // `isRateLimitFailure` structured-form branch was unreachable from
-    // production. Without the fix, a future edit to the parse-failure
-    // reason string that mentions "throttl" or "rate limit" would
-    // silently misclassify parse-failures as 429s, vanish the
-    // [Duplicate Batch Failures] truncation counter, AND fire a
-    // spurious [Duplicate Rate Limit] Notice. The CR-3 regression
-    // guarantee was on the test page; this wiring puts it on the
-    // running plugin's call path too.
-    const nonRateLimitFailures = dedupFailures.filter(f =>
-      !isRateLimitFailure(f)
-    );
-    if (nonRateLimitFailures.length > 0) {
-      console.warn(
-        `[Duplicate Batch Failures] ${nonRateLimitFailures.length} duplicate detection batch(es) failed for non-rate-limit reasons (parse failure / empty response / etc.) — see preceding 'lintWiki: duplicate detection batch failed' lines for details`
-      );
-    }
+      userConcurrency,
+      pageCount: pagesForDedup.length,
+      systemPrompt,
+      checkCancelled,
+    });
 
-    // v1.26.0 (#382 item 1, Batch 2): user-facing Notice when the
-    // dedup-phase retry / concurrency-halving mechanism kicked in.
-    // This is the only user-visible signal — the log has full detail,
-    // but most users won't read it. The Notice fires only when at
-    // least one batch triggered a retry (so a clean run stays quiet)
-    // AND only once per scan (one Toast, not one per retry). It is
-    // informational, not a failure — duplicate detection still
-    // completed successfully for the batches that recovered.
-    //
-    // The Notice text comes from the `llmRetryRecoveredToast` i18n key
-    // (10 locales). v1.27.0 follow-up: extract the retry/backoff into
-    // a reusable `core/llm-retry.ts` helper that any LLM business
-    // path (dedup, analysis, fix-runners) can use; this Toast key is
-    // designed to be reused by those callers too.
-    if (retryEvents.length > 0) {
-      const delayedRetries = retryEvents.filter(e => e.delayMs > 0).length;
-      const summary = delayedRetries > 0
-        ? `${retryEvents.length} batch(es) recovered from empty LLM responses (${delayedRetries} with 2s backoff). Concurrency was temporarily reduced from ${userConcurrency} → ${currentConcurrency} for the rest of the scan. See console for detail.`
-        : `${retryEvents.length} batch(es) recovered from empty LLM responses (immediate retry succeeded). See console for detail.`;
-      console.warn(
-        `[Dedup LLM] ${summary}`
-      );
-      new Notice(
-        getText(ctx.settings.language, 'llmRetryRecoveredToast')
-          .replace('{count}', String(retryEvents.length)),
-        NOTICE_RATE_LIMIT,
-      );
-    }
+    reportDedupOutcome({
+      dedupFailures: chunkOutcome.failures,
+      concurrency,
+      settings: ctx.settings,
+      retryEvents: chunkOutcome.retryEvents,
+      userConcurrency,
+      finalConcurrency: chunkOutcome.finalConcurrency,
+    });
 
-    console.debug(`lintWiki: LLM confirmed ${allDuplicates.length} duplicate pairs total`);
-    return allDuplicates;
+    console.debug(`lintWiki: LLM confirmed ${chunkOutcome.duplicates.length} duplicate pairs total`);
+    return chunkOutcome.duplicates;
   } catch (e) {
     // v1.26.0 (#382 item 3, Batch 1): AbortError is the user-cancellation
     // signal from hooks.checkCancelled (and from any other lint sub-phase
