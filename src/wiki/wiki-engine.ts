@@ -1165,46 +1165,7 @@ export class WikiEngine {
         tableApplied,
         stubPlan,
       });
-      // Every page born from this note links its siblings, a related name
-      // the vault answers is written under the page's own title and kind,
-      // and a name nothing answers stays as written and is counted.
-      // Deterministic, no model call; see core/related-shaping.ts.
-      {
-        const pages = await this.getExistingWikiPages();
-        const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
-        const prefix = this.settings.wikiFolder + '/';
-        const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
-        const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
-        const configDir = this.app.vault.configDir;
-        const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
-          // Issue #872 — this list answers "which note names already exist?", not
-          // "which files may be ingested?". A file the user excluded from
-          // ingestion is still a note in the vault, and a link to it is still a
-          // true link, so the exclusion list must not remove it here. The
-          // function that answers the ingest question is a different one
-          // (`isIngestableSource`), and it consults the exclusion list.
-          .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
-          .map(f => f.basename);
-        const shaped = shapeRelatedLists(analysis, {
-          resolve: name => {
-            const rel = resolvePath(name);
-            if (!rel) return undefined;
-            return { title: titleByRel.get(rel) ?? name, kind: kindOf(rel) };
-          },
-          willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
-          vocabulary: domainVocabulary,
-        });
-        analysis.entities = shaped.entities;
-        analysis.concepts = shaped.concepts;
-        this.pendingUnanswered = shaped.unanswered;
-        if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
-          const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
-          const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
-          console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
-          this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
-        }
-      }
-
+      await this.shapeRelatedListsForRun({ analysis, file, stubPlan, domainVocabulary });
       const totalSteps = 1 + analysis.entities.length + analysis.concepts.length + analysis.related_pages.length + 2;
       let step = 1;
 
@@ -1740,6 +1701,61 @@ export class WikiEngine {
     }
 
     return domainVocabulary;
+  }
+
+  /**
+   * Sibling edges, related-name resolution and the unanswered count.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: deterministic,
+   * no model call, and it writes only `analysis` plus the count the report
+   * reads back.
+   */
+  private async shapeRelatedListsForRun(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+    domainVocabulary: string[];
+  }): Promise<void> {
+    const { analysis, file, stubPlan, domainVocabulary } = args;
+    // Every page born from this note links its siblings, a related name
+    // the vault answers is written under the page's own title and kind,
+    // and a name nothing answers stays as written and is counted.
+    // Deterministic, no model call; see core/related-shaping.ts.
+    {
+      const pages = await this.getExistingWikiPages();
+      const resolvePath = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages });
+      const prefix = this.settings.wikiFolder + '/';
+      const titleByRel = new Map(pages.map(p => [p.path.slice(prefix.length).replace(/\.md$/, ''), p.title]));
+      const folders = (this.settings.watchedFolders ?? []).map(w => w.trim()).filter(Boolean);
+      const configDir = this.app.vault.configDir;
+      const noteTitles = folders.length === 0 ? [] : this.app.vault.getMarkdownFiles()
+        // Issue #872 — this list answers "which note names already exist?", not
+        // "which files may be ingested?". A file the user excluded from
+        // ingestion is still a note in the vault, and a link to it is still a
+        // true link, so the exclusion list must not remove it here. The
+        // function that answers the ingest question is a different one
+        // (`isIngestableSource`), and it consults the exclusion list.
+        .filter(f => folders.some(w => isInSourceScope(f.path, w, false, this.settings.wikiFolder, configDir)))
+        .map(f => f.basename);
+      const shaped = shapeRelatedLists(analysis, {
+        resolve: name => {
+          const rel = resolvePath(name);
+          if (!rel) return undefined;
+          return { title: titleByRel.get(rel) ?? name, kind: kindOf(rel) };
+        },
+        willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
+        vocabulary: domainVocabulary,
+      });
+      analysis.entities = shaped.entities;
+      analysis.concepts = shaped.concepts;
+      this.pendingUnanswered = shaped.unanswered;
+      if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0) {
+        const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
+        const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
+        console.debug(`[related-shape] ${file.path}: ${shaped.siblings} sibling edge(s) added; ${shaped.unanswered.length} related name(s) nothing answers yet${list ? ` — ${list}` : ''}; ${shaped.tags.length} tag value(s) dropped${tagList ? ` — ${tagList}` : ''}`);
+        this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
+      }
+    }
   }
 
   private async apiDelay(ms?: number): Promise<void> {
