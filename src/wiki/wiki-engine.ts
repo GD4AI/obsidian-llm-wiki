@@ -1278,110 +1278,32 @@ export class WikiEngine {
       const indexTime = Date.now() - indexStart;
       console.debug(`[Time] Index Index & log update: ${indexTime}ms`);
 
-      const updated = analysis.updated_pages.length;
-      // Issue #173 Symptom B: dedup before counting/listing — a duplicated
-      // surface-form (e.g. the LLM emitting the same path twice) must not
-      // inflate the report count or the "Created" listing.
-      const dedupedCreatedPages = dedupPages(analysis.created_pages);
-      const entitiesCreated = dedupedCreatedPages.filter(p => p.includes('/entities/')).length;
-      const conceptsCreated = dedupedCreatedPages.filter(p => p.includes('/concepts/')).length;
-      const modeLabel = (this.settings.pageGenerationConcurrency ?? 1) > 1 ? `parallel(concurrency:${this.settings.pageGenerationConcurrency})` : 'serial';
-      // totalTime was computed above; do not redeclare here.
-
-      console.debug('=== Ingestion complete ===');
-      console.debug(`Ingestion complete [${modeLabel}]: Created ${dedupedCreatedPages.length} pages (${entitiesCreated} entities + ${conceptsCreated} concepts), Updated ${updated} pages`);
-      console.debug(`[Total time] ${totalTime}ms (${Math.round(totalTime/1000)}s)`);
-      console.debug('[Phase breakdown]:');
-      console.debug(`  - Source analysis: ${analysisTime}ms`);
-      console.debug(`  - Summary page generation: ${summaryTime}ms`);
-      console.debug(`  - Page gen (${pageGen.concurrency}concurrency): ${pageGen.elapsedMs}ms`);
-      console.debug(`  - Related page update: ${related.elapsedMs}ms`);
-      console.debug(`  - Index & log: ${indexTime}ms`);
-      // Inside the phases, per step. Page generation is the phase this exists
-      // for: one interval above, four steps below it — path resolution's dedup
-      // call, the page write, the merge triage and the body merge.
-      const llmByTask = formatTaskUsage(taskUsageSince(llmUsageAtStart));
-      if (llmByTask.length > 0) {
-        console.debug('[LLM time by step] (summed per call; concurrent steps overlap)');
-        for (const line of llmByTask) console.debug(line);
-      }
-
-      this.onDone?.({
-        sourceFile: file.path,
-        createdPages: dedupedCreatedPages,
-        updatedPages: analysis.updated_pages,
-        entitiesCreated,
-        conceptsCreated,
+      this.reportIngestSuccess({
+        file,
+        analysis,
         failedItems,
-        contradictionsFound: triageContradictions.length,
-        success: true,
-        elapsedSeconds: Math.round(totalTime / 1000),
-        ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
-        // v1.22.6 #204: Propagate trigger so completion can route UI.
+        triageContradictions,
         trigger: opts?.trigger,
+        llmUsageAtStart,
+        totalTime,
+        analysisTime,
+        summaryTime,
+        pageGen,
+        relatedElapsed: related.elapsedMs,
+        indexTime,
       });
 
     } catch (error) {
-      const createdPages = dedupPages(analysis?.created_pages || []);
-
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        this.wasCancelled = true;
-        console.debug('=== Ingestion cancelled by user ===');
-
-        // A cancelled ingest must not read as a completed one: the summary
-        // page doubles as the completion marker (isAlreadyIngested checks its
-        // existence), so leaving it behind freezes the half-finished ingest as
-        // done and every later trigger skips the source. Trash it — the next
-        // trigger then re-ingests cleanly. Content pages stay: a re-ingest
-        // merges them additively.
-        if (summaryPagePath) {
-          try {
-            await this.deleteFile(summaryPagePath);
-            console.debug('Cancelled ingest: removed summary page so the source re-ingests:', summaryPagePath);
-          } catch (cleanupError) {
-            console.warn('Cancelled ingest: could not remove summary page:', summaryPagePath, cleanupError);
-          }
-        }
-        const reportedCreated = createdPages.filter(p => p !== summaryPagePath);
-
-        new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
-        this.onDone?.({
-          sourceFile: file.path,
-          createdPages: reportedCreated,
-          updatedPages: analysis?.updated_pages || [],
-          entitiesCreated: reportedCreated.filter(p => p.includes('/entities/')).length,
-          conceptsCreated: reportedCreated.filter(p => p.includes('/concepts/')).length,
-          failedItems,
-          contradictionsFound: triageContradictions.length,
-          success: false,
-          cancelled: true,
-          errorMessage: 'Cancelled by user',
-          elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
-          // v1.22.6 #204: Propagate trigger so completion can route UI.
-          trigger: opts?.trigger,
-        });
-        return;
-      }
-
-      console.error('=== Ingestion failed ===');
-      console.error('Error:', error);
-      const errorMsg = error instanceof Error ? error.message : String(error);
-
-      this.onDone?.({
-        sourceFile: file.path,
-        createdPages,
-        updatedPages: analysis?.updated_pages || [],
-        entitiesCreated: createdPages.filter(p => p.includes('/entities/')).length,
-        conceptsCreated: createdPages.filter(p => p.includes('/concepts/')).length,
+      await this.handleIngestFailure({
+        file,
+        opts,
+        analysis,
         failedItems,
-        contradictionsFound: triageContradictions.length,
-        success: false,
-        errorMessage: errorMsg,
-        elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
-        // v1.22.6 #204: Propagate trigger so completion can route UI.
-        trigger: opts?.trigger,
+        triageContradictions,
+        summaryPagePath,
+        totalStartTime,
+        error,
       });
-      throw error;
     } finally {
       this.triageContradictions = null;
       this.endIngestion();
@@ -1805,6 +1727,156 @@ export class WikiEngine {
     }
 
     return { elapsedMs: relatedTime, stepAfter: step };
+  }
+
+  /**
+   * The console summary and the completion report for a successful run.
+   *
+   * Moved out of `ingestSource` by #932. Two facts are worth naming because
+   * they are easy to lose here: the page counts dedup first (#173 Symptom B),
+   * and the per-step LLM table is summed per call, so concurrent steps overlap
+   * rather than partition the total.
+   */
+  private reportIngestSuccess(args: {
+    file: TFile;
+    analysis: SourceAnalysis;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+    triageContradictions: ContradictionInfo[];
+    trigger: 'auto' | 'manual' | undefined;
+    llmUsageAtStart: ReturnType<typeof snapshotTaskUsage>;
+    totalTime: number;
+    analysisTime: number;
+    summaryTime: number;
+    pageGen: { count: number; elapsedMs: number; concurrency: number };
+    relatedElapsed: number;
+    indexTime: number;
+  }): void {
+    const {
+      file, analysis, failedItems, triageContradictions, trigger, llmUsageAtStart,
+      totalTime, analysisTime, summaryTime, pageGen, relatedElapsed, indexTime,
+    } = args;
+    const updated = analysis.updated_pages.length;
+    // Issue #173 Symptom B: dedup before counting/listing — a duplicated
+    // surface-form (e.g. the LLM emitting the same path twice) must not
+    // inflate the report count or the "Created" listing.
+    const dedupedCreatedPages = dedupPages(analysis.created_pages);
+    const entitiesCreated = dedupedCreatedPages.filter(p => p.includes('/entities/')).length;
+    const conceptsCreated = dedupedCreatedPages.filter(p => p.includes('/concepts/')).length;
+    const modeLabel = (this.settings.pageGenerationConcurrency ?? 1) > 1 ? `parallel(concurrency:${this.settings.pageGenerationConcurrency})` : 'serial';
+    // totalTime was computed above; do not redeclare here.
+
+    console.debug('=== Ingestion complete ===');
+    console.debug(`Ingestion complete [${modeLabel}]: Created ${dedupedCreatedPages.length} pages (${entitiesCreated} entities + ${conceptsCreated} concepts), Updated ${updated} pages`);
+    console.debug(`[Total time] ${totalTime}ms (${Math.round(totalTime/1000)}s)`);
+    console.debug('[Phase breakdown]:');
+    console.debug(`  - Source analysis: ${analysisTime}ms`);
+    console.debug(`  - Summary page generation: ${summaryTime}ms`);
+    console.debug(`  - Page gen (${pageGen.concurrency}concurrency): ${pageGen.elapsedMs}ms`);
+    console.debug(`  - Related page update: ${relatedElapsed}ms`);
+    console.debug(`  - Index & log: ${indexTime}ms`);
+    // Inside the phases, per step. Page generation is the phase this exists
+    // for: one interval above, four steps below it — path resolution's dedup
+    // call, the page write, the merge triage and the body merge.
+    const llmByTask = formatTaskUsage(taskUsageSince(llmUsageAtStart));
+    if (llmByTask.length > 0) {
+      console.debug('[LLM time by step] (summed per call; concurrent steps overlap)');
+      for (const line of llmByTask) console.debug(line);
+    }
+
+    this.onDone?.({
+      sourceFile: file.path,
+      createdPages: dedupedCreatedPages,
+      updatedPages: analysis.updated_pages,
+      entitiesCreated,
+      conceptsCreated,
+      failedItems,
+      contradictionsFound: triageContradictions.length,
+      success: true,
+      elapsedSeconds: Math.round(totalTime / 1000),
+      ...(analysis.embedded_image_analysis ? { embeddedImageAnalysis: analysis.embedded_image_analysis } : {}),
+      // v1.22.6 #204: Propagate trigger so completion can route UI.
+      trigger,
+    });
+  }
+
+  /**
+   * What a failed or cancelled run leaves behind.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Two exits share
+   * one entry point: a cancel reports a partial success and returns, any other
+   * error reports and re-throws so the caller's retry and log semantics apply.
+   */
+  private async handleIngestFailure(args: {
+    file: TFile;
+    opts: IngestOptions | undefined;
+    analysis: SourceAnalysis | null;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+    triageContradictions: ContradictionInfo[];
+    summaryPagePath: string | null;
+    totalStartTime: number;
+    error: unknown;
+  }): Promise<void> {
+    const { file, opts, analysis, failedItems, triageContradictions, summaryPagePath, totalStartTime, error } = args;
+    const createdPages = dedupPages(analysis?.created_pages || []);
+
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      this.wasCancelled = true;
+      console.debug('=== Ingestion cancelled by user ===');
+
+      // A cancelled ingest must not read as a completed one: the summary
+      // page doubles as the completion marker (isAlreadyIngested checks its
+      // existence), so leaving it behind freezes the half-finished ingest as
+      // done and every later trigger skips the source. Trash it — the next
+      // trigger then re-ingests cleanly. Content pages stay: a re-ingest
+      // merges them additively.
+      if (summaryPagePath) {
+        try {
+          await this.deleteFile(summaryPagePath);
+          console.debug('Cancelled ingest: removed summary page so the source re-ingests:', summaryPagePath);
+        } catch (cleanupError) {
+          console.warn('Cancelled ingest: could not remove summary page:', summaryPagePath, cleanupError);
+        }
+      }
+      const reportedCreated = createdPages.filter(p => p !== summaryPagePath);
+
+      new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
+      this.onDone?.({
+        sourceFile: file.path,
+        createdPages: reportedCreated,
+        updatedPages: analysis?.updated_pages || [],
+        entitiesCreated: reportedCreated.filter(p => p.includes('/entities/')).length,
+        conceptsCreated: reportedCreated.filter(p => p.includes('/concepts/')).length,
+        failedItems,
+        contradictionsFound: triageContradictions.length,
+        success: false,
+        cancelled: true,
+        errorMessage: 'Cancelled by user',
+        elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
+        // v1.22.6 #204: Propagate trigger so completion can route UI.
+        trigger: opts?.trigger,
+      });
+      return;
+    }
+
+    console.error('=== Ingestion failed ===');
+    console.error('Error:', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    this.onDone?.({
+      sourceFile: file.path,
+      createdPages,
+      updatedPages: analysis?.updated_pages || [],
+      entitiesCreated: createdPages.filter(p => p.includes('/entities/')).length,
+      conceptsCreated: createdPages.filter(p => p.includes('/concepts/')).length,
+      failedItems,
+      contradictionsFound: triageContradictions.length,
+      success: false,
+      errorMessage: errorMsg,
+      elapsedSeconds: Math.round((Date.now() - totalStartTime) / 1000),
+      // v1.22.6 #204: Propagate trigger so completion can route UI.
+      trigger: opts?.trigger,
+    });
+    throw error;
   }
 
   private async apiDelay(ms?: number): Promise<void> {
