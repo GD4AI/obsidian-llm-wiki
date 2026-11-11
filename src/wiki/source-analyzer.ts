@@ -254,7 +254,6 @@ interface AnalysisRunState {
   currentBatchSize: number;
   batchSizeHalved: boolean;
   retryingBatch: boolean;
-  escalateMaxTokens: boolean;
   placeholderRetried: boolean;
   effectiveCeiling: number;
   ceilingProbes: number;
@@ -327,7 +326,6 @@ export class SourceAnalyzer {
       currentBatchSize: plan.limits.initialBatchSize,
       batchSizeHalved: false,
       retryingBatch: false,
-      escalateMaxTokens: false,
       placeholderRetried: false,
       effectiveCeiling: startCeilingFor(this.ctx.settings, plan.outputCeiling),
       ceilingProbes: 0,
@@ -381,14 +379,17 @@ export class SourceAnalyzer {
    *
    * S143: halving lowers only the item ceiling inside the prompt. A reasoning model
    * that spent the whole budget thinking never reached the items, so a smaller ceiling
-   * cannot shorten the retry — and `Math.max(baseMaxTokens, …)` could only shrink the
-   * budget back to base. The retry also raises the budget to `retryCap`, which until
-   * then was only ever passed as a ceiling nothing climbed toward.
+   * cannot shorten the retry.
+   *
+   * #1003: this used to also raise the budget for the retry. It cannot, and the code
+   * said so: `computeExtractionBudget` returns its `ceiling` argument unconditionally,
+   * so both attempts declare the same number. #912 had already removed the narrow
+   * first request that gave the raise something to do, so the flag was carrying a
+   * difference no input could produce. Removed rather than left as a marker.
    */
   private halveBatchAndRetry(state: AnalysisRunState, batchLabel: string, cause: string): boolean {
     if (!this.canHalveBatch(state)) return false;
     state.currentBatchSize = Math.max(state.limits.minBatchSize, Math.floor(state.currentBatchSize * 0.5));
-    state.escalateMaxTokens = true;
     console.warn(`${batchLabel} Truncation detected (${cause}), halving batch size to ${state.currentBatchSize} and raising max_tokens to ${state.retryCap} for the retry`);
     state.retryingBatch = true;
     return true;
@@ -427,7 +428,6 @@ export class SourceAnalyzer {
       const { batchMaxTokens, repairCap } = this.batchBudgets({
         currentBatchSize: state.currentBatchSize,
         effectiveCeiling: state.effectiveCeiling,
-        escalateMaxTokens: state.escalateMaxTokens,
       });
       // v1.24.0 #208: route through resolveModelForTask so the debug
       // log reflects the ACTUAL model used (per-task override), not
@@ -548,7 +548,6 @@ export class SourceAnalyzer {
       // complete while missing that batch's items. Resetting here, on the
       // success path, gives each batch its own retry budget.
       state.retryingBatch = false;
-      state.escalateMaxTokens = false;
 
       const { validity, data: norm } = normalizeBatchResponse(analysisData, state.file.path);
 
@@ -1010,9 +1009,15 @@ export class SourceAnalyzer {
    *
    * `batchMaxTokens` pays for the answer; `repairCap` pays for the JSON-repair
    * call, which cannot emit more than the provider accepts whatever the parent
-   * call declared. Escalation may only ADD room: when the first attempt already
-   * declares the ceiling there is nothing above it, and falling back to
-   * `answerNeed x 3` would shrink a budget that just proved too small.
+   * call declared.
+   *
+   * Both come out as `effectiveCeiling`, and that is not a coincidence to be
+   * tidied away: `computeExtractionBudget` currently returns its `ceiling` for
+   * every input, so the item-need term cannot lower the request. #1003 removed a
+   * retry-only escalation flag that was layered on top of this for exactly that
+   * reason — it could not change the number. If `computeExtractionBudget` ever
+   * starts narrowing again, the two attempts stop being equal and a retry needs a
+   * way to ask for more; the truncation-retry test asserts they are equal today.
    *
    * Pure. Recomputed per attempt from `effectiveCeiling`, so a ceiling the
    * provider rejected is not sent again. Extracted from `analyzeSource` by #932.
@@ -1020,21 +1025,13 @@ export class SourceAnalyzer {
   private batchBudgets(args: {
     currentBatchSize: number;
     effectiveCeiling: number;
-    escalateMaxTokens: boolean;
   }): { batchMaxTokens: number; repairCap: number } {
-    const { currentBatchSize, effectiveCeiling, escalateMaxTokens } = args;
+    const { currentBatchSize, effectiveCeiling } = args;
     const batchAnswerNeed = currentBatchSize * TOKENS_PER_ITEM_BUDGET;
-    const normalBudget = computeExtractionBudget({
+    const batchMaxTokens = computeExtractionBudget({
       taskNeed: batchAnswerNeed,
       ceiling: effectiveCeiling,
     });
-    const escalatedBudget = Math.min(
-      Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
-      effectiveCeiling,
-    );
-    const batchMaxTokens = escalateMaxTokens
-      ? Math.min(Math.max(normalBudget, escalatedBudget), effectiveCeiling)
-      : normalBudget;
     const repairCap = Math.min(
       Math.max(batchAnswerNeed, MAX_TOKENS_BATCH) * SOURCE_ANALYZER_RETRY_MULTIPLIER,
       effectiveCeiling,
