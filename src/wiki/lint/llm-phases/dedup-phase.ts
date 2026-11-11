@@ -370,6 +370,147 @@ async function callLlmWithRetry(request: DedupRetryRequest): Promise<string> {
   return third;
 }
 
+/** What one batch worker needs beyond `ctx` (#932). */
+interface DedupBatchRequest {
+  batch: DuplicateCandidate[];
+  batchNum: number;
+  totalBatches: number;
+  /** Pages in the run, printed in the prompt so the model knows the corpus size. */
+  pageCount: number;
+  systemPrompt?: string;
+  state: DedupRetryState;
+  /** The run's failure accumulator, so a skipped batch is recorded once, by its owner. */
+  failures: Array<{ name: string; reason: string; type?: string }>;
+}
+
+/**
+ * Build the prompt for one batch, verify it, and return the confirmed pairs (#932).
+ *
+ * Extracted from the `chunk.map` worker inside `runDedupPhase`. A parse failure is
+ * recorded in `request.failures` and yields `[]`; a thrown error escapes to
+ * `Promise.allSettled` so the caller records it as a rejected batch. That split is
+ * unchanged by the move: an empty answer is a shape problem and carries
+ * `type: 'parse-failure'`, while a thrown error does not.
+ */
+async function runDedupBatch(
+  ctx: LintPhaseContext,
+  request: DedupBatchRequest,
+): Promise<DuplicateResult[] | undefined> {
+  const { batch, batchNum, totalBatches, pageCount, systemPrompt, state, failures } = request;
+  const candidateList = batch.map(c =>
+    `- Candidate A: ${c.target}\n  Candidate B: ${c.source}\n  Signal: ${c.reason}`
+  ).join('\n');
+
+  const dedupPrompt = renderTemplate(PROMPTS.lintDuplicateDetection, {
+    wikiFolder: ctx.settings.wikiFolder,
+    candidates: candidateList,
+    total: String(pageCount),
+  });
+
+  console.debug(`lintWiki: batch ${batchNum}/${totalBatches} — ${batch.length} candidates`);
+
+  // B3 fix: capture the result of the getter so subsequent await
+  // calls don't re-invoke (also narrows the non-null assertion
+  // away — ctx.llmClient() returned null only at the early-return
+  // guard; this loop is unreachable in that case).
+  const llm = ctx.llmClient();
+  if (!llm) {
+    throw new Error('runDedupPhase: LLM client became null mid-run');
+  }
+
+  const dedupResponse = await callLlmWithRetry({
+    batchNum,
+    prompt: dedupPrompt,
+    llm,
+    settings: ctx.settings,
+    systemPrompt,
+    state,
+  });
+
+  // v1.26.0 (#382 item 1, Batch 2): throwOnEmpty surfaces 0-byte
+  // LLM responses as batch failures instead of silently masking
+  // them as `{duplicates: []}` (DocTpoint's #382 review). After
+  // the 2-retry tier, if the response is still empty,
+  // parseJsonResponse throws EmptyResponseError and the batch
+  // is recorded as a dedupFailure.
+  //
+  // v1.26.0 Batch 7 (DocTpoint #382 comment 1): the null-vs-empty
+  // distinction. parseJsonResponse returns null in two distinct
+  // outcomes:
+  //   1. Legitimate empty: LLM returned `{"duplicates": []}`
+  //      correctly → no duplicates in this batch.
+  //   2. Parse failure / truncated: response was non-empty but
+  //      JSON was malformed OR truncated by max_tokens. The
+  //      retry tier above already exhausted the empty-body case;
+  //      the null here means "got body but couldn't parse it".
+  //
+  // Before Batch 7, both outcomes collapsed to the same `[]`
+  // return. parse-failures inside the success branch NEVER
+  // entered dedupFailures, so the [Duplicate Batch Failures]
+  // log line was blind to mid-response truncation. As traffic
+  // through this call scales up (post-Batch 2 cross-type
+  // expansion), we need a real truncation count before tuning
+  // max_tokens / batch size.
+  //
+  // Approach: keep parseJsonResponse contract stable (silent on
+  // parse-fail, throws on empty — 10+ other call sites depend
+  // on the silent contract). Check `=== null` here and route
+  // into dedupFailures with a distinct reason tag. The
+  // `throwOnEmpty: true` option above handles the empty-body
+  // case; this handles the "got body but parse failed" case.
+  //
+  // v1.26.0 Batch 7 follow-up (DocTpoint Item 5): also route
+  // shape-mismatches (`{duplicates: 'yes'}` / `{duplicates: 42}`
+  // / `{duplicates: null}` — parsed successfully but the
+  // `duplicates` field is not an array) into dedupFailures with
+  // the same `type: 'parse-failure'` discriminator. Same root
+  // cause as the `=== null` branch (LLM didn't return the shape
+  // we asked for), same operator consequence (truncation /
+  // prompt-format mismatch we need to count for tuning), and
+  // the previous `Array.isArray(rawDumps) ? rawDups : []` line
+  // silently masked it — operators lost the real signal. See
+  // the regression guard test in
+  // `__tests__/wiki/lint/llm-phases/dedup-phase.test.ts`.
+  const dedupResult = await parseJsonResponse(dedupResponse, undefined, {
+    throwOnEmpty: true,
+    silentOnEmpty: false,
+  }) as { duplicates?: DuplicateResult[] } | null;
+
+  // One parse-failure branch covers BOTH outcome kinds — the
+  // whole-response failure (null) and the shape-mismatch (parsed
+  // but `duplicates` is not an array). Same reason tag, same
+  // `type` discriminator so the rate-limit classifier excludes
+  // both from the 429 grouping.
+  const rawDups = dedupResult?.duplicates;
+  const shapeMismatch =
+    dedupResult !== null && !Array.isArray(rawDups);
+  if (dedupResult === null || shapeMismatch) {
+    // Parse failure / truncated / shape mismatch — NOT a
+    // legitimate empty. Route into dedupFailures with a
+    // distinct reason tag so the [Duplicate Batch Failures]
+    // warning can distinguish this from network/429 errors.
+    // The fulfilled/rejected branch downstream treats
+    // dedupFailures as a record of skipped batches; the
+    // post-loop summary line
+    // (`[Duplicate Batch Failures] ${count} batches`) will
+    // surface this. `failures` is the array this run passed in,
+    // so the push here is the canonical record path.
+    const reason = shapeMismatch
+      ? `parse-failure: response parsed but 'duplicates' is not an array (got ${rawDups === null ? 'null' : typeof rawDups})`
+      : 'parse-failure: response present but JSON unparseable or truncated';
+    console.warn(`lintWiki: batch ${batchNum} ${reason}`);
+    // CR-3 fix: explicit `type: 'parse-failure'` discriminator
+    // so the rate-limit classifier excludes this entry from the
+    // rate-limit grouping. The free-text reason can change
+    // without affecting the classifier.
+    failures.push({ name: `batch-${batchNum}`, reason, type: 'parse-failure' });
+    return [];
+  }
+
+  console.debug(`lintWiki: batch ${batchNum}/${totalBatches} → ${rawDups?.length || 0} duplicates confirmed`);
+  return rawDups;
+}
+
 export async function runDedupPhase(
   ctx: LintPhaseContext,
   input: DedupPhaseInput,
@@ -707,121 +848,15 @@ export async function runDedupPhase(
       ctx.stageNotice?.setMessage(t.lintCheckingDuplicatesProgress
         .replace('{current}', progressLabel));
       const results = await Promise.allSettled(
-        chunk.map(async (batch, bi) => {
-          const batchNum = i + bi + 1;
-          const candidateList = batch.map(c =>
-            `- Candidate A: ${c.target}\n  Candidate B: ${c.source}\n  Signal: ${c.reason}`
-          ).join('\n');
-
-          const dedupPrompt = renderTemplate(PROMPTS.lintDuplicateDetection, {
-            wikiFolder: ctx.settings.wikiFolder,
-            candidates: candidateList,
-            total: String(pagesForDedup.length),
-          });
-
-          console.debug(`lintWiki: batch ${batchNum}/${batches.length} — ${batch.length} candidates`);
-
-          // B3 fix: capture the result of the getter so subsequent await
-          // calls don't re-invoke (also narrows the non-null assertion
-          // away — ctx.llmClient() returned null only at the early-return
-          // guard; this loop is unreachable in that case).
-          const llm = ctx.llmClient();
-          if (!llm) {
-            throw new Error('runDedupPhase: LLM client became null mid-run');
-          }
-
-          const dedupResponse = await callLlmWithRetry({
-            batchNum,
-            prompt: dedupPrompt,
-            llm,
-            settings: ctx.settings,
-            systemPrompt,
-            state: retryState,
-          });
-
-          // v1.26.0 (#382 item 1, Batch 2): throwOnEmpty surfaces 0-byte
-          // LLM responses as batch failures instead of silently masking
-          // them as `{duplicates: []}` (DocTpoint's #382 review). After
-          // the 2-retry tier, if the response is still empty,
-          // parseJsonResponse throws EmptyResponseError and the batch
-          // is recorded as a dedupFailure.
-          //
-          // v1.26.0 Batch 7 (DocTpoint #382 comment 1): the null-vs-empty
-          // distinction. parseJsonResponse returns null in two distinct
-          // outcomes:
-          //   1. Legitimate empty: LLM returned `{"duplicates": []}`
-          //      correctly → no duplicates in this batch.
-          //   2. Parse failure / truncated: response was non-empty but
-          //      JSON was malformed OR truncated by max_tokens. The
-          //      retry tier above already exhausted the empty-body case;
-          //      the null here means "got body but couldn't parse it".
-          //
-          // Before Batch 7, both outcomes collapsed to the same `[]`
-          // return. parse-failures inside the success branch NEVER
-          // entered dedupFailures, so the [Duplicate Batch Failures]
-          // log line was blind to mid-response truncation. As traffic
-          // through this call scales up (post-Batch 2 cross-type
-          // expansion), we need a real truncation count before tuning
-          // max_tokens / batch size.
-          //
-          // Approach: keep parseJsonResponse contract stable (silent on
-          // parse-fail, throws on empty — 10+ other call sites depend
-          // on the silent contract). Check `=== null` here and route
-          // into dedupFailures with a distinct reason tag. The
-          // `throwOnEmpty: true` option above handles the empty-body
-          // case; this handles the "got body but parse failed" case.
-          //
-          // v1.26.0 Batch 7 follow-up (DocTpoint Item 5): also route
-          // shape-mismatches (`{duplicates: 'yes'}` / `{duplicates: 42}`
-          // / `{duplicates: null}` — parsed successfully but the
-          // `duplicates` field is not an array) into dedupFailures with
-          // the same `type: 'parse-failure'` discriminator. Same root
-          // cause as the `=== null` branch (LLM didn't return the shape
-          // we asked for), same operator consequence (truncation /
-          // prompt-format mismatch we need to count for tuning), and
-          // the previous `Array.isArray(rawDumps) ? rawDups : []` line
-          // silently masked it — operators lost the real signal. See
-          // the regression guard test in
-          // `__tests__/wiki/lint/llm-phases/dedup-phase.test.ts`.
-          const dedupResult = await parseJsonResponse(dedupResponse, undefined, {
-            throwOnEmpty: true,
-            silentOnEmpty: false,
-          }) as { duplicates?: DuplicateResult[] } | null;
-
-          // One parse-failure branch covers BOTH outcome kinds — the
-          // whole-response failure (null) and the shape-mismatch (parsed
-          // but `duplicates` is not an array). Same reason tag, same
-          // `type` discriminator so the rate-limit classifier excludes
-          // both from the 429 grouping.
-          const rawDups = dedupResult?.duplicates;
-          const shapeMismatch =
-            dedupResult !== null && !Array.isArray(rawDups);
-          if (dedupResult === null || shapeMismatch) {
-            // Parse failure / truncated / shape mismatch — NOT a
-            // legitimate empty. Route into dedupFailures with a
-            // distinct reason tag so the [Duplicate Batch Failures]
-            // warning can distinguish this from network/429 errors.
-            // The fulfilled/rejected branch downstream treats
-            // dedupFailures as a record of skipped batches; the
-            // post-loop summary line
-            // (`[Duplicate Batch Failures] ${count} batches`) will
-            // surface this. dedupFailures is captured by closure on
-            // line 470; the push here is the canonical record path.
-            const reason = shapeMismatch
-              ? `parse-failure: response parsed but 'duplicates' is not an array (got ${rawDups === null ? 'null' : typeof rawDups})`
-              : 'parse-failure: response present but JSON unparseable or truncated';
-            console.warn(`lintWiki: batch ${batchNum} ${reason}`);
-            // CR-3 fix: explicit `type: 'parse-failure'` discriminator
-            // so the rate-limit classifier excludes this entry from the
-            // rate-limit grouping. The free-text reason can change
-            // without affecting the classifier.
-            dedupFailures.push({ name: `batch-${batchNum}`, reason, type: 'parse-failure' });
-            return [];
-          }
-
-          console.debug(`lintWiki: batch ${batchNum}/${batches.length} → ${rawDups?.length || 0} duplicates confirmed`);
-          return rawDups;
-        })
+        chunk.map((batch, bi) => runDedupBatch(ctx, {
+          batch,
+          batchNum: batchStart + bi,
+          totalBatches: batches.length,
+          pageCount: pagesForDedup.length,
+          systemPrompt,
+          state: retryState,
+          failures: dedupFailures,
+        }))
       );
 
       // v1.26.0 (#382 item 1, Batch 2 follow-up): in-scan concurrency

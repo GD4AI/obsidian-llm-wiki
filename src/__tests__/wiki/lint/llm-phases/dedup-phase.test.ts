@@ -1395,3 +1395,92 @@ describe('runDedupPhase — retry recovery is reported (#932 characterization)',
     }
   });
 });
+
+// === the extracted batch worker (#932) ===
+// `runDedupBatch` used to be the `chunk.map` worker inside `runDedupPhase`. Two of
+// its behaviours had no test at all, which the mutation pass found after the move:
+// the page count rendered into the prompt, and the guard for a client that returns
+// null after the early-return check. Both are pinned here so the worker's move is
+// guarded from the next change onwards.
+describe('runDedupBatch — the worker the run loop calls (#932)', () => {
+  const NoticeMock = Notice as unknown as { instances: Array<{ message: string; hidden: boolean }> };
+  const clearNotices = (): void => { NoticeMock.instances.length = 0; };
+
+  const CANDIDATES = [
+    { path: 'wiki/entities/alpha.md', basename: 'alpha.md' },
+    { path: 'wiki/entities/Alpha.md', basename: 'Alpha.md' },
+  ];
+
+  function pageMapOf() {
+    return makePageMap(
+      CANDIDATES.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept`,
+      ]),
+    );
+  }
+
+  it('renders the eligible page count into the prompt it sends', async () => {
+    // The model reads this number as the corpus size when deciding whether a pair
+    // is worth confirming. Passing 0 instead of the real count changed no test
+    // before this one existed.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    const ctx = makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    try {
+      await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap: pageMapOf() }, () => {});
+
+      expect(createMessage).toHaveBeenCalled();
+      const prompt = String(
+        (createMessage.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content,
+      );
+      expect(prompt).toContain('**Total entity/concept pages in wiki:** 2');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+
+  it('records a batch failure when the LLM client disappears mid-run', async () => {
+    // The early guard calls the getter once; each batch then calls it again. A
+    // client that vanishes between those two points must throw inside the worker,
+    // so the batch lands in `dedupFailures` instead of being silently skipped.
+    clearNotices();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    let calls = 0;
+    const ctx = makeLintPhaseContext({
+      llmClient: () => {
+        calls += 1;
+        return calls === 1 ? ({ createMessage } as unknown as LLMClient) : null;
+      },
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: 1,
+      } as LintPhaseContext['settings'],
+    });
+    try {
+      const result = await runDedupPhase(ctx, { wikiFiles: CANDIDATES, pageMap: pageMapOf() }, () => {});
+
+      expect(result).toEqual([]);
+      expect(createMessage).not.toHaveBeenCalled();
+      const failures = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('Duplicate Batch Failures'));
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toContain('1 duplicate detection bat');
+    } finally {
+      warnSpy.mockRestore();
+      clearNotices();
+    }
+  });
+});
