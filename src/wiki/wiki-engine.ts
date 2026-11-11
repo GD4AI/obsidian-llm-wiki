@@ -1002,101 +1002,10 @@ export class WikiEngine {
       this.onIngestionStart?.(file.basename);
     }
 
-    // v1.25.0 PR2 redo + Altitude #1/#2 (v1.27.0 MINOR #404 follow-up):
-    // markdown-conversion ingest path. The configured backend (provider's
-    // native PDF handling or MinerU's online API) transcribes the source
-    // file to markdown, the result is cached by content hash, then the
-    // standard ingest path re-runs with the markdown as a virtual body
-    // (contentOverride). No sidecar file is written by this branch — the
-    // `.obsidian` cache is the sole persistent artifact unless the user
-    // has explicitly opted in via `writePdfMarkdownToVault`.
-    //
-    // Routing:
-    // - Native backend: PDF only (Anthropic Vision / OpenAI Vision's
-    //   PDF handling is the established scope; their image / Office
-    //   input surfaces are not exercised by this branch).
-    // - MinerU backend: PDF + images (png/jpg/jpeg/jp2/webp/gif/bmp) +
-    //   Office docs (doc/docx/ppt/pptx/xls/xlsx). Per the MinerU API
-    //   docs, the Precise parser accepts the full set; the routing
-    //   check below uses MINERU_CONVERSION_EXTENSIONS.
-    //
-    // Guard: only dispatch to the conversion branch when the caller has
-    // NOT already provided a converted body — otherwise this would recurse
-    // forever (the conversion result is fed back as contentOverride and
-    // `ingestConversionSource` re-enters this method).
-    if (!opts?.contentOverride) {
-      const ext = file.extension.toLowerCase();
-      const needsMineruConversion = this.settings.markdownConversionBackend === 'mineru'
-        && (MINERU_CONVERSION_EXTENSIONS as readonly string[]).includes(ext);
-      const isPdf = ext === 'pdf';
-      if (needsMineruConversion || isPdf) {
-        try {
-          return await this.ingestConversionSource(file, opts);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          this.wasCancelled = true;
-          new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
-          return;
-        }
-        throw error;
-      } finally {
-        // Successful conversion re-enters this method and clears the shared
-        // controller in the main finally block. Pre-conversion exits do not.
-        if (this.abortController !== null) this.endIngestion();
-      }
-      }
-    }
-
-    // #164 pre-ingest requirements gate. Empty/type are hard skips; a duplicate
-    // auto-skips, except interactive ingest prompts first.
-    //
-    // #688: this gate no longer runs "BEFORE any cancellation/UI setup" — the
-    // controller and the start hook were moved above it in v1.25.0, because the
-    // PDF branch needs them. A skip here therefore has something to tear down,
-    // and the return below sits above the main `try`, so it must do it itself.
-    const fileContent = opts?.contentOverride ?? await this.app.vault.read(file);
-    const rejection = opts?.forceReingest ? null : await this.checkRequirements(file, fileContent, opts?.batchCtx);
-    if (rejection) {
-      const confirmed = rejection.reason === 'duplicate' && opts?.interactive && this.onConfirmReingest
-        ? await this.onConfirmReingest(file, rejection)
-        : false;
-      if (!confirmed) {
-        this.reportSkip(file, rejection, opts);
-        this.endIngestion();
-        return;
-      }
-    }
-
-    const totalStartTime = Date.now();
-    const llmUsageAtStart = snapshotTaskUsage();
-
-    // Setup cancellation support
-    // v1.25.0 PR3 follow-up #7 (Bug C): AbortController / onIngestionStart
-    // already initialized above (line ~700, before PDF dispatch) so the
-    // status bar is correct and cancellation is wired for both PDF and
-    // text flows. We intentionally do NOT re-create the AbortController
-    // here — it would create a race window where cancelIngestion() could
-    // abort the *previous* instance instead of the current one.
-
-    // Long-source warning: large files trigger iterative batch extraction
-    // (multiple LLM passes), which takes significantly longer than small files.
-    const LONG_SOURCE_LINE_THRESHOLD = 1000;
-    const lineCount = fileContent.split('\n').length;
-    if (lineCount > LONG_SOURCE_LINE_THRESHOLD) {
-      const sizeKB = Math.round(fileContent.length / 1024);
-      new Notice(
-        getText(this.settings.language, 'longSourceNotice')
-          .replace('{filename}', file.basename)
-          .replace('{lines}', String(lineCount))
-          .replace('{size}', sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)}MB` : `${sizeKB}KB`),
-        NOTICE_NORMAL
-      );
-      console.debug(`[Long Source] ${file.basename}: ${lineCount} lines, ${sizeKB}KB — long ingestion expected`);
-    }
-
-    this.onProgress?.(
-      getText(this.settings.language, 'ingestAnalyzing').replace('{filename}', file.basename)
-    );
+    if (await this.maybeRunConversion(file, opts)) return;
+    const run = await this.prepareIngestRun(file, opts);
+    if (!run) return;
+    const { fileContent, totalStartTime, llmUsageAtStart } = run;
 
     const failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }> = [];
     let analysis: SourceAnalysis | null = null;
@@ -1877,6 +1786,127 @@ export class WikiEngine {
       trigger: opts?.trigger,
     });
     throw error;
+  }
+
+  /**
+   * The markdown-conversion branch, and the routing that decides to enter it.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Answers true
+   * when this call already handled the ingest, so the caller returns.
+   */
+  private async maybeRunConversion(file: TFile, opts: IngestOptions | undefined): Promise<boolean> {
+    // v1.25.0 PR2 redo + Altitude #1/#2 (v1.27.0 MINOR #404 follow-up):
+    // markdown-conversion ingest path. The configured backend (provider's
+    // native PDF handling or MinerU's online API) transcribes the source
+    // file to markdown, the result is cached by content hash, then the
+    // standard ingest path re-runs with the markdown as a virtual body
+    // (contentOverride). No sidecar file is written by this branch — the
+    // `.obsidian` cache is the sole persistent artifact unless the user
+    // has explicitly opted in via `writePdfMarkdownToVault`.
+    //
+    // Routing:
+    // - Native backend: PDF only (Anthropic Vision / OpenAI Vision's
+    //   PDF handling is the established scope; their image / Office
+    //   input surfaces are not exercised by this branch).
+    // - MinerU backend: PDF + images (png/jpg/jpeg/jp2/webp/gif/bmp) +
+    //   Office docs (doc/docx/ppt/pptx/xls/xlsx). Per the MinerU API
+    //   docs, the Precise parser accepts the full set; the routing
+    //   check below uses MINERU_CONVERSION_EXTENSIONS.
+    //
+    // Guard: only dispatch to the conversion branch when the caller has
+    // NOT already provided a converted body — otherwise this would recurse
+    // forever (the conversion result is fed back as contentOverride and
+    // `ingestConversionSource` re-enters this method).
+    if (!opts?.contentOverride) {
+      const ext = file.extension.toLowerCase();
+      const needsMineruConversion = this.settings.markdownConversionBackend === 'mineru'
+        && (MINERU_CONVERSION_EXTENSIONS as readonly string[]).includes(ext);
+      const isPdf = ext === 'pdf';
+      if (needsMineruConversion || isPdf) {
+        try {
+          await this.ingestConversionSource(file, opts);
+          return true;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          this.wasCancelled = true;
+          new Notice(getText(this.settings.language, 'ingestionCancelled'), NOTICE_NORMAL);
+          return true;
+        }
+        throw error;
+      } finally {
+        // Successful conversion re-enters this method and clears the shared
+        // controller in the main finally block. Pre-conversion exits do not.
+        if (this.abortController !== null) this.endIngestion();
+      }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Read the body, apply the #164 requirements gate, and arm the run.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Answers null
+   * when the source is skipped, in which case the skip has already been
+   * reported and torn down.
+   */
+  private async prepareIngestRun(
+    file: TFile,
+    opts: IngestOptions | undefined,
+  ): Promise<{ fileContent: string; totalStartTime: number; llmUsageAtStart: ReturnType<typeof snapshotTaskUsage> } | null> {
+    // #164 pre-ingest requirements gate. Empty/type are hard skips; a duplicate
+    // auto-skips, except interactive ingest prompts first.
+    //
+    // #688: this gate no longer runs "BEFORE any cancellation/UI setup" — the
+    // controller and the start hook were moved above it in v1.25.0, because the
+    // PDF branch needs them. A skip here therefore has something to tear down,
+    // and the return below sits above the main `try`, so it must do it itself.
+    const fileContent = opts?.contentOverride ?? await this.app.vault.read(file);
+    const rejection = opts?.forceReingest ? null : await this.checkRequirements(file, fileContent, opts?.batchCtx);
+    if (rejection) {
+      const confirmed = rejection.reason === 'duplicate' && opts?.interactive && this.onConfirmReingest
+        ? await this.onConfirmReingest(file, rejection)
+        : false;
+      if (!confirmed) {
+        this.reportSkip(file, rejection, opts);
+        this.endIngestion();
+        return null;
+      }
+    }
+
+    const totalStartTime = Date.now();
+    const llmUsageAtStart = snapshotTaskUsage();
+
+    // Setup cancellation support
+    // v1.25.0 PR3 follow-up #7 (Bug C): AbortController / onIngestionStart
+    // already initialized above (line ~700, before PDF dispatch) so the
+    // status bar is correct and cancellation is wired for both PDF and
+    // text flows. We intentionally do NOT re-create the AbortController
+    // here — it would create a race window where cancelIngestion() could
+    // abort the *previous* instance instead of the current one.
+
+    // Long-source warning: large files trigger iterative batch extraction
+    // (multiple LLM passes), which takes significantly longer than small files.
+    const LONG_SOURCE_LINE_THRESHOLD = 1000;
+    const lineCount = fileContent.split('\n').length;
+    if (lineCount > LONG_SOURCE_LINE_THRESHOLD) {
+      const sizeKB = Math.round(fileContent.length / 1024);
+      new Notice(
+        getText(this.settings.language, 'longSourceNotice')
+          .replace('{filename}', file.basename)
+          .replace('{lines}', String(lineCount))
+          .replace('{size}', sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)}MB` : `${sizeKB}KB`),
+        NOTICE_NORMAL
+      );
+      console.debug(`[Long Source] ${file.basename}: ${lineCount} lines, ${sizeKB}KB — long ingestion expected`);
+    }
+
+    this.onProgress?.(
+      getText(this.settings.language, 'ingestAnalyzing').replace('{filename}', file.basename)
+    );
+
+    return { fileContent, totalStartTime, llmUsageAtStart };
   }
 
   private async apiDelay(ms?: number): Promise<void> {
