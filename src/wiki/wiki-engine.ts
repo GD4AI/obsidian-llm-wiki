@@ -1242,70 +1242,8 @@ export class WikiEngine {
         failedItems,
       });
       step = pageGen.stepAfter;
-      // Stage 4: Related Pages Update (same runner, different execute fn)
-      const relatedStart = Date.now();
-      const relatedConcurrency = this.settings.pageGenerationConcurrency ?? 1;
-      const relatedDelay = this.settings.batchDelayMs ?? 300;
-
-      const relatedTasks = analysis.related_pages.map((name, idx) => ({
-        id: `related:${name}`,
-        payload: { name, index: idx, stepNum: step + idx + 1 },
-      }));
-
-      const relatedResult = await runBatchedWithRetry<typeof relatedTasks[number]['payload']>({
-        tasks: relatedTasks,
-        concurrency: relatedConcurrency,
-        batchDelayMs: relatedDelay,
-        checkCancelled: () => this.checkCancelled('ingest'),
-        apiDelay: (ms: number) => this.apiDelay(ms),
-        onProgress: (id) => {
-          const task = relatedTasks.find(t => t.id === id);
-          if (task) {
-            this.onProgress?.(
-              getText(this.settings.language, 'ingestUpdating')
-                .replace('{step}', String(task.payload.stepNum))
-                .replace('{totalSteps}', String(totalSteps))
-                .replace('{name}', task.payload.name)
-            );
-          }
-        },
-        execute: async (task) => {
-          try {
-            const updatedPath = await this.pageFactory.updateRelatedPage(task.name, analysis!, file, sourceSlug);
-            if (updatedPath) {
-              recordUpdatedPage(analysis!, updatedPath);
-            }
-            return { success: true as const };
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            console.error(`Related page "${task.name}" update failed:`, reason);
-            return { success: false as const, failureReason: reason };
-          }
-        },
-      });
-
-      const relatedCount = relatedResult.succeeded;
-      const relatedTotal = relatedTasks.length;
-      const relatedTime = Date.now() - relatedStart;
-      const relatedModeLabel = relatedConcurrency > 1 ? `parallel(concurrency:${relatedConcurrency})` : 'serial';
-      console.debug(
-        `[Time] Related page update phase complete: ${relatedTime}ms ` +
-        `(${relatedModeLabel}, ${relatedCount}/${relatedTotal} pages succeeded)`
-      );
-      step += relatedTotal;
-
-      if (relatedResult.rateLimitInfo) {
-        console.warn(
-          `[Rate Limit] Related pages update: ${relatedResult.rateLimitInfo.count} item(s) failed with 429, ` +
-          `suggested concurrency=${relatedResult.rateLimitInfo.suggestedConcurrency}, ` +
-          `delay=${relatedResult.rateLimitInfo.suggestedDelay}ms`
-        );
-        new Notice(
-          formatRateLimitNotice(relatedResult.rateLimitInfo, this.settings.language),
-          NOTICE_RATE_LIMIT
-        );
-      }
-
+      const related = await this.updateRelatedPagesPhase({ analysis, file, sourceSlug, totalSteps, step });
+      step = related.stepAfter;
       // Stage 5: Contradiction Recording
       // Stage 4.5: re-point folder-typed links on every page this run wrote.
       // A page written early in the run links to a sibling that does not
@@ -1357,7 +1295,7 @@ export class WikiEngine {
       console.debug(`  - Source analysis: ${analysisTime}ms`);
       console.debug(`  - Summary page generation: ${summaryTime}ms`);
       console.debug(`  - Page gen (${pageGen.concurrency}concurrency): ${pageGen.elapsedMs}ms`);
-      console.debug(`  - Related page update: ${relatedTime}ms`);
+      console.debug(`  - Related page update: ${related.elapsedMs}ms`);
       console.debug(`  - Index & log: ${indexTime}ms`);
       // Inside the phases, per step. Page generation is the phase this exists
       // for: one interval above, four steps below it — path resolution's dedup
@@ -1784,6 +1722,89 @@ export class WikiEngine {
     console.debug(`[Time] Page generation phase complete: ${elapsedMs}ms (avg ${count > 0 ? Math.round(elapsedMs / count) : 0}ms/page)`);
 
     return { count, elapsedMs, concurrency, stepAfter: step };
+  }
+
+  /**
+   * Stage 4: the related-page updates, on the same runner as Stage 3.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. Its progress
+   * text is numbered from the caller's `step`, so the phase is told where it
+   * starts.
+   */
+  private async updateRelatedPagesPhase(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    sourceSlug: string;
+    totalSteps: number;
+    step: number;
+  }): Promise<{ elapsedMs: number; stepAfter: number }> {
+    const { analysis, file, sourceSlug, totalSteps } = args;
+    let step = args.step;
+    // Stage 4: Related Pages Update (same runner, different execute fn)
+    const relatedStart = Date.now();
+    const relatedConcurrency = this.settings.pageGenerationConcurrency ?? 1;
+    const relatedDelay = this.settings.batchDelayMs ?? 300;
+
+    const relatedTasks = analysis.related_pages.map((name, idx) => ({
+      id: `related:${name}`,
+      payload: { name, index: idx, stepNum: step + idx + 1 },
+    }));
+
+    const relatedResult = await runBatchedWithRetry<typeof relatedTasks[number]['payload']>({
+      tasks: relatedTasks,
+      concurrency: relatedConcurrency,
+      batchDelayMs: relatedDelay,
+      checkCancelled: () => this.checkCancelled('ingest'),
+      apiDelay: (ms: number) => this.apiDelay(ms),
+      onProgress: (id) => {
+        const task = relatedTasks.find(t => t.id === id);
+        if (task) {
+          this.onProgress?.(
+            getText(this.settings.language, 'ingestUpdating')
+              .replace('{step}', String(task.payload.stepNum))
+              .replace('{totalSteps}', String(totalSteps))
+              .replace('{name}', task.payload.name)
+          );
+        }
+      },
+      execute: async (task) => {
+        try {
+          const updatedPath = await this.pageFactory.updateRelatedPage(task.name, analysis, file, sourceSlug);
+          if (updatedPath) {
+            recordUpdatedPage(analysis, updatedPath);
+          }
+          return { success: true as const };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`Related page "${task.name}" update failed:`, reason);
+          return { success: false as const, failureReason: reason };
+        }
+      },
+    });
+
+    const relatedCount = relatedResult.succeeded;
+    const relatedTotal = relatedTasks.length;
+    const relatedTime = Date.now() - relatedStart;
+    const relatedModeLabel = relatedConcurrency > 1 ? `parallel(concurrency:${relatedConcurrency})` : 'serial';
+    console.debug(
+      `[Time] Related page update phase complete: ${relatedTime}ms ` +
+      `(${relatedModeLabel}, ${relatedCount}/${relatedTotal} pages succeeded)`
+    );
+    step += relatedTotal;
+
+    if (relatedResult.rateLimitInfo) {
+      console.warn(
+        `[Rate Limit] Related pages update: ${relatedResult.rateLimitInfo.count} item(s) failed with 429, ` +
+        `suggested concurrency=${relatedResult.rateLimitInfo.suggestedConcurrency}, ` +
+        `delay=${relatedResult.rateLimitInfo.suggestedDelay}ms`
+      );
+      new Notice(
+        formatRateLimitNotice(relatedResult.rateLimitInfo, this.settings.language),
+        NOTICE_RATE_LIMIT
+      );
+    }
+
+    return { elapsedMs: relatedTime, stepAfter: step };
   }
 
   private async apiDelay(ms?: number): Promise<void> {
