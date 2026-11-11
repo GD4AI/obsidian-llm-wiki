@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "module";
+import { writeFileSync } from "fs";
 
 const banner =
 `/*
@@ -50,6 +51,10 @@ const context = await esbuild.context({
   // crossed that cap. `src/__tests__/root/bundle-size.test.ts` holds the
   // line.
   charset: 'utf8',
+  // #1007: the unminified bundle sits 5 KB under the Sync Standard cap, so the
+  // next feature PR crosses it. `keepNames` keeps function names in stack traces;
+  // dev builds stay unminified so an e2e run still reads top to bottom.
+  ...(prod ? { minify: true, keepNames: true } : {}),
   // Without this, esbuild defaults `platform` to 'browser', under which an
   // *external* dynamic import is assumed to be available natively and is left
   // in place. `node:module` is external (see above), so `await import(...)`
@@ -62,6 +67,25 @@ const context = await esbuild.context({
   sourcemap: prod ? false : 'inline',
   treeShaking: true,
   outfile: 'main.js',
+  // #1007: the production bundle is minified, which removes the
+  // `// node_modules/.pnpm/<pkg>/…` markers esbuild emits before each module.
+  // Those markers were how `tools/generate-third-party-notices.mjs` learned
+  // which packages ship — a licence-attribution input, so it cannot depend on
+  // a formatting choice. The build now writes the metafile, which is the same
+  // data esbuild used to decide what to include, and the generator reads that.
+  metafile: true,
+  plugins: [
+    {
+      name: 'write-metafile',
+      setup(build) {
+        build.onEnd(result => {
+          if (result.metafile) {
+            writeFileSync('esbuild-meta.json', JSON.stringify(result.metafile));
+          }
+        });
+      },
+    },
+  ],
 });
 
 if (oneShot) {

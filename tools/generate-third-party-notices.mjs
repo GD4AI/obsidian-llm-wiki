@@ -41,9 +41,28 @@ export function parsePnpmDir(dir) {
   return { name: head.slice(0, at).replace('+', '/'), version: head.slice(at + 1) };
 }
 
-/** The `.pnpm/<dir>/...` markers esbuild emits before each inlined module. */
-export function bundledPackageDirs(source) {
-  return [...new Set([...source.matchAll(/^\/\/ node_modules\/\.pnpm\/([^/]+)\//gm)].map(m => m[1]))];
+/**
+ * The packages esbuild actually wrote into the bundle, from its metafile.
+ *
+ * `inputs` lists every module that contributed bytes, so a package resolved and then
+ * fully tree-shaken away is correctly absent. This replaces reading
+ * `.pnpm/<dir>/...` markers out of `main.js`: minification removes those comments,
+ * and licence attribution must not depend on a formatting choice (#1007).
+ */
+export function bundledPackageDirs(root = REPO_ROOT) {
+  const meta = join(root, 'esbuild-meta.json');
+  if (!existsSync(meta)) {
+    throw new Error('esbuild-meta.json not found — run `pnpm build` before generating notices.');
+  }
+  const parsed = JSON.parse(readFileSync(meta, 'utf8'));
+  const dirs = new Set();
+  for (const out of Object.values(parsed.outputs ?? {})) {
+    for (const input of Object.keys(out.inputs ?? {})) {
+      const m = /node_modules\/\.pnpm\/([^/]+)\//.exec(input);
+      if (m) dirs.add(m[1]);
+    }
+  }
+  return [...dirs];
 }
 
 const LICENCE_FILES = ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENSE-MIT', 'LICENSE-APACHE'];
@@ -74,7 +93,7 @@ export function collectPackages(root = REPO_ROOT) {
 
   const entries = [];
   const shipping = [];
-  for (const dir of bundledPackageDirs(readFileSync(bundle, 'utf8')).sort()) {
+  for (const dir of bundledPackageDirs(root).sort()) {
     const { name, version } = parsePnpmDir(dir);
     const pkgDir = packageDirIn(root, dir, name);
     if (!pkgDir) {

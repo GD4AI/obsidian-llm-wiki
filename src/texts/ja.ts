@@ -641,7 +641,7 @@ export const JA_TEXTS = {
     lintOrphanIsDuplicate: ' （⚠️ 重複ページ）',
     lintHubLinkDensitySection: 'ハブのリンク密度の問題（Issue #157 / #175）[{count}]',
     lintCrystallizedHubsSection: '結晶したハブ候補 [{count}]',
-    lintCrystallizedHubsIntro: '近隣同士がリンクし合うようになったため、このハブはもう支えになっていません。自動では何も変わりません。役割が終わっているならハブタグを外してください。次数の上位 {topN} 件のハブを評価しました。',
+    lintCrystallizedHubsIntro: '近隣同士がリンクし合うようになったため、このハブはもう支えになっていません。ハブを手動で付けた場合、このハブの役割は終わっています。プラグインはその印を読みません。何も変更しません。次数の上位 {topN} 件のハブを評価しました。',
     lintCrystallizedHubRow: '{path} — 次数 {degree}、クラスタリング百分位 {percentile}%',
     lintHubLinkDensityItem: '- [[{page}]] — 被リンク {inDegree}、関連リンク {relatedCount}、識別度 {distinctiveness} → {recommendation}{lowTargets}',
     lintHubLinkDensityStrip: '⚠️ 削除',
