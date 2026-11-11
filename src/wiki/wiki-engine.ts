@@ -1075,35 +1075,9 @@ export class WikiEngine {
         stubPlan,
       });
       await this.shapeRelatedListsForRun({ analysis, file, stubPlan, domainVocabulary });
-      const totalSteps = 1 + analysis.entities.length + analysis.concepts.length + analysis.related_pages.length + 2;
-      let step = 1;
-
-      const plannedPaths: string[] = [];
-      const preserveCase = this.settings.slugCase === 'preserve';
-      for (const entity of analysis.entities) {
-        plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/entities/${slugify(entity.name, preserveCase)}.md`));
-      }
-      for (const concept of analysis.concepts) {
-        plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/concepts/${slugify(concept.name, preserveCase)}.md`));
-      }
-      // S135: stub pages will exist too — planned like any page, so links
-      // the summary makes to their names land on the canonical path.
-      for (const stub of stubPlan) {
-        plannedPaths.push(stubPath({ wikiFolder: this.settings.wikiFolder, preserveCase, normalizePath }, stub));
-      }
-
-      this.onProgress?.(
-        getText(this.settings.language, 'ingestCreatingSummary')
-          .replace('{step}', String(step))
-          .replace('{totalSteps}', String(totalSteps))
-      );
-      await this.apiDelay();
-
-      // Issue #155: derive the source slug (<basename>-<path fingerprint>) ONCE,
-      // before any page is written, so the summary page, entity/concept backlinks,
-      // and related pages all reference the same canonical [[sources/<slug>]].
-      const sourceSlug = resolveSourceSlug(file.path, { preserveCase });
-
+      const plan = await this.planPageSet({ analysis, file, stubPlan });
+      const { totalSteps, plannedPaths, preserveCase, sourceSlug } = plan;
+      let step = plan.step;
       // S135: birth the dissent stubs — deterministic writes, no LLM call,
       // before any generation so every page produced this run can already
       // link to them. A path that exists is a slug collision and is skipped,
@@ -1907,6 +1881,51 @@ export class WikiEngine {
     );
 
     return { fileContent, totalStartTime, llmUsageAtStart };
+  }
+
+  /**
+   * The step total, the planned page paths, and the canonical source slug.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. The paths are
+   * planned before any write so the summary page's links land on canonical
+   * paths, and the slug is derived once so every page of the run agrees.
+   */
+  private async planPageSet(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    stubPlan: StubCandidate[];
+  }): Promise<{ totalSteps: number; step: number; plannedPaths: string[]; preserveCase: boolean; sourceSlug: string }> {
+    const { analysis, file, stubPlan } = args;
+    const totalSteps = 1 + analysis.entities.length + analysis.concepts.length + analysis.related_pages.length + 2;
+    const step = 1;
+
+    const plannedPaths: string[] = [];
+    const preserveCase = this.settings.slugCase === 'preserve';
+    for (const entity of analysis.entities) {
+      plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/entities/${slugify(entity.name, preserveCase)}.md`));
+    }
+    for (const concept of analysis.concepts) {
+      plannedPaths.push(normalizePath(`${this.settings.wikiFolder}/concepts/${slugify(concept.name, preserveCase)}.md`));
+    }
+    // S135: stub pages will exist too — planned like any page, so links
+    // the summary makes to their names land on the canonical path.
+    for (const stub of stubPlan) {
+      plannedPaths.push(stubPath({ wikiFolder: this.settings.wikiFolder, preserveCase, normalizePath }, stub));
+    }
+
+    this.onProgress?.(
+      getText(this.settings.language, 'ingestCreatingSummary')
+        .replace('{step}', String(step))
+        .replace('{totalSteps}', String(totalSteps))
+    );
+    await this.apiDelay();
+
+    // Issue #155: derive the source slug (<basename>-<path fingerprint>) ONCE,
+    // before any page is written, so the summary page, entity/concept backlinks,
+    // and related pages all reference the same canonical [[sources/<slug>]].
+    const sourceSlug = resolveSourceSlug(file.path, { preserveCase });
+
+    return { totalSteps, step, plannedPaths, preserveCase, sourceSlug };
   }
 
   private async apiDelay(ms?: number): Promise<void> {
