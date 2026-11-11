@@ -1233,111 +1233,15 @@ export class WikiEngine {
       analysis.created_pages.push(summaryPage);
       summaryPagePath = summaryPage;
 
-      // Stage 3: Entity/Concept Page Generation
-      // v1.25.1 Phase C-PR1: retry + rate-limit template extracted to
-      // engine-internals/page-batch-runner.ts (eliminates ~60% duplication
-      // with Stage 4 and makes the retry path unit-testable).
-      const pageGenStart = Date.now();
-      let pageGenCount = 0;
-
-      const concurrency = this.settings.pageGenerationConcurrency ?? 1;
-      const batchDelay = this.settings.batchDelayMs ?? 300;
-
-      if (concurrency > 1) {
-        console.debug(`[Parallel] concurrency: ${concurrency}, batch delay: ${batchDelay}ms, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
-      } else {
-        console.debug(`[Serial] generating pages sequentially, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
-      }
-
-      const pageGenTasks = [
-        ...analysis.entities.map((e, i) => ({
-          id: `entity:${e.name}`,
-          payload: { type: 'entity' as const, name: e.name, index: i },
-        })),
-        ...analysis.concepts.map((c, i) => ({
-          id: `concept:${c.name}`,
-          payload: { type: 'concept' as const, name: c.name, index: i },
-        })),
-      ];
-
-      const pageGenResult = await runBatchedWithRetry<typeof pageGenTasks[number]['payload']>({
-        tasks: pageGenTasks,
-        concurrency,
-        batchDelayMs: batchDelay,
-        checkCancelled: () => this.checkCancelled('ingest'),
-        apiDelay: (ms: number) => this.apiDelay(ms),
-        onProgress: (_id) => {
-          step++;
-          const task = pageGenTasks[step - 1]?.payload;
-          if (task) {
-            this.onProgress?.(
-              getText(this.settings.language, 'ingestCreatingItem')
-                .replace('{step}', String(step))
-                .replace('{totalSteps}', String(totalSteps))
-                .replace('{type}', getText(
-                  this.settings.language,
-                  task.type === 'entity' ? 'ingestItemTypeEntity' : 'ingestItemTypeConcept'
-                ))
-                .replace('{name}', task.name)
-            );
-          }
-        },
-        execute: async (task) => {
-          if (task.type === 'entity') {
-            const entity = analysis!.entities[task.index];
-            try {
-              const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis!, file, [], sourceSlug);
-              if (entityResult.path) {
-                if (entityResult.created) analysis!.created_pages.push(entityResult.path);
-                else recordUpdatedPage(analysis!, entityResult.path);
-              }
-              return { success: true as const };
-            } catch (error) {
-              const reason = error instanceof Error ? error.message : String(error);
-              console.error(`Entity "${entity.name}" failed:`, reason);
-              return { success: false as const, failureReason: reason };
-            }
-          }
-          const concept = analysis!.concepts[task.index];
-          try {
-            const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis!, file, [], sourceSlug);
-            if (conceptResult.path) {
-              if (conceptResult.created) analysis!.created_pages.push(conceptResult.path);
-              else recordUpdatedPage(analysis!, conceptResult.path);
-            }
-            return { success: true as const };
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            console.error(`Concept "${concept.name}" failed:`, reason);
-            return { success: false as const, failureReason: reason };
-          }
-        },
+      const pageGen = await this.generateItemPages({
+        analysis,
+        file,
+        sourceSlug,
+        totalSteps,
+        step,
+        failedItems,
       });
-
-      // Sync state out of the runner result (runner doesn't own our analysis state).
-      pageGenCount = pageGenResult.succeeded + pageGenResult.failed.length;
-      for (const f of pageGenResult.failed) {
-        const isEntity = f.id.startsWith('entity:');
-        failedItems.push({
-          type: isEntity ? 'entity' : 'concept',
-          name: f.id.split(':')[1] ?? f.id,
-          reason: f.reason,
-        });
-      }
-      if (pageGenResult.rateLimitInfo) {
-        console.warn(
-          `[Rate Limit] Page generation: ${pageGenResult.rateLimitInfo.count} item(s) failed with 429, ` +
-          `suggested concurrency=${pageGenResult.rateLimitInfo.suggestedConcurrency}, ` +
-          `delay=${pageGenResult.rateLimitInfo.suggestedDelay}ms`
-        );
-        new Notice(
-          formatRateLimitNotice(pageGenResult.rateLimitInfo, this.settings.language),
-          NOTICE_RATE_LIMIT
-        );
-      }
-      const pageGenTime = Date.now() - pageGenStart;
-      console.debug(`[Time] Page generation phase complete: ${pageGenTime}ms (avg ${pageGenCount > 0 ? Math.round(pageGenTime / pageGenCount) : 0}ms/page)`);
-
+      step = pageGen.stepAfter;
       // Stage 4: Related Pages Update (same runner, different execute fn)
       const relatedStart = Date.now();
       const relatedConcurrency = this.settings.pageGenerationConcurrency ?? 1;
@@ -1452,7 +1356,7 @@ export class WikiEngine {
       console.debug('[Phase breakdown]:');
       console.debug(`  - Source analysis: ${analysisTime}ms`);
       console.debug(`  - Summary page generation: ${summaryTime}ms`);
-      console.debug(`  - Page gen (${concurrency}concurrency): ${pageGenTime}ms`);
+      console.debug(`  - Page gen (${pageGen.concurrency}concurrency): ${pageGen.elapsedMs}ms`);
       console.debug(`  - Related page update: ${relatedTime}ms`);
       console.debug(`  - Index & log: ${indexTime}ms`);
       // Inside the phases, per step. Page generation is the phase this exists
@@ -1756,6 +1660,130 @@ export class WikiEngine {
         this.onProgress?.(`Related lists: ${shaped.siblings} sibling edges, ${shaped.unanswered.length} unanswered names, ${shaped.tags.length} tag values dropped`);
       }
     }
+  }
+
+  /**
+   * Stage 3: the entity and concept pages.
+   *
+   * Moved out of `ingestSource` by #932 with its own comments. The runner owns
+   * the retry and the rate-limit handling; this method owns the task list, the
+   * progress text, and the failures the report lists.
+   */
+  private async generateItemPages(args: {
+    analysis: SourceAnalysis;
+    file: TFile;
+    sourceSlug: string;
+    totalSteps: number;
+    step: number;
+    failedItems: Array<{ type: 'entity' | 'concept'; name: string; reason: string }>;
+  }): Promise<{ count: number; elapsedMs: number; concurrency: number; stepAfter: number }> {
+    const { analysis, file, sourceSlug, totalSteps, failedItems } = args;
+    let step = args.step;
+    // Stage 3: Entity/Concept Page Generation
+    // v1.25.1 Phase C-PR1: retry + rate-limit template extracted to
+    // engine-internals/page-batch-runner.ts (eliminates ~60% duplication
+    // with Stage 4 and makes the retry path unit-testable).
+    const pageGenStart = Date.now();
+
+    const concurrency = this.settings.pageGenerationConcurrency ?? 1;
+    const batchDelay = this.settings.batchDelayMs ?? 300;
+
+    if (concurrency > 1) {
+      console.debug(`[Parallel] concurrency: ${concurrency}, batch delay: ${batchDelay}ms, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
+    } else {
+      console.debug(`[Serial] generating pages sequentially, total tasks: ${analysis.entities.length + analysis.concepts.length}`);
+    }
+
+    const pageGenTasks = [
+      ...analysis.entities.map((e, i) => ({
+        id: `entity:${e.name}`,
+        payload: { type: 'entity' as const, name: e.name, index: i },
+      })),
+      ...analysis.concepts.map((c, i) => ({
+        id: `concept:${c.name}`,
+        payload: { type: 'concept' as const, name: c.name, index: i },
+      })),
+    ];
+
+    const pageGenResult = await runBatchedWithRetry<typeof pageGenTasks[number]['payload']>({
+      tasks: pageGenTasks,
+      concurrency,
+      batchDelayMs: batchDelay,
+      checkCancelled: () => this.checkCancelled('ingest'),
+      apiDelay: (ms: number) => this.apiDelay(ms),
+      onProgress: (_id) => {
+        step++;
+        const task = pageGenTasks[step - 1]?.payload;
+        if (task) {
+          this.onProgress?.(
+            getText(this.settings.language, 'ingestCreatingItem')
+              .replace('{step}', String(step))
+              .replace('{totalSteps}', String(totalSteps))
+              .replace('{type}', getText(
+                this.settings.language,
+                task.type === 'entity' ? 'ingestItemTypeEntity' : 'ingestItemTypeConcept'
+              ))
+              .replace('{name}', task.name)
+          );
+        }
+      },
+      execute: async (task) => {
+        if (task.type === 'entity') {
+          const entity = analysis.entities[task.index];
+          try {
+            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug);
+            if (entityResult.path) {
+              if (entityResult.created) analysis.created_pages.push(entityResult.path);
+              else recordUpdatedPage(analysis, entityResult.path);
+            }
+            return { success: true as const };
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            console.error(`Entity "${entity.name}" failed:`, reason);
+            return { success: false as const, failureReason: reason };
+          }
+        }
+        const concept = analysis.concepts[task.index];
+        try {
+          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug);
+          if (conceptResult.path) {
+            if (conceptResult.created) analysis.created_pages.push(conceptResult.path);
+            else recordUpdatedPage(analysis, conceptResult.path);
+          }
+          return { success: true as const };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`Concept "${concept.name}" failed:`, reason);
+          return { success: false as const, failureReason: reason };
+        }
+      },
+    });
+
+    // Sync state out of the runner result (runner doesn't own our analysis state).
+    const count = pageGenResult.succeeded + pageGenResult.failed.length;
+    for (const f of pageGenResult.failed) {
+      const isEntity = f.id.startsWith('entity:');
+      failedItems.push({
+        type: isEntity ? 'entity' : 'concept',
+        name: f.id.split(':')[1] ?? f.id,
+        reason: f.reason,
+      });
+    }
+    if (pageGenResult.rateLimitInfo) {
+      console.warn(
+        `[Rate Limit] Page generation: ${pageGenResult.rateLimitInfo.count} item(s) failed with 429, ` +
+        `suggested concurrency=${pageGenResult.rateLimitInfo.suggestedConcurrency}, ` +
+        `delay=${pageGenResult.rateLimitInfo.suggestedDelay}ms`
+      );
+      new Notice(
+        formatRateLimitNotice(pageGenResult.rateLimitInfo, this.settings.language),
+        NOTICE_RATE_LIMIT
+      );
+    }
+    const elapsedMs = Date.now() - pageGenStart;
+    console.debug(`[Time] Page generation phase complete: ${elapsedMs}ms (avg ${count > 0 ? Math.round(elapsedMs / count) : 0}ms/page)`);
+
+    return { count, elapsedMs, concurrency, stepAfter: step };
   }
 
   private async apiDelay(ms?: number): Promise<void> {
