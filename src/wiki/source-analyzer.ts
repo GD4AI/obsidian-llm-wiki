@@ -39,7 +39,7 @@ import { foldToVocabulary } from '../core/tag-vocab';
 import { EmbeddedImageEvidenceSchema, SourceAnalysisLLMSchema, LemmaClassifyLLMSchema, TypeRepairLLMSchema } from '../llm-sdk/output-schemas';
 import { callLlm } from '../core/llm-dispatch';
 import { findRepetitionLoop, isSourceBorneLoop, REPETITION_LOOP_MIN_REPEATS } from '../core/repetition-loop';
-import { discoverEmbeddedImages, gifFirstFrameToPng, packageEmbeddedImages, readEmbeddedImagePart } from '../core/embedded-image-resolver';
+import { discoverEmbeddedImages, gifFirstFrameToPng, packageEmbeddedImages, readEmbeddedImagePart, type EmbeddedImageCandidate } from '../core/embedded-image-resolver';
 
 // ── Batch response normalization ─────────────────────────────────
 // LLMs often return irregular JSON: omitted empty arrays, non-array truthy
@@ -1477,116 +1477,182 @@ export class SourceAnalyzer {
       if (abortSignal?.aborted) abortSignal.throwIfAborted();
       const imagePackage = packages[packageIndex];
       const byteLength = imagePackage.reduce((total, image) => total + image.byteLength, 0);
-      const parts = [];
-      for (const image of imagePackage) {
-        try {
-          const part = await readEmbeddedImagePart(image, {
-            readBinary: path => this.ctx.app.vault.adapter.readBinary(path),
-            gifFirstFrame: gifFirstFrameToPng,
-          });
-          if (image.mediaType === 'image/gif') report.convertedGifs++;
-          parts.push({ image, part });
-        } catch (error) {
-          report.skipped.push({ path: image.path, reason: image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing' });
-          const audit = evidenceByIndex.get(image.index);
-          if (audit) {
-            audit.status = 'skipped';
-            audit.reason = image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing';
-          }
-          console.warn('[embedded-images] unable to read image:', image.path, error);
-        }
-      }
+      const parts = await this.readPackageParts({ imagePackage, report, evidenceByIndex });
       if (parts.length === 0) continue;
       report.packages++;
       report.sent += parts.length;
       console.debug(`[embedded-images] package ${packageIndex + 1}/${packages.length}: ${parts.length} image(s), ${byteLength} bytes`);
-      const visionContent: MessageContentPart[] = [{ type: 'text', text: PROMPTS.analyzeEmbeddedImages }];
-      for (const { image, part } of parts) {
-        visionContent.push({
-          type: 'text',
-          text: [
-            `Image ${image.index}`,
-            `Path: ${image.path}`,
-            `Text before image: ${image.contextBefore || '(none)'}`,
-            `Text after image: ${image.contextAfter || '(none)'}`,
-            `The image content block immediately following this text is Image ${image.index}.`,
-          ].join('\n'),
-        }, part);
-      }
-      try {
-        const response = await client.createMessage({
-          task: 'embedded-image-analysis',
-          model,
-          max_tokens: 3000,
-          ...(system ? { system } : {}),
-          messages: [{ role: 'user', content: visionContent }],
-          response_format: { type: 'json_object' },
-          ...(abortSignal ? { abortSignal } : {}),
-          ...(this.ctx.settings.disableThinking === true ? { enableThinking: false } : {}),
-        });
-        const parsed = EmbeddedImageEvidenceSchema.safeParse(await parseJsonResponse(response));
-        if (!parsed.success) throw new Error('Embedded image analysis returned an invalid images array');
-        const packageIndexes = new Set(parts.map(({ image }) => image.index));
-        const returnedIndexes = new Set<number>();
-        const duplicateIndexes = new Set<number>();
-        const invalidIndexes = new Set<number>();
-        const analyzedIndexes = new Set<number>();
-        for (const item of parsed.data.images) {
-          if (!packageIndexes.has(item.index)) {
-            invalidIndexes.add(item.index);
-            continue;
-          }
-          if (returnedIndexes.has(item.index)) {
-            duplicateIndexes.add(item.index);
-            continue;
-          }
-          returnedIndexes.add(item.index);
-          const visibleText = (item.visible_text ?? '').trim();
-          const description = (item.description ?? '').trim();
-          const beforeRelevance = (item.before_relevance ?? '').trim();
-          const afterRelevance = (item.after_relevance ?? '').trim();
-          const contextInterpretation = (item.context_interpretation ?? '').trim();
-          if (visibleText || description) {
-            evidence.push({ index: item.index, text: [visibleText && `Visible text: ${visibleText}`, description && `Description: ${description}`, contextInterpretation && `Context interpretation: ${contextInterpretation}`].filter(Boolean).join('\n') });
-            const audit = evidenceByIndex.get(item.index);
-            if (audit) {
-              audit.status = 'analyzed';
-              audit.visibleText = visibleText || undefined;
-              audit.description = description || undefined;
-              audit.beforeRelevance = beforeRelevance || undefined;
-              audit.afterRelevance = afterRelevance || undefined;
-              audit.contextInterpretation = contextInterpretation || undefined;
-            }
-            analyzedIndexes.add(item.index);
-          }
-        }
-        report.analyzed += analyzedIndexes.size;
-        const missingIndexes = [...packageIndexes].filter(index => !returnedIndexes.has(index));
-        console.debug(`[embedded-images] package ${packageIndex + 1}/${packages.length} response: ${returnedIndexes.size}/${parts.length} record(s), ${analyzedIndexes.size} with evidence, ${missingIndexes.length} missing`);
-        if (duplicateIndexes.size > 0 || invalidIndexes.size > 0) {
-          console.warn('[embedded-images] ignored invalid response indexes:', {
-            duplicates: [...duplicateIndexes], invalid: [...invalidIndexes],
-          });
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') throw error;
-        if (!isVisionInputRejected(error)) throw error;
-        report.failedPackages++;
-        for (const { image } of parts) {
-          const audit = evidenceByIndex.get(image.index);
-          if (audit) {
-            audit.status = 'failed';
-            audit.reason = 'vision-input-rejected';
-          }
-        }
-        console.warn('[embedded-images] provider rejected image input; text ingestion will continue:', error);
-        this.ctx.onProgress?.(getText(this.ctx.settings.language, 'embeddedImagesVisionUnsupported'));
-      }
+      await this.analyzePackage({
+        client,
+        model,
+        system,
+        abortSignal,
+        parts,
+        evidence,
+        report,
+        evidenceByIndex,
+        packageIndex,
+        packagesTotal: packages.length,
+      });
     }
 
     const formattedEvidence = evidence.sort((a, b) => a.index - b.index).map(item => `### Image ${item.index}\n${item.text}`).join('\n\n');
     console.debug('[embedded-images] complete:', report);
     return { evidence: formattedEvidence, report };
+  }
+
+  /**
+   * One vision call, and the bookkeeping its answer needs.
+   *
+   * Moved out of `analyzeEmbeddedImages` by #932. Three answers are possible and
+   * each has its own tail: an index the package never sent, an index the model
+   * returned twice, and an index with evidence. A rejection of the image input
+   * itself is not a failure of the run — the text ingest continues.
+   */
+  private async analyzePackage(args: {
+    client: LLMClient;
+    model: string;
+    system: string | undefined;
+    abortSignal: AbortSignal | undefined;
+    parts: Array<{ image: EmbeddedImageCandidate; part: MessageContentPart }>;
+    evidence: Array<{ index: number; text: string }>;
+    report: EmbeddedImageAnalysisReport;
+    evidenceByIndex: Map<number, EmbeddedImageEvidence>;
+    packageIndex: number;
+    packagesTotal: number;
+  }): Promise<void> {
+    const { client, model, system, abortSignal, parts, evidence, report, evidenceByIndex, packageIndex } = args;
+    const packagesTotal = args.packagesTotal;
+    const visionContent = this.buildVisionContent(parts);
+    try {
+      const response = await client.createMessage({
+        task: 'embedded-image-analysis',
+        model,
+        max_tokens: 3000,
+        ...(system ? { system } : {}),
+        messages: [{ role: 'user', content: visionContent }],
+        response_format: { type: 'json_object' },
+        ...(abortSignal ? { abortSignal } : {}),
+        ...(this.ctx.settings.disableThinking === true ? { enableThinking: false } : {}),
+      });
+      const parsed = EmbeddedImageEvidenceSchema.safeParse(await parseJsonResponse(response));
+      if (!parsed.success) throw new Error('Embedded image analysis returned an invalid images array');
+      const packageIndexes = new Set(parts.map(({ image }) => image.index));
+      const returnedIndexes = new Set<number>();
+      const duplicateIndexes = new Set<number>();
+      const invalidIndexes = new Set<number>();
+      const analyzedIndexes = new Set<number>();
+      for (const item of parsed.data.images) {
+        if (!packageIndexes.has(item.index)) {
+          invalidIndexes.add(item.index);
+          continue;
+        }
+        if (returnedIndexes.has(item.index)) {
+          duplicateIndexes.add(item.index);
+          continue;
+        }
+        returnedIndexes.add(item.index);
+        const visibleText = (item.visible_text ?? '').trim();
+        const description = (item.description ?? '').trim();
+        const beforeRelevance = (item.before_relevance ?? '').trim();
+        const afterRelevance = (item.after_relevance ?? '').trim();
+        const contextInterpretation = (item.context_interpretation ?? '').trim();
+        if (visibleText || description) {
+          evidence.push({ index: item.index, text: [visibleText && `Visible text: ${visibleText}`, description && `Description: ${description}`, contextInterpretation && `Context interpretation: ${contextInterpretation}`].filter(Boolean).join('\n') });
+          const audit = evidenceByIndex.get(item.index);
+          if (audit) {
+            audit.status = 'analyzed';
+            audit.visibleText = visibleText || undefined;
+            audit.description = description || undefined;
+            audit.beforeRelevance = beforeRelevance || undefined;
+            audit.afterRelevance = afterRelevance || undefined;
+            audit.contextInterpretation = contextInterpretation || undefined;
+          }
+          analyzedIndexes.add(item.index);
+        }
+      }
+      report.analyzed += analyzedIndexes.size;
+      const missingIndexes = [...packageIndexes].filter(index => !returnedIndexes.has(index));
+      console.debug(`[embedded-images] package ${packageIndex + 1}/${packagesTotal} response: ${returnedIndexes.size}/${parts.length} record(s), ${analyzedIndexes.size} with evidence, ${missingIndexes.length} missing`);
+      if (duplicateIndexes.size > 0 || invalidIndexes.size > 0) {
+        console.warn('[embedded-images] ignored invalid response indexes:', {
+          duplicates: [...duplicateIndexes], invalid: [...invalidIndexes],
+        });
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+      if (!isVisionInputRejected(error)) throw error;
+      report.failedPackages++;
+      for (const { image } of parts) {
+        const audit = evidenceByIndex.get(image.index);
+        if (audit) {
+          audit.status = 'failed';
+          audit.reason = 'vision-input-rejected';
+        }
+      }
+      console.warn('[embedded-images] provider rejected image input; text ingestion will continue:', error);
+      this.ctx.onProgress?.(getText(this.ctx.settings.language, 'embeddedImagesVisionUnsupported'));
+    }
+  }
+
+  /**
+   * Read every image of one package, and record the ones that cannot be read.
+   *
+   * Moved out of `analyzeEmbeddedImages` by #932. A failed read is not a failed
+   * package: the image is skipped, audited, and the rest still go to the model.
+   */
+  private async readPackageParts(args: {
+    imagePackage: EmbeddedImageCandidate[];
+    report: EmbeddedImageAnalysisReport;
+    evidenceByIndex: Map<number, EmbeddedImageEvidence>;
+  }): Promise<Array<{ image: EmbeddedImageCandidate; part: MessageContentPart }>> {
+    const { imagePackage, report, evidenceByIndex } = args;
+    const parts = [];
+    for (const image of imagePackage) {
+      try {
+        const part = await readEmbeddedImagePart(image, {
+          readBinary: path => this.ctx.app.vault.adapter.readBinary(path),
+          gifFirstFrame: gifFirstFrameToPng,
+        });
+        if (image.mediaType === 'image/gif') report.convertedGifs++;
+        parts.push({ image, part });
+      } catch (error) {
+        report.skipped.push({ path: image.path, reason: image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing' });
+        const audit = evidenceByIndex.get(image.index);
+        if (audit) {
+          audit.status = 'skipped';
+          audit.reason = image.mediaType === 'image/gif' ? 'gif-decode-failed' : 'missing';
+        }
+        console.warn('[embedded-images] unable to read image:', image.path, error);
+      }
+    }
+    return parts;
+  }
+
+  /**
+   * Interleave each image with a text label that names its index and context.
+   *
+   * Moved out of `analyzeEmbeddedImages` by #932. The label is what lets the
+   * model answer per index, so the wording is load-bearing rather than
+   * decoration.
+   */
+  private buildVisionContent(
+    parts: Array<{ image: EmbeddedImageCandidate; part: MessageContentPart }>,
+  ): MessageContentPart[] {
+    const visionContent: MessageContentPart[] = [{ type: 'text', text: PROMPTS.analyzeEmbeddedImages }];
+    for (const { image, part } of parts) {
+      visionContent.push({
+        type: 'text',
+        text: [
+          `Image ${image.index}`,
+          `Path: ${image.path}`,
+          `Text before image: ${image.contextBefore || '(none)'}`,
+          `Text after image: ${image.contextAfter || '(none)'}`,
+          `The image content block immediately following this text is Image ${image.index}.`,
+        ].join('\n'),
+      }, part);
+    }
+    return visionContent;
   }
 
   /**
