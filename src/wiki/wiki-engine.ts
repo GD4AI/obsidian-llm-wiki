@@ -1151,81 +1151,13 @@ export class WikiEngine {
       const sourceLang = getSourceLanguage(file, this.app);
       const translated = sourceLang !== null && isCrossLanguage(sourceLang, wikiLang);
 
-      // S135 outcome table: with `gateDissentStubs` on, the two gate halves
-      // stop running in series (each with a veto) and become one decision
-      // table — agreement keeps or drops as before, dissent births a stub
-      // from the extraction's own summary (no LLM call). Requires the #514
-      // opt-in, because the table needs the position verdict that setting
-      // opts into; cross-language notes are not gated, same as below. The
-      // full-page set is identical to the serial path's keep set (measured
-      // over 1,153 items, three runs) — the table only converts drops.
-      let stubPlan: StubCandidate[] = [];
-      let tableApplied = false;
-      if (
-        this.settings.gateDissentStubs === true &&
-        this.settings.skipMentionOnlyCandidates === true &&
-        !translated
-      ) {
-        const pages = await this.getExistingWikiPages();
-        const table = applyOutcomeTable(
-          analysis,
-          extractBody(rawSource),
-          wikiLang,
-          buildStubIdentityResolver(pages, this.settings.wikiFolder),
-        );
-        // `!table.applied` (no language profile) falls through to the serial
-        // path, which reports the missing profile itself.
-        if (table.applied) {
-          tableApplied = true;
-          const total = analysis.entities.length + analysis.concepts.length;
-          if (table.dropped.length > 0) {
-            const list = table.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            console.warn(`[candidate-gate] ${file.path}: dropped ${table.dropped.length} of ${total} candidates — ${list}`);
-            this.onProgress?.(`Candidate gate: ${table.dropped.length} dropped — ${list}`);
-          }
-          if (table.existing.length > 0) {
-            const list = table.existing.map(d => `${d.name} (${d.kind}, ${d.cell})`).join('; ');
-            console.debug(`[candidate-gate] ${file.path}: ${table.existing.length} dissent name(s) an existing page answers — ${list}`);
-          }
-          if (table.stubs.length > 0) {
-            const list = table.stubs.map(s => `${s.item.name} (${s.kind}, ${s.cell})`).join('; ');
-            console.warn(`[candidate-gate] ${file.path}: ${table.stubs.length} dissent stub(s) planned — ${list}`);
-            this.onProgress?.(`Candidate gate: ${table.stubs.length} stub(s) from dissent — ${list}`);
-          }
-          analysis.entities = table.entities;
-          analysis.concepts = table.concepts;
-          stubPlan = table.stubs;
-        }
-      }
-
-      if (!tableApplied && this.settings.skipMentionOnlyCandidates === true) {
-        if (!translated) {
-          // A dropped name the vault already has a page for keeps its edge:
-          // the gate judges whether this note earns the page, not whether a
-          // page another note earned may be linked. Same resolver as the
-          // related-link corrector, so "known" means the same thing at both
-          // ends of the pipeline.
-          const resolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
-          const gated = gateCandidates(
-            analysis,
-            extractBody(rawSource),
-            wikiLang,
-            name => resolve(name) !== undefined,
-          );
-          if (!gated.applied) {
-            console.debug(`[candidate-gate] ${file.path}: no language profile for "${wikiLang}" — gate not applied`);
-            this.onProgress?.(`Candidate gate: no language profile for "${wikiLang}" — not applied`);
-          } else if (gated.dropped.length > 0) {
-            const list = gated.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
-            const kept = gated.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${gated.linkedAnyway.join('; ')}` : '';
-            console.warn(`[candidate-gate] ${file.path}: dropped ${gated.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
-            this.onProgress?.(`Candidate gate: ${gated.dropped.length} dropped — ${list}${kept}`);
-            analysis.entities = gated.entities;
-            analysis.concepts = gated.concepts;
-          }
-        }
-      }
-
+      const { stubPlan, tableApplied } = await this.applyCandidateGates({
+        analysis,
+        rawSource,
+        file,
+        wikiLang,
+        translated,
+      });
       // domain axis stage 3 (#568): the semantic half follows on the
       // survivors — the extraction reported per candidate how the source treats
       // it (`coverage`), the threshold in candidate-gate.ts says what is enough;
@@ -1691,6 +1623,98 @@ export class WikiEngine {
       this.triageContradictions = null;
       this.endIngestion();
     }
+  }
+
+  /**
+   * The candidate gate (#514) and its dissent table (S135).
+   *
+   * Moved out of `ingestSource` by #932 with its own comments: the block only
+   * reads the extraction and a vault page list, and answers with the plan.
+   */
+  private async applyCandidateGates(args: {
+    analysis: SourceAnalysis;
+    rawSource: string;
+    file: TFile;
+    wikiLang: string;
+    translated: boolean;
+  }): Promise<{ stubPlan: StubCandidate[]; tableApplied: boolean }> {
+    const { analysis, rawSource, file, wikiLang, translated } = args;
+    // S135 outcome table: with `gateDissentStubs` on, the two gate halves
+    // stop running in series (each with a veto) and become one decision
+    // table — agreement keeps or drops as before, dissent births a stub
+    // from the extraction's own summary (no LLM call). Requires the #514
+    // opt-in, because the table needs the position verdict that setting
+    // opts into; cross-language notes are not gated, same as below. The
+    // full-page set is identical to the serial path's keep set (measured
+    // over 1,153 items, three runs) — the table only converts drops.
+    let stubPlan: StubCandidate[] = [];
+    let tableApplied = false;
+    if (
+      this.settings.gateDissentStubs === true &&
+      this.settings.skipMentionOnlyCandidates === true &&
+      !translated
+    ) {
+      const pages = await this.getExistingWikiPages();
+      const table = applyOutcomeTable(
+        analysis,
+        extractBody(rawSource),
+        wikiLang,
+        buildStubIdentityResolver(pages, this.settings.wikiFolder),
+      );
+      // `!table.applied` (no language profile) falls through to the serial
+      // path, which reports the missing profile itself.
+      if (table.applied) {
+        tableApplied = true;
+        const total = analysis.entities.length + analysis.concepts.length;
+        if (table.dropped.length > 0) {
+          const list = table.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          console.warn(`[candidate-gate] ${file.path}: dropped ${table.dropped.length} of ${total} candidates — ${list}`);
+          this.onProgress?.(`Candidate gate: ${table.dropped.length} dropped — ${list}`);
+        }
+        if (table.existing.length > 0) {
+          const list = table.existing.map(d => `${d.name} (${d.kind}, ${d.cell})`).join('; ');
+          console.debug(`[candidate-gate] ${file.path}: ${table.existing.length} dissent name(s) an existing page answers — ${list}`);
+        }
+        if (table.stubs.length > 0) {
+          const list = table.stubs.map(s => `${s.item.name} (${s.kind}, ${s.cell})`).join('; ');
+          console.warn(`[candidate-gate] ${file.path}: ${table.stubs.length} dissent stub(s) planned — ${list}`);
+          this.onProgress?.(`Candidate gate: ${table.stubs.length} stub(s) from dissent — ${list}`);
+        }
+        analysis.entities = table.entities;
+        analysis.concepts = table.concepts;
+        stubPlan = table.stubs;
+      }
+    }
+
+    if (!tableApplied && this.settings.skipMentionOnlyCandidates === true) {
+      if (!translated) {
+        // A dropped name the vault already has a page for keeps its edge:
+        // the gate judges whether this note earns the page, not whether a
+        // page another note earned may be linked. Same resolver as the
+        // related-link corrector, so "known" means the same thing at both
+        // ends of the pipeline.
+        const resolve = buildVaultResolver({ wikiFolder: this.settings.wikiFolder, pages: await this.getExistingWikiPages() });
+        const gated = gateCandidates(
+          analysis,
+          extractBody(rawSource),
+          wikiLang,
+          name => resolve(name) !== undefined,
+        );
+        if (!gated.applied) {
+          console.debug(`[candidate-gate] ${file.path}: no language profile for "${wikiLang}" — gate not applied`);
+          this.onProgress?.(`Candidate gate: no language profile for "${wikiLang}" — not applied`);
+        } else if (gated.dropped.length > 0) {
+          const list = gated.dropped.map(d => `${d.name} (${d.kind}, ${d.verdict})`).join('; ');
+          const kept = gated.linkedAnyway.length > 0 ? ` — linked anyway (existing page): ${gated.linkedAnyway.join('; ')}` : '';
+          console.warn(`[candidate-gate] ${file.path}: dropped ${gated.dropped.length} of ${analysis.entities.length + analysis.concepts.length} candidates — ${list}${kept}`);
+          this.onProgress?.(`Candidate gate: ${gated.dropped.length} dropped — ${list}${kept}`);
+          analysis.entities = gated.entities;
+          analysis.concepts = gated.concepts;
+        }
+      }
+    }
+
+    return { stubPlan, tableApplied };
   }
 
   private async apiDelay(ms?: number): Promise<void> {
