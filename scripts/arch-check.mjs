@@ -49,8 +49,20 @@ const UPPER_PREFIXES = [
 	'llm-client-wrapper.ts',
 ];
 
-/** Static `import`/`export … from`, side-effect `import '…'`, and dynamic `import('…')`. */
-const SPECIFIER = /(?:^|\n)\s*(?:import|export)[\s\S]*?from\s*['"]([^'"]+)['"]|(?:^|\n)\s*import\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+/**
+ * Static `import`/`export … from`, side-effect `import '…'`, and dynamic `import('…')`.
+ *
+ * Captures the clause between the keyword and `from`, so the caller can tell a
+ * type-only statement (`import type { X } from '…'`, `export type { X } from '…'`)
+ * from one that loads the module. TypeScript erases the first kind entirely, so it
+ * cannot contribute to a module-initialization cycle (#930).
+ */
+const SPECIFIER = /(?:^|\n)\s*(import|export)\b([\s\S]*?)from\s*['"]([^'"]+)['"]|(?:^|\n)\s*import\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+
+/** True when the statement is `import type` / `export type`, which no runtime edge survives. */
+function isTypeOnlyClause(clause) {
+	return /^\s*type\b/.test(clause ?? '');
+}
 
 function walk(dir, out = []) {
 	for (const name of readdirSync(dir)) {
@@ -78,19 +90,26 @@ function resolveSpecifier(fromFile, specifier) {
 function buildGraph(files) {
 	const known = new Set(files);
 	const edges = new Map(files.map((f) => [f, new Set()]));
+	// The subset TypeScript does not erase. Cycle detection reads this; the
+	// core → upper layer rule keeps reading `edges`, because a core module that
+	// needs a ui type is still a core module depending on a upper layer.
+	const runtimeEdges = new Map(files.map((f) => [f, new Set()]));
 	let count = 0;
+	let typeOnly = 0;
 	for (const file of files) {
 		const source = readFileSync(file, 'utf8');
 		for (const match of source.matchAll(SPECIFIER)) {
-			const specifier = match[1] ?? match[2] ?? match[3];
+			const specifier = match[3] ?? match[4] ?? match[5];
 			if (!specifier) continue;
 			const target = resolveSpecifier(file, specifier);
 			if (!target || !known.has(target)) continue;
 			edges.get(file).add(target);
 			count++;
+			if (isTypeOnlyClause(match[2])) typeOnly++;
+			else runtimeEdges.get(file).add(target);
 		}
 	}
-	return { edges, count };
+	return { edges, runtimeEdges, count, typeOnly };
 }
 
 /** Tarjan, iterative enough for a few hundred nodes. Returns components of size > 1. */
@@ -160,11 +179,11 @@ function readAllowlist() {
 
 function main() {
 	const files = productionFiles();
-	const { edges, count } = buildGraph(files);
+	const { edges, runtimeEdges, count, typeOnly } = buildGraph(files);
 
 	if (process.argv.includes('--print')) {
 		const body = {
-			cycles: cycles(edges)
+			cycles: cycles(runtimeEdges)
 				.map((component) => component.map(toRel).sort())
 				.sort((a, b) => b.length - a.length || a[0].localeCompare(b[0])),
 			coreUpper: coreToUpperEdges(edges)
@@ -180,7 +199,7 @@ function main() {
 	const cycleKeys = new Set(allowlist.cycles.map(asKey));
 	const edgeKeys = new Set(allowlist.coreUpper.map(([a, b]) => `${a} → ${b}`));
 
-	const foundCycles = cycles(edges).map((component) => component.map(toRel).sort());
+	const foundCycles = cycles(runtimeEdges).map((component) => component.map(toRel).sort());
 	const foundEdges = coreToUpperEdges(edges).map(([a, b]) => `${a} → ${b}`).sort();
 
 	const unlistedCycles = foundCycles.filter((component) => !cycleKeys.has(asKey(component)));
@@ -210,7 +229,7 @@ function main() {
 		console.error(`stale allowlist entry, edge is gone: ${edge} — delete it, the list may only shrink`);
 	}
 
-	const total = `${files.length} modules, ${count} import edges`;
+	const total = `${files.length} modules, ${count} import edges (${typeOnly} type-only, erased at build)`;
 	if (failed) {
 		console.error(
 			`arch-check FAILED — ${total}, ${unlistedCycles.length + staleCycles.length} cycle problem(s), ` +

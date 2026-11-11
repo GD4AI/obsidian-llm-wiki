@@ -1,27 +1,5 @@
 {
   "_comment": "Violations the ratchet tolerates at #927. The list may only shrink: scripts/arch-check.mjs fails when an entry stops being a violation, so deleting a stale line is part of every item that lands.",
-  "cycles": [
-    [
-      "main-commands/command-registry.ts",
-      "main-commands/query-lint-commands.ts",
-      "main.ts",
-      "ui/settings-sections/advanced-section.ts",
-      "ui/settings-sections/advanced-settings-section.ts",
-      "ui/settings-sections/auto-maintain-section.ts",
-      "ui/settings-sections/language-section.ts",
-      "ui/settings-sections/model-section.ts",
-      "ui/settings-sections/provider-section.ts",
-      "ui/settings-sections/shared-inputs.ts",
-      "ui/settings-sections/status-section.ts",
-      "ui/settings-sections/test-connection-section.ts",
-      "ui/settings-sections/wiki-config-section.ts",
-      "ui/settings.ts",
-      "wiki/query-engine/QueryView-class.ts",
-      "wiki/query-engine/SuggestSaveModal-class.ts",
-      "wiki/query-engine/index.ts",
-      "wiki/query-engine/renderers/retrieval-label.ts",
-      "wiki/query-engine/types.ts"
-    ]
-  ],
+  "cycles": [],
   "coreUpper": []
 }
