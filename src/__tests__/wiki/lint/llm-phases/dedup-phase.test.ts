@@ -1484,3 +1484,134 @@ describe('runDedupBatch — the worker the run loop calls (#932)', () => {
     }
   });
 });
+
+// === chunk iteration and the halving counter (#932) ===
+// The flow tests above assert what the run reports, which survives a loop that
+// visits a batch twice. These two assert the loop's own two invariants: each batch
+// runs once, and an isolated retry does not count toward the halving threshold.
+// Both were found by mutating `runDedupChunks` after it moved out of `runDedupPhase`.
+describe('runDedupChunks — iteration and halving counter (#932)', () => {
+  // 4 caseVariant pairs → 4 tier-1 candidates → 4 batches of one candidate each
+  // (the system prompt is 7000 chars, which forces the splitter down to size 1).
+  const WIKI_FILES = ['alpha', 'beta', 'gamma', 'delta'].flatMap(name => [
+    { path: `wiki/entities/${name}.md`, basename: `${name}.md` },
+    { path: `wiki/entities/${name[0].toUpperCase()}${name.slice(1)}.md`, basename: `${name[0].toUpperCase()}${name.slice(1)}.md` },
+  ]);
+  const pageMapOf = () => makePageMap(
+    WIKI_FILES.map(f => [
+      f.path,
+      `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept for duplicate detection`,
+    ])
+  );
+
+  function ctxAt(concurrency: number, createMessage: unknown) {
+    return makeLintPhaseContext({
+      llmClient: () => ({ createMessage } as unknown as LLMClient),
+      buildSystemPrompt: async () => 'X'.repeat(7000),
+      settings: {
+        ...makeLintPhaseContext().settings,
+        pageGenerationConcurrency: concurrency,
+      } as LintPhaseContext['settings'],
+    });
+  }
+
+  const batchLines = (debugSpy: { mock: { calls: unknown[][] } }): string[] =>
+    debugSpy.mock.calls
+      .map(args => String(args[0]))
+      .filter(line => /lintWiki: batch \d+\/\d+ — /.test(line));
+
+  it('runs each batch exactly once when the chunk is wider than one', async () => {
+    // The loop advances `i` by the concurrency that was in force, not by 1. Advancing
+    // by 1 re-reads overlapping batches: invisible in a report that only counts
+    // duplicates, but the same pairs get processed and written twice.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createMessage = vi.fn().mockResolvedValue('{"duplicates":[]}');
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: WIKI_FILES, pageMap: pageMapOf() }, () => {});
+
+      const lines = batchLines(debugSpy);
+      expect(lines).toHaveLength(4);
+      const batchNumbers = lines.map(line => Number(/batch (\d+)\//.exec(line)?.[1]));
+      expect(new Set(batchNumbers).size).toBe(4);
+      expect(createMessage).toHaveBeenCalledTimes(4);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not count a clean chunk after a throttled one toward halving', async () => {
+    // The counter resets on any chunk that reported no soft-throttle. Without the
+    // reset, two chunks separated by a clean one still add up, and the run halves
+    // its concurrency on evidence that is not consecutive.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Only the first two distinct prompts throttle (chunk 1); chunk 2 is clean.
+    const seen = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const isNew = !seen.has(key);
+      const ordinal = seen.size;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+      if (isNew && ordinal < 2) return '';
+      return '{"duplicates":[]}';
+    });
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: WIKI_FILES, pageMap: pageMapOf() }, () => {});
+
+      // Both chunks ran, so the fixture reached the halving logic twice.
+      expect(batchLines(debugSpy)).toHaveLength(4);
+      const halving = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('temporarily reducing in-scan concurrency'));
+      expect(halving).toEqual([]);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('resets the counter on a clean chunk, so throttled-clean-throttled does not halve', async () => {
+    // The counter means CONSECUTIVE. A clean chunk in the middle must break the run,
+    // otherwise three chunks with one retry each add up to two and the run halves on
+    // evidence that was never consecutive. The CR-1 fix already made this counter a
+    // scoping hazard once (it lived inside the loop body and never accumulated), so
+    // both directions are pinned.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const files = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'].flatMap(name => [
+      { path: `wiki/entities/${name}.md`, basename: `${name}.md` },
+      { path: `wiki/entities/${name[0].toUpperCase()}${name.slice(1)}.md`, basename: `${name[0].toUpperCase()}${name.slice(1)}.md` },
+    ]);
+    const pageMap = makePageMap(
+      files.map(f => [
+        f.path,
+        `---\ntype: entity\n---\n# ${f.basename.replace('.md', '')}\nshared content about the same concept for duplicate detection`,
+      ])
+    );
+    // 6 batches at concurrency 2 → 3 chunks. Throttle the first two and the last two
+    // prompts; leave the middle chunk clean.
+    const seen = new Map<string, number>();
+    const createMessage = vi.fn().mockImplementation(async (args: { messages: Array<{ content: string }> }) => {
+      const key = args.messages[0].content;
+      const isNew = !seen.has(key);
+      const ordinal = seen.size;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+      if (isNew && (ordinal < 2 || ordinal >= 4)) return '';
+      return '{"duplicates":[]}';
+    });
+    try {
+      await runDedupPhase(ctxAt(2, createMessage), { wikiFiles: files, pageMap }, () => {});
+
+      expect(batchLines(debugSpy)).toHaveLength(6);
+      const halving = warnSpy.mock.calls
+        .map(args => String(args[0]))
+        .filter(line => line.includes('temporarily reducing in-scan concurrency'));
+      expect(halving).toEqual([]);
+    } finally {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+});
