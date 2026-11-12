@@ -15,6 +15,7 @@
  * no alias pipe.
  */
 
+import type { TFile } from 'obsidian';
 import { computeSlug } from './slug';
 import { isInFolderScope } from './folder-scope';
 
@@ -24,10 +25,19 @@ import { isInFolderScope } from './folder-scope';
  * `App` (the previous extraction needed `{} as unknown as WikiEngine`
  * junk casts because the shape lived on the AutoMaintainManager class).
  */
+/**
+ * The part of `App['vault']` this module reads. Typed with the real `TFile` rather
+ * than `{ path: string }`: `strictFunctionTypes` (#816) stopped the wider parameter
+ * from accepting `App`, whose `read` takes a `TFile`. The widened form was never
+ * true — the objects passed here come from `getMarkdownFiles()`.
+ */
 interface VaultLike {
-  getMarkdownFiles: () => Array<{ path: string }>;
-  read: (file: { path: string }) => Promise<string>;
-  process: (file: { path: string }, fn: (data: string) => string | Promise<string>) => Promise<unknown>;
+  getMarkdownFiles: () => TFile[];
+  read: (file: TFile) => Promise<string>;
+  // `fn` returns `string`, matching Obsidian's own signature. A `string |
+  // Promise<string>` return made this type wider than the real vault, which
+  // `strictFunctionTypes` rejects (#816).
+  process: (file: TFile, fn: (data: string) => string) => Promise<string>;
 }
 
 /**

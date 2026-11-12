@@ -1,7 +1,9 @@
 // Settings panel UI for LLM Wiki Plugin
 
 import { App, PluginSettingTab, Setting, Notice, Platform } from 'obsidian';
-import LLMWikiPlugin from '../main';
+// Type-only: `main.ts` constructs this tab, so a value import would close a cycle
+// and promise a plugin instance that does not exist yet at load time (#930).
+import type LLMWikiPlugin from '../main';
 import { LLMWikiSettings } from '../types';
 import { ConfirmModal } from './modals/ConfirmModal-class';
 import { TEXTS } from '../texts';
@@ -35,6 +37,12 @@ export class LLMWikiSettingTab extends PluginSettingTab {
   tempSettings: LLMWikiSettings;
   public codexAuthBusy = false;
   public codexDevicePrompt: CodexDevicePrompt | null = null;
+  /**
+   * Repaints the status row in place. Set by `renderStatusSection`, cleared at the
+   * start of `display()` because that rebuilds the row and the old closure would
+   * write into a detached element.
+   */
+  private statusRefresh: (() => void) | null = null;
   private codexModelRefreshAttemptedAt = 0;
   // #425 Bedrock Stage 2 — SSO login state + in-memory IAM key buffers
   // (flushed to SecretStorage once on tab close, mirroring flushApiKey).
@@ -595,7 +603,17 @@ export class LLMWikiSettingTab extends PluginSettingTab {
    * provider; the next Test Connection will re-fetch.
    */
   public markLLMConfigStale(): void {
+    const wasReady = this.tempSettings.llmReady === true;
     this.tempSettings.llmReady = false;
+    // `setFieldValue` runs on every keystroke, so repainting unconditionally would
+    // rewrite the row while the user types. Only the transition is worth a repaint:
+    // before it the row already says "not ready".
+    if (wasReady) this.statusRefresh?.();
+  }
+
+  /** Called by `renderStatusSection` once its row exists. */
+  public registerStatusRefresh(refresh: () => void): void {
+    this.statusRefresh = refresh;
   }
 
   /** Toggle the <field>UseCustom flag for per-task fields; no-op for unified. */
@@ -638,6 +656,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     //     users have muscle memory for.
     const { containerEl } = this;
     const scrollTop = containerEl.scrollTop;
+    this.statusRefresh = null;
     containerEl.empty();
     if (this.tempSettings.provider === 'openai-codex') applyCodexModelPolicy(this.tempSettings);
 

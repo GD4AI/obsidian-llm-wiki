@@ -121,6 +121,67 @@ describe('arch-check — the ratchet fails by name', () => {
 	});
 });
 
+describe('arch-check — a type-only import is not a runtime edge (#930)', () => {
+	let fixture: Fixture;
+
+	beforeEach(() => {
+		fixture = makeFixture();
+	});
+
+	afterEach(() => {
+		rmSync(fixture.dir, { recursive: true, force: true });
+	});
+
+	test('a two-file cycle made only of `import type` passes', () => {
+		// The nineteen-file entry #930 removed was mostly this shape: every settings
+		// section imported the tab class for a type and was counted as a cycle.
+		fixture.write('src/ui/a.ts', "import type { B } from './b';\nexport const a = 1 as unknown as B;\n");
+		fixture.write('src/ui/b.ts', "import type { A } from './a';\nexport type B = { a: A };\nimport { a } from './a';\nexport const b = a;\n");
+		fixture.allowlist(EMPTY_ALLOWLIST);
+
+		const result = runArchCheck(fixture.dir);
+
+		expect(result.code).toBe(0);
+		expect(result.out).toContain('cycles 0');
+		expect(result.out).toMatch(/type-only/);
+	});
+
+	test('a value cycle is still a cycle, so the precision did not weaken the rule', () => {
+		// Same two files, one word shorter. If this ever passes, the guard is gone.
+		fixture.write('src/ui/a.ts', "import { b } from './b';\nexport const a = b;\n");
+		fixture.write('src/ui/b.ts', "import { a } from './a';\nexport const b = a;\n");
+		fixture.allowlist(EMPTY_ALLOWLIST);
+
+		const result = runArchCheck(fixture.dir);
+
+		expect(result.code).toBe(1);
+		expect(result.out).toMatch(/unlisted cycle \(2 files\)/);
+	});
+
+	test('`export type … from` is erased too, and is not a cycle', () => {
+		fixture.write('src/core/a.ts', "export type { B } from './b';\nexport const a = 1;\n");
+		fixture.write('src/core/b.ts', "import type { A } from './a';\nexport type B = A;\nexport const b = 1;\n");
+		fixture.allowlist(EMPTY_ALLOWLIST);
+
+		const result = runArchCheck(fixture.dir);
+
+		expect(result.code).toBe(0);
+	});
+
+	test('a type-only `core` → `ui` import is still a layer violation', () => {
+		// The layer rule keeps its full strength: `core/` may not need an upper layer,
+		// not even for a type. Only cycle detection got the erasure argument.
+		fixture.write('src/core/a.ts', "import type { U } from '../ui/u';\nexport const a = 1 as unknown as U;\n");
+		fixture.write('src/ui/u.ts', 'export type U = number;\n');
+		fixture.allowlist(EMPTY_ALLOWLIST);
+
+		const result = runArchCheck(fixture.dir);
+
+		expect(result.code).toBe(1);
+		expect(result.out).toMatch(/core → upper/);
+	});
+});
+
 describe('arch-check — the tree it ships against', () => {
 	test('the repository passes its own ratchet, and the numbers are the measured ones', () => {
 		const result = runArchCheck(resolve(__dirname, '../../..'));

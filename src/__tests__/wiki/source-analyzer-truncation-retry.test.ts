@@ -172,7 +172,11 @@ describe('SourceAnalyzer truncation retry (#305)', () => {
       DEFAULT_MODEL_OUTPUT_TOKENS,
     );
     expect(maxTokens.length).toBeGreaterThanOrEqual(2);
-    expect(maxTokens[1], 'escalation may only add room, and there is none').toBe(maxTokens[0]);
+    // #1003 removed the retry-only escalation flag, because it could not change
+    // this number: `computeExtractionBudget` returns the ceiling for every input.
+    // The assertion stays as the standing proof that both attempts declare the same
+    // value — if that ever stops being true, a retry needs a way to ask for more.
+    expect(maxTokens[1], 'both attempts compute the same ceiling').toBe(maxTokens[0]);
   });
 
   // Issue #904: the ceiling is a starting assumption. A provider whose real

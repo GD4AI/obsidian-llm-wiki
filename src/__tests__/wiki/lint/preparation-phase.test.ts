@@ -1,12 +1,26 @@
 import { describe, it, expect } from 'vitest';
+import { TFile } from 'obsidian';
 import { runPreparationPhase } from '../../../wiki/lint/phases/preparation';
 import { LintPhaseContext } from '../../../wiki/lint/types';
 import { LLMWikiSettings } from '../../../types';
 
+/**
+ * Obsidian hands the phase real `TFile` instances, and the phase now narrows with
+ * `instanceof` — `as TFile` casts are rejected by the Obsidian lint ruleset (#816).
+ * Plain objects would model the wrong thing and silently skip the write path.
+ */
+function fakeFile(path: string): TFile {
+  const file = new TFile();
+  file.path = path;
+  file.basename = path.split('/').pop()?.replace('.md', '') ?? '';
+  file.extension = 'md';
+  return file;
+}
+
 function makeMockApp(files: Record<string, string>, abstractFiles: string[] = []) {
-  const tfiles = new Map<string, { path: string; basename: string }>();
+  const tfiles = new Map<string, TFile>();
   for (const [path] of Object.entries(files)) {
-    tfiles.set(path, { path, basename: path.split('/').pop()?.replace('.md', '') || '' });
+    tfiles.set(path, fakeFile(path));
   }
   return {
     vault: {
@@ -14,7 +28,7 @@ function makeMockApp(files: Record<string, string>, abstractFiles: string[] = []
       read: async (file: { path: string }) => files[file.path] ?? '',
       getAbstractFileByPath: (path: string) => {
         if (!abstractFiles.includes(path)) return null;
-        return { path };
+        return fakeFile(path);
       },
       process: async (file: { path: string }, fn: (data: string) => string | Promise<string>) => {
         const result = await fn(files[file.path] ?? '');

@@ -67,11 +67,16 @@ import type { SecretStorageCommandsMethods } from './main-commands/secret-storag
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging -- C-PR3: intentional interface+class merge for mixin pattern
 export class LLMWikiPlugin extends Plugin {
-  settings: LLMWikiSettings;
+  // Assigned in `onload()`, never in the constructor — Obsidian constructs the
+  // plugin before its data is available. The definite-assignment assertions say
+  // that, which is what #816's `strictPropertyInitialization` asks for; initialising
+  // them here instead would create a window where `settings` looks loaded but holds
+  // defaults.
+  settings!: LLMWikiSettings;
   llmClient: LLMClient | null = null;
-  wikiEngine: WikiEngine;
-  schemaManager: SchemaManager;
-  autoMaintainManager: AutoMaintainManager;
+  wikiEngine!: WikiEngine;
+  schemaManager!: SchemaManager;
+  autoMaintainManager!: AutoMaintainManager;
   codexAuthManager: CodexAuthManager | null = null;
   codexCredentialStore: CodexCredentialStore | null = null;
   /** #425 Bedrock Stage 2 — SSO/IAM credential orchestrator. */
@@ -289,7 +294,13 @@ export class LLMWikiPlugin extends Plugin {
       Array.isArray(this.settings.queryHistory) ? `${this.settings.queryHistory.length} messages` : 'NOT an array'
     );
 
-    if (savedData && !('llmReady' in savedData)) {
+    // `llmReady` is derived, not chosen. It has to be measured on every load,
+    // because `saveSettings()` persists the whole settings object and a returning
+    // user's file therefore carries whatever the last session computed. Gating this
+    // on the key's absence meant the measurement ran once and the file was trusted
+    // from then on — in both directions: a credential removed outside the plugin
+    // kept `true`, and a newly configured provider kept `false`.
+    if (savedData) {
       const hasCodexCredential = new CodexCredentialStore(this.app.secretStorage, this.settings.openAICodexSecretId).hasCredential();
       // v1.25.3 #182: resolve the live key from SecretStorage so the
       // gate correctly considers a key that lives in OS keychain rather

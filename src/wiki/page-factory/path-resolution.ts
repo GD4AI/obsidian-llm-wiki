@@ -33,7 +33,7 @@ import { resolveModelForTask } from '../../core/model-resolver';
 import { appendAliases, aliasClaimsFromPages, type AliasesContext } from './aliases';
 import { parseFrontmatter } from '../../core/frontmatter';
 import { PathResolutionLLMSchema } from '../../llm-sdk/output-schemas';
-import { callLlm } from '../../core/llm-dispatch';
+import { callLlm, type LlmCallArgs, type LlmMessageArgs } from '../../core/llm-dispatch';
 import type { WikiPageRef } from '../../types';
 
 /** Page shape consumed by the dedup candidate pre-filter. */
@@ -85,11 +85,14 @@ export interface PathResolutionContext extends AliasesContext {
   app: unknown;
   settings: import('../../types').LLMWikiSettings;
   getClient(): {
-    createMessage: (...args: unknown[]) => Promise<string>;
+    // Real parameter types, not `unknown[]`: since #816 turned on
+    // `strictFunctionTypes`, a method accepting a specific object no longer stands
+    // in for one accepting anything, so the widened form rejected `LLMClient`.
+    createMessage: (params: LlmMessageArgs) => Promise<string>;
     // v1.26.3 PATCH Issue #443 expanded scope: typed-output path. Optional
     // so legacy clients (Anthropic/OpenAI/Codex) and test mocks without the
     // method still type-check; the call site falls back to createMessage.
-    createMessageWithOutput?: (...args: unknown[]) => Promise<{ text: string }>;
+    createMessageWithOutput?: (params: LlmCallArgs) => Promise<{ text: string }>;
   } | null;
   buildSystemPrompt(mode: 'full' | 'compact' | 'merge' | 'index'): Promise<string>;
   /** The wiki page index, through the engine's own held copy (Issue #662). */

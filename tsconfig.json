@@ -9,8 +9,16 @@
     "moduleResolution": "bundler",
     "importHelpers": true,
     "isolatedModules": true,
+    // TypeScript 6 defaults `strict` to true. #816 took the conservative route first
+    // (#1014 pinned the flags to reproduce 5.9.3), then this change adopted them one
+    // root cause at a time. Each flag below is now on, and the fixes are in the
+    // commits that follow — the flag list stays explicit so the next compiler default
+    // change cannot move the build silently.
+    "strict": true,
     "strictNullChecks": true,
     "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
     "skipLibCheck": true,
     "lib": [
       "DOM",
