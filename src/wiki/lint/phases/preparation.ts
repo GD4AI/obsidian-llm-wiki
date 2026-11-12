@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import { TEXTS } from '../../../texts';
 import { getText } from '../../../core/i18n';
 import { fixDoubleNestedWikiLinks } from '../utils';
@@ -63,8 +64,12 @@ export async function runPreparationPhase(
   ctx.stageNotice?.setMessage(getText(ctx.settings.language, 'lintScanningLinks'));
   let doubleNestFixes = 0;
   for (const [path, info] of pageMap) {
+    // `pageMap` is built from the wiki index, so every path names a page file — but
+    // `getAbstractFileByPath` is typed `TAbstractFile` because it also returns
+    // folders. The `instanceof` check states that: a folder is skipped instead of
+    // reaching `process`, which the untyped version could never rule out.
     const abstractFile = ctx.app.vault.getAbstractFileByPath(path);
-    if (abstractFile) {
+    if (abstractFile instanceof TFile) {
       await ctx.app.vault.process(abstractFile, (data) => {
         const { fixed, content } = fixDoubleNestedWikiLinks(data);
         if (fixed > 0) {
@@ -78,7 +83,7 @@ export async function runPreparationPhase(
   }
   const logPath = `${ctx.settings.wikiFolder}/log.md`;
   const logFile = ctx.app.vault.getAbstractFileByPath(logPath);
-  if (logFile) {
+  if (logFile instanceof TFile) {
     await ctx.app.vault.process(logFile, (data) => {
       const { fixed, content } = fixDoubleNestedWikiLinks(data);
       if (fixed > 0) {
@@ -99,7 +104,7 @@ export async function runPreparationPhase(
   for (const [path, info] of pageMap) {
     if (!scanPollutedSources(info.content, ctx.settings.wikiFolder, sourcesPreserveCase)) continue;
     const abstractFile = ctx.app.vault.getAbstractFileByPath(path);
-    if (abstractFile) {
+    if (abstractFile instanceof TFile) {
       const { fixed, content } = fixPollutedSources(info.content, ctx.settings.wikiFolder, sourcesPreserveCase);
       if (fixed > 0) {
         await ctx.app.vault.process(abstractFile, () => content);

@@ -34,6 +34,17 @@ import { WIKI_LANGUAGES } from '../../types';
 import type { TEXTS } from '../../texts';
 import { NOTICE_SHORT } from '../../constants';
 
+/**
+ * The dropdown hands back `string`. Only a key of `WIKI_LANGUAGES` is a real
+ * choice, so the boundary is narrowed once here instead of trusting the callback's
+ * declared type — which `strictFunctionTypes` no longer lets us narrow in the
+ * callback signature itself (#816).
+ */
+function toUiLanguage(value: string): keyof typeof TEXTS {
+  const keys = Object.keys(WIKI_LANGUAGES) as Array<keyof typeof TEXTS>;
+  return keys.includes(value as keyof typeof TEXTS) ? (value as keyof typeof TEXTS) : 'en';
+}
+
 export function renderLanguageSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
 
@@ -46,8 +57,8 @@ export function renderLanguageSection(tab: LLMWikiSettingTab, containerEl: HTMLE
         dropdown.addOption(key, label);
       }
       dropdown.setValue(tempSettings.language);
-      dropdown.onChange((value: keyof typeof TEXTS) => {
-        tempSettings.language = value;
+      dropdown.onChange((value: string) => {
+        tempSettings.language = toUiLanguage(value);
         tab.display();
       });
     })

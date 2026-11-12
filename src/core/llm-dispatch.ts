@@ -31,17 +31,24 @@ export type LlmCallArgs = Parameters<
   NonNullable<LLMClient['createMessageWithOutput']>
 >[0];
 
+/** The parameter object `LLMClient.createMessage` takes, named so it can be reused. */
+export type LlmMessageArgs = Parameters<LLMClient['createMessage']>[0];
+
 /**
  * Minimal client shape `callLlm` requires. Some callers pass a narrowed
  * context type (e.g. `PathResolutionContext.getClient()` returns a
  * `{createMessage, createMessageWithOutput?}`-shaped object, not the full
- * `LLMClient`). The method signatures are widened to accept any
- * implementation (the full `LLMClient` satisfies this structurally via
- * method bivariance).
+ * `LLMClient`).
+ *
+ * The parameters are the real ones, not `unknown[]`. Widening them used to work
+ * because method parameters were bivariant; #816 turned on `strictFunctionTypes`,
+ * and a function accepting a specific object can no longer stand in for one
+ * accepting anything. Reusing `LLMClient`'s own parameter type is both assignable
+ * and more honest about what the dispatch passes on.
  */
 export interface LlmDispatchClient {
-  createMessage: (...args: unknown[]) => Promise<string>;
-  createMessageWithOutput?: (...args: unknown[]) => Promise<{ text: string }>;
+  createMessage: (params: LlmMessageArgs) => Promise<string>;
+  createMessageWithOutput?: (params: LlmCallArgs) => Promise<{ text: string }>;
 }
 
 /**

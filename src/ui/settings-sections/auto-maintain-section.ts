@@ -40,6 +40,16 @@ import { Setting, Notice } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 import { NOTICE_SHORT } from '../../constants';
 import { FolderSuggestModal } from '../modals';
+import type { LLMWikiSettings } from '../../types';
+
+/**
+ * A dropdown hands back `string`; `strictFunctionTypes` (#816) no longer lets the
+ * callback declare the union itself. The option list is fixed, so the boundary is
+ * narrowed once, and anything unexpected falls back to the shipped default.
+ */
+function toPeriodicLint(value: string): LLMWikiSettings['periodicLint'] {
+  return value === 'daily' || value === 'weekly' || value === 'monthly' ? value : 'off';
+}
 
 export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
   const { tempSettings } = tab;
@@ -55,7 +65,7 @@ export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: H
       .addOption('visible', tab.getText('startupCheckNoticeVisible'))
       .addOption('silent', tab.getText('startupCheckNoticeSilent'))
       .setValue(tempSettings.startupCheckNoticeLevel)
-      .onChange((value: 'visible' | 'silent') => { tempSettings.startupCheckNoticeLevel = value; }));
+      .onChange((value: string) => { tempSettings.startupCheckNoticeLevel = value === 'silent' ? 'silent' : 'visible'; }));
 
   // Beta + cost warning infoboxes.
   // v1.25.11 PATCH follow-up: the previous attempt used Obsidian's
@@ -141,7 +151,7 @@ export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: H
         dropdown.addOption('notify', tab.getText('watchModeNotify'));
         dropdown.addOption('auto', tab.getText('watchModeAuto'));
         dropdown.setValue(tempSettings.autoWatchMode);
-        dropdown.onChange((value: 'notify' | 'auto') => { tempSettings.autoWatchMode = value; tab.display(); });
+        dropdown.onChange((value: string) => { tempSettings.autoWatchMode = value === 'auto' ? 'auto' : 'notify'; tab.display(); });
       });
 
     if (tempSettings.autoWatchMode === 'auto') {
@@ -152,7 +162,7 @@ export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: H
           dropdown.addOption('notice', tab.getText('autoIngestLevelNotice'));
           dropdown.addOption('modal', tab.getText('autoIngestLevelModal'));
           dropdown.setValue(tempSettings.autoIngestNotificationLevel);
-          dropdown.onChange((value: 'notice' | 'modal') => { tempSettings.autoIngestNotificationLevel = value; });
+          dropdown.onChange((value: string) => { tempSettings.autoIngestNotificationLevel = value === 'modal' ? 'modal' : 'notice'; });
         });
     }
 
@@ -193,7 +203,7 @@ export function renderAutoMaintainSection(tab: LLMWikiSettingTab, containerEl: H
       dropdown.addOption('weekly', tab.getText('periodicLintWeekly'));
       dropdown.addOption('monthly', tab.getText('periodicLintMonthly'));
       dropdown.setValue(tempSettings.periodicLint);
-      dropdown.onChange((value: 'off' | 'daily' | 'weekly' | 'monthly') => { tempSettings.periodicLint = value; });
+      dropdown.onChange((value: string) => { tempSettings.periodicLint = toPeriodicLint(value); });
     });
 
   // Auto Smart Fix

@@ -6,7 +6,7 @@
 //   - v1.18.3: extracted LintContext here so fix-runners.ts can stop
 //     importing from lint-controller.ts (cycle risk).
 
-import type { App } from 'obsidian';
+import type { App, TAbstractFile, TFile } from 'obsidian';
 import { LLMWikiSettings, LLMClient } from '../../types';
 import type { WikiPageRef } from '../../types';
 import { WikiEngine } from '../wiki-engine';
@@ -34,18 +34,27 @@ export interface LintContext {
 export interface LintPhaseContext {
   app: {
     vault: {
-      getMarkdownFiles: () => Array<{ path: string; basename: string }>;
-      read: (file: { path: string }) => Promise<string>;
-      getAbstractFileByPath: (path: string) => unknown;
-      process: (file: unknown, fn: (data: string) => string | Promise<string>) => Promise<string>;
+      // The real Obsidian signatures. `strictFunctionTypes` (#816) rejected the
+      // hand-written wider forms: `App` provides `read(file: TFile)` and
+      // `process(file: TFile, fn: (data: string) => string)`, so a narrow type saying
+      // `{ path: string }` or `fn: … => string | Promise<string>` is wider than the
+      // real vault and cannot be satisfied by it.
+      getMarkdownFiles: () => TFile[];
+      read: (file: TFile) => Promise<string>;
+      getAbstractFileByPath: (path: string) => TAbstractFile | null;
+      process: (file: TFile, fn: (data: string) => string) => Promise<string>;
     };
     workspace: {
       onLayoutReady: (cb: () => void) => void;
     };
     metadataCache: {
-      on: (event: string, cb: unknown) => unknown;
+      // `App.metadataCache.on` is an overload set whose first member names the event
+      // literally, so a single `(event: string, cb: unknown)` signature is *wider*
+      // than the real method and rejects it under `strictFunctionTypes`. Naming the
+      // caller's event keeps the narrow surface and matches the real overload.
+      on: (event: 'changed', cb: (file: TFile, data: string, cache: unknown) => unknown, ctx?: unknown) => unknown;
       /** The vocabulary harvest (core/vocabulary.ts) reads every page's frontmatter tags through it. */
-      getFileCache: (file: { path: string }) => { frontmatter?: Record<string, unknown> } | null;
+      getFileCache: (file: TFile) => { frontmatter?: Record<string, unknown> } | null;
     };
   };
   settings: LLMWikiSettings;
