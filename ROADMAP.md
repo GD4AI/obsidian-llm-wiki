@@ -38,6 +38,14 @@ ROADMAP does not duplicate process standards or shipped-version details — only
 
 ---
 
+## v1.31.0 MINOR — the transport and ceiling cycle
+
+**The generation ceiling becomes a resolver, not a number (Issue #1019).** First available layer wins: the user's
+`maxTokensPerCall`; the value a provider accepted last time; the provider's own limit — **omitted** for `anthropic`
+and `openai` (the model's limit), `32,000` for compat and local (nothing is knowable); then `contextWindow − input`.
+A rejected ceiling halves and is remembered, twice at most, floor `4,000` (extraction keeps `16,000`). No model-limit
+table: it goes stale, and `contextWindow` is a machine fact the user owns. Composition: [CHANGELOG §1.31.0](./CHANGELOG.md#1310---2026-11-12).
+
 ## v1.30.0 MINOR — Design track
 
 **Opened 2026-09-16 for v1.29.0; the window was extended and renamed 2026-10-26 when v1.29.0 shipped.** Two mandates, per user direction. **Feature work and hardening run in the same window** — v1.28.0 is not a feature-only release. Design detail
