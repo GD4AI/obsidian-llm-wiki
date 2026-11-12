@@ -141,7 +141,11 @@ export async function withTransientRetry<T>(
 async function maybeBackoff(
   attempt: number,
   maxAttempts: number,
-  opts: TransientRetryOptions<unknown>,
+  // Only the label is read. Taking `TransientRetryOptions<unknown>` forced the
+  // caller's `TransientRetryOptions<T>` through a contravariant position, which
+  // `strictFunctionTypes` rejects (#816); naming the one field it uses drops the
+  // generic entirely and states the real dependency.
+  opts: { label: string },
   reason: string,
   backoffBaseMs: number,
   jitterMs: number,

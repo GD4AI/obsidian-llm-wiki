@@ -67,11 +67,16 @@ import type { SecretStorageCommandsMethods } from './main-commands/secret-storag
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging -- C-PR3: intentional interface+class merge for mixin pattern
 export class LLMWikiPlugin extends Plugin {
-  settings: LLMWikiSettings;
+  // Assigned in `onload()`, never in the constructor — Obsidian constructs the
+  // plugin before its data is available. The definite-assignment assertions say
+  // that, which is what #816's `strictPropertyInitialization` asks for; initialising
+  // them here instead would create a window where `settings` looks loaded but holds
+  // defaults.
+  settings!: LLMWikiSettings;
   llmClient: LLMClient | null = null;
-  wikiEngine: WikiEngine;
-  schemaManager: SchemaManager;
-  autoMaintainManager: AutoMaintainManager;
+  wikiEngine!: WikiEngine;
+  schemaManager!: SchemaManager;
+  autoMaintainManager!: AutoMaintainManager;
   codexAuthManager: CodexAuthManager | null = null;
   codexCredentialStore: CodexCredentialStore | null = null;
   /** #425 Bedrock Stage 2 — SSO/IAM credential orchestrator. */
