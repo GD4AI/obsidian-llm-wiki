@@ -28,7 +28,6 @@ import type {
   SourceContext,
 } from '../../types';
 import { PROMPTS } from '../../prompts';
-import { TOKENS_PAGE_GENERATION } from '../../constants';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { canonicalizeSectionHeaders, stripUnknownSections } from '../../core/section-header-canonicalizer';
@@ -43,6 +42,7 @@ import { mergePage } from './merge-page';
 import { appendToReviewedPage } from './merge-page';
 import { isConversationSource, contextualizeError } from './contextualize';
 import { localDateStamp } from '../../core/format';
+import { generatePageText } from '../../core/generation-ceiling';
 
 /**
  * Minimal context contract required by createOrUpdatePage / createNewPage.
@@ -211,13 +211,11 @@ export async function createNewPage(
     // #328 Phase 1 follow-up: user-layer tag-vocab removed — system layer injects once.
     const finalPrompt = applySectionLabels(prompt, ctx.settings);
 
-    const pageContent = await client.createMessage({
+    const pageContent = await generatePageText(client, ctx.settings, {
       task: 'page-generate',
       model: resolveModelForTask(ctx.settings, 'ingest'),
-      max_tokens: TOKENS_PAGE_GENERATION,
       system: await ctx.buildSystemPrompt(pageType),
-      messages: [{ role: 'user', content: finalPrompt }],
-      ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+      prompt: finalPrompt,
     });
 
     const cleanedContent = cleanMarkdownResponse(pageContent);

@@ -90,6 +90,18 @@ export const CUSTOM_LIMIT_MAX = 500;
 export const MAX_BATCH_DELAY_MS = 10000;
 
 /**
+ * Maximum user-configurable LLM concurrency, and the slider's upper bound (#1019,
+ * reported during the v1.31.0 real-vault check).
+ *
+ * It was 5. Most hosted providers accept far more, and the setting is the only
+ * control a user has over how long a large ingest takes. 20 is the new ceiling:
+ * high enough to matter, low enough that a local model is not asked for more
+ * parallel contexts than it holds. Raising it further is not a code change — it
+ * needs a measurement of where rate limits actually start.
+ */
+export const MAX_LLM_CONCURRENCY = 20;
+
+/**
  * Default retry backoff (ms) used by `runBatchedWithRetry` when a caller
  * does not pass an explicit `apiDelayMs`. Distinct from `MAX_BATCH_DELAY_MS`:
  * this is the one-shot sleep before the *single retry* of a transiently
@@ -208,10 +220,31 @@ export const DEFAULT_MODEL_OUTPUT_TOKENS = 128000;
 export const RETIREMENT_HUB_TOP_N = 50;
 
 /**
- * Token budget for full page generation (entity/concept/source-summary).
- * The LLM is asked to produce a complete wiki page with all sections.
+ * The output ceiling a page-generation call falls back to.
+ *
+ * #1019 changed what this number is. It used to be **the** ceiling for every
+ * generation call, and that was wrong in both directions: a reasoning model can
+ * spend all of it before writing a word (measured: 7,999 of 8,000 on one merge),
+ * and the one setting that looked like it controlled the value could only lower it.
+ *
+ * The ceiling is now resolved per call (`core/generation-ceiling.ts`): the user's
+ * `maxTokensPerCall`, then the value a provider accepted last time, then the
+ * provider's own limit — which is `undefined` for `anthropic` and `openai`, where
+ * the SDK or the service already knows it — and this constant only when nothing
+ * else is knowable, which means a compat or local server.
  */
-export const TOKENS_PAGE_GENERATION = 8000;
+export const TOKENS_PAGE_GENERATION = 32000;
+
+/**
+ * The smallest ceiling a generation call will step down to (#1019).
+ *
+ * The extraction loop floors at `MAX_TOKENS_BATCH` (16,000), which is right for a
+ * batch. Applied to a page it would defeat the retry: a 32,000 start halves to
+ * exactly 16,000 and then stops, so a model that accepts 8,000 would be rejected
+ * twice and the page lost. 4,000 leaves room for a page and still fits a small
+ * local window.
+ */
+export const TOKENS_GENERATION_FLOOR = 4000;
 
 /**
  * Token budget for append-to-reviewed-page (incremental short addition).

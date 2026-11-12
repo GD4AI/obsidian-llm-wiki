@@ -29,7 +29,6 @@
 import { TFile } from 'obsidian';
 import type { EntityInfo, ConceptInfo, LLMWikiSettings, LLMClient, SourceContext, ContradictionInfo } from '../../types';
 import {
-  TOKENS_PAGE_GENERATION,
   TOKENS_APPEND_REVIEWED,
 } from '../../constants';
 import { PROMPTS } from '../../prompts';
@@ -61,6 +60,7 @@ import { firstQuotesForPrompt, isConversationSource, mergeError } from './contex
 import { buildNoteExcerpt, renderNoteExcerptBlock } from './note-window';
 import { localDateStamp } from '../../core/format';
 import type { WikiPageRef } from '../../types';
+import { generatePageText } from '../../core/generation-ceiling';
 
 /**
  * Minimal context contract required by mergePage / appendToReviewedPage.
@@ -324,13 +324,11 @@ export async function mergePage(
     const finalPrompt = applySectionLabels(prompt, ctx.settings);
 
     const finish = captureFinish();
-    const mergedBody = await client.createMessage({
+    const mergedBody = await generatePageText(client, ctx.settings, {
       task: 'merge-body',
       model: resolveModelForTask(ctx.settings, 'ingest'),
-      max_tokens: TOKENS_PAGE_GENERATION,
       system: await ctx.buildSystemPrompt('merge'),
-      messages: [{ role: 'user', content: finalPrompt }],
-      ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+      prompt: finalPrompt,
       onFinish: finish.onFinish,
     });
 
@@ -507,14 +505,13 @@ export async function appendToReviewedPage(
     const finalPrompt = applySectionLabels(prompt, ctx.settings);
 
     const finish = captureFinish();
-    const newContent = await client.createMessage({
+    const newContent = await generatePageText(client, ctx.settings, {
       task: 'reviewed-append',
       model: resolveModelForTask(ctx.settings, 'ingest'),
-      max_tokens: TOKENS_APPEND_REVIEWED,
       system: await ctx.buildSystemPrompt('merge'),
-      messages: [{ role: 'user', content: finalPrompt }],
-      ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+      prompt: finalPrompt,
       onFinish: finish.onFinish,
+      fallbackCeiling: TOKENS_APPEND_REVIEWED,
     });
 
     if (finish.truncated) {

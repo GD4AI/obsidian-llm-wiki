@@ -49,8 +49,12 @@ describe('Token budget constants (Issue #75)', () => {
     expect(TOKENS_QUERY_SAVE_DEDUP).toBe(2000);
   });
 
-  it('page-level generation constants are 8000', () => {
-    expect(TOKENS_PAGE_GENERATION).toBe(8000);
+  it('the page-generation fallback is 32000, and the conversation page is unchanged', () => {
+    // #1019: `TOKENS_PAGE_GENERATION` stopped being "the ceiling for page
+    // generation" and became the last resort of a per-call resolver — the value
+    // used when the provider's own limit cannot be read. 8,000 could not hold a
+    // reasoning model: one merge spent 7,999 of 8,000 before writing a word.
+    expect(TOKENS_PAGE_GENERATION).toBe(32000);
     expect(TOKENS_CONVERSATION_PAGE).toBe(8000);
   });
 

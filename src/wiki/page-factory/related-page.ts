@@ -16,7 +16,7 @@
 import { TFile } from 'obsidian';
 import type { SourceAnalysis, LLMWikiSettings, LLMClient } from '../../types';
 import { PROMPTS } from '../../prompts';
-import { TOKENS_PAGE_GENERATION, WIKI_SUBFOLDERS } from '../../constants';
+import { WIKI_SUBFOLDERS } from '../../constants';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { captureFinish } from '../../llm-sdk/finish-reason';
@@ -35,6 +35,7 @@ import { getSectionLabels } from '../system-prompts';
 import { UNIVERSAL_LINK_CONSTRAINTS } from '../prompts/constraints';
 import { appendToReviewedPage, type MergeContext } from './merge-page';
 import { assembleFinalContent } from './mentions-integration';
+import { generatePageText } from '../../core/generation-ceiling';
 
 /**
  * Minimal context contract required by `updateRelatedPage`. Mirrors the real
@@ -142,13 +143,11 @@ export async function updateRelatedPage(
   if (!client) throw new Error('LLM client not initialized');
 
   const finish = captureFinish();
-  const updatedBody = await client.createMessage({
+  const updatedBody = await generatePageText(client, ctx.settings, {
     task: 'related-page',
     model: resolveModelForTask(ctx.settings, 'ingest'),
-    max_tokens: TOKENS_PAGE_GENERATION,
     system: await ctx.buildSystemPrompt('related'),
-    messages: [{ role: 'user', content: prompt }],
-    ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+    prompt,
     onFinish: finish.onFinish,
   });
 

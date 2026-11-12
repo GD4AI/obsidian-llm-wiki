@@ -2,8 +2,8 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files). See [CHANGELOG.md §1.30.0](./CHANGELOG.md#1300---2026-11-07) for the canonical composition record. | **Updated:** 2026-11-10 — `main` at `21e7a6b9`, 5,307 tests / 394 files
-**Next MINOR candidate:** **v1.31.0 MINOR**, opened 2026-11-07. `v1.30.0` shipped its three named items — #895 (prompt customization), #886 (the answer context's token ceiling), #955 (crystallized hub candidates) — plus #957's renderer crash fix. What did not land stays open on its own issue rather than as milestone debt: **#781** (blocked on a decision, not on code), **#729** (waiting on the scoring model and prompt), **#873** (the taxonomy change that would fire MAJOR, and now the home of #902's Option B), **#980** (the iOS transport ceiling, filed 2026-11-09).
+**Latest shipped:** v1.31.0 MINOR (2026-11-12, 5,400 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-12) for the canonical composition record. | **Updated:** 2026-11-12 — `main` at `9b08f48a`, 5,400 tests / 403 files
+**Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12. `v1.31.0` shipped the stream-transport cycle (#980), the output-ceiling memory (#912), the minified bundle (#1007), and the two housekeeping tracks (#930 / #932). What did not land stays open on its own issue rather than as milestone debt: **#781** (blocked on a review, not on code), **#1016** (the runtime-only field list), **#1017** / **#1018** (the two projection defects the review of #781 found), **#729** (waiting on a comparable measurement), **#873** (the taxonomy change that would fire MAJOR, and the home of #902's Option B).
 **#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 11 locales.
 
 **Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
@@ -37,6 +37,14 @@ ROADMAP does not duplicate process standards or shipped-version details — only
 `[CLAUDE.md](./CLAUDE.md)` file is now a pointer stub to `AGENTS.md`; all new content goes in `AGENTS.md`.
 
 ---
+
+## v1.31.0 MINOR — the transport and ceiling cycle
+
+**The generation ceiling becomes a resolver, not a number (Issue #1019).** First available layer wins: the user's
+`maxTokensPerCall`; the value a provider accepted last time; the provider's own limit — **omitted** for `anthropic`
+and `openai` (the model's limit), `32,000` for compat and local (nothing is knowable); then `contextWindow − input`.
+A rejected ceiling halves and is remembered, twice at most, floor `4,000` (extraction keeps `16,000`). No model-limit
+table: it goes stale, and `contextWindow` is a machine fact the user owns. Composition: [CHANGELOG §1.31.0](./CHANGELOG.md#1310---2026-11-12).
 
 ## v1.30.0 MINOR — Design track
 

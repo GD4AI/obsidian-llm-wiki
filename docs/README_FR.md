@@ -12,10 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — version localisé
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.30.0
+- latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.29.0 (MINOR — l'étape lexicale lit le corps des pages et le note avec BM25F, plus expansion Rocchio, mise en forme des pages Related et l'interrupteur `legacyScorer`)
-- last-updated: 2026-11-07
+- previous: v1.30.0 (MINOR — un plafond de jetons pour le contexte de réponse, Extraction Focus dans les paramètres et un rapport sur les hubs cristallisés)
+- last-updated: 2026-11-12
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basé sur un graphe, RAG sans embedding, recherche Personalized PageRank, deuxième cerveau Obsidian
 - search-intents: "Obsidian RAG sans embeddings", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recherche par graphe de notes", "implémentation Karpathy LLM Wiki", "génération automatique de base de connaissances Obsidian", "Obsidian Graph View + IA", "plugin deuxième cerveau Obsidian", "Obsidian IA graphe de liens", "plugin Obsidian 11 langues", "plugin Obsidian 16 fournisseurs LLM", "RAG sans base vectorielle", "ingestion PDF Obsidian IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "ingestion Obsidian Word PPT Excel", "identifiants Obsidian IAM"
 - features: recherche par graphe, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascade seed-selection 5 étapes, détection de doublons Tier 1/Tier 2, 11 langues UI + 11 langues sortie wiki (indépendantes), 16+ fournisseurs LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingest MinerU multi-format (PDF + images + Office), ingestion PDF (cache uniquement, voies OCR), Lint health scan, Smart Fix All, citations verbatim des pages sources, porte candidats à l'ingest, UI taskPolicies par étape, intégration Obsidian Graph View, architecture zéro embedding zéro base vectorielle, mode local-first
