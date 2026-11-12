@@ -25,22 +25,14 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-07
+## Current state — 2026-11-12
 
 **Releasing:** v1.30.0 MINOR (2026-11-07). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
-[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
+[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned". Per-track
+state lives in the issue tracker — the table that used to sit here was "current" for a few days and then lied.
 
-| Track | Where it stands |
-|---|---|
-| **Open PR** | #781 the co-citation projection — MERGEABLE, `CHANGES_REQUESTED` from @DocTpoint; its three named debts are fixed and the real-vault numbers are on the PR. Merges when #729's measurement runs, which still never has |
-| **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt) |
-| **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #891 (`interrupted`), #915 (math: render-time vs generate-time) |
-| **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
-| **Dependency hold** | the four AI SDK packages are pinned and ignored by dependabot until #891 accepts; building is the instrument, not the lockfile |
-| **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
-
-**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** They were
-"current state" for a few days each and described a product two releases old. Verbatim, nothing dropped.
+**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** Verbatim,
+nothing dropped.
 
 
 ## Work lists — the ROI rule (tier tables archived)
@@ -730,6 +722,12 @@ A **repeatable arbitary cut is worse than a random one**, because it is repeatab
 Adamic-Adar damping reduces the ties (95 % → 84 %) without removing them.
 A later rebuild (~100 notes) reproduces the shape.
 
+**The alphabet tie-break was fixed on 2026-11-02** — equal scores now order by
+`1/(1+incoming)` target weight, and one shared target is no longer a relation
+(`minShared = 2`). Re-measured on two small vaults the cap makes the "A" share worse,
+not better: 6.9 % → 9.4 % (175 pages) and 8.6 % → 9.3 % (428 pages). What remains is
+recorded in ④ below: the bias is same-source pairs, not the alphabet.
+
 **③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is unchanged, so the extractor keeps answering the intra-source question it was asked. And the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141` pushes them to `unanswered` and then writes them, so they land as dead links. A prior-driven path is therefore already running, in the open, **unmeasured**. In the control run, 79 % of unresolved Related targets had never been a candidate.
 
 Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**; **criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a world-knowledge one); and **`keepFrom` keeps existing entries in front (`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an existing vault without a migration — Phase 2's pass conditions are not testable on a rebuild until that is decided.
@@ -792,90 +790,41 @@ Two constraints make the build order non-negotiable, and both were found late �
 
 ### Four corrections to Phase 1 (found 2026-09-21, before and while writing it)
 
-All four were found by reading the write path rather than the design, and all four are
-*corrections of the record*, not departures from it. Recorded with their evidence
-because each one is a trap a future reader would fall back into. ①–③ were found before
-any code; ④ was found by the integration test that Phase 1's own pass condition
-required, which is the argument for writing it.
+All four came from reading the write path. ①–③ before any code; ④ by the integration test Phase 1's
+own pass condition required.
 
-**① The cap cannot wait for Phase 2 — without it Phase 1 is unshippable.**
+- **① The cap cannot wait for Phase 2.** The record put "fill up to `cross-source` slots" in Phase 2,
+  but **no length cap exists on a Related list in the write path**: `related-links.ts` hands the lists
+  to `renderRelatedSections`, which appends without slicing; `candidate-gate.ts:517`'s `prune` removes
+  dropped names, not length; zero `related_entities?.length` comparisons exist. "The cap holds with zero
+  violations" therefore means `RELATED_SIBLING_CAP`, not a list length. The list is also joined into a
+  generation prompt (`create-page.ts:196`, `merge-page.ts:317`), so unbounded addition is a Token
+  regression — one hub cited by 500 pages offers each ~499 candidates. The cap is a **ceiling, not a
+  quota**; it is the only thing Phase 1 needs from Phase 2 (step 3, the one **breaking** change, needs
+  `total`). Phase 1 adds without removing, so it cannot break.
+- **② The 95 % re-measurement cannot be read at Phase 1.** A gate needs a bound, and once the bound
+  exists the global intra-source share is partly a function of it. Measuring here would understate M0 and
+  could trigger the record's own STOP for a mechanism that works. Phase 1 measures **the mechanism**:
+  distinct candidates, deterministic ordering, cap holds, cost bounded. The share is re-measured after
+  Phase 2, where `total` exists.
+- **③ The graph is built once per run.** `GraphCache.invalidate()` runs from `invalidatePageCaches`,
+  which every write reaches; the related-shaping block runs per source note, so `getOrBuildGraph` there
+  reads every page body per note — ≈413 × 1,274 = **526,000 reads**, the class #662 had just removed.
+  `lint/controller.ts:98` is the precedent. **The memo's limit (#781, 2026-11-10):** only the note being
+  ingested has its pages in the graph, so a page created by an **earlier** note is invisible for the rest
+  of the run and an empty-vault rebuild projects nothing. "Freshness is not lost" was wrong for exactly
+  those pages.
+- **Evaluated and not taken: `app.metadataCache.resolvedLinks`** — zero-disk-read and updated on write,
+  and my first rejection reason was wrong (`wiki-engine.ts:505` already reads `getFileCache`). Not taken
+  because its shape differs from the query path's PPR graph, which the record says to reuse.
+- **④ The sibling rule pre-empts M0 for the note being ingested — not for a third note.** Two pages from
+  the same note are siblings, the rule runs first, and `crossSource` is 0 for such a pair. But it keys on
+  the **current** note: two pages that both came from a *third* note share that note's source page as a
+  target, so the projection offers them to each other and `crossSource` counts it — **94.1 % of chosen
+  entries are same-source in this sense**, and for 39.9 % the source page is one of the two required
+  targets (#781, 2026-11-10). That is a defect, open as #1017. A Phase 1 test therefore takes its pair
+  from different notes and asserts `siblings: 0` beside the cross-source count.
 
-The record put "fill up to `cross-source` slots" in Phase 2's step 4, leaving
-Phase 1 to add candidates unbounded. **There is no length cap on a Related list
-anywhere in the write path** — `page-factory/related-links.ts` hands the lists to
-`renderRelatedSections`, which appends without slicing; `candidate-gate.ts:517`'s
-`prune` removes *dropped names*, it does not truncate; and the repo contains **zero**
-`related_entities?.length` comparisons. So "the Related cap holds with zero
-violations" in the original measurement means `RELATED_SIBLING_CAP` (the sibling
-rule), not a list length.
-
-Worse, the list is not only rendered — it is joined into a **page-generation prompt
-variable**: `create-page.ts:196-197` and `merge-page.ts:317-318` both do
-`info.related_entities?.join(', ')`. An unbounded addition therefore inflates every
-page's generation prompt, which is a Gate 4 (Token) regression rather than a
-formatting one. And the fan-out is real: `hub-detection.ts` exists because many
-pages cite the same hub, so one hub cited by 500 pages offers each of them ~499
-co-citation candidates.
-
-The cap is a **ceiling, not a quota** — the record already says so, and this
-correction only makes Phase 1 carry it. It is also the *only* thing Phase 1 needs
-from Phase 2: steps 3 and 5 need the `total` concept, and step 3 is the one
-**breaking** change in the window (it truncates note-grounded lists). Phase 1
-therefore adds without ever removing, which makes it non-breaking by construction,
-and Phase 2 keeps the only destructive step.
-
-**② The 95 % re-measurement cannot be read at Phase 1 — the original pass condition
-contradicts itself.**
-
-A gate needs a bound to be meaningful, and once the bound exists the global
-intra-source share is partly a function of the bound rather than of the mechanism.
-Measuring it here would systematically understate M0 and could trigger the record's
-own STOP ("if this phase alone does not move it, stop") for a mechanism that works.
-
-So Phase 1 measures **the mechanism**: how many distinct cross-source candidates the
-projection produces on the reference vault, that the ordering is deterministic, that
-the cap holds, and that the cost is bounded. The global share is re-measured after
-Phase 2, where `total` exists and the number means what the acceptance criteria
-assume it means.
-
-**③ The graph must be built once per run, not per note.**
-
-`GraphCache.invalidate()` is called from `invalidatePageCaches`
-(`wiki-engine.ts:524`, `:535`), which every write reaches (`:2056`, `:2163`). The
-related-shaping block (`:1251`) runs once per source note, so calling
-`getOrBuildGraph` there would **read every wiki page body once per note** — on the
-record's own reference vault that is roughly 413 × 1,274 ≈ **526,000 file reads**,
-the same class of regression #662 had just removed.
-
-The precedent for the fix is already in the repo: `lint/controller.ts:98` builds the
-graph **once for a whole lint run**. Phase 1 does the same for an ingest run —
-lazy, held for the run, released at its end. Freshness is not lost: pages created
-during the run are the note's own siblings, which `willExist` and the sibling rule
-already cover.
-
-**Evaluated and not taken: `app.metadataCache.resolvedLinks`.** It is zero-disk-read
-and updated on write, and my first reason for rejecting it was wrong —
-`wiki-engine.ts:505` already reads `app.metadataCache.getFileCache(...)`, so
-`metadataCache` is an existing dependency rather than a new class of seam. It is not
-taken because the input shape would then differ from the query path's PPR graph,
-which the record explicitly says to reuse; "the write-time edges and the query-time
-graph come from the same builder" is worth more than one vault read per run, and the
-run-scoped memo already turns the cost from O(notes × vault) into O(vault).
-
-**④ The sibling rule pre-empts M0 between pages of the same note — and that is
-correct, not a gap.**
-
-Found by writing Phase 1's integration test, whose first version asserted the wrong
-thing and "failed" against working code. Two pages born from the **same** note are
-siblings; the sibling rule runs first (step 2 before step 4), so it writes the edge,
-`seen` then contains the partner, and the projection is correctly asked to exclude it.
-`crossSource` is 0 for such a pair, and should be: a same-note pair is exactly what M0
-is *not* for — it is the intra-source case the whole issue is about.
-
-So a Phase 1 test must take its pair from **different** notes, and must assert
-`siblings: 0` alongside the cross-source count. Without that second assertion the edge
-is unattributable and the test would pass on the sibling rule alone — which is how the
-first version passed for the wrong reason. `wiki-engine-co-citation.test.ts` does both.
 
 ### Open questions
 

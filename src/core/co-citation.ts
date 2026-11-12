@@ -15,7 +15,11 @@
 // **Determinism is a requirement, not a nicety.** A projection that reordered
 // between runs would produce different page bodies for the same vault, which makes
 // the Phase 6 acceptance measurement unrepeatable and turns every rebuild into a
-// diff. Ties are therefore broken by path.
+// diff. The order is a function of the graph alone: shared-target count, then the
+// `1/(1+incoming)` weight of those targets, then path as the last resort. The middle
+// term replaced a plain path tie-break on 2026-11-02, because breaking a tie on the
+// alphabet is repeatable *and* systematically biased ("A" titles were 17.1 % of
+// chosen entries against 9.1 % of pages).
 
 import type { Graph } from './build-graph';
 
@@ -91,9 +95,12 @@ export function buildCoCitationGraph(graph: Graph): CoCitationGraph {
 /**
  * Pages that co-cite with `self`, best first.
  *
- * Ranked by how many targets they share with `self` — the count is the evidence —
- * and **ties broken by path**, so the order is a function of the graph's content
- * and not of the order its edges happened to be loaded in.
+ * Ranked by how many targets they share with `self` — the count is the evidence.
+ * Equal counts are ordered by the weight of the shared targets, `1/(1+incoming)`, so
+ * a target cited by `N` pages weighs `1/(1+N)` and a pair held together by one broad
+ * hub sorts last within its count. Path is the final tie-break, so the order is a
+ * function of the graph's content and not of the order its edges were loaded in.
+ * Pairs sharing fewer than `minShared` targets are not candidates at all.
  *
  * Excluded, and each for its own reason:
  *
