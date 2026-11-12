@@ -87,9 +87,9 @@ export const EN_TEXTS = {
 
     // LLM execution cap
     maxTokensPerCallName: 'Max output tokens per call',
-    maxTokensPerCallDesc: 'The ceiling the request declares, not a target — the model stops when it is done. Auto declares the model\'s own output limit (128K when unknown). Lower it only if your provider rejects large values or you pay per reserved token. This is NOT the context window: reasoning tokens are subtracted from the same ceiling as the answer.',
+    maxTokensPerCallDesc: 'The most a call may write. Auto asks the model for its own limit; a local server that states none gets the plug-in default. It raises and lowers what a page-generation call declares, and reasoning tokens come out of the same ceiling. This is not the context window.',
     contextWindowName: 'Model context window',
-    contextWindowDesc: 'How many tokens the model can hold at once, input and output together. Auto leaves batching unchanged. Set it when you know the real value and it is small (a local model with 8K, for example) so the output ceiling can never exceed what the window holds.',
+    contextWindowDesc: 'How many tokens the model holds at once — input and output together. When this is set the prompt is subtracted, so the answer is never asked to exceed what is left. Auto leaves the ceiling unclamped.',
 
     // Issue #111: slug casing
     slugCaseName: 'File Name Casing',

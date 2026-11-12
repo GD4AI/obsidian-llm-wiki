@@ -12,6 +12,7 @@
 // client. Order is the whole design: the most specific explanation must be
 // tested first, and the guards below state which is most specific and why.
 
+import { namesReasoningOnly } from '../core/output-ceiling-probe';
 import { REASONING_ONLY_ERROR_CODE } from '../llm-sdk/finish-reason';
 import { TEXTS } from '../texts';
 
@@ -72,29 +73,17 @@ function looksLikeTimeout(lowerErr: string): boolean {
  */
 function looksLikeReasoningOnly(errMsg: string, code: unknown): boolean {
   if (code === REASONING_ONLY_ERROR_CODE) return true;
-  const lower = errMsg.toLowerCase();
-  return lower.includes('on reasoning') || lower.includes('only its reasoning');
+  return namesReasoningOnly(errMsg);
 }
 
 /**
  * Does this rejection name the OUTPUT ceiling?
  *
- * Used by the extraction loop to distinguish "this provider will not accept a
- * ceiling this large" (learnable: halve it and retry) from every other
- * failure (not learnable: let the classifier explain it).
- *
- * A reasoning-only message is excluded even though it contains `max_tokens`:
- * the guard's own sentence ends with "raise the token limit (max_tokens)", and
- * halving the ceiling is the opposite of its advice.
+ * Moved to `core/output-ceiling-probe.ts` by #1019: the generation call sites halve
+ * a rejected ceiling too, and `core/` may not import `wiki/`. The reasoning-only
+ * exclusion travels with it, because the two families need the same answer to the
+ * same question and a second copy would drift.
  */
-export function namesOutputCeiling(errMsg: string): boolean {
-  if (looksLikeReasoningOnly(errMsg, undefined)) return false;
-  const lower = errMsg.toLowerCase();
-  return lower.includes('max_tokens')
-    || lower.includes('max_completion_tokens')
-    || lower.includes('max output tokens')
-    || lower.includes('max_completion_tokens');
-}
 
 /**
  * Build the `userHint` half of the first-batch failure message.

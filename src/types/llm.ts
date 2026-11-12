@@ -148,7 +148,12 @@ export interface LLMFinishMeta {
 export interface LLMClient {
   createMessage(params: {
     model: string;
-    max_tokens: number;
+    /**
+     * The output ceiling this call declares. Optional since #1019: for `anthropic`
+     * and `openai` the model's own limit is the right answer, and the only way to
+     * ask for it is to declare nothing.
+     */
+    max_tokens?: number;
     system?: string;
     messages: LLMMessage[];
     response_format?:
@@ -262,7 +267,12 @@ export interface LLMClient {
   // 16-callers contract (Tier 1 path).
   createMessageWithOutput?<T = unknown>(params: {
     model: string;
-    max_tokens: number;
+    /**
+     * The output ceiling this call declares. Optional since #1019: for `anthropic`
+     * and `openai` the model's own limit is the right answer, and the only way to
+     * ask for it is to declare nothing.
+     */
+    max_tokens?: number;
     system?: string;
     messages: LLMMessage[];
     // v1.26.3 PATCH Phase B: `schema` accepts either a raw JSON Schema
@@ -297,7 +307,12 @@ export interface LLMClient {
 
   createMessageStream?(params: {
     model: string;
-    max_tokens: number;
+    /**
+     * The output ceiling this call declares. Optional since #1019: for `anthropic`
+     * and `openai` the model's own limit is the right answer, and the only way to
+     * ask for it is to declare nothing.
+     */
+    max_tokens?: number;
     system?: string;
     messages: LLMMessage[];
     onChunk: (chunk: string) => void;
