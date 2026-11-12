@@ -863,6 +863,13 @@ export class WikiEngine {
         return;
       }
       if (error instanceof MineruPdfError) {
+        if (error.code === 'auth') {
+          // A 401 is the one MinerU failure whose cause is configuration, not this
+          // file, and whose fix lives in a browser tab. The thrown error already
+          // names the expiry; this puts the same sentence where the user looks —
+          // the Notice — because the generic ingest toast shows only the status.
+          new Notice(getText(this.settings.language, 'mineruTokenExpired'), NOTICE_NORMAL);
+        }
         throw error;
       }
       // v1.25.0 PR3 follow-up #2 (P1 #3): LLM errors during PDF conversion

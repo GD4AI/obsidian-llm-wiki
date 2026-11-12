@@ -90,6 +90,18 @@ export const CUSTOM_LIMIT_MAX = 500;
 export const MAX_BATCH_DELAY_MS = 10000;
 
 /**
+ * Maximum user-configurable LLM concurrency, and the slider's upper bound (#1019,
+ * reported during the v1.31.0 real-vault check).
+ *
+ * It was 5. Most hosted providers accept far more, and the setting is the only
+ * control a user has over how long a large ingest takes. 20 is the new ceiling:
+ * high enough to matter, low enough that a local model is not asked for more
+ * parallel contexts than it holds. Raising it further is not a code change — it
+ * needs a measurement of where rate limits actually start.
+ */
+export const MAX_LLM_CONCURRENCY = 20;
+
+/**
  * Default retry backoff (ms) used by `runBatchedWithRetry` when a caller
  * does not pass an explicit `apiDelayMs`. Distinct from `MAX_BATCH_DELAY_MS`:
  * this is the one-shot sleep before the *single retry* of a transiently

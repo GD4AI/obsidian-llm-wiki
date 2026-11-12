@@ -168,6 +168,33 @@ describe('extractMineruMarkdown', () => {
     await expect(convertPdfWithMineru(context())).rejects.toThrow(/HTTP 401/);
   });
 
+  it('codes a 401 as an authentication failure, so the caller can say why', async () => {
+    // MinerU tokens are issued with an expiry (about 90 days). A 401 is by far the
+    // most likely shape of "it worked last month", and the raw status alone does
+    // not tell the user to renew it.
+    requestUrlMock.mockResolvedValueOnce({ status: 401, json: {} });
+
+    const error = await convertPdfWithMineru(context()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(MineruPdfError);
+    expect((error as MineruPdfError).code).toBe('auth');
+    expect((error as Error).message).toMatch(/expired/i);
+    expect((error as Error).message).toMatch(/90/);
+  });
+
+  it('codes a 403 the same way, because a revoked token answers with it', async () => {
+    requestUrlMock.mockResolvedValueOnce({ status: 403, json: {} });
+
+    const error = await convertPdfWithMineru(context()).catch((e: unknown) => e);
+    expect((error as MineruPdfError).code).toBe('auth');
+  });
+
+  it('leaves a 500 uncoded, so it is still a runtime failure', async () => {
+    requestUrlMock.mockResolvedValueOnce({ status: 500, json: {} });
+
+    const error = await convertPdfWithMineru(context()).catch((e: unknown) => e);
+    expect((error as MineruPdfError).code).toBeUndefined();
+  });
+
   it('surfaces a failed MinerU conversion task', async () => {
     mockLeaseAndUpload();
     requestUrlMock.mockResolvedValueOnce({
