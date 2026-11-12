@@ -289,7 +289,13 @@ export class LLMWikiPlugin extends Plugin {
       Array.isArray(this.settings.queryHistory) ? `${this.settings.queryHistory.length} messages` : 'NOT an array'
     );
 
-    if (savedData && !('llmReady' in savedData)) {
+    // `llmReady` is derived, not chosen. It has to be measured on every load,
+    // because `saveSettings()` persists the whole settings object and a returning
+    // user's file therefore carries whatever the last session computed. Gating this
+    // on the key's absence meant the measurement ran once and the file was trusted
+    // from then on — in both directions: a credential removed outside the plugin
+    // kept `true`, and a newly configured provider kept `false`.
+    if (savedData) {
       const hasCodexCredential = new CodexCredentialStore(this.app.secretStorage, this.settings.openAICodexSecretId).hasCredential();
       // v1.25.3 #182: resolve the live key from SecretStorage so the
       // gate correctly considers a key that lives in OS keychain rather
