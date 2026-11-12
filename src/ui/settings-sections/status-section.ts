@@ -18,7 +18,7 @@
 import { Setting } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 
-export function renderStatusSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
+export function buildStatusDescription(tab: LLMWikiSettingTab): string {
   const { tempSettings } = tab;
   const readyStatus = tempSettings.llmReady
     ? '✅ ' + (tab.getText('statusReady') || 'Ready')
@@ -29,7 +29,16 @@ export function renderStatusSection(tab: LLMWikiSettingTab, containerEl: HTMLEle
     ? '✅ ' + (tab.getText('wikiInitStatusReady') || 'Wiki initialized')
     : '⚠️ ' + (tab.getText('wikiInitStatusNotReady') || 'Wiki not initialized - will auto-create on first ingestion');
 
-  new Setting(containerEl)
+  return `${readyStatus} | ${clientStatus}  •  ${wikiInitStatus}`;
+}
+
+export function renderStatusSection(tab: LLMWikiSettingTab, containerEl: HTMLElement): void {
+  const setting = new Setting(containerEl)
     .setName(tab.getText('llmWikiStatusSection'))
-    .setDesc(`${readyStatus} | ${clientStatus}  •  ${wikiInitStatus}`);
+    .setDesc(buildStatusDescription(tab));
+
+  // A model or provider edit invalidates readiness while the panel stays on screen.
+  // Re-rendering the whole tab to refresh one line would rebuild every input, so the
+  // field being typed in loses focus and caret. This row updates its own description.
+  tab.registerStatusRefresh(() => setting.setDesc(buildStatusDescription(tab)));
 }
