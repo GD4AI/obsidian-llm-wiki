@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.31.0] - 2026-11-12
+
+### Added
+
+- **Ingest can stream, and the choice is yours (Issue #980).** `streamIngest` takes `auto`, `always` or `never`, and sits in the Advanced settings panel. `auto` is the default and means "stream on mobile, buffer on desktop". Streaming is not faster — 42.0 s against 39.6 s for the same 2,200 tokens in the reporter's controlled run, 43 ms against 25 ms in mine. What it buys is that bytes keep arriving, and that is the only reason a long generation survives an idle cutoff. Every ingest call in the three provider clients now goes through one helper, so a request killed at 60 seconds is no longer a failure the plug-in creates itself.
+- **A provider's real output ceiling is remembered for the rest of the ingest (Issue #912).** The plug-in guesses 128,000 output tokens. A provider with a lower limit rejects that value, and the analyzer halved and retried in local variables, at most twice inside one `analyzeSource` call — so a 20-note ingest paid the same discovery cost 20 times. The accepted value is now kept in `OutputCeilingCache` and reused.
+- **The OpenAI path lets the SDK translate the thinking level (Issue #912).** `@ai-sdk/anthropic` has applied its own effort table since v1.29.0, including the downgrade for a model that cannot stop thinking. `OpenAISdkClient` was still building the provider options by hand; it now passes the same unified `reasoning` call option, so both paths agree about what "low" means.
+
+### Changed
+
+- **The shipped `main.js` is 2.84 MB instead of 4.99 MB (Issue #1007).** `minify: true, keepNames: true` apply to the production build only: `pnpm build:dev` still emits readable output with an inline sourcemap, and the `console.debug` no-op banner is unchanged. The cost is real and is the reason `keepNames` stays on — minified stack frames read worse in a bug report. Headroom against the 5,000,000-byte single-file cap goes from 5,210 to 2,155,946 bytes.
+- **The bundle guard is a floor as well as a ceiling (Issue #1007).** `bundle-size.test.ts` fails when the bundle exceeds `cap − 500,000`, so growth trips while there is still room to act instead of at the wall. The two assertions that inspect the bundle shape were relaxed to tolerate minified identifiers.
+- **The third-party notice set is read from the esbuild metafile (Issue #1007).** `bundledPackageDirs(root)` used a path scan whose result depended on formatting; it reads `outputs[*].inputs` now, and throws when the metafile is absent instead of reporting zero packages. The regenerated `THIRD-PARTY-NOTICES.md` is byte-identical to the committed one, which is the equivalence proof.
+- **TypeScript is 6.0.3 and `strict` is on (Issue #816).** The 31 errors had one cause: TypeScript 6 defaults `strict` to true, and this project had never enabled it. The flags were pinned first, so the compiler bump changed nothing, and then turned on. Every fix is at a declaration — the recurring shape was a hand-written structural type that was *wider* than the real Obsidian type, which only worked while method parameters were bivariant. One behaviour difference is a correction: `preparation.ts` passed a `TAbstractFile`, which also covers folders, to `vault.process`; it now narrows with `instanceof TFile`, so a folder path is skipped instead of written through.
+- **Five long functions are under the global limit, and their five ceiling entries are deleted (Issue #932).** `runLintWiki` 627 → 109, `runDedupPhase` 739 → 111, `ingestSource` 510 → 116, `analyzeSource` 201 → 57, `analyzeEmbeddedImages` 145 → 58. The ratchet keeps its other entries; the five that measured #932 are gone because those files now pass the global 120.
+- **`src/core/` no longer imports from the UI layer, and the 19-file cycle is zero (Issue #930).** The checker counted `import type` as a runtime edge. Inside that cycle 12 of 35 edges are erased by esbuild, and two more were value imports used only in type positions. The checker separates the two, `scripts/arch-allowlist.json`'s `cycles` list is empty, and the output names the split: `311 modules, 1,120 import edges (198 type-only, erased at build), cycles 0`. The `core → ui` rule still reads every edge, because a type-only upward import is still a layering violation.
+- **Four experimental switches now carry the version they retire by (Issue #933).** `EXPERIMENTAL_FLAGS` records each switch's expiry, issue and retirement evidence, and `experimental-flags.test.ts` fails when the release version passes an expiry. `docs/EXPERIMENTAL-FLAGS.md` registers the four with their read sites, and says the code is the only source for the dates.
+- **A dead escalation flag was removed (Issue #1003).** `AnalysisRunState.escalateMaxTokens` could not change a number: `computeExtractionBudget` returned the ceiling unconditionally, so both branches of `batchBudgets` produced the same value. Two comments that said a retry raised the budget were corrected — it never did.
+- **Dev dependencies:** `typescript` 6.0.3, `eslint` 10.14.0, `@typescript-eslint/*` 8.72.1, `esbuild` 0.28.2, `tslib` 2.9.1. Both lockfiles carry the same pins — the release workflow builds from the npm tree while Gate 1 runs on the pnpm tree.
+
+### Fixed
+
+- **LLM readiness is measured on every start (Issue #1013).** `llmReady` was recomputed only when the key was *absent* from `data.json`, and `saveSettings()` writes the whole object — so from the second launch onward the stored value was trusted. Both directions were reproduced: a credential removed outside the plug-in still reported ready, and a working configuration still reported not ready. The condition now depends on whether settings were loaded, not on which keys they happen to contain.
+- **A formula no longer reaches the answer pane as broken text (Issue #915).** Models emit `\( … \)` for inline maths, and Obsidian's renderer treats a backslash-bracket span as literal text. Once literal, the underscores inside became emphasis and paired across the sentence. The pane normalises the delimiters before rendering.
+- **A monthly Periodic Lint can no longer be postponed forever by saving settings (Issue #961).** `schedulePeriodicLint()` set the period baseline to `Date.now()` on every call, and the settings tab calls it on every save, so the clock measured "time since this save" rather than "time since the last run".
+- **A local base URL no longer skips the streaming attempt (Issue #986).** An `isLocalBaseURL` branch returned `requestUrl` before trying `window.fetch`, on the belief that local servers refuse cross-origin requests. The transport is now chosen by the same observed outcome as everywhere else.
+- **A ceiling rejection on a later batch is handled as a ceiling rejection (Issue #971).** The output-ceiling probe was gated on `isFirstBatch`, so a note whose fourth batch was rejected for naming `max_tokens` fell to the truncation branch, which asks a different question and answered it by halving the budget.
+- **"Silent" no longer narrows the extraction budget (Issue #973).** `computeExtractionBudget` returned the answer need instead of the ceiling whenever reasoning looked switched off. That is right for a provider that obeys, and wrong for a request that must not be truncated.
+- **Ingest error advice follows the interface language, and the timeout hint names mobile (Issue #980).** The hint said "the iOS limit" while firing on Android too — `Platform.isMobile` is true for both.
+- **Dedup reports a recovery only when a retry recovered (Issue #993).** The phase recorded a retry when it was about to run, not when it worked, so one run could state "2 batch(es) recovered" and "1 batch(es) failed" about the same batch.
+- **A missing exclusion resolver no longer disables exclusions silently (Issue #872 residue).** The watcher predicate returned "not ignored" for every path when `metadataCache.isUserIgnored` was absent, so a user who configured exclusions got none of them and no message.
+- **The hub-tag note no longer says a tag changes plug-in behaviour (Issue #954).** A hub tag is a curatorial marker that no code path reads — hub status is recomputed from the graph on every run. The header comment and the lint intro text in all 11 locales were corrected.
+
+### Notes
+
+- Mobile and Android behaviour changed by default: `auto` streams there. This is the change that avoids the idle cutoff, and no setting has to be touched for it.
+- The two settings that cost tokens — `maxTokensPerCall` and `contextWindow` — keep rendering in both advanced modes. This release does not move them.
+
 ## [1.30.0] - 2026-11-07
 
 ### Added

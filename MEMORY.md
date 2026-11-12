@@ -25,9 +25,9 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-07
+## Current state — 2026-11-12
 
-**Releasing:** v1.30.0 MINOR (2026-11-07). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
+**Releasing:** v1.31.0 MINOR (2026-11-12). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
 [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
