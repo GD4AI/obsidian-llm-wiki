@@ -40,5 +40,7 @@ export function renderStatusSection(tab: LLMWikiSettingTab, containerEl: HTMLEle
   // A model or provider edit invalidates readiness while the panel stays on screen.
   // Re-rendering the whole tab to refresh one line would rebuild every input, so the
   // field being typed in loses focus and caret. This row updates its own description.
-  tab.registerStatusRefresh(() => setting.setDesc(buildStatusDescription(tab)));
+  tab.registerStatusRefresh(() => {
+    setting.setDesc(buildStatusDescription(tab));
+  });
 }

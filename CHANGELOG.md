@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.31.0] - 2026-11-12
+## [1.31.0] - 2026-11-13
 
 ### Added
 
@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The status row's repaint returns nothing, and `pnpm lint` now checks what the Obsidian Bot checks.** The row registered `() => setting.setDesc(...)`, and `setDesc` is chainable, so the callback handed back a value where its contract says void. Nothing misbehaved at runtime, which is why no test saw it; the Bot saw it and local lint could not, because `no-misused-promises` was off in `eslint.config.mjs`. Both halves are fixed: the arrow has a block body, and the rule is on, so Gate 1 reports this class before submission. `strict-void-return` stays off — it names 19 older sites the Bot does not check, and that is not a release-time change.
+- **`tools/dev-instrument/src/value-survival-cli.ts` no longer touches the filesystem, and the Bot report is empty.** That file held every remaining Bot warning: twelve `console.log` calls and three static `node:*` imports. It writes through `process.stdout` / `process.stderr` now, and the file access it needs arrives as a `CliIo` argument from the `.mjs` launcher, which is outside the Bot's `.ts` scan scope and already assembles the environment. `obsidianmd/no-nodejs-modules` exempts a `node:*` import only behind a `Platform.isDesktop` guard, and a Node CLI has no `Platform` — moving the import out is the only honest way to clear it. A side effect worth keeping: the report path is now testable against a Map, so `value-survival-cli.test.ts` drives both tables, the usage branch and the self-check without a vault.
 - **A rejected MinerU token now says it has probably expired (Issue #1019).** MinerU tokens are issued with an expiry of about 90 days, so "it worked last month and now answers 401" has one usual cause, and `MinerU request failed with HTTP 401` names none of it. A 401 or 403 is coded, the error states the likely cause and where to renew, and a Notice repeats it in the interface language. The token field's description says the same before the failure happens.
 - **A page-generation call could not be given more room than 8,000 tokens (Issue #1019).** A reasoning model spent 7,999 of those 8,000 before writing a word, so the merge returned nothing and the page was lost. Raising the token setting could not help: it was applied with `Math.min`, which can only lower. The ceiling now comes from the resolver above, and the failure that started this is reported with the two numbers it actually measured.
 
@@ -46,10 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A missing exclusion resolver no longer disables exclusions silently (Issue #872 residue).** The watcher predicate returned "not ignored" for every path when `metadataCache.isUserIgnored` was absent, so a user who configured exclusions got none of them and no message.
 - **The hub-tag note no longer says a tag changes plug-in behaviour (Issue #954).** A hub tag is a curatorial marker that no code path reads — hub status is recomputed from the graph on every run. The header comment and the lint intro text in all 11 locales were corrected.
 
+### Documentation
+
+- **The English README was rewritten, and the ten translations were brought to it (Issue #1021).** Six settings that change what a run does were invisible in the old file: `streamIngest`, the output ceiling, the context window, the concurrency, the extraction focus and the excluded files. They are one table of eight rows now, each row naming the panel and the failure it answers.
+- **Two defects the translators found in the English source are fixed in all eleven files.** A section said "Five on-ramps" and then numbered six, and embedded-image analysis was described twice.
+- **The counts that disagreed with themselves are corrected.** 15+ providers everywhere — three places in the prose said 16+ — and 11 languages everywhere where one place said 10. The retrieval numbers pointed at `CLAUDE.md`, which is now a pointer stub to `AGENTS.md`, so they point at `CHANGELOG.md`.
+- **Structure: 13 sections to 11, 441 lines to 417, 12 badges to 6.** `Is it for me?` folded into `Why this plugin?`, `Headless CLI` folded into Contributing, and the Models table is four groups because the per-model detail belongs to `docs/MODEL-GUIDE.md`. Nine screenshots now sit against the sentence that describes them.
+
 ### Notes
 
 - Mobile and Android behaviour changed by default: `auto` streams there. This is the change that avoids the idle cutoff, and no setting has to be touched for it.
 - The two settings that cost tokens — `maxTokensPerCall` and `contextWindow` — keep rendering in both advanced modes. This release does not move them.
+- The README structural baseline moved from 13 `##` sections to 11. The documentation gate reads the measured value, so no stored constant needed editing.
 
 ## [1.30.0] - 2026-11-07
 

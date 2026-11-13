@@ -1,9 +1,9 @@
 # LLM Wiki Plugin Project Development Standards
 
-**Last Updated:** 2026-11-06
+**Last Updated:** 2026-11-13
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.31.0 MINOR (2026-11-12, 5,400 tests / 403 files). v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 
@@ -447,6 +447,7 @@ Hard-won rules (applies to ALL future code):
 1. **Bot runs independent `obsidianmd/recommended` ruleset** — your local `eslint.config.mjs` cannot turn off Bot's hard barriers.
 2. **`obsidianmd/*` is no-disable by default** — specifically `no-nodejs-modules`, `settings-tab/prefer-setting-definitions`, `no-global-this`, `prefer-active-doc`. Local config may try to relax; Bot rejects inline `eslint-disable`.
 3. **`@typescript-eslint/no-unsafe-*` propagates through function boundaries** — `const x: T = require(...)` does NOT satisfy the linter (inspects expression return types, not annotations).
+3b. **`@typescript-eslint/no-misused-promises` is a Bot rule, and it was documented once then lost.** A callback typed `() => void` must not return a value: write `() => { doThing(); }`, never `() => doThing()` when `doThing` is chainable or async. It fired on `status-section.ts:43` in v1.31.0 and local lint was silent, because the rule was never enabled in `eslint.config.mjs`. `7cc01182` documented it in `CLAUDE.md`; `1a2cb9b8` (v1.4.0) fixed five sites with `() => { void this.x(); }`; `75ae2c21` deleted that whole section during a refactor, and the class returned. Rule now lives in `eslint.config.mjs` so Gate 1 sees it. `strict-void-return` stays off: 19 older sites, none of which the Bot reports.
 4. **Standard Node.js API patterns that work:**
    - Node built-ins: `await import('node:module')` (dynamic) inside `if (!Platform.isDesktop) throw ...` guard. Static `import` of node built-ins unconditionally rejected.
    - Type-safe require: `module.createRequire(__filename)` (Node 15+ official API) — use for typed `node:http` etc. instead of bare `require()`.

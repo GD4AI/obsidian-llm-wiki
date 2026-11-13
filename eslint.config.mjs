@@ -68,7 +68,16 @@ export default [
 // 0 warnings and no `eslint-disable` is added anywhere.
 {
   files: ["src/**/*.ts"],
-  rules: { "max-lines-per-function": ["error", { max: 120, skipBlankLines: true, skipComments: true }] },
+  rules: {
+    "max-lines-per-function": ["error", { max: 120, skipBlankLines: true, skipComments: true }],
+    // The Obsidian Bot reported `src/ui/settings-sections/status-section.ts:43` on 2026-11-13 for
+    // returning a value where the callback contract says void. `eslint.config.mjs` did not enable
+    // this rule, so local Gate 1 was blind to the one warning the Bot found. Enabled here: it reports
+    // exactly one hit repo-wide before the fix and zero after, so the blind spot is closed rather
+    // than widened. `strict-void-return` stays off — it reports 19 pre-existing sites the Bot does
+    // not check, and fixing those is not a release-time change.
+    "@typescript-eslint/no-misused-promises": "error",
+  },
 },
 ...Object.entries(LONG_FUNCTION_CEILINGS).map(([file, max]) => ({
   files: [file],

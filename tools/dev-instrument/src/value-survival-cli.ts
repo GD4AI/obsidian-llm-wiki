@@ -9,10 +9,16 @@
 // instrument can be exercised without a vault or a model.
 //
 // Exit code: 0 = printed a report · 1 = the run threw · 2 = usage.
+//
+// This module does no I/O of its own: the launcher passes the file access it
+// needs (`CliIo`). Two reasons. `obsidianmd/no-nodejs-modules` exempts a
+// `node:*` import only behind a `Platform.isDesktop` AST guard, and a Node CLI
+// has no `Platform` — so the imports belong in the `.mjs` launcher, which is
+// outside the Bot's `.ts` scan scope and where the environment is assembled
+// anyway (see `run-instrument.mjs`). And a report printer that takes its input
+// as an argument can be tested without a vault: `value-survival-cli.test.ts`
+// drives the whole report path against an in-memory vault.
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   maskNonKnowledge,
   harvestValues,
@@ -24,8 +30,24 @@ import {
   type Row,
 } from './value-survival';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE = resolve(HERE, '..', 'fixtures', 'value-survival-note.md');
+/** The file access the report needs. The launcher supplies it from `node:fs`. */
+export interface CliIo {
+  readTextFile(path: string): string;
+  listDir(path: string): string[];
+  exists(path: string): boolean;
+  join(...parts: string[]): string;
+  resolve(...parts: string[]): string;
+}
+
+// The Obsidian Bot's `no-console` rule covers this file, and this file IS a report
+// printer: stdout is the interface. Writing to the stream says that directly, and it
+// keeps the scan quiet without a disable comment — the Bot rejects those.
+const say = (line: string): void => {
+  process.stdout.write(line + '\n');
+};
+const usage = (line: string): void => {
+  process.stderr.write(line + '\n');
+};
 
 const QUOTE_HEADINGS = /^##\s+(?:来源提及|Mentions in Source)\s*$/gmu;
 
@@ -37,8 +59,6 @@ interface Page {
   prose: string;
 }
 
-/** `sources:` entries, as bare slugs. A page lists its sources as wikilinks. */
-/** `source_file: "[[notes/x.md]]"` → `notes/x.md`. */
 /** Split a page into its verbatim quote sections and everything else. */
 function splitQuoted(body: string): { quoted: string; prose: string } {
   const spans: Array<[number, number]> = [];
@@ -62,63 +82,71 @@ function splitQuoted(body: string): { quoted: string; prose: string } {
   return { quoted, prose };
 }
 
-function readPages(dir: string, type: PageType): Page[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter(name => name.endsWith('.md'))
-    .map(name => {
-      const raw = readFileSync(join(dir, name), 'utf8');
+function readPages(dir: string, type: PageType, io: CliIo): Page[] {
+  if (!io.exists(dir)) return [];
+  return io
+    .listDir(dir)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => {
+      const raw = io.readTextFile(io.join(dir, name));
       const { quoted, prose } = splitQuoted(raw);
       return { type, slug: name.replace(/\.md$/u, ''), body: raw, quoted, prose };
     });
 }
 
-function countvault(vault: string, wiki: string, sampleSize = 0): { rows: Row[]; samples: string[][] } {
-  const root = resolve(vault, wiki);
-  const sourcesDir = join(root, 'sources');
-  if (!existsSync(sourcesDir)) {
+function countVault(
+  vault: string,
+  wiki: string,
+  sampleSize: number,
+  io: CliIo,
+): { rows: Row[]; samples: string[][] } {
+  const root = io.resolve(vault, wiki);
+  const sourcesDir = io.join(root, 'sources');
+  if (!io.exists(sourcesDir)) {
     throw new Error(`no sources/ under ${root} — is <wikiFolder> spelled as it appears in the vault?`);
   }
 
-  const entities = readPages(join(root, 'entities'), 'entity');
-  const concepts = readPages(join(root, 'concepts'), 'concept');
+  const entities = readPages(io.join(root, 'entities'), 'entity', io);
+  const concepts = readPages(io.join(root, 'concepts'), 'concept', io);
   const rows: Row[] = [];
   const samples: string[][] = [];
 
-  for (const name of readdirSync(sourcesDir).filter(n => n.endsWith('.md'))) {
-    const sourcePage = readPages(sourcesDir, 'source').find(p => p.slug === name.replace(/\.md$/u, ''));
+  for (const name of io.listDir(sourcesDir).filter((n) => n.endsWith('.md'))) {
+    const sourcePage = readPages(sourcesDir, 'source', io).find(
+      (p) => p.slug === name.replace(/\.md$/u, ''),
+    );
     if (!sourcePage) continue;
     const noteRel = sourceFileOf(sourcePage.body);
     if (!noteRel) continue;
-    const notePath = resolve(vault, noteRel);
-    if (!existsSync(notePath)) continue;
+    const notePath = io.resolve(vault, noteRel);
+    if (!io.exists(notePath)) continue;
 
     // Pages this source produced, by the backlink the pipeline writes. No name
     // matching: a Chinese page title over an English note is the case that
     // broke the first attempt, and this route never reads the title.
     const slug = sourcePage.slug;
-    const attributed = [...entities, ...concepts].filter(p =>
-      sourceSlugs(p.body).includes(slug),
-    );
+    const attributed = [...entities, ...concepts].filter((p) => sourceSlugs(p.body).includes(slug));
 
     const byClass: Record<PageType, Page[]> = {
       source: [sourcePage],
-      entity: attributed.filter(p => p.type === 'entity'),
-      concept: attributed.filter(p => p.type === 'concept'),
+      entity: attributed.filter((p) => p.type === 'entity'),
+      concept: attributed.filter((p) => p.type === 'concept'),
     };
 
-    const maskedNote = maskNonKnowledge(readFileSync(notePath, 'utf8'));
+    const maskedNote = maskNonKnowledge(io.readTextFile(notePath));
     for (const value of harvestValues(maskedNote)) {
       for (const pageType of ['source', 'entity', 'concept'] as const) {
         const pages = byClass[pageType];
         if (pages.length === 0) continue;
-        const quoted = pages.map(p => p.quoted).join('\n');
-        const prose = pages.map(p => p.prose).join('\n');
+        const quoted = pages.map((p) => p.quoted).join('\n');
+        const prose = pages.map((p) => p.prose).join('\n');
         const outcome = survivalOf(value.text, quoted, prose);
         rows.push({ pageType, kind: value.kind, position: value.position, outcome });
         if (outcome === 'absent' && pageType === 'source' && samples.length < sampleSize) {
           const from = Math.max(0, value.offset - 28);
-          const context = maskedNote.slice(from, value.offset + value.text.length + 28).replace(/\s+/gu, ' ');
+          const context = maskedNote
+            .slice(from, value.offset + value.text.length + 28)
+            .replace(/\s+/gu, ' ');
           samples.push([value.kind, noteRel.split('/').pop() ?? noteRel, value.text, context]);
         }
       }
@@ -128,64 +156,95 @@ function countvault(vault: string, wiki: string, sampleSize = 0): { rows: Row[];
 }
 
 function table(header: string[], body: string[][]): string {
-  const widths = header.map((h, i) => Math.max(h.length, ...body.map(r => r[i].length)));
+  const widths = header.map((h, i) => Math.max(h.length, ...body.map((r) => r[i].length)));
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ');
-  return [line(header), line(widths.map(w => '-'.repeat(w))), ...body.map(line)].join('\n');
+  return [line(header), line(widths.map((w) => '-'.repeat(w))), ...body.map(line)].join('\n');
 }
 
 const pct = (n: number): string => `${(n * 100).toFixed(0)}%`;
 
-function selfCheck(): number {
-  if (!existsSync(FIXTURE)) throw new Error(`fixture missing: ${FIXTURE}`);
-  const note = readFileSync(FIXTURE, 'utf8');
+function selfCheck(io: CliIo, fixturePath: string): number {
+  if (!io.exists(fixturePath)) throw new Error(`fixture missing: ${fixturePath}`);
+  const note = io.readTextFile(fixturePath);
   const masked = maskNonKnowledge(note);
   const found = harvestValues(masked);
-  console.log(`fixture: ${FIXTURE}`);
-  console.log(`note ${note.length} chars · values ${found.length} · masked ${masked.length} chars (must equal)`);
-  console.log(table(
-    ['kind', 'position', 'offset', 'text'],
-    found.map(v => [v.kind, v.position, String(v.offset), v.text]),
-  ));
+  say(`fixture: ${fixturePath}`);
+  say(`note ${note.length} chars · values ${found.length} · masked ${masked.length} chars (must equal)`);
+  say(
+    table(
+      ['kind', 'position', 'offset', 'text'],
+      found.map((v) => [v.kind, v.position, String(v.offset), v.text]),
+    ),
+  );
   return masked.length === note.length ? 0 : 1;
 }
 
-export async function main(argv: string[]): Promise<number> {
-  if (argv[0] === '--self-check') return selfCheck();
+export async function main(argv: string[], io: CliIo, fixturePath: string): Promise<number> {
+  if (argv[0] === '--self-check') return selfCheck(io, fixturePath);
   const sampleAt = argv.indexOf('--sample');
   const sampleSize = sampleAt === -1 ? 0 : Number(argv[sampleAt + 1] ?? 20);
   const positional = argv.filter((_a, i) => sampleAt === -1 || (i !== sampleAt && i !== sampleAt + 1));
   const [vault, wiki] = positional;
   if (!vault || !wiki) {
-    console.error('usage: run-value-survival.mjs <vault> <wikiFolder> [--sample N]\n       run-value-survival.mjs --self-check');
+    usage(
+      'usage: run-value-survival.mjs <vault> <wikiFolder> [--sample N]\n       run-value-survival.mjs --self-check',
+    );
     return 2;
   }
 
-  const { rows, samples } = countvault(vault, wiki, sampleSize);
+  const { rows, samples } = countVault(vault, wiki, sampleSize, io);
   const report = summarize(rows);
 
-  console.log(`vault ${vault} · wiki ${wiki} · rows ${report.total}\n`);
+  say(`vault ${vault} · wiki ${wiki} · rows ${report.total}\n`);
 
-  console.log('By value position (head = inside the 500-char window the source prose sees)');
-  console.log(table(
-    ['position', 'n', 'quoted', 'prose', 'absent', 'absent share'],
-    report.byPosition.map(r => [r.position, String(r.n), String(r.quoted), String(r.prose), String(r.absent), pct(r.absentShare)]),
-  ));
+  say('By value position (head = inside the 500-char window the source prose sees)');
+  say(
+    table(
+      ['position', 'n', 'quoted', 'prose', 'absent', 'absent share'],
+      report.byPosition.map((r) => [
+        r.position,
+        String(r.n),
+        String(r.quoted),
+        String(r.prose),
+        String(r.absent),
+        pct(r.absentShare),
+      ]),
+    ),
+  );
 
-  console.log('\nBy value kind');
-  console.log(table(
-    ['kind', 'n', 'quoted', 'prose', 'absent', 'absent share'],
-    report.byKind.map(r => [r.kind, String(r.n), String(r.quoted), String(r.prose), String(r.absent), pct(r.absentShare)]),
-  ));
+  say('\nBy value kind');
+  say(
+    table(
+      ['kind', 'n', 'quoted', 'prose', 'absent', 'absent share'],
+      report.byKind.map((r) => [
+        r.kind,
+        String(r.n),
+        String(r.quoted),
+        String(r.prose),
+        String(r.absent),
+        pct(r.absentShare),
+      ]),
+    ),
+  );
 
-  console.log('\nBy page type (each value is counted once per page class it could reach)');
-  console.log(table(
-    ['page type', 'n', 'quoted', 'prose', 'absent', 'absent share'],
-    report.byPageType.map(r => [r.pageType, String(r.n), String(r.quoted), String(r.prose), String(r.absent), pct(r.absentShare)]),
-  ));
+  say('\nBy page type (each value is counted once per page class it could reach)');
+  say(
+    table(
+      ['page type', 'n', 'quoted', 'prose', 'absent', 'absent share'],
+      report.byPageType.map((r) => [
+        r.pageType,
+        String(r.n),
+        String(r.quoted),
+        String(r.prose),
+        String(r.absent),
+        pct(r.absentShare),
+      ]),
+    ),
+  );
 
   if (samples.length > 0) {
-    console.log('\nAbsent values, with the text around them in the note — read this before trusting the table');
-    console.log(table(['kind', 'note', 'value', 'context'], samples));
+    say('\nAbsent values, with the text around them in the note — read this before trusting the table');
+    say(table(['kind', 'note', 'value', 'context'], samples));
   }
   return 0;
 }

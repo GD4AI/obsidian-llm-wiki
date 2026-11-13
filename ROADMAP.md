@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.31.0 MINOR (2026-11-12, 5,400 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-12) for the canonical composition record. | **Updated:** 2026-11-12 — `main` at `9b08f48a`, 5,400 tests / 403 files
+**Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-13) for the canonical composition record. | **Updated:** 2026-11-13 — `main` at `39f178d7`, 5,403 tests / 403 files
 **Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12. `v1.31.0` shipped the stream-transport cycle (#980), the output-ceiling memory (#912), the minified bundle (#1007), and the two housekeeping tracks (#930 / #932). What did not land stays open on its own issue rather than as milestone debt: **#781** (blocked on a review, not on code), **#1016** (the runtime-only field list), **#1017** / **#1018** (the two projection defects the review of #781 found), **#729** (waiting on a comparable measurement), **#873** (the taxonomy change that would fire MAJOR, and the home of #902's Option B).
 **#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 11 locales.
 
