@@ -16,7 +16,7 @@
 // acceptance measurement unrepeatable.
 
 import { describe, it, expect } from 'vitest';
-import { buildCoCitationGraph, coCitationCandidates } from '../../core/co-citation';
+import { addCoCitationPage, buildCoCitationGraph, coCitationCandidates } from '../../core/co-citation';
 import type { Graph } from '../../core/build-graph';
 
 /** `edges` keyed by source; every node gets an entry, as build-graph does. */
@@ -375,5 +375,44 @@ describe('#1017 — a same-note pair is not a cross-source relation', () => {
       }),
     );
     expect(coCitationCandidates('entities/Hypothesis', g)).toEqual(['concepts/Rival']);
+  });
+});
+
+// Issue #1018 — the run's cached graph follows writes.
+//
+// The graph is built once per run, which is what keeps the cost at O(vault) instead
+// of O(notes × vault). A frozen graph meant an empty-vault rebuild projected nothing:
+// the first note saw no pages and every later note saw a graph without the pages the
+// run had written. `addCoCitationPage` is the one writer into that cached graph.
+describe('#1018 — the cached graph follows a write', () => {
+  it('adds a written page to both directions of the index', () => {
+    const g = buildCoCitationGraph(graphOf({ 'concepts/Hub': [] }));
+    addCoCitationPage(g, 'entities/New', ['concepts/Hub']);
+    expect(g.outgoing.get('entities/New')).toEqual(['concepts/Hub']);
+    expect(g.incoming.get('concepts/Hub')).toEqual(['entities/New']);
+  });
+
+  it('replaces a page’s previous targets instead of appending to them', () => {
+    // A re-ingest can rewrite a page. Leaving the old target behind would keep a
+    // relation the page no longer carries, and the reverse index is what the
+    // projection reads.
+    const g = buildCoCitationGraph(graphOf({ 'entities/New': ['concepts/Old'] }));
+    addCoCitationPage(g, 'entities/New', ['concepts/Newer']);
+    expect(g.outgoing.get('entities/New')).toEqual(['concepts/Newer']);
+    expect(g.incoming.get('concepts/Old')).toBeUndefined();
+    expect(g.incoming.get('concepts/Newer')).toEqual(['entities/New']);
+  });
+
+  it('keeps other pages’ claims on a target', () => {
+    const g = buildCoCitationGraph(graphOf({ 'entities/A': ['concepts/Hub'] }));
+    addCoCitationPage(g, 'entities/New', ['concepts/Hub']);
+    expect([...(g.incoming.get('concepts/Hub') ?? [])].sort()).toEqual(['entities/A', 'entities/New']);
+  });
+
+  it('does not record a self-link or duplicate a target', () => {
+    const g = buildCoCitationGraph(graphOf({}));
+    addCoCitationPage(g, 'entities/New', ['entities/New', 'concepts/Hub', 'concepts/Hub']);
+    expect(g.outgoing.get('entities/New')).toEqual(['concepts/Hub']);
+    expect(g.incoming.get('entities/New')).toBeUndefined();
   });
 });

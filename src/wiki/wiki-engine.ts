@@ -30,7 +30,7 @@ import { TEXTS } from '../texts';
 import { renderTemplate } from '../core/template-renderer';
 import { slugify, filterRedundantAliases, resolveMinAliasLength } from '../core/slug';
 import { shapeRelatedLists, kindOf, nameKey } from '../core/related-shaping';
-import { buildCoCitationGraph, coCitationCandidates, type CoCitationGraph } from '../core/co-citation';
+import { addCoCitationPage, buildCoCitationGraph, coCitationCandidates, type CoCitationGraph } from '../core/co-citation';
 import { withAbortSignal } from '../core/llm-abort';
 import { isInSourceScope } from '../core/folder-scope';
 import { resolveSourceSlug } from '../core/source-slug';
@@ -76,7 +76,7 @@ import { SourceAnalyzer } from './source-analyzer';
 import { NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET } from '../constants';
 import { PageFactory } from './page-factory';
 import { ConversationIngestor, ConversationOrchestration, formatConversation, ConversationHistory } from './conversation-ingest';
-import type { Graph } from '../core/build-graph';
+import { edgesForPage, type Graph } from '../core/build-graph';
 import { runBatchedWithRetry } from './engine-internals/page-batch-runner';
 import { GraphCache, type GraphPageLoader } from './engine-internals/graph-cache';
 import { IndexGenerator } from './engine-internals/index-generator';
@@ -211,7 +211,7 @@ export class WikiEngine {
    * what this graph is used to compute, so including them would make the result
    * depend on the order pages happened to be written in.
    */
-  private coCitationRun: { key: object; graph: CoCitationGraph } | null = null;
+  private coCitationRun: { key: object; graph: CoCitationGraph; paths: Set<string> } | null = null;
   // v1.25.1 Phase C-PR1: extracted to engine-internals/index-generator.ts.
   private indexGenerator!: IndexGenerator;
   // v1.25.1 Phase C-PR1: extracted to engine-internals/log-writer.ts.
@@ -627,8 +627,39 @@ export class WikiEngine {
   private async getCoCitationGraph(key: object | undefined, allPaths: Set<string>): Promise<CoCitationGraph> {
     if (key !== undefined && this.coCitationRun?.key === key) return this.coCitationRun.graph;
     const built = buildCoCitationGraph(await this.getOrBuildGraph(allPaths));
-    if (key !== undefined) this.coCitationRun = { key, graph: built };
+    if (key !== undefined) this.coCitationRun = { key, graph: built, paths: new Set(allPaths) };
     return built;
+  }
+
+  /**
+   * Issue #1018 — let the run's cached co-citation graph follow a wiki write.
+   *
+   * The graph is built once per run (see `coCitationRun`), which is what keeps the
+   * cost at O(vault) instead of O(notes × vault). A frozen graph would mean a
+   * rebuild projects nothing: the first note sees an empty vault and every later
+   * note sees a graph without the pages the run has written.
+   *
+   * So each written wiki page contributes its outgoing edges, computed by the same
+   * `edgesForPage` the full build uses. Cost is O(links) for the page.
+   *
+   * The order dependence this introduces is not new: every other relation on the
+   * write path already depends on the vault as it stood at write time. A page
+   * written earlier cannot name a page written later, in the note-grounded list or
+   * in the sibling rule either. What this removes is the one part that froze the
+   * vault at the run's first note.
+   *
+   * A no-op when there is no run graph (a single-note ingest passes `undefined` as
+   * the key and rebuilds per note, where one note *is* the run).
+   */
+  private recordCoCitationWrite(path: string, content: string): void {
+    const run = this.coCitationRun;
+    if (!run) return;
+    if (!this.isInWikiContentFolder(path, this.settings.wikiFolder)) return;
+    const prefix = this.settings.wikiFolder + '/';
+    if (!path.startsWith(prefix) || !path.endsWith('.md')) return;
+    const rel = path.slice(prefix.length).replace(/\.md$/, '');
+    run.paths.add(rel);
+    addCoCitationPage(run.graph, rel, edgesForPage(content, rel, run.paths, this.settings.wikiFolder));
   }
 
   /**
@@ -1400,20 +1431,30 @@ export class WikiEngine {
         willExist: [...noteTitles, ...stubPlan.map(s => s.item.name)],
         vocabulary: domainVocabulary,
         granularity: this.settings.extractionGranularity,
-        candidates: (self, exclude) => {
+        candidates: (self, exclude, placed) => {
           // `self` arrives as a name and the projection works in graph paths, so
-          // this is the one place the two spaces meet. The subject's own path is
-          // what the graph knows it by; `resolvePath` is the same resolver the
-          // note-grounded names use, so a name it cannot place yields no graph node
-          // and therefore no candidates.
+          // this is the one place the two spaces meet.
+          //
+          // The subject's own links come from `placed`, not from the graph: the page
+          // is written after this runs, so on a rebuild — where every page is new —
+          // the graph has no entry for it and the projection would find nothing
+          // (#1018). `resolvePath` is the same resolver the note-grounded names use,
+          // so a name that resolves to no page contributes no target either way.
           const selfRel = resolvePath(self);
-          if (!selfRel) return [];
+          const selfTargets = placed
+            .map(name => resolvePath(name))
+            .filter((rel): rel is string => rel !== undefined);
+          if (!selfRel && selfTargets.length === 0) return [];
           const skip = new Set<string>();
           for (const k of exclude) {
             const rel = relByKey.get(k);
             if (rel) skip.add(rel);
           }
-          return coCitationCandidates(selfRel, coCitation, { exclude: skip, limit: crossSourceCap })
+          return coCitationCandidates(selfRel ?? self, coCitation, {
+            exclude: skip,
+            limit: crossSourceCap,
+            selfTargets,
+          })
             .map(rel => titleByRel.get(rel) ?? rel);
         },
       });
@@ -2428,6 +2469,9 @@ export class WikiEngine {
     if (intent.notify) {
       this.onFileWrite?.(path);
       this.invalidatePageCaches(path);
+      // #1018: the run's co-citation graph follows the write. Deliberately after
+      // `invalidatePageCaches`, which drops the *other* caches, not this one.
+      this.recordCoCitationWrite(path, content);
     }
     return true;
   }

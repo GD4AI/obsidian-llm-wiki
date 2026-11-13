@@ -41,7 +41,15 @@ export interface RelatedShapingDeps {
    * extraction's claim and is kept and counted in `unanswered` even when nothing
    * answers it.
    */
-  candidates?: (self: string, exclude: ReadonlySet<string>) => string[];
+  /**
+   * Cross-source candidates for one page.
+   *
+   * `placed` is what the page will carry as its own links — the note-grounded names
+   * that survived, plus any sibling. It is passed because the page does not exist
+   * yet when this runs: a projection that reads the subject's links from the vault
+   * graph has nothing to read on a rebuild, where every page is new (#1018).
+   */
+  candidates?: (self: string, exclude: ReadonlySet<string>, placed: readonly string[]) => string[];
   /**
    * The `RELATED_BUDGET` row `candidates` additions are capped by. Defaults to
    * `standard`, which is the tier a caller that does not pass one is behaving as.
@@ -175,7 +183,7 @@ export function shapeRelatedLists(
     // (`create-page.ts:196`), so an unbounded addition is a token regression.
     if (deps.candidates && crossSourceCap > 0) {
       const before = crossSource;
-      for (const name of deps.candidates(self, seen)) {
+      for (const name of deps.candidates(self, seen, [...outE, ...outC])) {
         if (crossSource - before >= crossSourceCap) break;
         const k = nameKey(name);
         if (!k || seen.has(k)) continue;
