@@ -12,7 +12,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-06](#current-state--2026-11-06) |
+| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-13](#current-state--2026-11-13) |
 | The rule for choosing what to work on, and the ranked queue it produces | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) → [ROADMAP §"The next-work order — 2026-10-29"](./ROADMAP.md#the-next-work-order--2026-10-29-re-ranked-by-roi) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
@@ -25,11 +25,10 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-12
+## Current state — 2026-11-13
 
-**Releasing:** v1.30.0 MINOR (2026-11-07). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
-[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned". Per-track
-state lives in the issue tracker — the table that used to sit here was "current" for a few days and then lied.
+**Releasing:** v1.31.0 MINOR (2026-11-13). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
+[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 **The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** Verbatim,
 nothing dropped.
@@ -538,52 +537,27 @@ artifact disagree.
 
 ---
 
-## Hermes cross-reference (2026-08-30) — what it settled
+## Hermes cross-reference (2026-08-30) — the standing judgments
 
-A cross-read of `NousResearch/hermes-agent`'s bundled `llm-wiki` skill against
-our own design, triggered by #575 and DocTpoint's revive of #220. Two findings
-were executed the next day and are now history; the rest are standing judgments.
+A cross-read of `NousResearch/hermes-agent`'s bundled `llm-wiki` skill, triggered by #575 and #220.
+Two findings were executed that week: **#575** (`merge` contained "contradicts", so
+`strategy: "contradictory"` was unreachable) and **#577** (`contentHash` read back, drifted sources
+flagged, report-only). Hermes' PR #13700 had reached both independently, which is what made them
+worth acting on rather than debating.
 
-**Executed that week:** **#575** — the `merge` definition contained "contradicts",
-so `strategy: "contradictory"` was unreachable (closed 2026-08-31). **#577** — read
-the `contentHash` back and flag drifted sources, report-only (merged 2026-08-31).
-Hermes' PR #13700 had reached both conclusions independently, which is what made
-them worth acting on rather than worth debating.
+| Where we differ, deliberately | Why |
+|---|---|
+| The fingerprint lives on the derived `wiki/sources/*.md`, never on the user's note | the plugin never writes user notes; `hashBody(extractBody())` is body-only either way, so it cannot hash itself |
+| A `Mentions:` block, not paragraph-level `^[raw/…]` markers | parses more reliably for an LLM, and already satisfies human traceability |
+| Contradictions stay a structured record | never LLM-readable prose |
 
-**Where Hermes is more permissive and we deliberately are not:**
-
-- Hermes puts `sha256:` in the **frontmatter of raw sources**; we attach the
-  fingerprint to the derived `wiki/sources/*.md` only, because the plugin never
-  writes user notes. Same function either way: `hashBody(extractBody(content))`
-  — body-only, frontmatter excluded so it cannot hash itself.
-- Hermes writes paragraph-level provenance markers (`^[raw/…/source.md]`) on
-  pages synthesising 3+ sources; we keep the structured `Mentions:` block. Ours
-  parses more reliably for an LLM and `Mentions:` already satisfies human
-  traceability, so revisit only on user research — not on symmetry.
-- Contradictions stay a **structured record**, never LLM-readable prose.
-
-### Standing judgments (survive the session that produced them)
-
-- **Drift detection is intrinsic to wiki-mode, not an add-on.** The premise
-  (offline-compiled synthesis beats per-query RAG) breaks the moment sources
-  change silently, so `contentHash` + read-back lint is a requirement of the
-  pattern, not a feature of it.
-- **Auto-revise on drift is empirically harmful.** Wikipedia's record shows a
-  fact revision on page X does not propagate to pages citing X, and an automatic
-  fix risks unbounded cascade corruption. Report the drift, route it to the
-  user; never auto-re-ingest, never auto-revise.
-- **#220 Tier 2 ("recency ≠ correctness") stays open by design.** A "newest
-  wins" rule would silently collapse editorial disagreement into recency —
-  precisely the failure mode #358 warns against. **Do not implement an
-  automatic rule here** until there is a benchmark for cross-source resolution.
-- **#220 Tier 1 (`supersedes:` frontmatter) is deferred, not dropped.** Its
-  contract once #577 is in: fingerprint detects drift → a user-declared
-  `supersedes: true` overrides fingerprint ambiguity → deterministic
-  replace-self-block path. Not PATCH-scale, and not to be bundled with #577.
-- **#220 Tier 3** (review-queue UI) is a product-surface decision — route it to
-  a MINOR design discussion, not to a fix.
-
----
+| Judgment | State |
+|---|---|
+| Drift detection is intrinsic to wiki-mode | `contentHash` + read-back lint is a requirement of the pattern, not a feature of it |
+| Auto-revise on drift is harmful | report it, route it to the user; never auto-re-ingest or auto-revise |
+| #220 Tier 2 (recency ≠ correctness) | open by design — "newest wins" collapses editorial disagreement into recency |
+| #220 Tier 1 (`supersedes:` frontmatter) | deferred, not dropped; its contract waits on #577 |
+| #220 Tier 3 (review-queue UI) | product surface — a MINOR design discussion, not a fix |
 
 ## Release cadence (since v1.20.2)
 

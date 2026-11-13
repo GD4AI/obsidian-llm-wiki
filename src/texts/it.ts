@@ -87,9 +87,9 @@ export const IT_TEXTS = {
 
     // Limite esecuzione LLM
     maxTokensPerCallName: 'Max token di output per chiamata',
-    maxTokensPerCallDesc: 'Il limite che la richiesta dichiara, non un obiettivo: il modello si ferma quando ha finito. Auto usa il limite di output del modello stesso (128K se sconosciuto). Abbassalo solo se il provider rifiuta valori grandi o addebita i token riservati. NON è la finestra di contesto: i token di ragionamento vengono sottratti dallo stesso limite della risposta.',
+    maxTokensPerCallDesc: 'Il massimo che una chiamata può scrivere. Auto usa il limite del modello; un server locale che non ne dichiara uno riceve il valore predefinito del plugin. Alza e abbassa il limite di generazione delle pagine, e i token di ragionamento escono dallo stesso limite. Non è la finestra di contesto.',
     contextWindowName: 'Finestra di contesto del modello',
-    contextWindowDesc: 'Quanti token il modello può contenere contemporaneamente, input e output insieme. Auto lascia invariato il batch attuale. Impostala solo se conosci il valore reale ed è piccolo (per esempio un modello locale da 8K), così il limite di output non supera mai la finestra.',
+    contextWindowDesc: 'Quanti token il modello tiene insieme — input e output. Se impostato, il prompt viene sottratto, così la risposta non supera ciò che resta. Auto non impone limiti.',
     thinkingEffortName: 'Livello di ragionamento',
     thinkingEffortDesc: 'Quanto può ragionare il modello. Default non invia alcun campo e lascia scegliere al modello. Un livello più alto può dare una risposta migliore e costa sempre più token e tempo. Ogni provider traduce il livello: lo stesso nome non indica la stessa quantità di ragionamento su modelli diversi.',
     thinkingEffortDefault: 'Default (decide il provider)',
@@ -563,7 +563,8 @@ export const IT_TEXTS = {
     markdownConversionBackendNative: 'Supporto PDF/immagini del provider',
     markdownConversionBackendMineru: 'API online MinerU',
     mineruApiTokenName: 'Token API MinerU',
-    mineruApiTokenDesc: 'Ottieni il tuo token su https://mineru.net/apiManage/token. MinerU accetta file fino a 200 MB e fino a 200 pagine.',
+    mineruApiTokenDesc: 'Ottieni il token su https://mineru.net/apiManage/token. MinerU accetta file fino a 200 MB e 200 pagine. Un token scade dopo circa 90 giorni — alla scadenza l\'API risponde 401; creane uno nuovo.',
+    mineruTokenExpired: 'MinerU ha rifiutato il token API — probabilmente è scaduto (validità di circa 90 giorni). Creane uno nuovo su https://mineru.net/apiManage/token e aggiorna l\'impostazione del token.',
     mineruApiTokenPlaceholder: 'Incolla il token API MinerU',
     mineruUploadingInProgress: 'Caricamento PDF su MinerU: {filename}',
     mineruWaitingInProgress: 'In attesa della conversione MinerU: {filename}',

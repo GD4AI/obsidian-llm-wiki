@@ -16,8 +16,9 @@
 // 959-LOC runLintWiki() god function into dedicated modules under
 // `llm-phases/`. Each phase receives a `LintPhaseContext` and returns a
 // pure-data result, mirroring the existing preparation / programmatic
-// phase pattern. runLintWiki() is now a 230-LOC orchestrator that
-// sequences the phases and builds the fix-callback dispatch.
+// phase pattern. #932 then took the function itself under the global limit:
+// it is 109 lines today, and it sequences the phases and builds the
+// fix-callback dispatch.
 
 import { Notice } from 'obsidian';
 import { LintFixCallbacks, LintCounts, LintReportModal } from '../../ui/modals';

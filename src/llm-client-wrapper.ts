@@ -225,9 +225,17 @@ function applyTaskPolicy(
 // prompt length per call and never says which step asked. Stubbed out in
 // production builds along with every other `console.debug`. Format is
 // pre-#451: `(typed)` / `(stream)` disambiguate the breadcrumb.
-function logLlmCall(task: string | undefined, model: string, maxTokens: number, kind: LlmCallKind): void {
+function logLlmCall(
+  task: string | undefined,
+  model: string,
+  maxTokens: number | undefined,
+  kind: LlmCallKind,
+): void {
   const suffix = kind === 'plain' ? '' : ` (${kind})`;
-  console.debug(`[llm] task=${task ?? 'untagged'} model=${model} max_tokens=${maxTokens}${suffix}`);
+  // `undefined` is a decision since #1019, not a missing value: for `anthropic`
+  // and `openai` the call declares nothing so the model's own limit applies.
+  const ceiling = maxTokens === undefined ? 'provider-default' : String(maxTokens);
+  console.debug(`[llm] task=${task ?? 'untagged'} model=${model} max_tokens=${ceiling}${suffix}`);
 }
 
 // Timed around the whole call, not on success: a call that throws still

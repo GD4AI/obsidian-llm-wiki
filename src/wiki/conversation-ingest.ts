@@ -7,6 +7,7 @@ import {
   ContradictionInfo,
   IngestReport,
 } from '../types';
+import type { LLMClient } from '../types/llm';
 import { PROMPTS } from '../prompts';
 import { slugify } from '../core/slug';
 import { parseJsonResponse } from '../core/json';
@@ -16,7 +17,8 @@ import { renderTemplate } from '../core/template-renderer';
 import { resolveModelForTask } from '../core/model-resolver';
 import { getText } from '../core/i18n';
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
-import { TOKENS_CONVERSATION_EXTRACTION, TOKENS_CONVERSATION_PAGE, TOKENS_PAGE_GENERATION, TOKENS_QUERY_SAVE_DEDUP } from '../constants';
+import { TOKENS_CONVERSATION_EXTRACTION, TOKENS_CONVERSATION_PAGE, TOKENS_QUERY_SAVE_DEDUP } from '../constants';
+import { callWithCeilingFallback, generationBudget } from '../core/generation-ceiling';
 import { PageFactory } from './page-factory';
 import { SourceAnalysisLLMSchema, ConversationDedupStatusLLMSchema } from '../llm-sdk/output-schemas';
 import { callLlm } from '../core/llm-dispatch';
@@ -43,6 +45,35 @@ export function formatConversation(history: ConversationHistory): string {
     const time = new Date(msg.timestamp).toLocaleTimeString();
     return `### ${role} (${time})\n\n${msg.content}\n\n---\n`;
   }).join('\n');
+}
+
+/**
+ * The JSON-repair call, with the ceiling resolved for it (#1019).
+ *
+ * Module-level rather than inline because `ingestConversation` sits at its recorded
+ * length ceiling, and the ratchet is not something to raise in order to absorb a
+ * wrapper. The repair path keeps thinking enabled on purpose: it has to understand
+ * broken JSON, and a disabled budget produces structurally valid nonsense.
+ */
+async function repairConversationJson(
+  ctx: EngineContext,
+  client: LLMClient,
+  repairPrompt: string,
+): Promise<string> {
+  const model = resolveModelForTask(ctx.settings, 'ingest');
+  const system = await ctx.buildSystemPrompt('conversation');
+  return callWithCeilingFallback(
+    generationBudget(ctx.settings, model, [system, repairPrompt]),
+    (maxTokens) => callLlm(client, {
+      task: 'conversation-extract-retry' as const,
+      model,
+      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
+      system,
+      messages: [{ role: 'user' as const, content: repairPrompt }],
+      response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
+      ...(ctx.settings.disableThinking ? { enableThinking: false } : {}),
+    }),
+  );
 }
 
 export class ConversationIngestor {
@@ -177,16 +208,7 @@ CRITICAL RULES:
 
     const parsed = await parseJsonResponse(analysisText, async (malformedJson: string) => {
       const repairPrompt = `Fix the following malformed JSON. Only fix JSON syntax errors (unescaped quotes, trailing commas, missing brackets). Do NOT change any values or content. Output ONLY the fixed JSON, no other text.\n\n${malformedJson}`;
-      const repairArgs = {
-        task: 'conversation-extract-retry' as const,
-        model: resolveModelForTask(this.ctx.settings, 'ingest'),
-        max_tokens: TOKENS_PAGE_GENERATION,
-        system: await this.ctx.buildSystemPrompt('conversation'),
-        messages: [{ role: 'user' as const, content: repairPrompt }],
-        response_format: { type: 'json_object' as const, schema: SourceAnalysisLLMSchema },
-        ...(this.ctx.settings.disableThinking ? { enableThinking: false } : {}),
-      };
-      return callLlm(client, repairArgs);
+      return repairConversationJson(this.ctx, client, repairPrompt);
     }) as SourceAnalysis | null;
     if (!parsed) {
       throw new Error('Conversation analysis JSON parsing failed');

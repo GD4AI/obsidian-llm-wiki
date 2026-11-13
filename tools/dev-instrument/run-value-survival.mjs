@@ -29,9 +29,14 @@
 const Platform = { isDesktop: true };
 if (!Platform.isDesktop) throw new Error('run-value-survival is desktop-only');
 
-const [{ Module }, { fileURLToPath }, nodePath] = await (async () => {
+const [{ Module }, { fileURLToPath }, nodePath, nodeFs] = await (async () => {
   if (!Platform.isDesktop) throw new Error('node:* is desktop-only');
-  return Promise.all([import('node:module'), import('node:url'), import('node:path')]);
+  return Promise.all([
+    import('node:module'),
+    import('node:url'),
+    import('node:path'),
+    import('node:fs'),
+  ]);
 })();
 const require = Module.createRequire(import.meta.url);
 
@@ -41,6 +46,19 @@ const ENTRY = nodePath.join(CLI_DIR, 'src', 'value-survival-cli.ts');
 const OUT_DIR = nodePath.join(CLI_DIR, 'dist');
 const OUT_PATH = nodePath.join(OUT_DIR, 'run-value-survival.mjs');
 const SHIM = nodePath.join(CLI_DIR, 'src', 'shim.ts');
+const FIXTURE = nodePath.resolve(CLI_DIR, 'fixtures', 'value-survival-note.md');
+
+// The file access the CLI report needs. The `.ts` takes this as an argument rather
+// than importing `node:fs` itself, so the Bot's `no-nodejs-modules` rule has nothing
+// to flag in the `.ts` tree and the report can be tested against memory instead of a
+// vault. Environment assembly is this launcher's job — same split as run-instrument.
+const io = {
+  readTextFile: (path) => nodeFs.readFileSync(path, 'utf8'),
+  listDir: (path) => nodeFs.readdirSync(path),
+  exists: (path) => nodeFs.existsSync(path),
+  join: (...parts) => nodePath.join(...parts),
+  resolve: (...parts) => nodePath.resolve(...parts),
+};
 
 const esbuild = require('esbuild');
 
@@ -73,5 +91,5 @@ const { pathToFileURL } = await (async () => {
 })();
 // eslint-disable-next-line no-unsanitized/method -- OUT_PATH is a hardcoded local constant (the bundle this script just built), not user input
 const mod = await import(pathToFileURL(OUT_PATH).href);
-const code = await mod.main(process.argv.slice(2));
+const code = await mod.main(process.argv.slice(2), io, FIXTURE);
 process.exitCode = code;

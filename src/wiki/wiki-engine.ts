@@ -73,7 +73,7 @@ import { ContradictionManager } from './contradictions';
 // v1.25.1 Phase C-PR1: buildLogHeader moved into LogWriter.
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
 import { SourceAnalyzer } from './source-analyzer';
-import { TOKENS_PAGE_GENERATION, NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET } from '../constants';
+import { NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET } from '../constants';
 import { PageFactory } from './page-factory';
 import { ConversationIngestor, ConversationOrchestration, formatConversation, ConversationHistory } from './conversation-ingest';
 import type { Graph } from '../core/build-graph';
@@ -83,6 +83,7 @@ import { IndexGenerator } from './engine-internals/index-generator';
 import { LogWriter } from './engine-internals/log-writer';
 import { dedupPages, recordUpdatedPage } from './engine-internals/dedup-pages';
 import { localDateStamp } from '../core/format';
+import { generatePageText } from '../core/generation-ceiling';
 
 /**
  * Issue #173 Symptom B: drop exact-string duplicates from a page-path list
@@ -893,6 +894,13 @@ export class WikiEngine {
         return;
       }
       if (error instanceof MineruPdfError) {
+        if (error.code === 'auth') {
+          // A 401 is the one MinerU failure whose cause is configuration, not this
+          // file, and whose fix lives in a browser tab. The thrown error already
+          // names the expiry; this puts the same sentence where the user looks —
+          // the Notice — because the generic ingest toast shows only the status.
+          new Notice(getText(this.settings.language, 'mineruTokenExpired'), NOTICE_NORMAL);
+        }
         throw error;
       }
       // v1.25.0 PR3 follow-up #2 (P1 #3): LLM errors during PDF conversion
@@ -2170,13 +2178,11 @@ export class WikiEngine {
 
     const finalPrompt = this.applySectionLabels(prompt);
 
-    const pageContent = await this.client.createMessage({
+    const pageContent = await generatePageText(this.client, this.settings, {
       task: 'source-page',
       model: resolveModelForTask(this.settings, 'ingest'),
-      max_tokens: TOKENS_PAGE_GENERATION,
-      system: await this.buildSystemPrompt('summary'),
-      messages: [{ role: 'user', content: finalPrompt }],
-      ...(this.settings.disableThinking ? { enableThinking: false } : {}),
+      system: (await this.buildSystemPrompt('summary')) ?? '',
+      prompt: finalPrompt,
     });
 
     // The same gate the entity and concept pages pass, for the same reason:

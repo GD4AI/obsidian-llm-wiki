@@ -21,7 +21,8 @@ import { startCeilingFor, rememberCeiling } from '../core/output-ceiling-cache';
 import { isCrossLanguage, normalizeSourceLanguage, getWikiLanguageName } from '../core/source-language';
 import { renderTemplate } from '../core/template-renderer';
 import { computeExtractionBudget, resolveOutputCeiling } from '../core/output-budget';
-import { buildIngestErrorHint, namesOutputCeiling } from './ingest-error-hint';
+import { buildIngestErrorHint } from './ingest-error-hint';
+import { ceilingAfterRejection } from '../core/output-ceiling-probe';
 import { matchExtractedToExisting } from '../core/index-search';
 import { coerceToArray } from '../core/arrays';
 import { buildDomainContext } from '../core/domain-axis'; // domain axis stages 3-5 (#568)
@@ -259,23 +260,6 @@ interface AnalysisRunState {
   ceilingProbes: number;
   firstBatchData: NormalizedBatch | null;
   finalBatchNum: number;
-}
-
-/**
- * The output ceiling to try after a provider rejected one, or `null` when no
- * probe is left to spend.
- *
- * Bounded on purpose: two attempts, only while there is room to halve, and
- * only for a message that names the ceiling. A context-length complaint means
- * the INPUT is too long, and halving the output budget would burn calls and
- * change nothing. The same rule applies whichever batch carried the rejection
- * (#970); keeping the rule here rather than inline also holds `analyzeSource`
- * inside its function-length budget.
- */
-function ceilingAfterRejection(current: number, probes: number, errMsg: string): number | null {
-  if (probes >= 2 || current <= MAX_TOKENS_BATCH || !namesOutputCeiling(errMsg)) return null;
-  const next = Math.max(MAX_TOKENS_BATCH, Math.floor(current / 2));
-  return next < current ? next : null;
 }
 
 export class SourceAnalyzer {

@@ -59,4 +59,31 @@ describe('renderStatusSection — the row can repaint itself', () => {
 		expect(descriptions.length, 'the row did not repaint').toBe(2);
 		expect(descriptions[1], 'the repaint still claims ready').toContain('⚠️');
 	});
+
+	/**
+	 * The Obsidian Bot reported this file on 2026-11-13: `Promise returned in function
+	 * argument where a void return was expected` (no-misused-promises, with
+	 * strict-void-return naming the same line). The arrow returned `Setting` from
+	 * `setDesc`, which is chainable, so the callback returned a value where its contract
+	 * says void. Nothing was broken at runtime, and that is why no test caught it — the
+	 * contract is in the type, not in the behaviour. This asserts the contract.
+	 */
+	it('the repaint returns nothing, because the host calls it for its side effect', async () => {
+		const { renderStatusSection } = await import('../../ui/settings-sections/status-section');
+
+		let repaint: (() => void) | null = null;
+		const tab: Host = {
+			tempSettings: { llmReady: true },
+			plugin: { llmClient: {} },
+			getText: (key) => key,
+			isWikiInitialized: () => true,
+			registerStatusRefresh: (refresh) => {
+				repaint = refresh;
+			},
+		};
+
+		renderStatusSection(tab as never, {} as never);
+
+		expect((repaint as unknown as () => unknown)()).toBeUndefined();
+	});
 });

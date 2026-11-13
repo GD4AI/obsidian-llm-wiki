@@ -28,7 +28,34 @@ interface MineruEnvelope {
  * through the engine's skip pipeline with a localized Notice; uncoded
  * errors are unexpected failures and keep the throw semantics.
  */
-export type MineruErrorCode = 'page-limit' | 'size-limit';
+export type MineruErrorCode = 'page-limit' | 'size-limit' | 'auth';
+
+/**
+ * Where the user renews a MinerU token. Named in the message because a 401 is the
+ * one MinerU failure whose fix lives in a browser tab.
+ */
+const MINERU_TOKEN_URL = 'https://mineru.net/apiManage/token';
+
+/**
+ * Build the error for a non-2xx MinerU response.
+ *
+ * A 401 or 403 is coded `auth` and says what is most likely wrong. MinerU issues
+ * tokens with an expiry of about 90 days, so "it worked last month and now it
+ * answers 401" has one usual cause, and the raw status names none of it. Every
+ * other status stays uncoded, because those are runtime failures rather than
+ * configuration.
+ */
+function httpStatusError(what: string, status: number): MineruPdfError {
+  if (status === 401 || status === 403) {
+    return new MineruPdfError(
+      `MinerU rejected the API token while ${what} (HTTP ${status}). The token has `
+      + `probably expired — MinerU tokens are valid for about 90 days. Get a new one at `
+      + `${MINERU_TOKEN_URL} and paste it into the MinerU API token setting.`,
+      'auth',
+    );
+  }
+  return new MineruPdfError(`MinerU ${what} failed with HTTP ${status}.`);
+}
 
 export class MineruPdfError extends Error {
   readonly code?: MineruErrorCode;
@@ -226,7 +253,7 @@ async function uploadPdf(url: string, bytes: Uint8Array, deadline: number, signa
     throw: false,
   }), deadline, signal);
   if (response.status < 200 || response.status >= 300) {
-    throw new MineruPdfError(`MinerU PDF upload failed with HTTP ${response.status}.`);
+    throw httpStatusError('PDF upload', response.status);
   }
 }
 
@@ -271,7 +298,7 @@ async function downloadResult(url: string, deadline: number, signal?: AbortSigna
   throwIfAborted(signal);
   const response = await withDeadline(requestUrl({ url, method: 'GET', throw: false }), deadline, signal);
   if (response.status < 200 || response.status >= 300) {
-    throw new MineruPdfError(`MinerU result download failed with HTTP ${response.status}.`);
+    throw httpStatusError('result download', response.status);
   }
   return new Uint8Array(response.arrayBuffer);
 }
@@ -295,7 +322,7 @@ async function mineruRequest(
     throw: false,
   }), deadline, signal);
   if (response.status < 200 || response.status >= 300) {
-    throw new MineruPdfError(`MinerU request failed with HTTP ${response.status}.`);
+    throw httpStatusError('request', response.status);
   }
   const envelope = response.json as MineruEnvelope;
   if (!envelope || (envelope.code !== 0 && envelope.code !== '0')) {

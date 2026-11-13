@@ -87,9 +87,9 @@ export const EN_TEXTS = {
 
     // LLM execution cap
     maxTokensPerCallName: 'Max output tokens per call',
-    maxTokensPerCallDesc: 'The ceiling the request declares, not a target — the model stops when it is done. Auto declares the model\'s own output limit (128K when unknown). Lower it only if your provider rejects large values or you pay per reserved token. This is NOT the context window: reasoning tokens are subtracted from the same ceiling as the answer.',
+    maxTokensPerCallDesc: 'The most a call may write. Auto asks the model for its own limit; a local server that states none gets the plug-in default. It raises and lowers what a page-generation call declares, and reasoning tokens come out of the same ceiling. This is not the context window.',
     contextWindowName: 'Model context window',
-    contextWindowDesc: 'How many tokens the model can hold at once, input and output together. Auto leaves batching unchanged. Set it when you know the real value and it is small (a local model with 8K, for example) so the output ceiling can never exceed what the window holds.',
+    contextWindowDesc: 'How many tokens the model holds at once — input and output together. When this is set the prompt is subtracted, so the answer is never asked to exceed what is left. Auto leaves the ceiling unclamped.',
 
     // Issue #111: slug casing
     slugCaseName: 'File Name Casing',
@@ -818,7 +818,8 @@ export const EN_TEXTS = {
     markdownConversionBackendNative: 'Provider PDF/image support',
     markdownConversionBackendMineru: 'MinerU online API',
     mineruApiTokenName: 'MinerU API token',
-    mineruApiTokenDesc: 'Get your token at https://mineru.net/apiManage/token. MinerU accepts files up to 200 MB and up to 200 pages.',
+    mineruApiTokenDesc: 'Get your token at https://mineru.net/apiManage/token. MinerU accepts files up to 200 MB and up to 200 pages. A token expires after about 90 days — renew it when a conversion starts failing with 401.',
+    mineruTokenExpired: 'MinerU rejected the API token — it has probably expired (tokens last about 90 days). Get a new one at https://mineru.net/apiManage/token, then update the MinerU API token setting.',
     mineruApiTokenPlaceholder: 'Paste MinerU API token',
     mineruUploadingInProgress: 'Uploading PDF to MinerU: {filename}',
     mineruWaitingInProgress: 'Waiting for MinerU conversion: {filename}',

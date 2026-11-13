@@ -34,7 +34,13 @@ import { Platform, Setting } from 'obsidian';
 import type { LLMWikiSettingTab } from '../settings';
 import type { LLMWikiSettings } from '../../types';
 import { PREDEFINED_PROVIDERS } from '../../types';
-import { BEDROCK_REGIONS, BEDROCK_DEFAULT_REGION, NATIVE_PDF_PROVIDER_IDS, MAX_BATCH_DELAY_MS } from '../../constants';
+import {
+  BEDROCK_REGIONS,
+  BEDROCK_DEFAULT_REGION,
+  NATIVE_PDF_PROVIDER_IDS,
+  MAX_BATCH_DELAY_MS,
+  MAX_LLM_CONCURRENCY,
+} from '../../constants';
 import { renderRangeSlider } from '../settings-helpers';
 import { getCodexAuthUiState } from '../openai-codex-auth-controls';
 import { getBedrockAuthUiState } from '../bedrock-auth-controls';
@@ -341,7 +347,7 @@ export function renderProviderSection(tab: LLMWikiSettingTab, containerEl: HTMLE
     desc: tab.getText('pageGenerationConcurrencyDesc'),
     initialValue: tempSettings.pageGenerationConcurrency ?? 3,
     min: 1,
-    max: 5,
+    max: MAX_LLM_CONCURRENCY,
     step: 1,
     formatDesc: (v) => tab.getText(v === 1 ? 'concurrencyValueSingular' : 'concurrencyValuePlural').replace('{}', String(v)),
     onChange: (v) => { tempSettings.pageGenerationConcurrency = v; },
