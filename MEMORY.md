@@ -36,18 +36,13 @@ is current state.
 | **Owned, not blocked** | #664 — split on 2026-11-13: the union-only write path ships as its own change, the ranked cap waits on #729 Phase 2 |
 | **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
 | **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
-| **Tooling defect** | #1022 — `tools/dev-instrument` does not type-check and no job runs its `tsc`; the acceptance line adds it to Gate 1 |
 | **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
 
-**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** They were
-"current state" for a few days each and described a product two releases old. Verbatim, nothing dropped.
-
+**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06** — verbatim, nothing dropped.
 
 ## Work lists — the ROI rule (tier tables archived)
 
-**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost
-ranks below a medium-impact one that is measured, because the second actually ships.
-Certainty is how confident we are the fix lands *and* stays landed.
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost ranks below a medium-impact one that is measured, because the second actually ships. Certainty is how confident we are the fix lands *and* stays landed.
 
 **The queue itself is ROADMAP §"Open decisions".** The tier tables here were that queue's
 ancestor. The two dated copies disagreed with each other within two weeks. They also
@@ -546,52 +541,27 @@ artifact disagree.
 
 ---
 
-## Hermes cross-reference (2026-08-30) — what it settled
+## Hermes cross-reference (2026-08-30) — the standing judgments
 
-A cross-read of `NousResearch/hermes-agent`'s bundled `llm-wiki` skill against
-our own design, triggered by #575 and DocTpoint's revive of #220. Two findings
-were executed the next day and are now history; the rest are standing judgments.
+A cross-read of `NousResearch/hermes-agent`'s bundled `llm-wiki` skill, triggered by #575 and #220.
+Two findings were executed that week: **#575** (`merge` contained "contradicts", so
+`strategy: "contradictory"` was unreachable) and **#577** (`contentHash` read back, drifted sources
+flagged, report-only). Hermes' PR #13700 had reached both independently, which is what made them
+worth acting on rather than debating.
 
-**Executed that week:** **#575** — the `merge` definition contained "contradicts",
-so `strategy: "contradictory"` was unreachable (closed 2026-08-31). **#577** — read
-the `contentHash` back and flag drifted sources, report-only (merged 2026-08-31).
-Hermes' PR #13700 had reached both conclusions independently, which is what made
-them worth acting on rather than worth debating.
+| Where we differ, deliberately | Why |
+|---|---|
+| The fingerprint lives on the derived `wiki/sources/*.md`, never on the user's note | the plugin never writes user notes; `hashBody(extractBody())` is body-only either way, so it cannot hash itself |
+| A `Mentions:` block, not paragraph-level `^[raw/…]` markers | parses more reliably for an LLM, and already satisfies human traceability |
+| Contradictions stay a structured record | never LLM-readable prose |
 
-**Where Hermes is more permissive and we deliberately are not:**
-
-- Hermes puts `sha256:` in the **frontmatter of raw sources**; we attach the
-  fingerprint to the derived `wiki/sources/*.md` only, because the plugin never
-  writes user notes. Same function either way: `hashBody(extractBody(content))`
-  — body-only, frontmatter excluded so it cannot hash itself.
-- Hermes writes paragraph-level provenance markers (`^[raw/…/source.md]`) on
-  pages synthesising 3+ sources; we keep the structured `Mentions:` block. Ours
-  parses more reliably for an LLM and `Mentions:` already satisfies human
-  traceability, so revisit only on user research — not on symmetry.
-- Contradictions stay a **structured record**, never LLM-readable prose.
-
-### Standing judgments (survive the session that produced them)
-
-- **Drift detection is intrinsic to wiki-mode, not an add-on.** The premise
-  (offline-compiled synthesis beats per-query RAG) breaks the moment sources
-  change silently, so `contentHash` + read-back lint is a requirement of the
-  pattern, not a feature of it.
-- **Auto-revise on drift is empirically harmful.** Wikipedia's record shows a
-  fact revision on page X does not propagate to pages citing X, and an automatic
-  fix risks unbounded cascade corruption. Report the drift, route it to the
-  user; never auto-re-ingest, never auto-revise.
-- **#220 Tier 2 ("recency ≠ correctness") stays open by design.** A "newest
-  wins" rule would silently collapse editorial disagreement into recency —
-  precisely the failure mode #358 warns against. **Do not implement an
-  automatic rule here** until there is a benchmark for cross-source resolution.
-- **#220 Tier 1 (`supersedes:` frontmatter) is deferred, not dropped.** Its
-  contract once #577 is in: fingerprint detects drift → a user-declared
-  `supersedes: true` overrides fingerprint ambiguity → deterministic
-  replace-self-block path. Not PATCH-scale, and not to be bundled with #577.
-- **#220 Tier 3** (review-queue UI) is a product-surface decision — route it to
-  a MINOR design discussion, not to a fix.
-
----
+| Judgment | State |
+|---|---|
+| Drift detection is intrinsic to wiki-mode | `contentHash` + read-back lint is a requirement of the pattern, not a feature of it |
+| Auto-revise on drift is harmful | report it, route it to the user; never auto-re-ingest or auto-revise |
+| #220 Tier 2 (recency ≠ correctness) | open by design — "newest wins" collapses editorial disagreement into recency |
+| #220 Tier 1 (`supersedes:` frontmatter) | deferred, not dropped; its contract waits on #577 |
+| #220 Tier 3 (review-queue UI) | product surface — a MINOR design discussion, not a fix |
 
 ## Release cadence (since v1.20.2)
 
@@ -730,6 +700,12 @@ A **repeatable arbitary cut is worse than a random one**, because it is repeatab
 Adamic-Adar damping reduces the ties (95 % → 84 %) without removing them.
 A later rebuild (~100 notes) reproduces the shape.
 
+**The alphabet tie-break was fixed on 2026-11-02** — equal scores now order by
+`1/(1+incoming)` target weight, and one shared target is no longer a relation
+(`minShared = 2`). Re-measured on two small vaults the cap makes the "A" share worse,
+not better: 6.9 % → 9.4 % (175 pages) and 8.6 % → 9.3 % (428 pages). What remains is
+recorded in ④ below: the bias is same-source pairs, not the alphabet.
+
 **③ The root cause is named and then left in place.** `prompts/ingestion.ts:33` is unchanged, so the extractor keeps answering the intra-source question it was asked. And the names it volunteers beyond the source are **not discarded** — `related-shaping.ts:140-141` pushes them to `unanswered` and then writes them, so they land as dead links. A prior-driven path is therefore already running, in the open, **unmeasured**. In the control run, 79 % of unresolved Related targets had never been a candidate.
 
 Also recorded, because each changes a phase: **criterion 4's baseline is not 676 / 870**; **criterion 3 opens M2 at the wrong gap** (a ranking problem inside the vault, not a world-knowledge one); and **`keepFrom` keeps existing entries in front (`related-sections.ts:124`)**, so neither reserved nor additive allocation reaches an existing vault without a migration — Phase 2's pass conditions are not testable on a rebuild until that is decided.
@@ -789,6 +765,44 @@ Two constraints make the build order non-negotiable, and both were found late �
 - **#729 ships with #664.** #729 adds entries to the Related lists; #664 observes that those lists already grow about two per source and are never pruned. Built separately, #729 raises the ceiling while #664 leaves the floor open — and the measurement that would catch it (Related length over a rebuild) is precisely the one each change would blame the other for.
 - **#729 sequences after #668, not parallel to it.** #729 introduces a settings toggle defaulting on; #668 restructures the settings tab. Landing the toggle first means re-homing it twice.
 - **#603 is a hard prerequisite for every sub-phase past 0.** The floor-before-ceiling argument applies twice: a faster reader over a store whose write-gate contract does not hold moves the error rather than removing it, and the phase-1 acceptance criterion (intra-source share) is meaningless if the edges it measures can be written by six paths the design does not account for.
+
+### Four corrections to Phase 1 (found 2026-09-21, before and while writing it)
+
+All four came from reading the write path. ①–③ before any code; ④ by the integration test Phase 1's
+own pass condition required.
+
+- **① The cap cannot wait for Phase 2.** The record put "fill up to `cross-source` slots" in Phase 2,
+  but **no length cap exists on a Related list in the write path**: `related-links.ts` hands the lists
+  to `renderRelatedSections`, which appends without slicing; `candidate-gate.ts:517`'s `prune` removes
+  dropped names, not length; zero `related_entities?.length` comparisons exist. "The cap holds with zero
+  violations" therefore means `RELATED_SIBLING_CAP`, not a list length. The list is also joined into a
+  generation prompt (`create-page.ts:196`, `merge-page.ts:317`), so unbounded addition is a Token
+  regression — one hub cited by 500 pages offers each ~499 candidates. The cap is a **ceiling, not a
+  quota**; it is the only thing Phase 1 needs from Phase 2 (step 3, the one **breaking** change, needs
+  `total`). Phase 1 adds without removing, so it cannot break.
+- **② The 95 % re-measurement cannot be read at Phase 1.** A gate needs a bound, and once the bound
+  exists the global intra-source share is partly a function of it. Measuring here would understate M0 and
+  could trigger the record's own STOP for a mechanism that works. Phase 1 measures **the mechanism**:
+  distinct candidates, deterministic ordering, cap holds, cost bounded. The share is re-measured after
+  Phase 2, where `total` exists.
+- **③ The graph is built once per run.** `GraphCache.invalidate()` runs from `invalidatePageCaches`,
+  which every write reaches; the related-shaping block runs per source note, so `getOrBuildGraph` there
+  reads every page body per note — ≈413 × 1,274 = **526,000 reads**, the class #662 had just removed.
+  `lint/controller.ts:98` is the precedent. **The memo's limit (#781, 2026-11-10, corrected 2026-11-13):**
+  the graph holds the vault as it was at the run's first note — no page written during the run is in it,
+  because `shapeRelatedListsForRun` (`wiki-engine.ts:1088`) runs before `planPageSet` (`:1089`). The
+  current note's pages come from `willExist` (`:1392`) and the sibling rule; an earlier note's from nothing.
+- **Evaluated and not taken: `app.metadataCache.resolvedLinks`** — zero-disk-read and updated on write,
+  and my first rejection reason was wrong (`wiki-engine.ts:505` already reads `getFileCache`). Not taken
+  because its shape differs from the query path's PPR graph, which the record says to reuse.
+- **④ The sibling rule pre-empts M0 for the note being ingested — not for a third note.** Two pages from
+  the same note are siblings, the rule runs first, and `crossSource` is 0 for such a pair. But it keys on
+  the **current** note: two pages that both came from a *third* note share that note's source page as a
+  target, so the projection offers them to each other and `crossSource` counts it — **94.1 % of chosen
+  entries are same-source in this sense**, and for 39.9 % the source page is one of the two required
+  targets (#781, 2026-11-10). That is a defect, open as #1017. A Phase 1 test therefore takes its pair
+  from different notes and asserts `siblings: 0` beside the cross-source count.
+
 
 ### Open questions
 
