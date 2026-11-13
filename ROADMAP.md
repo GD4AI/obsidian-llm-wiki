@@ -12,18 +12,9 @@
 
 **v1.26.5 PATCH CANCELLED 2026-08-19** — folded into v1.27.0 MINOR to amortize release-cycle overhead (per user direction).
 
-**v1.27.0 MINOR Phase4 (CLI demote) — MERGED 2026-08-22**: PR #511 (`002da74`, closes #507) migrated `tools/llm-wiki-cli/` → `tools/dev-instrument/`. The instrument is
-UPSTREAM DEV-ONLY, for engine contributors only. The move eliminated 49 of ~52 Obsidian Bot errors. Two review rounds by @DocTpoint followed; the round-2 blocking
-finding produced the shim-bundle smoke test now in Gate 1. The legacy snapshot is at `legacy/cli-v1.26.4-snapshot`. One-cycle deprecation notice ships in the v1.27.0 release notes.
+**v1.27.0 MINOR Phase4 (CLI demote) — MERGED 2026-08-22**: PR #511 (`002da74`, closes #507) migrated `tools/llm-wiki-cli/` → `tools/dev-instrument/`. The instrument is UPSTREAM DEV-ONLY, for engine contributors; the move eliminated 49 of ~52 Bot errors, and the round-2 blocking finding produced the shim-bundle smoke test now in Gate 1. Legacy snapshot: `legacy/cli-v1.26.4-snapshot`. Composition record: [CHANGELOG.md](./CHANGELOG.md).
 
-**v1.27.0 MINOR — SHIPPED 2026-08-27**: 36 merge commits (181 files, +11197/-3158 LOC, 3677 tests). Six named items shipped:
-
-- Bedrock SSO/IAM (#425, PR #540) — awaits the account holder's real-AWS E2E of three constants
-- MinerU multi-format (#404)
-- Source-page verbatim quotes (#496)
-- Fix Dead Links leave-it (#485)
-- Ingest candidate gate (#514)
-- Per-step taskPolicies UI (#525/#490)
+**v1.27.0 MINOR — SHIPPED 2026-08-27**: 36 merge commits (181 files, +11197/-3158 LOC, 3677 tests). Six named items shipped: Bedrock SSO/IAM (#425, PR #540 — awaits the account holder's real-AWS E2E of three constants), MinerU multi-format (#404), source-page verbatim quotes (#496), Fix Dead Links leave-it (#485), ingest candidate gate (#514), per-step taskPolicies UI (#525/#490).
 
 Also shipped: composite-key LLM probe caches (#551/#552/#553), and a community wave of frontmatter / alias / dedup correctness fixes
 (#502/#505/#509/#510/#512/#513/#515/#517/#518/#519/#520/#521/#522/#523/#524/#527/#528/#530/#531/#532/#533/#534/#535/#536/#537/#538).
@@ -97,11 +88,13 @@ before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINO
 | **#787** | Let source notes opt out of the source-lemma guarantee | The guarantee assumes a note's filename is a subject; true for `Klotho.md`, false for a meeting note. `decideSourceLemma` is a pure function, so the opt-out is one setting plus one union member | **Accepted** — answered 2026-10-28; implement |
 | **#785** | "Full Reindex" request | Two requests bundled: re-extract with current settings (accepted) and "clear everything" (declined — no undo, and a partial failure leaves nothing) | Implement the re-extract half; keep the clear-out half declined |
 
-**Not waiting on a decision, just unstarted:** **#567**, **#468**, **#668**, **#664**, **#677**, **#890**. **#907**, **#755**, **#793** and **#872** have since closed; **#914** shipped as #919.
+**Not waiting on a decision, just unstarted:** **#468**, **#668**, **#677**, **#787**, **#785**.
 
-**Waiting on someone else, not on a decision:** **#793** — the `good first issue` label came off on 2026-10-04, and the work remains documentation. The ten translated READMEs quote English command names, and the command name
-is stored twice per locale. A verification pass on 2026-10-04 corrected its own table. `README_RU.md` and `README_ZH-Hant.md` are already clean, so the count is 7 files
-rather than 10. `README_RU.md` is the better reference, because it already quotes translated names.
+**Closed since this queue was written, each by a recorded change:** **#793** on 2026-10-22 (command names in ten locales), **#567** on 2026-11-01 (`customEntityLimit`), **#907**, **#755**, **#872**; **#914** shipped as #919, **#890** merged as the `ai` 7.0.142 bump.
+
+**#664 waits on #729 Phase 2, and it did not read that way before 2026-11-13.** Its ranked cap and `RELATED_BUDGET`'s `total` column describe one budget from two directions, and this file listed it as *unstarted* while the #664 thread said *after #729's design*. Phase 2 is where a Related list is truncated, so that is where the ordering decision is made. Two halves are separable, and only the second waits: the **union-only write path** (`merge-page.ts:356`, `related-page.ts:177`) prunes nothing today and needs no design, so it goes as its own change; the **ranked cap** needs the slot design.
+
+**Waiting on someone else, not on a decision:** **#891** — four AI SDK packages must ship one `provider-utils` copy, and 7.0.142 collapsed the duplicate, so what is left is an upstream version to wait for rather than work to do.
 **Shipped, and where that record lives:** [CHANGELOG.md](./CHANGELOG.md). A "resolved since this queue was written" list used to sit here. It was removed on 2026-10-12: it had been frozen at 2026-10-03, and a frozen resolve list reads as current state long after it stops being true. The per-version composition record is canonical in CHANGELOG, and a second copy here is a second place to be wrong.
 
 ### The next-work order — 2026-11-10, ranked by what the guardrail proves

@@ -33,7 +33,7 @@ Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer the co
 
 | Gate | Constraint | How |
 |------|-----------|-----|
-| **1. Code correct** | `pnpm lint` 0/0 + `pnpm arch-check` clean + `npx tsc --noEmit` 0/0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 | Six-Gate script (build BEFORE test — see §"Gate 1: Six-Gate automated") |
+| **1. Code correct** | `pnpm lint` 0/0 + `pnpm arch-check` clean + `npx tsc --noEmit` 0/0 + `pnpm typecheck:tools` 0/0 + `pnpm build` clean + `pnpm test` all pass + `pnpm css-lint` 0 | Six-Gate script (build BEFORE test — see §"Gate 1: Six-Gate automated") |
 | **2. No side effects** | Call-site audit + data flow + state mutation + error propagation | Structured review |
 | **3. No breaking changes** | API/Schema/File format/Default behavior/Command IDs/Obsidian API | Breaking-change matrix |
 | **4. No performance regression** | CPU/memory/IO/network/token — 5-dim written assessment | `/review` (pi-review) + Gate 4 table |
@@ -43,10 +43,10 @@ Put one idea in each sentence. Avoid 成语 and unusual compounds. Prefer the co
 ### Gate 1: Six-Gate automated
 
 ```bash
-pnpm lint && pnpm arch-check && npx tsc --noEmit && pnpm build && pnpm test && pnpm css-lint
+pnpm lint && pnpm arch-check && npx tsc --noEmit && pnpm typecheck:tools && pnpm build && pnpm test && pnpm css-lint
 ```
 
-All six must pass, and the checks are complementary, so one tool passing is not enough: ESLint checks style, `arch-check` checks the import graph (`scripts/arch-check.mjs`, added by #927 — it fails by name on a new cycle or a new `core/` → upper-layer edge), TypeScript checks types, css-lint checks Obsidian review compliance. Never use `@ts-ignore` or `eslint-disable` to silence a failure.
+All seven must pass, and the checks are complementary, so one tool passing is not enough: ESLint checks style, `arch-check` checks the import graph (`scripts/arch-check.mjs`, added by #927 — it fails by name on a new cycle or a new `core/` → upper-layer edge), TypeScript checks types, `typecheck:tools` checks the instrument tree under `tools/dev-instrument/tsconfig.json` — a separate program the root `tsconfig` does not include, which stayed broken on `main` because nothing ran it (#1022) — and css-lint checks Obsidian review compliance. Never use `@ts-ignore` or `eslint-disable` to silence a failure.
 
 **Order is non-negotiable**: `pnpm build` MUST run before `pnpm test`.
 The suite reads build artifacts — `src/__tests__/llm-sdk/openai-codex/openai-codex-loopback-flow.test.ts:39` reads `main.js` to assert the esbuild bundle shape — so a test-first run fails with ENOENT on a fresh clone. Local Gate 1 usually has `main.js` from a prior `pnpm build:dev`, so the bug was missed before PR #487's first CI run on 2026-08-18.
@@ -270,7 +270,7 @@ If a signal is present, post a short comment asking instead of a review. To undo
 ## 📦 Development Workflow
 
 ```bash
-pnpm gate:1                    # Gate 1: lint + arch-check + typecheck + build + test + css-lint (preferred)
+pnpm gate:1                    # Gate 1: lint + arch-check + typecheck + typecheck:tools + build + test + css-lint (preferred)
 pnpm lint && pnpm test && pnpm typecheck && pnpm build && pnpm css-lint   # WRONG ORDER — see §"Gate 1: Six-Gate automated"; build must precede test
 ```
 

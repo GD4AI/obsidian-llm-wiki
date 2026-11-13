@@ -27,16 +27,16 @@ is current state.
 
 ## Current state — 2026-11-13
 
-**Releasing:** v1.31.0 MINOR (2026-11-13). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
-[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
+**Released:** v1.31.0 MINOR (2026-11-13) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.31.0), [discussion #1024](https://github.com/GD4AI/obsidian-llm-wiki/discussions/1024). Tag `1.31.0`, merge `57cf3142`. The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
 |---|---|
-| **Open PR** | #781 the co-citation projection — MERGEABLE, `CHANGES_REQUESTED` from @DocTpoint; its three named debts are fixed and the real-vault numbers are on the PR. Merges when #729's measurement runs, which still never has |
+| **Open PR** | #781 the co-citation projection — DocTpoint **lifted** `CHANGES_REQUESTED` at `94dd0827` on 2026-11-13; `d3337e44` takes his last two items (record sentence, test bound) and records the corrected 80.3 %. Merge awaits the maintainer, not a reviewer |
 | **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt) |
-| **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #891 (`interrupted`), #915 (math: render-time vs generate-time) |
+| **Owned, not blocked** | #664 — split on 2026-11-13: the union-only write path ships as its own change, the ranked cap waits on #729 Phase 2 |
+| **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
 | **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
-| **Dependency hold** | the four AI SDK packages are pinned and ignored by dependabot until #891 accepts; building is the instrument, not the lockfile |
+| **Tooling defect** | #1022 — `tools/dev-instrument` does not type-check and no job runs its `tsc`; the acceptance line adds it to Gate 1 |
 | **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
 
 **The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** They were

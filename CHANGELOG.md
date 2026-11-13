@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The instrument tree is type-checked again, and Gate 1 now checks it (Issue #1022).** `tools/dev-instrument/src/engine-runner.ts` redeclared `LLMFinishMeta` as a local two-field copy, so when the real type gained a required `finishReason` the wrapper stopped satisfying the clients it wraps — and no job ran `tools/dev-instrument/tsconfig.json`, so it stayed broken across several releases. The type is imported now, and `pnpm typecheck:tools` is the seventh Gate 1 check. Mutation-verified: restoring the local copy produces 6 errors.
+
+
 ## [1.31.0] - 2026-11-13
 
 ### Added
