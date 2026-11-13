@@ -27,18 +27,22 @@ is current state.
 
 ## Current state — 2026-11-13
 
-**Releasing:** v1.31.0 MINOR (2026-11-13). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
-[CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
+**Released:** v1.31.0 MINOR (2026-11-13) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.31.0), [discussion #1024](https://github.com/GD4AI/obsidian-llm-wiki/discussions/1024). Tag `1.31.0`, merge `57cf3142`. The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
-**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06.** Verbatim,
-nothing dropped.
+| Track | Where it stands |
+|---|---|
+| **Open PR** | #781 the co-citation projection — DocTpoint **lifted** `CHANGES_REQUESTED` at `94dd0827` on 2026-11-13; `d3337e44` takes his last two items (record sentence, test bound) and records the corrected 80.3 %. Merge awaits the maintainer, not a reviewer |
+| **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt) |
+| **Owned, not blocked** | #664 — split on 2026-11-13: the union-only write path ships as its own change, the ranked cap waits on #729 Phase 2 |
+| **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
+| **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
+| **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
 
+**The six dated state blocks (2026-10-15 → 2026-10-29) moved to Appendix B on 2026-11-06** — verbatim, nothing dropped.
 
 ## Work lists — the ROI rule (tier tables archived)
 
-**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost
-ranks below a medium-impact one that is measured, because the second actually ships.
-Certainty is how confident we are the fix lands *and* stays landed.
+**ROI = (impact × certainty) / effort.** A high-impact item with unknown reproduction cost ranks below a medium-impact one that is measured, because the second actually ships. Certainty is how confident we are the fix lands *and* stays landed.
 
 **The queue itself is ROADMAP §"Open decisions".** The tier tables here were that queue's
 ancestor. The two dated copies disagreed with each other within two weeks. They also

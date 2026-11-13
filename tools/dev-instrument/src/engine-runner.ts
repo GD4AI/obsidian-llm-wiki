@@ -41,6 +41,7 @@ import { applySettingsMigrations } from '../../../src/core/settings-migrations';
 import { isLocalNoKeyProvider } from '../../../src/core/local-no-key-provider';
 import { formatTaskPolicyMap, resolveTaskPolicy, type TaskPolicyMap } from '../../../src/core/task-policy';
 import type { IngestReport, LLMClient, LLMWikiSettings } from '../../../src/types';
+import type { LLMFinishMeta } from '../../../src/types/llm';
 import {
   snapshotTaskUsage,
   taskUsageSince,
@@ -108,9 +109,11 @@ async function resolveApiKey(provider: string): Promise<string> {
 // Minimal shape: every LLMClient method has a params object with an
 // optional onFinish callback. We splice our own onFinish that increments
 // totals and delegates to the caller's onFinish.
-interface LLMFinishMeta {
-  usage?: { inputTokens?: number; outputTokens?: number };
-}
+//
+// The meta type is imported, never redeclared (#1022). A local copy drifted
+// once `LLMFinishMeta` gained a required `finishReason` field, and because no
+// job ran this tsconfig the breakage sat unnoticed: `spliceOnFinish` then
+// failed to satisfy the very clients it wraps.
 interface LLMCallParams {
   onFinish?: (meta: LLMFinishMeta) => void;
 }
