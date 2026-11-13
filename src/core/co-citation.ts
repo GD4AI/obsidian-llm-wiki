@@ -22,6 +22,7 @@
 // chosen entries against 9.1 % of pages).
 
 import type { Graph } from './build-graph';
+import { WIKI_SUBFOLDERS } from '../constants';
 
 /** `target → every page that links it`. `Graph.edges` is outgoing-only. */
 export type IncomingIndex = Map<string, string[]>;
@@ -75,6 +76,36 @@ function targetWeight(incoming: number): number {
 }
 
 /**
+ * Is this path a source page — the note the vault was built from?
+ *
+ * Source pages are the wiki's record of a note, not a subject the note is about. Two
+ * pages that share one are pages from the same note, which is what the sibling rule
+ * already handles; counting it as cross-source evidence made the projection re-add
+ * intra-source links and call them new (#1017).
+ */
+function isSourcePage(path: string): boolean {
+  return path.startsWith(`${WIKI_SUBFOLDERS.sources}/`);
+}
+
+/** The source pages a page links — usually one, and that is the note it came from. */
+function sourcesOf(page: string, graph: CoCitationGraph): ReadonlySet<string> {
+  const targets = graph.outgoing.get(page) ?? [];
+  return new Set(targets.filter(isSourcePage));
+}
+
+/** Does `candidate` come from a note that `self` also came from? */
+function sharesSourcePage(
+  candidate: string,
+  selfSources: ReadonlySet<string>,
+  graph: CoCitationGraph,
+): boolean {
+  for (const source of sourcesOf(candidate, graph)) {
+    if (selfSources.has(source)) return true;
+  }
+  return false;
+}
+
+/**
  * Build the reverse index once, up front.
  *
  * `buildGraphFromContent` derives edges from loaded page bodies, so this is O(edges)
@@ -110,6 +141,19 @@ export function buildCoCitationGraph(graph: Graph): CoCitationGraph {
  *   redundancy `hub-link-distinctiveness` reports (#157 / #175), and it would
  *   inflate the cross-source count with a relation that was never missing.
  * - **`opts.exclude`** — what the caller has already placed for this item.
+ * - **Source pages, as candidates.** A source page is the note, not a subject the
+ *   note is about. Offering one lands a `sources/` path in `related_entities` or
+ *   `related_concepts` (2.7 % of chosen entries measured on `test10`) and displaces a
+ *   real entity or concept from a bounded list.
+ * - **Source pages, as evidence.** See `isSourcePage`: a source page says two pages
+ *   came from the same note, which the sibling rule already owns.
+ * - **Pages that share a source page with `self`.** The larger half of #1017, and the
+ *   half the issue's own candidate fix 1 does not reach: excluding the source page as
+ *   a *target* still offers two pages of one note whenever they share two other
+ *   targets. Measured on `test10` with that exclusion alone, 98.9 % of chosen entries
+ *   still came from the same note as the page they were offered to — the share rose,
+ *   because the pairs it removed were the weakly connected cross-source ones. This
+ *   phase exists to add cross-source edges, so a same-note pair is not a candidate.
  *
  * A shared target that is not itself a node (a partially-loaded vault, a link to a
  * page no other page has) still counts as shared: the projection answers "what does
@@ -126,13 +170,17 @@ export function coCitationCandidates(
 
   const minShared = opts.minShared ?? DEFAULT_MIN_SHARED;
   const alreadyLinked = new Set(targets);
+  const selfSources = sourcesOf(self, graph);
   /** Per candidate: how many targets it shares, and how much they say. */
   const shared = new Map<string, { count: number; weight: number }>();
   for (const target of targets) {
+    if (isSourcePage(target)) continue;
     const citing = graph.incoming.get(target) ?? [];
     const weight = targetWeight(citing.length);
     for (const source of citing) {
       if (source === self) continue;
+      if (isSourcePage(source)) continue;
+      if (selfSources.size > 0 && sharesSourcePage(source, selfSources, graph)) continue;
       if (alreadyLinked.has(source)) continue;
       if (opts.exclude?.has(source)) continue;
       const entry = shared.get(source);

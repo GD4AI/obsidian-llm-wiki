@@ -287,3 +287,93 @@ describe('#729 M0 — the strength floor and hub damping', () => {
     expect(coCitationCandidates('entities/self', g, { minShared: 1 })).toEqual(['entities/one']);
   });
 });
+
+// Issue #1017 — a same-note pair is not a cross-source relation.
+//
+// Entity and concept pages link to the source page they were extracted from, so two
+// pages from one note share that source page as an outgoing target. Treating it as
+// evidence made the projection re-add intra-source links and count them as new:
+// measured on `test10`, 96.9 % of chosen entries shared a source page with the page
+// they were offered to, and 2.7 % were source pages themselves. `test8` measured
+// 99.3 % and 0.2 %.
+//
+// The first fix tried was the issue's own candidate 1 — leave `sources/` out of the
+// shared-target set. That alone did not work, and the measurement is why: on `test10`
+// the same-source share went **up** to 98.9 %, because the pairs it removed were the
+// weakly connected cross-source ones while every same-note pair that also shared two
+// concepts survived. So the filter is on the pair, not on the target: a candidate
+// whose note is the subject's note is not a cross-source relation at all.
+//
+// The pair shapes below are the contract. They are asserted by shape, not only by
+// count, because a count can be right while the wrong pairs are excluded.
+describe('#1017 — a same-note pair is not a cross-source relation', () => {
+  it('does not offer two pages whose only shared target is their source page', () => {
+    // The floor is lowered to 1 on purpose: at the default of 2 this pair is
+    // already rejected for sharing one target, so the test would pass without the
+    // exclusion under test.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['sources/Paper-A'],
+        'entities/Method': ['sources/Paper-A'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g, { minShared: 1 })).toEqual([]);
+  });
+
+  it('does not count a source page towards the two-target floor', () => {
+    // One real shared target plus the source page is not two pieces of evidence.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['sources/Paper-A', 'concepts/Mechanism'],
+        'entities/Method': ['sources/Paper-A', 'concepts/Mechanism'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g)).toEqual([]);
+  });
+
+  it('excludes a same-note pair even when it shares two real targets', () => {
+    // The larger half of the fix. Both pages come from Paper-A, so the pair is
+    // intra-source whatever else it shares, and the sibling rule already links them.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+        'entities/Method': ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g)).toEqual([]);
+  });
+
+  it('still offers the pair when the two pages come from different notes', () => {
+    // This is the relation the phase exists to add, and it must survive the filter.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+        'entities/Method': ['sources/Paper-B', 'concepts/Mechanism', 'concepts/Evidence'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g)).toEqual(['entities/Method']);
+  });
+
+  it('never offers a source page as a candidate, even when it shares two targets', () => {
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['concepts/Mechanism', 'concepts/Evidence'],
+        'sources/Paper-A': ['concepts/Mechanism', 'concepts/Evidence'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g)).toEqual([]);
+  });
+
+  it('keeps a concept page from another note that merely shares targets', () => {
+    // The exclusion is on what is offered and on the pair's note, not on the notion
+    // that a source page can point at anything.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Hypothesis': ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+        'concepts/Rival': ['sources/Paper-B', 'concepts/Mechanism', 'concepts/Evidence'],
+        'sources/Paper-A': ['concepts/Mechanism'],
+      }),
+    );
+    expect(coCitationCandidates('entities/Hypothesis', g)).toEqual(['concepts/Rival']);
+  });
+});
