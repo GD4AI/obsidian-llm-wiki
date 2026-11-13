@@ -15,7 +15,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0（MINOR — 回答上下文的權杖上限、設定頁的提取重點、結晶化 hub 報告）
-- last-updated: 2026-11-12
+- last-updated: 2026-11-13
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
 - features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
@@ -198,7 +198,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 - **🖥️ Ollama、LM Studio、OpenRouter、自訂端點**——開箱即用。本機模型可以應付查詢（上下文視窗較小）；2,000 頁 vault 的攝入通常需要長上下文雲端模型。
 - **📄 Apple Silicon 上的 PDF OCR 全程本機**——見上方 [文件 / PDF / 圖片攝入](#-文件--pdf--圖片攝入)。
-- **🔐 ChatGPT Plan (Codex OAuth)**——桌面用 loopback，行動用裝置代碼；憑證只存在 Obsidian SecretStorage。（完整供應商邊界說明見下方 [Anthropic vs OpenAI vs Codex OAuth](#anthropic-vs-openai-vs-codex-oauth三者是不同的-provider)。）
+- **🔐 ChatGPT Plan (Codex OAuth)**——桌面用 loopback，行動用裝置代碼；憑證只存在 Obsidian SecretStorage。（完整供應商邊界說明見下方 [Anthropic vs OpenAI vs Codex OAuth](#anthropic-vs-openai-vs-codex-oauth三者是不同的供應商)。）
 
 ### 🌐 語言
 

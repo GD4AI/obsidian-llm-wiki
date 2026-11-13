@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.31.0] - 2026-11-12
+## [1.31.0] - 2026-11-13
 
 ### Added
 
@@ -46,10 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A missing exclusion resolver no longer disables exclusions silently (Issue #872 residue).** The watcher predicate returned "not ignored" for every path when `metadataCache.isUserIgnored` was absent, so a user who configured exclusions got none of them and no message.
 - **The hub-tag note no longer says a tag changes plug-in behaviour (Issue #954).** A hub tag is a curatorial marker that no code path reads — hub status is recomputed from the graph on every run. The header comment and the lint intro text in all 11 locales were corrected.
 
+### Documentation
+
+- **The English README was rewritten, and the ten translations were brought to it (Issue #1021).** Six settings that change what a run does were invisible in the old file: `streamIngest`, the output ceiling, the context window, the concurrency, the extraction focus and the excluded files. They are one table of eight rows now, each row naming the panel and the failure it answers.
+- **Two defects the translators found in the English source are fixed in all eleven files.** A section said "Five on-ramps" and then numbered six, and embedded-image analysis was described twice.
+- **The counts that disagreed with themselves are corrected.** 15+ providers everywhere — three places in the prose said 16+ — and 11 languages everywhere where one place said 10. The retrieval numbers pointed at `CLAUDE.md`, which is now a pointer stub to `AGENTS.md`, so they point at `CHANGELOG.md`.
+- **Structure: 13 sections to 11, 441 lines to 417, 12 badges to 6.** `Is it for me?` folded into `Why this plugin?`, `Headless CLI` folded into Contributing, and the Models table is four groups because the per-model detail belongs to `docs/MODEL-GUIDE.md`. Nine screenshots now sit against the sentence that describes them.
+
 ### Notes
 
 - Mobile and Android behaviour changed by default: `auto` streams there. This is the change that avoids the idle cutoff, and no setting has to be touched for it.
 - The two settings that cost tokens — `maxTokensPerCall` and `contextWindow` — keep rendering in both advanced modes. This release does not move them.
+- The README structural baseline moved from 13 `##` sections to 11. The documentation gate reads the measured value, so no stored constant needed editing.
 
 ## [1.30.0] - 2026-11-07
 

@@ -12,7 +12,7 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-06](#current-state--2026-11-06) |
+| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-13](#current-state--2026-11-13) |
 | The rule for choosing what to work on, and the ranked queue it produces | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) → [ROADMAP §"The next-work order — 2026-10-29"](./ROADMAP.md#the-next-work-order--2026-10-29-re-ranked-by-roi) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
@@ -25,9 +25,9 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-12
+## Current state — 2026-11-13
 
-**Releasing:** v1.31.0 MINOR (2026-11-12). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
+**Releasing:** v1.31.0 MINOR (2026-11-13). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is
 [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
