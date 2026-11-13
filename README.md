@@ -17,10 +17,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - previous: v1.30.0 (MINOR — a token ceiling on the answer context, Extraction Focus in the settings tab, and crystallized-hub reporting)
 - last-updated: 2026-11-12
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 16 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 16+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
-- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (project corpus, only published number in this open-source LLM-wiki space)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -54,7 +54,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 You write notes. They sit in folders. Finding what relates to what means remembering threads you forgot months ago.
 
-**Other open-source reimplementations of Karpathy's LLM Wiki idea exist — but none ships as a one-click Obsidian plugin.** Most are CLI tools, Claude Code skills, or separate desktop apps; this one runs inside Obsidian — Graph View, ribbons, command palette included.
+**Other open-source reimplementations of Karpathy's LLM Wiki idea exist — but none ships as a one-click Obsidian plugin (as of v1.31.0).** Most are CLI tools, Claude Code skills, or separate desktop apps; this one runs inside Obsidian — Graph View, ribbons, command palette included.
 
 ### How we compare
 
@@ -63,18 +63,16 @@ You write notes. They sit in folders. Finding what relates to what means remembe
 | **Delivery** | ✅ One-click Obsidian plugin | 🟡 Tauri desktop app | 🟡 Claude Code / Codex / OpenCode / Gemini CLI skill | 🟡 TypeScript CLI pipeline |
 | **Dependencies** | ✅ None — plugin only | 🟡 Python runtime + sqlite | 🟡 Claude Code / Codex / OpenCode runtime | ❌ Embedding model + vector DB (per their docs) |
 | **i18n (UI + wiki output)** | ✅ 11 languages | 🟡 EN / 中文 | ❌ EN only | ❌ EN only |
-| **LLM providers** | ✅ 16+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, …) | 🟡 OpenAI-compatible | 🟡 Subscription via Claude Code / Codex | 🟡 OpenAI-compatible |
+| **LLM providers** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, …) | 🟡 OpenAI-compatible | 🟡 Subscription via Claude Code / Codex | 🟡 OpenAI-compatible |
 | **Retrieval & query pipeline** | ✅ **PPR + Monte Carlo** over `[[wiki-link]]` graph | 🟡 2-hop decay (4-signal heuristic) | 🟡 Louvain community detection | 🟡 BM25 + semantic over chunks |
 | **Graph visualization** | ✅ Obsidian's native Graph View (built in, zero extra size) | 🟡 Custom sigma.js + graphology in desktop app | 🟡 vis.js `graph.html` (separate file) | ❌ Read-only browser viewer |
 | **Ingest formats** | ✅ **Markdown + PDF + images + Office (DOCX/PPTX/XLSX)** — one switch flips between native PDF (Anthropic / OpenAI / Bedrock / Gemini) and the built-in MinerU multi-format backend | 🟡 Markdown + PDF | 🟡 Markdown / code files only | 🟡 Markdown only |
 
-Three we left off the table: **sdyckjq/llm-wiki-skill** was a Codex skill that 404s today (deleted by author); **atomicstrata** is included even though its retrieval is chunk-based because it's the most active TypeScript alternative; **nashsu** ships the largest user base of the three (10k+ stars, others 2k+) but is a Tauri desktop app, not an Obsidian plugin.
-
 ### Three things we chose on purpose, not by accident
 
 - **🪟 Obsidian is the runtime.** No terminal, no separate app, no Docker, no Python. Install from Community Plugins, click Ingest, the wiki lives in your vault from the first second. Obsidian's native Graph View renders your `[[wiki-link]]` graph — built in, zero extra bundle size.
-- **🧭 Clean and self-contained.** Zero dependencies. No embedding model, no vector database, no pip package — a single plugin that reads your notes, talks to an LLM, and writes wiki pages. Everything lives inside Obsidian.
-- **🔌 Any model you already pay for.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatible, custom endpoint — sixteen-plus providers, none of them required to have an embedding endpoint.
+- **🧭 Clean and self-contained.** Zero dependencies: no embedding model, no vector database, no pip package. One plugin reads your notes, talks to an LLM, and writes pages into your vault.
+- **🔌 Any model you already pay for.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatible, custom endpoint — fifteen-plus providers, none of them required to have an embedding endpoint.
 
 ---
 
@@ -82,11 +80,10 @@ Three we left off the table: **sdyckjq/llm-wiki-skill** was a Codex skill that 4
 
 **✅ Yes, if you:**
 
-- **Want a 5-minute setup, not a 5-hour project.** Install from Community Plugins → pick a provider → Ingest one note. No CLI, no Python, no separate runtime, no vector DB. You see wiki pages in `wiki/` within seconds.
-- **Want something clean and self-contained.** The plugin has exactly zero external dependencies: no embedding model, no vector database, no pip package, no Docker container. It's a single Obsidian plugin that reads your notes, talks to an LLM, and writes wiki pages into your vault. Everything lives inside Obsidian.
+- **Want a 5-minute setup, not a 5-hour project.** Install from Community Plugins → pick a provider → Ingest one note. Wiki pages appear in `wiki/` within seconds, with no CLI, no Python, no separate runtime and no vector database to stand up first.
 - **Want a queryable chat that answers from *your* notes** — not the internet — with every answer carrying `[[wiki-links]]` back into your knowledge graph.
 - **Care about data sovereignty** — runs fully local with Ollama or LM Studio, never touching the internet.
-- **Write in or read from any of 10 supported languages** — the UI and wiki output language are independent (your wiki can be in Chinese while the interface is in English).
+- **Write in or read from any of 11 supported languages** — the UI and wiki output language are independent (your wiki can be in Chinese while the interface is in English).
 - **Maintain the graph by writing `[[wiki-links]]`** — every link you write already enriches retrieval; no separate tagging/embedding/indexing step.
 - **Want one-click maintenance** — Lint health scan + Smart Fix All keep duplicates, dead links, and orphan pages in check without you hand-curating.
 
@@ -100,20 +97,28 @@ Three we left off the table: **sdyckjq/llm-wiki-skill** was a Codex skill that 4
 
 ## 🚀 Quick Start
 
+**Requirements:** Obsidian 1.11.4 or newer, desktop or mobile. Nothing else — no Node, no Python, no container. Your own API key, or a local model with no key at all; credentials live in Obsidian SecretStorage, which is why 1.11.4 is the floor.
+
+**Where the project stands:** 87 releases since September 2025, 70,000+ marketplace downloads, 27 contributors. Version numbers follow SemVer, and a release that raises the Obsidian floor says so at the top of its notes.
+
 1. **Install.** Obsidian → Settings → Community plugins → Browse → search "Karpathy LLM Wiki" → Install → Enable. Or visit the [Community Plugin page](https://community.obsidian.md/plugins/karpathywiki) and click **Add to Obsidian**.
+   
+   ![Karpathy LLM Wiki installed and enabled in Obsidian's Community plugins list](/docs/assets/readme/readme-02-install.webp)
 2. **Configure a provider.** Open Settings → Karpathy LLM Wiki → pick a provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → enter API key (not needed for local) → click **Test Connection** → Save.
 3. **Ingest one note.** Two ways:
    - **⌨️ Keyboard:** `Cmd+P/Ctrl+P` → "Ingest single source" → pick any Markdown (or PDF, v1.25.0+) file.
    - **🖱️ Toolbar icon:** Click the **sticker icon** in Obsidian's left ribbon to instantly ingest the currently-open note — no menu hunting.
    
    Your first wiki pages appear in `wiki/sources/`, `wiki/entities/`, `wiki/concepts/` within seconds.
+   
+   ![The note on the left, the page ingest generated from it on the right — properties, description and related concepts](/docs/assets/readme/readme-01-before-after.webp)
 4. **Query your wiki.** Two ways:
    - **⌨️ Keyboard:** `Cmd+P/Ctrl+P` → "Query wiki".
    - **🖱️ Toolbar icon:** Click the **message-circle icon** in Obsidian's left ribbon.
    
    A right-docked side panel opens (Copilot-style) where you can chat with your wiki. Answers carry `[[wiki-links]]` back into your knowledge graph.
 
-![Right-docked Query Wiki side panel in Obsidian showing a chat interface with wiki-link answers back to your knowledge graph](/docs/assets/query-side-panel.png)
+![A Query Wiki answer in the right-docked side panel, each claim footnoted to the wiki page it came from](/docs/assets/readme/readme-07-query-citations.webp)
 
 That's it. The plugin modifies nothing in your original notes — only creates new pages under `wiki/`. Both **Ingest** and **Query wiki** are pinned to the left ribbon for one-click access anytime. (`Cmd` on macOS, `Ctrl` on Windows/Linux.)
 
@@ -131,7 +136,7 @@ That's it. The plugin modifies nothing in your original notes — only creates n
 | **⏹ Cancel** | `Cmd+P/Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary |
 | **📊 Ingestion history** | `Cmd+P/Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, maintenance runs |
 
-![Command panel — all Karpathy LLM Wiki commands live in Obsidian's command palette](/docs/assets/command-panel.png)
+![Every Karpathy LLM Wiki command, grouped under one prefix in Obsidian's command palette](/docs/assets/readme/readme-03-commands.webp)
 
 | Before | After |
 |--------|-------|
@@ -151,11 +156,13 @@ That's it. The plugin modifies nothing in your original notes — only creates n
 - **🧩 Smart merge & contradiction state** — duplicates merge while preserving aliases; contradictions are flagged with source attribution; `reviewed: true` pages are protected from overwrite.
 - **🎨 One tag vocabulary, yours** — the tags a page may carry come from three places you control: the nested tags of your notes, the nested tags already on wiki pages, and the list in Settings → Wiki → Tag Vocabulary → *Custom* (the place for a term no note carries yet). Prompt, write gate, lint and retag all read this one list, so what the model is offered is exactly what lands on disk; a value outside it is dropped, never written. Source pages carry it too, next to their form tag. Small/local models still drift (about one in ten returns the model's built-in taxonomy) — the gate catches it, and Lint reports a page left without tags. Design anchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
+![A generated concept page: the vocabulary tag it was written with, its aliases AF and AFib, its definition and the pages related to it](/docs/assets/readme/readme-04-entity-page.webp)
+
 ### 📄 Document / PDF / Image ingest
 
 Five on-ramps, switchable per ingest:
 
-1. **🆕 Built-in MinerU backend (v1.27.0, #404)** — Settings → Wiki Configuration → Markdown Conversion Backend → *MinerU*. PDF + images (PNG/JPG/JPEG/JP2/WebP/GIF/BMP) + Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) through [MinerU's Precise parser](https://mineru.net/apiManage/docs). Token in Obsidian SecretStorage. Best path for scientific papers, scanned documents, and Office files where layout preservation matters. Server caps: 200 MB / 200 pages per PDF, 256 MB / 10,000 files per archive.
+1. **🧾 Built-in MinerU backend** — Settings → Wiki Configuration → Markdown Conversion Backend → *MinerU*. PDF + images (PNG/JPG/JPEG/JP2/WebP/GIF/BMP) + Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) through [MinerU's Precise parser](https://mineru.net/apiManage/docs). Token in Obsidian SecretStorage. Best path for scientific papers, scanned documents, and Office files where layout preservation matters. Server caps: 200 MB / 200 pages per PDF, 256 MB / 10,000 files per archive.
 2. **☁️ Cloud providers with native PDF** — Anthropic, OpenAI, Google Gemini, and AWS Bedrock (Anthropic + OpenAI variants) read PDFs as file parts out of the box. No setup beyond provider selection.
 3. **🖥️ Local OCR on Apple Silicon** — [oMLX](https://github.com/jundot/omlx) bundles Microsoft Markitdown as a built-in PDF→Markdown backend. Enable Markitdown in oMLX, load [Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) (3B / 570M-active, open-sourced 2026-06) as the vision model, point the plugin at oMLX as a Custom OpenAI-Compatible provider, turn on **Force PDF Support**, pick the multimodal model oMLX is serving. The PDF never leaves your machine.
 4. **🛠️ Third-party extractor (MinerU online UI)** — use the [MinerU Extractor online service](https://mineru.net/OpenSourceTools/Extractor) for a quick manual UI when you don't want to wire up an API token. Download the converted `.md`, drop it in your vault outside the wiki folder, and ingest as a regular Markdown note.
@@ -175,20 +182,28 @@ Five on-ramps, switchable per ingest:
 
 ### 💬 Query & maintenance
 
+**Retrieval and answers**
+
 - **🧭 5-stage PPR cascade** — see [How retrieval works](#-how-retrieval-works). Personalized PageRank over `[[wiki-link]]` gives graph-aware multi-hop context.
-- **🆕 Body-aware lexical scoring (v1.29.0, #837)** — the fast path scores title, aliases, summary **and body text** with BM25F, so the longest text on a page reaches the scorer. It is the single largest recall change the project has made.
-- **🆕 Related-page shaping (v1.29.0, #841)** — one hub page can no longer drag every other page toward it. Related lists are recomputed on every write from the names that survived, ranked, and capped.
-- **🆕 Legacy query scorer switch (v1.29.0, #842)** — Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned linear ranking instead of the new one. Off by default; the new ranking is the default and the toggle is the way back.
-- **🆕 The answer budget is 16,000 tokens, and the pipeline says when it runs out (v1.29.0, #852)** — the answer no longer stops silently at the budget.
-- **🆕 Citations read in academic form (v1.29.0, #857)** — the composer grows with the content, and *clear history* clears the record.
+- **🔤 Body-aware lexical scoring** — the fast path scores title, aliases, summary **and body text** with BM25F, so the longest text on a page reaches the scorer. It is the single largest recall change the project has made.
+- **🧩 Related-page shaping** — one hub page can no longer drag every other page toward it. Related lists are recomputed on every write from the names that survived, ranked, and capped.
+- **🔁 Legacy query scorer switch** — Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned linear ranking instead of the new one. Off by default; the new ranking is the default and the toggle is the way back.
+- **📏 The answer budget is 16,000 tokens, and the pipeline says when it runs out** — the answer no longer stops silently at the budget.
+- **🔖 Citations read in academic form** — the composer grows with the content, and *clear history* clears the record.
 - **🪟 Right-docked side panel** — Query Wiki opens in a Copilot-style right sidebar leaf (v1.22.1+) instead of a centered modal.
+**Maintenance and repair**
+
 - **🔍 Lint health scan** — single command catches: duplicates, dead links, empty pages, orphans, missing aliases, contradictions.
 - **⚡ Smart Fix All** — one-click causal-order repair: fill aliases → merge duplicates → fix dead links → link orphans → expand empty pages, with per-phase report.
-- **🆕 Fix Dead Links leave-it outcome (v1.27.0, #485)** — Settings → Advanced → *Create Stubs for Unresolvable Links* (default ON) lets you opt out of empty placeholder pages: when off, the dead link stays visible in every lint report until a real source defines it, and ingest creates pages through normal channels. The never-LLM-expand gate from #197 is unchanged — the new control only governs whether the stub page is *written at all*.
+  
+  ![Wiki lint report — the status line, the dead links it found, and the Smart fix all button that repairs them in one pass](/docs/assets/readme/readme-08-lint-report.webp)
+- **🚧 Fix Dead Links leave-it outcome** — Settings → Advanced → *Create Stubs for Unresolvable Links* (default ON) lets you opt out of empty placeholder pages: when off, the dead link stays visible in every lint report until a real source defines it, and ingest creates pages through normal channels. The never-LLM-expand gate from #197 is unchanged — the new control only governs whether the stub page is *written at all*.
 - **📊 Operation history panel** — searchable, filterable UI for past ingestions, lint reports, and maintenance runs.
+**Gates that run before a call is paid for**
+
 - **🛡️ Pre-ingest gate** — empty / whitespace / frontmatter-only notes are rejected before any LLM call; content-hash dedup catches identical files across paths.
-- **🆕 Ingest candidate gate (v1.27.0, #514 / PR #521)** — opt-in toggle (`skipMentionOnlyCandidates`, default off, Settings → Advanced). For sources whose language has a measured profile (de measured; en/fr/es/pt/nl/ko estimated with pinned edge cases; zh/ja character-script thresholds unmeasured), candidates named only inside parentheses / enumerations / short list items are pruned before they cost a page plus dedup and generation calls. Cross-language notes are not gated; wiki languages without a profile report once per ingest and never silently skip.
-- **🆕 Per-step task policies (v1.27.0, #525 / #490)** — LLM Advanced → Task Policies field; override the per-step text-mode/thinking setting without code changes. Built-in baseline stays intact for steps you don't list.
+- **🚦 Ingest candidate gate** — opt-in toggle (`skipMentionOnlyCandidates`, default off, Settings → Advanced). For sources whose language has a measured profile (de measured; en/fr/es/pt/nl/ko estimated with pinned edge cases; zh/ja character-script thresholds unmeasured), candidates named only inside parentheses / enumerations / short list items are pruned before they cost a page plus dedup and generation calls. Cross-language notes are not gated; wiki languages without a profile report once per ingest and never silently skip.
+- **🎛️ Per-step task policies** — LLM Advanced → Task Policies field; override the per-step text-mode/thinking setting without code changes. Built-in baseline stays intact for steps you don't list.
 
 ### 🦙 Local-first
 
@@ -199,6 +214,8 @@ Five on-ramps, switchable per ingest:
 ### 🌐 Language
 
 - **🌍 11 UI languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI and wiki-output language are independent — your wiki can be Chinese while the interface is English.
+  
+  ![Interface language and wiki output language are two separate settings, so a Chinese wiki can run behind an English interface](/docs/assets/readme/readme-06-language-settings.webp)
 - **📚 11 wiki-output languages** — same set; pick in Settings → Wiki Configuration. *Custom input* option for ad-hoc prompts.
 - **All UI strings translated per locale** — every label, modal, and notice. Adding a 12th language is contributor-driven (PR #159 pattern).
 - **🖼 Embedded image analysis during Markdown ingest** — opt-in (*Analyze embedded images during Markdown ingestion*, off by default). Every eligible local `![[…]]` / `![…](…)` embed in a note is resolved through Obsidian and analysed together with its neighbouring paragraphs, in 20 MiB packages; each image is capped at 10 MiB, GIFs send a static first frame, and remote URLs are never downloaded.
@@ -213,12 +230,13 @@ The plugin composes with the rest of your Obsidian stack — each tool below plu
 
 - **📄 [MinerU multi-format backend](https://mineru.net/apiManage/docs) (built-in since v1.27.0)** — what used to be a separate CLI/UI step is now a plugin switch; see [Document / PDF / Image ingest](#-document--pdf--image-ingest) for the full path table. The [MinerU online service](https://mineru.net/OpenSourceTools/Extractor) remains available for users who prefer a quick UI over an API token; [self-host MinerU](https://github.com/opendatalab/mineru) is also an option.
 - **🕸️ Obsidian Graph View** — open the native graph on any wiki page; every `[[wiki-link]]` becomes a node, every back-link an edge. Built in, zero extra bundle size.
+  
+  ![Obsidian's native Graph View on a generated wiki — source, entity and concept pages as one connected graph](/docs/assets/readme/readme-05-graph-view.webp)
 - **✂️ [Obsidian Web Clipper](https://obsidian.md/clipper)** — official browser extension. Save web pages (articles, blog posts, Reddit threads, Hacker News, recipes, research papers, YouTube transcripts via Interpreter) into any folder of your vault, then run the plugin's `Ingest from folder` command to batch-extract entities and concepts.
 - **📊 [Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — query the wiki like a database with DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) or JS API. The plugin writes standard frontmatter (`tags:`, `type:`, `aliases:`) on every page, so Dataview queries work out of the box.
 - **🌿 Git** — version your vault (any Git client). The plugin never rewrites your source files; only creates new pages under `wiki/`, so `git diff` cleanly separates your edits from LLM-generated content.
 - **🎞️ [Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — turn any Obsidian note into slide decks via Marp frontmatter (`marp: true`). Wiki pages are pure Markdown, so they render as slides without extra conversion.
 - **🖼️ Canvas** — Obsidian's native infinite canvas. Drag wiki cards onto a Canvas to assemble study guides, mind maps, or research overviews from `[[wiki-links]]` without leaving the vault.
-- **🎤 [Obsidian Nous](https://github.com/AndyMDH/obsidian-nous)** — companion plugin for local voice memo and meeting capture (whisper.cpp on macOS; audio never leaves the machine). Generates speaker-labeled transcripts and its own wiki hub pages. Independent of this plugin — both can share the same vault without coupling.
 
 ---
 
@@ -226,7 +244,7 @@ The plugin composes with the rest of your Obsidian stack — each tool below plu
 
 **Most users should ignore this section.** The plugin's user-facing CLI lives in the sibling repo [green-dalii/obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli) — install with `npm i -g karpathywiki-cli` and run `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
 
-What ships in this repo at `tools/dev-instrument/` is the **dev-only headless measurement instrument** for engine contributors — it runs the real `WikiEngine.ingestSource` against a vault on disk with no Obsidian runtime, prints per-task token + wall-clock accounting — same numbers that drive the perf evidence in CLAUDE.md and release notes. See [`tools/dev-instrument/README.md`](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md) for the entry command, env vars, measurement modes, and exit-code spec.
+What ships in this repo at `tools/dev-instrument/` is the **dev-only headless measurement instrument** for engine contributors — it runs the real `WikiEngine.ingestSource` against a vault on disk with no Obsidian runtime, prints per-task token + wall-clock accounting — same numbers that drive the perf evidence in [CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) and the release notes. See [`tools/dev-instrument/README.md`](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/tools/dev-instrument/README.md) for the entry command, env vars, measurement modes, and exit-code spec.
 
 ---
 
@@ -256,7 +274,7 @@ Settings → Advanced → *Legacy query scorer* runs the previous hand-tuned lin
 
 We use Monte Carlo PPR (Fogaras 2005) — 3,000 random walks × 50 steps each — with the dead-end rule from Haveliwala 2002. Cost is **O(K × L)** (K = walks, L = steps per walk), independent of the number of pages, so a 2,000-page vault sees the same expansion latency as a 200-page one.
 
-**PPR @5 = 27.1% vs pure-kNN baseline 24.1%** on the project's own benchmark corpus (the only published retrieval benchmark in this open-source wiki-plugin space).
+**PPR @5 = 27.1% vs pure-kNN baseline 24.1%** on a project vault. The corpus is not public, so read the number as the comparison the project measured for itself rather than a claim about your vault; `tools/dev-instrument/run-recall-harness.mjs` is the harness that measures recall against a vault.
 
 ### Why no embeddings
 
@@ -266,7 +284,7 @@ We deliberately rejected the embedding path in [Issue #175](https://github.com/G
 
 ## 🤖 Models
 
-**Supported providers (16+, all from models.dev cross-check 2026-07):**
+**Supported providers (15+, last verified 2026-11-06 against [models.dev](https://models.dev/)):**
 
 | Provider | Series | Notes |
 |----------|--------|-------|
@@ -294,7 +312,7 @@ This plugin feeds the LLM your full Wiki context per query — so **long-context
 
 - **🧠 Context window ≥ 200K tokens** for vaults over ~500 pages. Below 200K the cascade may drop earlier stages to fit.
 - **⚖️ Instruction-following quality** matters more than raw IQ for the extraction task — pick a model that follows the schema template, not the biggest leaderboard number.
-- **🔌 Embedding endpoint is irrelevant** — we don't use embeddings. A provider that lacks `/v1/embeddings` is fine (most of our 16+ providers don't ship one).
+- **🔌 Embedding endpoint is irrelevant** — we don't use embeddings. A provider that lacks `/v1/embeddings` is fine (most of our 15+ providers don't ship one).
 - **🦙 Local works for query, cloud for ingest** — ingest on a 2,000-page vault usually needs a long-context cloud model; a 262K local model covers most queries.
 
 For PDF / image / Office ingest, see [Document / PDF / Image ingest](#-document--pdf--image-ingest) in Features — Anthropic, OpenAI, Bedrock, and Gemini read PDFs as file parts natively; the built-in MinerU backend (v1.27.0+) and **Force PDF Support** cover everything else.
@@ -392,6 +410,10 @@ If Karpathy LLM Wiki has become a meaningful part of your knowledge workflow:
 Thanks to the following for supporting the project:
 
 [@jameses-cyber](https://github.com/jameses-cyber), [@issaqua](https://github.com/issaqua), Dikson Choi
+
+### Contributing
+
+Bug reports and pull requests are both useful. [CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) covers the build, the test loop and the checks a change must pass; [CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) is short. [ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) shows what is planned, and [CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) records what shipped.
 
 ---
 
