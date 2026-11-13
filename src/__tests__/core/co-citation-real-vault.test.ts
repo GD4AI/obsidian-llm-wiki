@@ -139,11 +139,14 @@ describe.skipIf(available.length === 0)('#781 — co-citation on a real vault', 
 				expect(m.aShare).toBeLessThanOrEqual(m.aBaseRate * 1.5 + 0.02);
 			});
 
-			it('does not make the bias worse by cutting at the cap', () => {
-				// The cut keeps the head of a ranked list, so it can only amplify an
-				// ordering bias. This asserts the direction, not a magnitude: a vault whose
-				// capped share exceeds the uncapped one would mean the ranking compounds
-				// the defect the floor removed.
+			it('does not make the bias much worse by cutting at the cap', () => {
+				// The cut keeps the head of a ranked list, so it can amplify an ordering
+				// bias. It does amplify it: measured +2.5 points on test10 and +0.7 on
+				// test8 (capped share over uncapped), which is the small compounding the
+				// same-source defect produces (#1017). So this asserts a *bound* — no
+				// large compounding — rather than the direction, because the direction is
+				// already lost on both vaults. A cap of 3 cannot be bought back without
+				// removing same-source pairs from the candidate set, which is #1017's job.
 				expect(m.aShare).toBeLessThanOrEqual(m.aShareUncapped + 0.05);
 			});
 

@@ -810,10 +810,10 @@ own pass condition required.
 - **③ The graph is built once per run.** `GraphCache.invalidate()` runs from `invalidatePageCaches`,
   which every write reaches; the related-shaping block runs per source note, so `getOrBuildGraph` there
   reads every page body per note — ≈413 × 1,274 = **526,000 reads**, the class #662 had just removed.
-  `lint/controller.ts:98` is the precedent. **The memo's limit (#781, 2026-11-10):** only the note being
-  ingested has its pages in the graph, so a page created by an **earlier** note is invisible for the rest
-  of the run and an empty-vault rebuild projects nothing. "Freshness is not lost" was wrong for exactly
-  those pages.
+  `lint/controller.ts:98` is the precedent. **The memo's limit (#781, 2026-11-10, corrected 2026-11-13):**
+  the graph holds the vault as it was at the run's first note — no page written during the run is in it,
+  because `shapeRelatedListsForRun` (`wiki-engine.ts:1088`) runs before `planPageSet` (`:1089`). The
+  current note's pages come from `willExist` (`:1392`) and the sibling rule; an earlier note's from nothing.
 - **Evaluated and not taken: `app.metadataCache.resolvedLinks`** — zero-disk-read and updated on write,
   and my first rejection reason was wrong (`wiki-engine.ts:505` already reads `getFileCache`). Not taken
   because its shape differs from the query path's PPR graph, which the record says to reuse.
