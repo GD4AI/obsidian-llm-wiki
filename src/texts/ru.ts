@@ -687,6 +687,7 @@ export const RU_TEXTS = {
     lintHubLinkDensityReview: '🔍 проверить',
     lintHubLinkDensityKeep: '✅ оставить',
     lintHubLinkDensitySummary: 'Сводка: {strip} стр. рекомендовано для удаления, {review} стр. рекомендовано для проверки.',
+    lintHubLinkDensityIntro: 'Этот раздел смотрит исходящие ссылки хаба: ведут ли они на страницы, которые уже покрыты его соседями. Кандидаты в кристаллизованные хабы измеряют другое: связывают ли соседи друг друга. Два списка могут называть разные страницы, и ни один не подразумевает другой.',
     lintHubLinkDensityNoRelated: ' (раздел ## Related не найден)',
     lintContradictionOpen: 'Открытые противоречия: {count}',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

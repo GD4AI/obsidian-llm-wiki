@@ -705,6 +705,7 @@ export const EN_TEXTS = {
     lintHubLinkDensityReview: '🔍 review',
     lintHubLinkDensityKeep: '✅ keep',
     lintHubLinkDensitySummary: 'Summary: {strip} page(s) recommended for strip, {review} page(s) recommended for review.',
+    lintHubLinkDensityIntro: 'This measures the hub\'s out-links: do they point at pages its neighbours already cover. Crystallized hub candidates measures a different thing — whether the neighbours link each other. The two lists can name different pages, and neither implies the other.',
     lintHubLinkDensityNoRelated: ' (no ## Related section found)',
     lintContradictionOpen: 'Open contradictions: {count}',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

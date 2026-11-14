@@ -724,6 +724,7 @@ export const KO_TEXTS = {
     lintHubLinkDensityReview: '🔍 검토',
     lintHubLinkDensityKeep: '✅ 유지',
     lintHubLinkDensitySummary: '요약: 제거 권장 {strip}페이지, 검토 권장 {review}페이지.',
+    lintHubLinkDensityIntro: '이 절은 허브의 바깥 링크를 봅니다. 링크 대상이 이웃 페이지에서 이미 다루어지는지 여부입니다. 결정화된 허브 후보는 다른 성질을 봅니다. 이웃 페이지가 서로 링크하는지 여부입니다. 두 목록은 서로 다른 페이지를 담을 수 있고, 어느 쪽도 다른 쪽을 포함하지 않습니다.',
     lintHubLinkDensityNoRelated: ' (## Related 섹션을 찾을 수 없음)',
     lintContradictionOpen: '해결되지 않은 모순: {count}개',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

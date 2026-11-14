@@ -180,6 +180,11 @@ export function buildLintReport(input: ReportInput): string {
     const stripCount = actionableHubs.filter(h => h.recommendation === 'strip').length;
     const reviewCount = actionableHubs.filter(h => h.recommendation === 'review').length;
     progReport += `## ${t.lintHubLinkDensitySection.replace('{count}', String(actionableHubs.length))}\n\n`;
+    // #1025: the reader is standing here when this list and the crystallized list
+    // disagree, so the distinction belongs here rather than in either section's
+    // heading. The two measure different properties — out-links versus neighbour
+    // interlinking — and neither implies the other.
+    progReport += `${t.lintHubLinkDensityIntro}\n\n`;
     for (const h of actionableHubs) {
       const rel = h.pagePath.replace(folder + '/', '').replace('.md', '');
       const actionLabel = h.recommendation === 'strip'

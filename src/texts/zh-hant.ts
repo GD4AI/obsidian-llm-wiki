@@ -634,6 +634,7 @@ export const ZH_HANT_TEXTS = {
     lintHubLinkDensityReview: '🔍 建議覆核',
     lintHubLinkDensityKeep: '✅ 保留',
     lintHubLinkDensitySummary: '摘要：{strip} 個頁面建議剝離，{review} 個頁面建議覆核。',
+    lintHubLinkDensityIntro: '本段看這個樞紐的出鏈：它指向的頁面，鄰居是否已經覆蓋。結晶化樞紐候選看的是另一件事：鄰居之間是否互相連結。兩份清單可能列出不同頁面，互不包含。',
     lintHubLinkDensityNoRelated: ' （未找到 ## Related 區塊）',
     lintNoIssuesFound: '未檢測到重複、斷鏈、空洞、孤立頁面或無來源引證。',
     lintSourceDriftSection: '匯入後已變更的來源筆記 [共 {count} 個]',

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The lint report says how its two hub sections differ (Issue #1025).** Measured on a 2,141-page vault: 13 pages are crystallized hub candidates, 3 are named by the hub-link-density section, and no page is in both. The two measure different properties — whether a hub's out-links point at pages its neighbours already cover, versus whether the neighbours link each other — so neither list implies the other. The distinction is stated in the density section, in all eleven locales.
 - **`data.json` no longer carries `llmReady` (Issue #1016).** It is derived: `loadSettings` measures it on every load. It was still being written by every settings save, and before `#1013` the file's copy outranked the measurement. Removing the write changes the persisted shape, which is why it is its own change rather than a fix. An existing `data.json` that still contains the key loads normally and the value is ignored. `RUNTIME_ONLY_SETTINGS_FIELDS` names the fields that must never be persisted, and a test fails when any write path bypasses the filter.
 
 ### Fixed

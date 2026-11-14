@@ -648,6 +648,7 @@ export const JA_TEXTS = {
     lintHubLinkDensityReview: '🔍 確認',
     lintHubLinkDensityKeep: '✅ 保持',
     lintHubLinkDensitySummary: '要約：削除推奨 {strip} ページ、確認推奨 {review} ページ。',
+    lintHubLinkDensityIntro: 'この節はハブの外向きリンクを見ます。リンク先が隣接ページで既にカバーされているかどうかです。結晶化したハブ候補は別の性質を見ます。隣接ページ同士がリンクしているかどうかです。二つの一覧は別のページを挙げることがあり、一方が他方を含みません。',
     lintHubLinkDensityNoRelated: ' （## Related セクションが見つかりません）',
     lintContradictionOpen: '未解決の矛盾：{count}件',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

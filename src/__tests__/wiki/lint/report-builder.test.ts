@@ -278,4 +278,13 @@ describe('hub link density section (#1034)', () => {
     expect(reportFor('review')).toMatch(/hub link density/i);
     expect(reportFor('strip')).toMatch(/hub link density/i);
   });
+
+  it('says how this list differs from the crystallized list (#1025)', () => {
+    // Measured: 13 crystallized pages and 3 density pages on a 2,141-page vault, with
+    // no page in both. A reader who sees one list and not the other needs the reason.
+    const report = reportFor('review');
+    expect(report).toMatch(/out-links/i);
+    expect(report).toMatch(/Crystallized hub candidates/);
+    expect(report, 'the reader must be told neither list implies the other').toMatch(/neither implies the other/i);
+  });
 });
