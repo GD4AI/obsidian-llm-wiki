@@ -2,8 +2,8 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-13) for the canonical composition record. | **Updated:** 2026-11-13 — `main` at `39f178d7`, 5,403 tests / 403 files
-**Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12. `v1.31.0` shipped the stream-transport cycle (#980), the output-ceiling memory (#912), the minified bundle (#1007), and the two housekeeping tracks (#930 / #932). What did not land stays open on its own issue rather than as milestone debt: **#781** (blocked on a review, not on code), **#1016** (the runtime-only field list), **#1017** / **#1018** (the two projection defects the review of #781 found), **#729** (waiting on a comparable measurement), **#873** (the taxonomy change that would fire MAJOR, and the home of #902's Option B).
+**Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-13) for the canonical composition record. | **Updated:** 2026-11-13 — `main` at `5655feb5`, 5,449 tests / 406 files
+**Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12, scope decided 2026-11-13. Delivered in v1.31.0: the stream-transport cycle (#980), the output-ceiling memory (#912), the minified bundle (#1007), the two housekeeping tracks (#930 / #932), and both projection defects a review of #781 found (#1017, #1018). **v1.32.0 takes three fixes and two measurements** — #1016, #664's additions half, #677, plus #1025 and #910, which decide report text rather than code. Deferred with a reason each: #787 and #668 (both change the settings shape, so they follow #1016), #822 (declined as a parser), #891 (blocked on semantics), #729 / #1028 (waiting on a comparable measurement), #873 (MAJOR trigger 1, needs a migration design).
 **#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 11 locales.
 
 **Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
@@ -29,13 +29,9 @@ ROADMAP does not duplicate process standards or shipped-version details — only
 
 ---
 
-## v1.31.0 MINOR — the transport and ceiling cycle
+## v1.31.0 MINOR — shipped, composition record in the CHANGELOG
 
-**The generation ceiling becomes a resolver, not a number (Issue #1019).** First available layer wins: the user's
-`maxTokensPerCall`; the value a provider accepted last time; the provider's own limit — **omitted** for `anthropic`
-and `openai` (the model's limit), `32,000` for compat and local (nothing is knowable); then `contextWindow − input`.
-A rejected ceiling halves and is remembered, twice at most, floor `4,000` (extraction keeps `16,000`). No model-limit
-table: it goes stale, and `contextWindow` is a machine fact the user owns. Composition: [CHANGELOG §1.31.0](./CHANGELOG.md#1310---2026-11-12).
+**The transport and ceiling cycle: #980, #912, #1007, #930, #932.** The generation ceiling became a resolver rather than a number (#1019), and no model-limit table was shipped — it goes stale, and `contextWindow` is a machine fact the user owns. Composition: [CHANGELOG §1.31.0](./CHANGELOG.md#1310---2026-11-13).
 
 ## v1.30.0 MINOR — Design track
 
@@ -97,24 +93,25 @@ before its own release, and the reason the 2026-10-26 move emptied `v1.29.0 MINO
 **Waiting on someone else, not on a decision:** **#891** — four AI SDK packages must ship one `provider-utils` copy, and 7.0.142 collapsed the duplicate, so what is left is an upstream version to wait for rather than work to do.
 **Shipped, and where that record lives:** [CHANGELOG.md](./CHANGELOG.md). A "resolved since this queue was written" list used to sit here. It was removed on 2026-10-12: it had been frozen at 2026-10-03, and a frozen resolve list reads as current state long after it stops being true. The per-version composition record is canonical in CHANGELOG, and a second copy here is a second place to be wrong.
 
-### The next-work order — 2026-11-10, ranked by what the guardrail proves
+### The v1.32.0 order — 2026-11-13, ranked by what the guardrail proves
 
-The ROI rule is [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived). It ranks by impact, certainty and effort. It cannot see one property, and that property decides the order below: **does the item replace a proxy with the thing the proxy stands in for?**
+The ROI rule is [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lists--the-roi-rule-tier-tables-archived): impact, certainty, effort. The property it cannot see, and the one that decides this order, is **does the item replace a proxy with the thing the proxy stands in for?** The 2026-11-10 order's first four rows shipped (#980 as #1006, #932's two functions, #872's residue), so the list is rebuilt from what is open, not carried.
 
-The reason is measured, not preferred. A lint snapshot was cited as the guard for about 430 moved lines, three mutations passed the full suite, and #981 had to build the coverage afterwards. The same shape sits in three more places: a line count where size matters, a context budget where the whole request mattered, an `import` scan where module loading mattered. Work that ends one of those four is worth more than work of equal effort that does not.
+| # | Item | Why here |
+|---|---|---|
+| **1** | **#1016** — the runtime-only field list, and stop writing `llmReady` | A derived value on disk is read back as fact. It also settles the settings shape that items 5 and 7 build on |
+| **2** | **#664's additions half** — bound the additions, delete nothing | Related lists grow linearly in source count (18.4 entries at ≥8 sources). Deleting entries needs a ranking, and that waits on #729 Phase 2 |
+| **3** | **#1025** — crystallized ∩ link-density `strip` | Two report sections may describe one property. The measurement decides a deletion, not a sentence |
+| **4** | **#677** — a move is not an edit | `renameFile` rewrites inbound links, the hash sees a new body, and untouched notes report drifted |
+| **5** | **#787** — source-document notes may skip the lemma guarantee | Needs a setting, so it follows #1016 rather than racing it |
+| **6** | **#910** — the chain of custody for exact values | No prompt changes before the coverage is counted |
+| **7** | **#668** — nine sections into three tabs | Last of the three settings-shape items, and the largest locale surface |
+| **8** | **#891** — align the four AI SDK packages | Blocked on semantics, not versions: what "interrupted" means decides the error branch |
+| **9** | **#822** — EPUB | **Declined as a parser**, ground from two comments on the issue: the gate accepts `md`/`txt`/`pdf` (`constants.ts:35`) and MinerU adds Office but not EPUB (`:43`); `wiki/pdf-converter.ts:155` sends the file as `mediaType: 'application/pdf'`, so nothing here parses PDF either and an EPUB has no media type to ride. Converting EPUB to PDF first is the boundary expansion itself, and reading EPUB means owning ZIP, XHTML, chapter order, images and CSS — a document reader, not a wiki. What stays is a conversion recipe in the docs |
 
-| # | Item | The proxy it replaces | Effort | Why here |
-|---|---|---|---|---|
-| **1** | The golden net checks itself — a script applying known mutations and asserting the net fails — plus recording the frontmatter values the plugin itself writes | "the net exists" → "the net fails when the code breaks" | ~half a day | It decides whether the other 5,307 tests mean anything |
-| **2** | **#980** — iOS aborts any ingest call that runs 60 s without data | "the transport works" → "the transport keeps the connection alive". The other end of #886's axis: the context has a ceiling, the request has none | ~1 hour for the private-IP half | The only open defect that stops a user finishing the task |
-| **3** | **#872's residue** — the exclusion predicate is silent when the parser is absent | "a missing parser falls open" → "it says so". The throwing branch has a test and a warning; the absent branch has neither | ~20 minutes | A review named it untested; that was half true, and this is the true half |
-| **4** | **#932's remaining two functions** — `runDedupPhase` (739), `ingestSource` (726) | "the function is shorter" → "the behaviour is pinned" | one PR each | Cannot start before item 1, or the move is again verified by reading |
-| **5** | **#729's decision rule** — `n ≥ 40`, and write down what failing means | "a p-value" → "a test able to detect the effect". 15/20 is p=0.041 and power 0.42 at a true 0.70 | ~10 minutes | Text only, and it waits on @DocTpoint |
-| **6** | **arch-check** prints a new cross-layer edge before the cycle it causes; **ROADMAP**'s ceiling moves to bytes | "the 79-file cycle first" → "the reason first" | low | Both are read on every failure |
+**Not work, so a review does not re-open it.** `arch-check` does not scan `require()` — `src/` holds three, all Node built-ins reached through `createRequire`, so the gap is theoretical and closing it costs more than the risk. **#880's second half** (clamping `max_tokens` to the remaining window, and calibrating the estimate from `usage`) is a new defect and needs its own issue, not a row.
 
-**Two things named here as *not* work, so a review does not re-open them.** `arch-check` does not scan `require()`; `src/` holds three, all pointing at Node built-ins through `createRequire`, so the gap is theoretical and closing it costs more than the risk. And **#880 shipped as #886 with one half missing** — the context got a token ceiling, `max_tokens` is still not clamped to the remaining window, and `usage` never calibrates the estimate. That is a new defect and needs its own issue, not a row here.
-
-**#781 stays held** until #729's rule is answered, and **#873** is the MAJOR trigger waiting on the design thread. The refactor track's status lives in #925.
+**Blocked:** #1028 and #729 Phase 2 wait on @DocTpoint's 3,071-page vault; #873 fires MAJOR trigger 1 and needs a migration design. The refactor track's status lives in #925.
 
 ### The lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
