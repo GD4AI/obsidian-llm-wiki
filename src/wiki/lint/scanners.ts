@@ -12,6 +12,7 @@ import { isDomainTag } from '../../core/domain-axis';
 import { normalizeQuote, isQuoteGrounded } from './utils';
 import { isStubPage } from '../page-factory/stub-page';
 import { LLMWikiSettings } from '../../types';
+import { linkReducedBody } from '../../core/ingest-state';
 
 export interface ScannerPage {
   path: string;
@@ -591,6 +592,15 @@ export interface SourceDriftIssue {
   note: string;
   storedHash: string;
   currentHash: string;
+  /**
+   * `links-only` when the body is unchanged apart from link paths (#677).
+   *
+   * A page move rewrites inbound links through Obsidian, so a note nobody touched gains
+   * eight characters per link and its stored `contentHash` stops matching. The link
+   * fingerprint tells that apart from an edit; the two findings carry different text
+   * because they ask the user for different things.
+   */
+  kind: 'edited' | 'links-only';
 }
 
 /**
@@ -632,19 +642,28 @@ export function scanSourceDrift(
     const notePaths = originNoteRefs(fm);
     if (notePaths.length === 0) continue;
 
+    const storedLinkHash = (fm as Record<string, unknown>).linkHash;
     let anyReadable = false;
     let anyMatch = false;
-    let firstMismatch: { note: string; currentHash: string } | null = null;
+    let firstMismatch: { note: string; currentHash: string; kind: 'edited' | 'links-only' } | null = null;
     for (const notePath of notePaths) {
       const noteContent = noteContents.get(notePath);
       if (noteContent === undefined) continue;
       anyReadable = true;
-      const currentHash = hashBody(extractBody(noteContent));
+      const body = extractBody(noteContent);
+      const currentHash = hashBody(body);
       if (currentHash === storedHash) {
         anyMatch = true;
         break;
       }
-      if (!firstMismatch) firstMismatch = { note: notePath, currentHash };
+      if (!firstMismatch) {
+        // #677: a body that matches once link paths are reduced only moved its links.
+        const linksOnly =
+          typeof storedLinkHash === 'string' &&
+          storedLinkHash !== '' &&
+          hashBody(linkReducedBody(body)) === storedLinkHash;
+        firstMismatch = { note: notePath, currentHash, kind: linksOnly ? 'links-only' : 'edited' };
+      }
     }
 
     if (anyReadable && !anyMatch && firstMismatch) {
@@ -653,6 +672,7 @@ export function scanSourceDrift(
         note: firstMismatch.note,
         storedHash,
         currentHash: firstMismatch.currentHash,
+        kind: firstMismatch.kind,
       });
     }
   }

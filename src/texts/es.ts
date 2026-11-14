@@ -697,6 +697,8 @@ export const ES_TEXTS = {
     lintNoIssuesFound: 'No se detectaron duplicados, enlaces rotos, páginas vacías, páginas huérfanas ni citas sin fuente.',
     lintSourceDriftSection: 'Notas fuente modificadas desde la ingesta [{count}]',
     lintSourceDriftItem: '- [[{page}]] — la nota de origen [[{note}]] fue editada después de la ingesta; la página puede estar desactualizada',
+    lintSourceDriftLinksOnlySection: 'Notas de origen con enlaces cambiados, contenido intacto [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — en [[{note}]] solo cambiaron las rutas de enlace (se movió una página); el resumen no está desactualizado',
     lintContradictionMarkerSection: 'Páginas marcadas con contradicciones (triaje de fusión) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — fuente(s) en conflicto: {sources}; tras revisar, elimine el marcador contradictions:',
     lintQuoteGroundingSection: 'Citas sin fuente (detectadas) [{count}]',

@@ -208,3 +208,32 @@ describe('WikiEngine.createOrUpdateFile — NFC/NFD path resolution (#173 Sympto
     expect(h.stats.vaultMarkdownScans).toBe(0);
   });
 });
+
+// #677 — the ingest stamps a second fingerprint, and it is the one that survives a move.
+describe('WikiEngine.ingestSource — the link fingerprint (#677)', () => {
+  it('writes linkHash next to contentHash, and they differ when the note links by path', async () => {
+    const body = 'Ein Satz über [[Notizen/Langzeitgedächtnis|Langzeitgedächtnis]].';
+    const h = createWikiEngineHarness({
+      files: { 'Notizen/quelledrift.md': body },
+      llmResponses: [JSON.stringify({
+        source_title: 'Quelledrift',
+        summary: 's',
+        entities: [{ name: 'Alpha', type: 'other', summary: 's', mentions_in_source: ['x'], related_entities: [] }],
+        concepts: [],
+      })],
+    });
+    await h.engine.ingestSource(Object.assign(new TFile(), {
+      path: 'Notizen/quelledrift.md', basename: 'quelledrift', extension: 'md',
+    }));
+    // The source page carries a content-derived suffix, so find it by prefix.
+    const pagePath = h.writtenPaths.find(p => /^wiki\/sources\/quelledrift/.test(p)) ?? '';
+    const page = h.files.get(pagePath) ?? '';
+    expect(page).toMatch(/contentHash: /);
+    expect(page, 'a move would be reported as an edit without this field').toMatch(/linkHash: /);
+    const contentHash = /contentHash: ([\w-]+)/.exec(page)?.[1];
+    const linkHash = /linkHash: ([\w-]+)/.exec(page)?.[1];
+    // The body hash covers the literal `[[Notizen/...]]`; the link hash reduces it to
+    // the display text, so the two are equal only when no link is written by path.
+    expect(contentHash).not.toEqual(linkHash);
+  });
+});

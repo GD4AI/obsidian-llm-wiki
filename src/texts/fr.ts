@@ -628,6 +628,8 @@ export const FR_TEXTS = {
     lintNoIssuesFound: 'Aucun doublon, lien cassé, page vide, page orpheline ou citation non fondée détecté.',
     lintSourceDriftSection: 'Notes sources modifiées depuis l\'ingestion [{count}]',
     lintSourceDriftItem: '- [[{page}]] — la note d\'origine [[{note}]] a été modifiée après l\'ingestion ; la page peut être obsolète',
+    lintSourceDriftLinksOnlySection: 'Notes sources dont seuls les liens ont changé [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — dans [[{note}]], seuls les chemins de liens ont changé (page déplacée) ; le résumé n\'est pas périmé',
     lintContradictionMarkerSection: 'Pages marquées de contradictions (triage de fusion) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — source(s) en conflit : {sources} ; après examen, retirez le marqueur contradictions:',
     lintQuoteGroundingSection: 'Citations non fondées (détectées) [{count}]',

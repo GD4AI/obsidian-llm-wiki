@@ -711,6 +711,8 @@ export const IT_TEXTS = {
     lintNoIssuesFound: 'Nessun duplicato, collegamento interrotto, pagina vuota, pagina orfana o citazione non fondata rilevato.',
     lintSourceDriftSection: 'Note sorgente modificate dopo l\'ingestione [{count}]',
     lintSourceDriftItem: '- [[{page}]] — la nota di origine [[{note}]] è stata modificata dopo l\'ingestione; la pagina potrebbe non essere aggiornata',
+    lintSourceDriftLinksOnlySection: 'Note di origine con soli link modificati [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — in [[{note}]] sono cambiati solo i percorsi dei link (pagina spostata); il riepilogo non è obsoleto',
     lintContradictionMarkerSection: 'Pagine contrassegnate con contraddizioni (triage di unione) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — fonte/i in conflitto: {sources}; dopo la revisione rimuovere il marcatore contradictions:',
     lintQuoteGroundingSection: 'Citazioni non fondate (rilevate) [{count}]',

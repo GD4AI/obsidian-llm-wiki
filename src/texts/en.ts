@@ -685,6 +685,8 @@ export const EN_TEXTS = {
     lintNoIssuesFound: 'No duplicates, dead links, empty pages, orphan pages, or ungrounded quotes detected.',
     lintSourceDriftSection: 'Source notes changed since ingest [{count}]',
     lintSourceDriftItem: '- [[{page}]] — origin note [[{note}]] was edited after ingest; the page may be stale',
+    lintSourceDriftLinksOnlySection: 'Source notes whose links changed, content did not [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — only link paths changed in [[{note}]] (a page moved); the summary is not stale',
     lintContradictionMarkerSection: 'Pages flagged with contradictions (merge triage) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — conflicting source(s): {sources}; review and remove the contradictions: marker when settled',
     lintQuoteGroundingSection: 'Ungrounded quotes (detected) [{count}]',

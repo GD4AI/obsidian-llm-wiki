@@ -159,6 +159,7 @@ describe('source drift section (Issue #220 Tier 0)', () => {
           note: 'Notizen/Butyrat.md',
           storedHash: '22-aaaaaaaa',
           currentHash: '25-bbbbbbbb',
+          kind: 'edited' as const,
         }],
       }),
       duplicates: [],
@@ -168,6 +169,8 @@ describe('source drift section (Issue #220 Tier 0)', () => {
     });
     expect(report).toContain('Source notes changed since ingest [1]');
     expect(report).toContain('[[sources/butyrat]]');
+    // #677: a link-only change is its own section, never "edited after ingest".
+    expect(report).not.toContain('only link paths changed');
     expect(report).toContain('[[Notizen/Butyrat]]');
     expect(report).not.toContain('No issues found');
   });
@@ -286,5 +289,37 @@ describe('hub link density section (#1034)', () => {
     expect(report).toMatch(/out-links/i);
     expect(report).toMatch(/Crystallized hub candidates/);
     expect(report, 'the reader must be told neither list implies the other').toMatch(/neither implies the other/i);
+  });
+});
+
+describe('source drift: a moved page is not an edit (#677)', () => {
+  const drift = (kind: 'edited' | 'links-only') => buildLintReport({
+    settings: makeSettings(),
+    findings: makeFindings({
+      sourceDriftIssues: [{
+        sourcePage: 'wiki/sources/langzeitgedaechtnis.md',
+        note: 'Notizen/Langzeitgedächtnis.md',
+        storedHash: '22-aaaaaaaa',
+        currentHash: '25-bbbbbbbb',
+        kind,
+      }],
+    }),
+    duplicates: [],
+    contradictionsReport: '',
+    elapsedSeconds: 1,
+    totalPages: 10,
+  });
+
+  it('reports a link-only change in its own section, with its own wording', () => {
+    const report = drift('links-only');
+    expect(report).toContain('Source notes whose links changed, content did not [1]');
+    expect(report).toContain('only link paths changed');
+    expect(report, 'a link rewrite was reported as an edit').not.toContain('was edited after ingest');
+  });
+
+  it('keeps a real edit in the edited section', () => {
+    const report = drift('edited');
+    expect(report).toContain('Source notes changed since ingest [1]');
+    expect(report).not.toContain('only link paths changed');
   });
 });

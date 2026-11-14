@@ -624,6 +624,8 @@ export const JA_TEXTS = {
     lintNoIssuesFound: '重複、リンク切れ、空ページ、孤立ページ、または根拠のない引用は検出されませんでした。',
     lintSourceDriftSection: '取り込み後に変更されたソースノート [{count} 件]',
     lintSourceDriftItem: '- [[{page}]] — 元ノート [[{note}]] が取り込み後に編集されました。ページが古い可能性があります',
+    lintSourceDriftLinksOnlySection: 'リンクのみ変更されたソースノート [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — [[{note}]] はリンクのパスのみ変更（ページ移動）。要約は古くなっていません',
     lintContradictionMarkerSection: '矛盾マーカー付きページ（マージトリアージ）[{count} 件]',
     lintContradictionMarkerItem: '- [[{page}]] — 矛盾するソース: {sources}。確認後に contradictions: マーカーを削除してください',
     lintQuoteGroundingSection: '根拠のない引用（検出）[{count} 件]',
