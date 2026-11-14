@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildKnownTargets, detectAliasDeficiency, scanDeadLinks, scanOrphans, scanTagViolations, scanSourceDrift, scanContradictionMarkers, ScannerPage } from '../../../wiki/lint/scanners';
 import { hashBody } from '../../../core/source-requirements';
+import { linkReducedBody } from '../../../core/ingest-state';
 import { LLMWikiSettings } from '../../../types';
 
 // ── buildKnownTargets ─────────────────────────────────────────
@@ -514,6 +515,43 @@ describe('scanSourceDrift', () => {
     expect(issues[0].note).toBe('Notizen/Butyrat.md');
     expect(issues[0].storedHash).toBe(hashOf(noteBody));
     expect(issues[0].currentHash).toBe(hashOf('Revised note body — the claim changed.'));
+  });
+
+  it('marks a path-only rewrite as links-only, not as an edit (#677)', () => {
+    // The measured shape: `[[Langzeitgedächtnis]]` became `[[Notizen/Langzeitgedächtnis]]`
+    // when the page moved, eight characters longer, nothing else touched.
+    const before = 'Siehe [[Langzeitgedächtnis]].';
+    const after = 'Siehe [[Notizen/Langzeitgedächtnis]].';
+    const pageMap = new Map<string, ScannerPage>([
+      page('wiki/sources/langzeitgedaechtnis.md', [
+        'type: source',
+        `contentHash: ${hashOf(before)}`,
+        `linkHash: ${hashBody(linkReducedBody(before))}`,
+        'sources:',
+        '  - Notizen/Langzeitgedächtnis.md',
+      ]),
+    ]);
+    const notes = new Map([['Notizen/Langzeitgedächtnis.md', after]]);
+    const issues = scanSourceDrift(pageMap, notes, folder);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind, 'a moved page was reported as an edited note').toBe('links-only');
+  });
+
+  it('keeps the edited kind when the words changed too', () => {
+    const before = 'Siehe [[Langzeitgedächtnis]].';
+    const after = 'Siehe [[Notizen/Langzeitgedächtnis]] und mehr.';
+    const pageMap = new Map<string, ScannerPage>([
+      page('wiki/sources/langzeitgedaechtnis.md', [
+        'type: source',
+        `contentHash: ${hashOf(before)}`,
+        `linkHash: ${hashBody(linkReducedBody(before))}`,
+        'sources:',
+        '  - Notizen/Langzeitgedächtnis.md',
+      ]),
+    ]);
+    const notes = new Map([['Notizen/Langzeitgedächtnis.md', after]]);
+    const issues = scanSourceDrift(pageMap, notes, folder);
+    expect(issues[0].kind).toBe('edited');
   });
 
   it('does not flag when the note body still matches (whitespace-insensitive)', () => {

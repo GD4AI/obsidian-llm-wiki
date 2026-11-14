@@ -639,6 +639,8 @@ export const ZH_HANT_TEXTS = {
     lintNoIssuesFound: '未檢測到重複、斷鏈、空洞、孤立頁面或無來源引證。',
     lintSourceDriftSection: '匯入後已變更的來源筆記 [共 {count} 個]',
     lintSourceDriftItem: '- [[{page}]] — 原始筆記 [[{note}]] 在匯入後被編輯，頁面內容可能已過時',
+    lintSourceDriftLinksOnlySection: '連結變更、內容未變的來源筆記 [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — [[{note}]] 中只有連結路徑變更（頁面曾被移動）；摘要未過期',
     lintContradictionMarkerSection: '帶有矛盾標記的頁面（合併分流）[共 {count} 個]',
     lintContradictionMarkerItem: '- [[{page}]] — 衝突來源：{sources}；審閱後請移除 contradictions: 標記',
     lintQuoteGroundingSection: '無來源引證（程式檢測）[共 {count} 個]',

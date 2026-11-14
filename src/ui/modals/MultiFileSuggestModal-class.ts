@@ -24,7 +24,7 @@ import type { IngestQueue } from '../../core/ingest-queue';
 import { COMPATIBLE_SOURCE_EXTENSIONS } from '../../constants';
 import { isExcludedFromSourcePicker } from '../../core/folder-scope';
 import { slugify } from '../../core/slug';
-import { pageBelongsToNote, noteHasDrifted, type IngestDiskState } from '../../core/ingest-state';
+import { pageBelongsToNote, noteDriftState, type IngestDiskState } from '../../core/ingest-state';
 import { resolveRowState, type RowState } from './multi-file-row-state';
 
 export class MultiFileSuggestModal extends Modal {
@@ -521,8 +521,11 @@ export class MultiFileSuggestModal extends Modal {
       if (pageContent === null) continue;
       if (!pageBelongsToNote(pageContent, file.path)) continue;
       const noteContent = await this.readOrNull(file.path);
-      const drifted = noteContent !== null && noteHasDrifted(pageContent, noteContent);
-      states.set(file.path, drifted ? 'drifted' : 'ingested');
+      // #677: `links-only` is not drift. A page move rewrites inbound links through
+      // Obsidian, so a note nobody edited gains characters on disk; the row must keep
+      // saying "ingested" rather than send the user to re-read a note that is unchanged.
+      const state = noteContent === null ? 'unknown' : noteDriftState(pageContent, noteContent);
+      states.set(file.path, state === 'edited' ? 'drifted' : 'ingested');
     }
 
     if (token !== this.diskScanToken) return;
