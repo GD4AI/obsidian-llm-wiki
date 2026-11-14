@@ -17,6 +17,7 @@ import type { LLMClient } from '../types';
 import { isIngestableSource } from '../core/folder-scope';
 import { makeUserIgnorePredicate } from '../core/user-ignore';
 import { localDateStamp } from '../core/format';
+import { persistedSettings } from '../types/settings';
 
 /**
  * Issue #957 — the periodic lint period for a setting value, in milliseconds.
@@ -384,7 +385,7 @@ export class AutoMaintainManager {
       // `saveData`, not `plugin.saveSettings()`: the plugin method also rebuilds
       // the LLM client, re-syncs the schema manager and may invalidate query
       // graphs. A clock tick must write one field and touch nothing else.
-      await this.plugin.saveData(this.settings);
+      await this.plugin.saveData(persistedSettings(this.settings));
     } catch (error) {
       console.warn('AutoMaintain: could not persist the periodic lint clock:', error);
     }

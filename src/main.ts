@@ -5,6 +5,7 @@ import {
   LLMClient,
   IngestReport,
 } from './types';
+import { persistedSettings } from './types/settings';
 import { NOTICE_NORMAL, NOTICE_ABORT, MINERU_API_TOKEN_SECRET_ID } from './constants';
 import { preloadLLMClientModules } from './llm-sdk/create-llm-client';
 import { isProviderConfigured } from './core/provider-auth';
@@ -276,7 +277,7 @@ export class LLMWikiPlugin extends Plugin {
 
     if (savedData && !savedData.wikiLanguage) {
       this.settings.wikiLanguage = this.settings.language;
-      await this.saveData(this.settings);
+      await this.saveData(persistedSettings(this.settings));
     }
 
     if (!Array.isArray(this.settings.watchedFolders)) {
@@ -286,7 +287,7 @@ export class LLMWikiPlugin extends Plugin {
 
     if (applied.length > 0 && !migrationWriteFailed) {
       console.debug(`loadSettings: applied migrations: ${applied.join(', ')}`);
-      await this.saveData(this.settings);
+      await this.saveData(persistedSettings(this.settings));
     }
 
     console.debug(
@@ -346,7 +347,10 @@ export class LLMWikiPlugin extends Plugin {
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    // #1016: a field the plugin derives at runtime is not written. `llmReady` is
+    // measured on every load (`loadSettings`), so a copy on disk can only ever be
+    // stale — and before #1013 it outranked the measurement.
+    await this.saveData(persistedSettings(this.settings));
     this.initializeLLMClient();
     this.schemaManager?.updateSettings(this.settings);
     if (this.wikiEngine) {

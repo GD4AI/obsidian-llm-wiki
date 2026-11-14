@@ -631,3 +631,31 @@ export const DEFAULT_SETTINGS: LLMWikiSettings = {
 
 // Parts split out by #929. Imported for local use and re-exported, so no
 // caller's import changes.
+
+// Issue #1016 — the fields that must not be persisted.
+//
+// `#1013` fixed one instance of a class of bug: `llmReady` was written to
+// `data.json` by `saveSettings()` and then trusted on load, so a stale value on disk
+// outranked a fresh measurement. The instance is gone; the class needed a guard, and
+// this list is it.
+//
+// The type is what makes the guard survive a rename: every entry is a key of
+// `LLMWikiSettings`, so renaming the field fails `tsc` here instead of silently
+// leaving a name that matches nothing and strips nothing.
+//
+// `queryHistory` is deliberately absent. It is runtime state that is meant to survive
+// a restart, so "derived at runtime" alone does not put a field on this list.
+export const RUNTIME_ONLY_SETTINGS_FIELDS = ['llmReady'] as const satisfies readonly (keyof LLMWikiSettings)[];
+
+/**
+ * The settings object as it should be written: everything except the runtime-only
+ * fields.
+ *
+ * A copy, never a delete on the live object. `status-section.ts` reads `llmReady`
+ * during the same session that saves it, so removing it from memory would break the
+ * status row to tidy the file.
+ */
+export function persistedSettings(settings: LLMWikiSettings): Record<string, unknown> {
+  const runtimeOnly = new Set<string>(RUNTIME_ONLY_SETTINGS_FIELDS);
+  return Object.fromEntries(Object.entries(settings).filter(([key]) => !runtimeOnly.has(key)));
+}

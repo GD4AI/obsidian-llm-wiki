@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`data.json` no longer carries `llmReady` (Issue #1016).** It is derived: `loadSettings` measures it on every load. It was still being written by every settings save, and before `#1013` the file's copy outranked the measurement. Removing the write changes the persisted shape, which is why it is its own change rather than a fix. An existing `data.json` that still contains the key loads normally and the value is ignored. `RUNTIME_ONLY_SETTINGS_FIELDS` names the fields that must never be persisted, and a test fails when any write path bypasses the filter.
+
 ### Fixed
 
 - **A rebuild can project cross-source relations again (Issue #1018).** Two things stopped it, and the second was not in the issue. The run's co-citation graph was built at the first note and never followed the run's writes, so on an empty vault every note after the first read a graph missing everything the run had written. The graph now takes each written page's edges as it is written, through the same `edgesForPage` the full build uses, at O(links) per page. The deeper cause: the projection read the subject's own links from the graph, and a page being written has no graph entry — so on a rebuild it had nothing to project from, whatever the graph held. The shaper now passes the links the page is about to carry. Both halves are mutation-verified.
