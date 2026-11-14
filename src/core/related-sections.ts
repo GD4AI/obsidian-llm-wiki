@@ -40,6 +40,15 @@ export interface RelatedRenderOpts {
    * no budget to apply.
    */
   ceiling?: number;
+  /**
+   * Called with the names the ceiling refused, per section.
+   *
+   * A refusal writes nothing, so it leaves no trace on the page. Without this the only
+   * way to learn why a name never appeared is to read the code — and the caller is the
+   * only place that knows whether a line is worth writing (a debug build, not a user
+   * notice). `renderRelatedSections` stays pure; it reports, it does not log.
+   */
+  onRefused?: (section: Folder, names: string[]) => void;
   /** Which Related section the page's schema puts first — decides where a missing one is inserted. */
   firstSection?: Folder;
   /**
@@ -153,10 +162,11 @@ export function renderRelatedSections(
   // Counted after the kept entries, because they are what the page already carries.
   const atCeiling = () => opts.ceiling !== undefined && seen.size >= opts.ceiling;
   for (const [names, folder] of [[relatedEntities, 'entities'], [relatedConcepts, 'concepts']] as const) {
+    const refused: string[] = [];
     for (const raw of names ?? []) {
       const name = raw.trim();
       if (!name) continue;
-      if (atCeiling()) break;
+      if (atCeiling()) { refused.push(name); continue; }
       const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
       // #676: a name that resolves to the page being written must not become a
       // self-link. The shaper excludes the page's own name key before this, but
@@ -165,6 +175,7 @@ export function renderRelatedSections(
       if (opts.selfPath && isSelfReplacement(opts.selfPath, rel)) continue;
       add(rel, name, folderOf(rel, folder));
     }
+    if (refused.length) opts.onRefused?.(folder, refused);
   }
 
   // Sections in the order the page's schema lists them: a missing second

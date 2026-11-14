@@ -146,3 +146,28 @@ describe('#664 — additions are bounded, entries are never dropped', () => {
     expect(out).toContain('- [[concepts/F|F]]');
   });
 });
+
+describe('#664 — a name refused by the ceiling is reportable', () => {
+  it('hands the refused names to the caller instead of dropping them silently', () => {
+    // The ceiling is silent by construction: nothing is written, so nothing shows on
+    // the page. Without this the only way to learn why a name never appeared is to
+    // read the code. The callback keeps `renderRelatedSections` pure — the caller
+    // decides whether the fact is worth a line.
+    const one = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n\n## ${C}\n`;
+    const dropped: string[] = [];
+    renderRelatedSections(one, ['B', 'C'], ['D'], E, C, {
+      ...opts,
+      keepFrom: one,
+      ceiling: 2,
+      onRefused: (_section, names) => dropped.push(...names),
+    });
+    expect(dropped).toEqual(['C', 'D']);
+  });
+
+  it('reports nothing when the ceiling is not reached', () => {
+    const one = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n\n## ${C}\n`;
+    const dropped: string[] = [];
+    renderRelatedSections(one, ['B'], [], E, C, { ...opts, keepFrom: one, ceiling: 8, onRefused: (_s, n) => dropped.push(...n) });
+    expect(dropped).toEqual([]);
+  });
+});
