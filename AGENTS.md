@@ -251,6 +251,8 @@ The decision comment names in one line what would reopen it. An open PR states t
 **Filing issues (added 2026-09-17, after #735 / #736):** an issue whose premise is a *missing capability* must name that capability as its acceptance criteria. If it cannot, do not file it yet. Filing "X has no Y path" and then building Y in the next PR without linking them produces an issue that reads as unstarted work. The work is under review at the time. A PR body written in between even called the delivered capability "the open question" here.
 Link at the moment implementation starts (`Closes #N` in the body).
 
+**Reading an issue (added 2026-11-13, after #822):** an issue is its body **plus every comment**, and no decision is made from the body alone. Earlier comments routinely carry the facts that settle the question — #822's body is one sentence; its 2026-10-12 comment already held the accepted-format list, the MinerU gap and the position that Obsidian renders no EPUB. Two failures follow from skipping them: a reply that restates what is already there, and a decision that answers a question the thread answered months ago. Read the whole thread, then write **only what it does not already say**; if the new answer overlaps an old comment, edit the new one to point at the old rather than repeat it. The same applies to a pull request's review comments, not just its description.
+
 When an issue's own analysis turns out to be wrong, **record the correction on the issue rather than editing it away**. The route that was not needed is information: it shows why the right one was cheap. #735 proposed a bespoke adapter; the bundled `@ai-sdk/openai.responses()` meant the work was a routing decision.
 
 Every review submission MUST begin with the signal check:
