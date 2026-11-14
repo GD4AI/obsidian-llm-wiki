@@ -42,6 +42,7 @@ export async function applyRelatedLinks(
     labels.related_concepts,
     vaultIndex,
   );
+  const ceiling = RELATED_BUDGET[ctx.settings.extractionGranularity ?? 'standard'].total;
   return renderRelatedSections(
     prefixed,
     lists.related_entities,
@@ -55,7 +56,12 @@ export async function applyRelatedLinks(
       // #664, first half: the page-level budget bounds what a write may ADD. Kept
       // entries are untouched, so a list already over the ceiling keeps every entry
       // and simply stops growing until #729 Phase 2 truncates it.
-      ceiling: RELATED_BUDGET[ctx.settings.extractionGranularity ?? 'standard'].total,
+      ceiling,
+      // The ceiling refuses silently: nothing is written, so nothing shows on the
+      // page. This line is the only trace, and it is `console.debug`, so production
+      // builds strip it (#664).
+      onRefused: (section, names) =>
+        console.debug(`[Related ceiling] ${opts.pageType} page kept ${ceiling} entries, refused ${names.length} new ${section} name(s): ${names.join(', ')}`),
       firstSection,
       ...(opts.selfPath !== undefined ? { selfPath: opts.selfPath } : {}) },
   );
