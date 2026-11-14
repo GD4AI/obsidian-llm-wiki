@@ -9,6 +9,7 @@ import { fetchCodexModelCatalog } from '../llm-sdk/openai-codex/model-catalog';
 import { getText } from '../core/i18n';
 import { openCodexExternalUrl } from '../ui/openai-codex-auth-controls';
 import { NOTICE_ERROR } from '../constants';
+import { persistedSettings } from '../types/settings';
 
 const CODEX_MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -79,7 +80,7 @@ export const codexAuthCommands = {
     const candidate = { ...this.settings, openAICodexModels: models, openAICodexModelsFetchedAt: Date.now(), openAICodexUnavailableModels: [] };
     if (candidate.provider === 'openai-codex') applyCodexModelPolicy(candidate);
     this.codexCredentialStore?.bindModelCatalog((await this.codexAuthManager.getAccess()).accountId);
-    await this.saveData(candidate);
+    await this.saveData(persistedSettings(candidate));
     this.settings = candidate;
     this.initializeLLMClient();
     return models.map((entry) => entry.slug);
@@ -94,7 +95,7 @@ export const codexAuthCommands = {
     const candidate = { ...this.settings };
     this.settings = candidate;
     this.resetOpenAICodexModelState();
-    await this.saveData(candidate);
+    await this.saveData(persistedSettings(candidate));
   },
   async clearUnboundOpenAICodexModelCache(this: CodexAuthCommandsHost): Promise<void> {
     const accountId = this.codexAuthManager?.currentAccountId();
@@ -113,6 +114,6 @@ export const codexAuthCommands = {
       this.settings.llmReady = false;
       this.llmClient = null;
     }
-    await this.saveData(this.settings);
+    await this.saveData(persistedSettings(this.settings));
   },
 };

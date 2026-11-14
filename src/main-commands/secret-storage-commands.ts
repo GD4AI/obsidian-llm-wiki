@@ -13,6 +13,7 @@ import type { LLMWikiSettings } from '../types';
 import { ProviderSecretStore } from '../llm-sdk/provider-secret-store';
 import { getText } from '../core/i18n';
 import { NOTICE_NORMAL, NOTICE_ERROR } from '../constants';
+import { persistedSettings } from '../types/settings';
 
 export interface SecretStorageCommandsHost {
   settings: LLMWikiSettings;
@@ -42,7 +43,7 @@ export const secretStorageCommands = {
     }
     // Write it back to settings.apiKey so the resolver can find it.
     this.settings.apiKey = stored.trim();
-    await this.saveData(this.settings);
+    await this.saveData(persistedSettings(this.settings));
     new Notice(getText(this.settings.language, 'apiKeyMigratedToSecretStorageSuccess'), NOTICE_NORMAL);
   },
 };
