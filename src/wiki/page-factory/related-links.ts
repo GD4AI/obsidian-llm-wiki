@@ -7,10 +7,12 @@
 import { correctRelatedLinkPrefixes, buildVaultResolver } from '../../core/related-link-corrector';
 import { renderRelatedSections } from '../../core/related-sections';
 import type { Folder } from '../../core/related-sections';
+import { RELATED_BUDGET } from '../../constants';
+import type { ExtractionGranularity } from '../../constants';
 import type { WikiPageRef } from '../../types';
 
 interface RelatedLinkCtx {
-  settings: { wikiFolder: string; slugCase?: string };
+  settings: { wikiFolder: string; slugCase?: string; extractionGranularity?: ExtractionGranularity };
   /** The wiki page index, through the engine's own held copy (Issue #662). */
   getExistingWikiPages(): Promise<WikiPageRef[]>;
 }
@@ -46,6 +48,15 @@ export async function applyRelatedLinks(
     lists.related_concepts,
     labels.related_entities,
     labels.related_concepts,
-    { preserveCase: ctx.settings.slugCase === 'preserve', resolve: buildVaultResolver(vaultIndex), keepFrom: opts.keepFrom, firstSection, ...(opts.selfPath !== undefined ? { selfPath: opts.selfPath } : {}) },
+    {
+      preserveCase: ctx.settings.slugCase === 'preserve',
+      resolve: buildVaultResolver(vaultIndex),
+      keepFrom: opts.keepFrom,
+      // #664, first half: the page-level budget bounds what a write may ADD. Kept
+      // entries are untouched, so a list already over the ceiling keeps every entry
+      // and simply stops growing until #729 Phase 2 truncates it.
+      ceiling: RELATED_BUDGET[ctx.settings.extractionGranularity ?? 'standard'].total,
+      firstSection,
+      ...(opts.selfPath !== undefined ? { selfPath: opts.selfPath } : {}) },
   );
 }
