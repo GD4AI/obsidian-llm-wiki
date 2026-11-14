@@ -20,6 +20,7 @@
 import { describe, it, expect } from 'vitest';
 import { TFile } from 'obsidian';
 import { createWikiEngineHarness } from '../__support__/wiki-engine-harness';
+import type { LLMClient } from '../../types';
 
 const NOTE_PATH = 'Notizen/Quelle.md';
 const noteFile = () => Object.assign(new TFile(), { path: NOTE_PATH, basename: 'Quelle', extension: 'md' });
@@ -87,5 +88,81 @@ describe('#729 Phase 1 — co-citation reaches a written page', () => {
     // assertion, and it is a stronger one than a `0 cross-source edges` string
     // would be, because it cannot be satisfied by a provider that merely ran.
     expect(h.progressMessages.find(m => m.startsWith('Related lists:'))).toBeUndefined();
+  });
+});
+
+// Issue #1018 — a note must see the pages an earlier note of the same run wrote.
+//
+// The projection's graph is built once per run and cached by batch-context identity.
+// That is what keeps the cost at O(vault) per run instead of O(notes × vault), and
+// the memo is right. What it also did was freeze the graph at the run's first note:
+// on an empty-vault rebuild the first note saw nothing, and every later note saw a
+// graph missing everything the run had written so far. The projection contributed
+// nothing for the whole rebuild — the case the acceptance measurement is about.
+//
+// The fix follows the write path instead of dropping the memo: when a wiki page is
+// written during a run, its outgoing edges are added to the cached graph. The cost
+// stays O(links) per written page, and the graph is built once.
+//
+// The order dependence is deliberate and is not new: every other relation in the
+// pipeline already depends on the vault as it stood at write time. A page written
+// earlier cannot name a page written later, in the note-grounded list or in the
+// sibling rule either. What this test pins is that the projection behaves the same
+// way as the rest of the write path, rather than being the one part that freezes.
+describe('#1018 — an ingest run sees the pages it has already written', () => {
+  it('offers a later note a page that an earlier note of the same run created', async () => {
+    // A per-prompt stub, not a queue: an ingest issues more than one model call per
+    // note (batch analysis), so a queue would feed the second batch's answer to the
+    // first and the page bodies would not be what this test asserts on.
+    const answer = (params: Parameters<LLMClient['createMessage']>[0]): string => {
+      const prompt = JSON.stringify(params.messages ?? '');
+      // The note's own body is what reaches the prompt, so the discriminator is
+      // the body text, not the filename.
+      const first = prompt.includes('ueber Gamma');
+      const name = first ? 'Gamma' : 'Delta';
+      return JSON.stringify({
+        source_title: first ? 'Erste' : 'Zweite',
+        summary: 's',
+        // Each page names the two concepts, so both link Hub and Spoke. That makes
+        // Gamma and Delta a two-target pair for the projection — the only way the
+        // later note could be offered the earlier note's page.
+        entities: [{ name, type: 'other', summary: 's', mentions_in_source: ['x'], related_entities: ['Hub', 'Spoke'] }],
+        concepts: [],
+      });
+    };
+
+    const h = createWikiEngineHarness({
+      files: {
+        'Notizen/Erste.md': '# Erste\n\nEin Satz ueber Gamma.\n',
+        'Notizen/Zweite.md': '# Zweite\n\nEin Satz ueber Delta.\n',
+        // A rebuild: nothing but the roots exists, so the graph at the first note is
+        // empty apart from these two concepts.
+        'wiki/index.md': '---\ntype: index\n---\n# Index\n',
+        'wiki/concepts/Hub.md': '---\ntype: concept\n---\n# Hub\n',
+        'wiki/concepts/Spoke.md': '---\ntype: concept\n---\n# Spoke\n',
+      },
+      llmClient: { createMessage: async (params: Parameters<LLMClient['createMessage']>[0]) => answer(params) } as unknown as LLMClient,
+      settings: { wikiLanguage: 'de', watchedFolders: ['Notizen'] },
+    });
+
+    const batchCtx = h.engine.createBatchContext();
+    await h.engine.ingestSource(Object.assign(new TFile(), { path: 'Notizen/Erste.md', basename: 'Erste', extension: 'md' }), { batchCtx });
+    await h.engine.ingestSource(Object.assign(new TFile(), { path: 'Notizen/Zweite.md', basename: 'Zweite', extension: 'md' }), { batchCtx });
+
+    console.log('DELTA2 >>>', h.files.get('wiki/entities/delta.md'));
+    console.log('GAMMA2 >>>', h.files.get('wiki/entities/gamma.md'));
+    const gamma = h.files.get('wiki/entities/gamma.md') ?? '';
+    const delta = h.files.get('wiki/entities/delta.md') ?? '';
+    expect(gamma).toContain('[[concepts/Hub');
+    expect(delta).toContain('[[concepts/Hub');
+    // The page the earlier note wrote is offered to the later one. Its title is the
+    // slug, because the page did not exist when the title map was built — the link
+    // target is what matters here, and it could not appear before #1018.
+    expect(delta).toContain('[[entities/gamma|');
+    // And it is a Related entry, not a mention of the source note: the section it
+    // lands in is the one the projection writes to.
+    const relatedSection = delta.slice(delta.indexOf('Verwandte Entitäten'));
+    expect(relatedSection).toContain('[[entities/gamma|');
+    expect(h.progressMessages.some(m => m.includes('cross-source edges'))).toBe(true);
   });
 });

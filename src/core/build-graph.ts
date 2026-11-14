@@ -58,47 +58,55 @@ export function buildGraphFromContent(
     edges.set(path, []);
   }
 
-  // Build a prefix matcher: match "wiki/" or "mywiki/" etc.
-  const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
-
-  // Map known paths by their last path component for fuzzy matching.
-  const pathBySlug = new Map<string, string>();
-  for (const p of nodes) {
-    const slug = p.split('/').pop() || p;
-    pathBySlug.set(slug, p);
-  }
-
   for (const page of loadedPages) {
-    const sourcePath = page.path;
-
-    WIKI_LINK_RE.lastIndex = 0;
-    const seen = new Set<string>();
-    let match: RegExpExecArray | null;
-
-    while ((match = WIKI_LINK_RE.exec(page.content)) !== null) {
-      const rawTarget = match[1]; // e.g. "wiki/entities/dog"
-      const fullTarget = rawTarget.startsWith(prefix)
-        ? rawTarget.slice(prefix.length)
-        : rawTarget;
-
-      // If the link doesn't have the wiki folder prefix, try interpreting it
-      // as a direct slug match against known paths (for links without folder prefix).
-      const resolvedPath =
-        allPaths.has(fullTarget)
-          ? fullTarget
-          : allPaths.has(rawTarget)
-            ? rawTarget
-            : pathBySlug.get(fullTarget) && allPaths.has(pathBySlug.get(fullTarget)!)
-              ? pathBySlug.get(fullTarget)!
-              : null;
-
-      if (resolvedPath === null || resolvedPath === sourcePath) continue;
-      if (!seen.has(resolvedPath)) {
-        seen.add(resolvedPath);
-        edges.get(sourcePath)!.push(resolvedPath);
-      }
-    }
+    edges.set(page.path, edgesForPage(page.content, page.path, allPaths, wikiFolder));
   }
 
   return { nodes, edges };
+}
+
+/**
+ * The outgoing edges one page's body produces.
+ *
+ * Extracted from `buildGraphFromContent` on 2026-11-13 (#1018) so the incremental
+ * path and the full build cannot disagree about what a link means. The incremental
+ * path needs it alone: when a page is written during an ingest run, its edges are
+ * added to the run's cached graph, and re-deriving them with a second regex would
+ * be a second definition of "resolves to".
+ *
+ * Pure. Same inputs, same output, and the target order is the order the links
+ * appear in the body.
+ */
+export function edgesForPage(
+  content: string,
+  sourcePath: string,
+  allPaths: Set<string>,
+  wikiFolder: string,
+): string[] {
+  const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
+  const pathBySlug = new Map<string, string>();
+  for (const p of allPaths) pathBySlug.set(p.split('/').pop() || p, p);
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  WIKI_LINK_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = WIKI_LINK_RE.exec(content)) !== null) {
+    const rawTarget = match[1]; // e.g. "wiki/entities/dog"
+    const fullTarget = rawTarget.startsWith(prefix) ? rawTarget.slice(prefix.length) : rawTarget;
+    const resolvedPath =
+      allPaths.has(fullTarget)
+        ? fullTarget
+        : allPaths.has(rawTarget)
+          ? rawTarget
+          : pathBySlug.get(fullTarget) && allPaths.has(pathBySlug.get(fullTarget)!)
+            ? pathBySlug.get(fullTarget)!
+            : null;
+    if (resolvedPath === null || resolvedPath === sourcePath) continue;
+    if (seen.has(resolvedPath)) continue;
+    seen.add(resolvedPath);
+    out.push(resolvedPath);
+  }
+  return out;
 }

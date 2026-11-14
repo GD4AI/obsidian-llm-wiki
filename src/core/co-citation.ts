@@ -44,6 +44,16 @@ export interface CoCitationOptions {
   /** Bound on the returned list. Absent means all of them, ranked. */
   limit?: number;
   /**
+   * The subject's own outgoing targets, when the caller knows them better than the
+   * graph does.
+   *
+   * A page being written does not exist in the vault yet, so `graph.outgoing` has no
+   * entry for it and the projection would find no candidates at all — which is what
+   * a rebuild looked like: every page new, every projection empty (#1018). The
+   * shaper knows the names the page is about to link, so it passes them here.
+   */
+  selfTargets?: readonly string[];
+  /**
    * Shared targets a page needs before it is offered at all. Defaults to 2.
    *
    * One shared target is not a relation. On the 2,110-page vault the review
@@ -124,6 +134,49 @@ export function buildCoCitationGraph(graph: Graph): CoCitationGraph {
 }
 
 /**
+ * Add or replace one page's edges in a graph that is already built.
+ *
+ * Issue #1018: the projection's graph is built once per run and cached, because
+ * rebuilding per note reads every page body per note — ≈526,000 reads on the design
+ * record's reference vault, the regression class #662 removed. But a graph frozen at
+ * the run's first note means a rebuild projects nothing: the first note sees an empty
+ * vault and every later note sees a graph without the pages the run has written.
+ *
+ * So the cached copy follows writes instead of being dropped. Cost is O(links) per
+ * written page, and the build stays once per run.
+ *
+ * Re-adding a page replaces its edges rather than appending, so an ingest that
+ * rewrites a page cannot leave its previous targets behind in the reverse index.
+ * `graph` is treated as mutable here and nowhere else; callers hold it as
+ * `ReadonlyMap` and this is the one writer.
+ */
+export function addCoCitationPage(
+  graph: CoCitationGraph,
+  page: string,
+  targets: readonly string[],
+): void {
+  const outgoing = graph.outgoing as Map<string, readonly string[]>;
+  const incoming = graph.incoming;
+
+  const previous = outgoing.get(page) ?? [];
+  for (const target of previous) {
+    const citing = incoming.get(target);
+    if (!citing) continue;
+    const at = citing.indexOf(page);
+    if (at >= 0) citing.splice(at, 1);
+    if (citing.length === 0) incoming.delete(target);
+  }
+
+  const next = [...new Set(targets)].filter(t => t !== page);
+  outgoing.set(page, next);
+  for (const target of next) {
+    const citing = incoming.get(target);
+    if (citing) citing.push(page);
+    else incoming.set(target, [page]);
+  }
+}
+
+/**
  * Pages that co-cite with `self`, best first.
  *
  * Ranked by how many targets they share with `self` — the count is the evidence.
@@ -165,8 +218,11 @@ export function coCitationCandidates(
   graph: CoCitationGraph,
   opts: CoCitationOptions = {},
 ): string[] {
-  const targets = graph.outgoing.get(self);
-  if (!targets || targets.length === 0) return [];
+  // Both sources are real and neither replaces the other: a page being written has
+  // its planned links and no graph entry; a page being re-ingested has its body's
+  // links in the graph, and its note-grounded names may add to them.
+  const targets = [...new Set([...(opts.selfTargets ?? []), ...(graph.outgoing.get(self) ?? [])])];
+  if (targets.length === 0) return [];
 
   const minShared = opts.minShared ?? DEFAULT_MIN_SHARED;
   const alreadyLinked = new Set(targets);
