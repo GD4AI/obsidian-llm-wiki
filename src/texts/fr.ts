@@ -652,6 +652,7 @@ export const FR_TEXTS = {
     lintHubLinkDensityReview: '🔍 examiner',
     lintHubLinkDensityKeep: '✅ conserver',
     lintHubLinkDensitySummary: 'Résumé : {strip} page(s) recommandée(s) pour suppression, {review} page(s) recommandée(s) pour examen.',
+    lintHubLinkDensityIntro: 'Cette section examine les liens sortants du hub : pointent-ils vers des pages que ses voisins couvrent déjà ? Les candidats hub cristallisés mesurent autre chose : si les voisins se lient entre eux. Les deux listes peuvent nommer des pages différentes, et aucune n\'implique l\'autre.',
     lintHubLinkDensityNoRelated: ' (aucune section ## Related trouvée)',
     lintContradictionOpen: 'Contradictions non résolues : {count}',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

@@ -721,6 +721,7 @@ export const ES_TEXTS = {
     lintHubLinkDensityReview: '🔍 revisar',
     lintHubLinkDensityKeep: '✅ mantener',
     lintHubLinkDensitySummary: 'Resumen: {strip} página(s) recomendada(s) para eliminar, {review} página(s) recomendada(s) para revisar.',
+    lintHubLinkDensityIntro: 'Esta sección examina los enlaces salientes del hub: ¿apuntan a páginas que sus vecinos ya cubren? Los candidatos de hub cristalizados miden otra cosa: si los vecinos se enlazan entre sí. Las dos listas pueden nombrar páginas distintas y ninguna implica la otra.',
     lintHubLinkDensityNoRelated: ' (no se encontró la sección ## Related)',
     lintContradictionOpen: 'Contradicciones abiertas: {count}',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',

@@ -641,6 +641,7 @@ export const ZH_TEXTS = {
     lintHubLinkDensityReview: '🔍 建议复核',
     lintHubLinkDensityKeep: '✅ 保留',
     lintHubLinkDensitySummary: '摘要：{strip} 个页面建议剥离，{review} 个页面建议复核。',
+    lintHubLinkDensityIntro: '本段看这个枢纽的出链：它指向的页面，邻居是否已经覆盖。结晶化枢纽候选看的是另一件事：邻居之间是否互相链接。两份清单可能列出不同页面，互不包含。',
     lintHubLinkDensityNoRelated: ' （未找到 ## Related 区块）',
     lintNoIssuesFound: '未检测到重复、断链、空洞、孤立页面或无来源引证。',
     lintSourceDriftSection: '导入后已变更的来源笔记 [共 {count} 个]',

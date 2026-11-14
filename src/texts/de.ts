@@ -723,6 +723,7 @@ export const DE_TEXTS = {
     lintHubLinkDensityReview: '🔍 prüfen',
     lintHubLinkDensityKeep: '✅ behalten',
     lintHubLinkDensitySummary: 'Zusammenfassung: {strip} Seite(n) zum Entfernen empfohlen, {review} Seite(n) zur Prüfung.',
+    lintHubLinkDensityIntro: 'Dieser Abschnitt prüft die ausgehenden Links des Hubs: Zeigen sie auf Seiten, die seine Nachbarn bereits abdecken? Kristallisierte Hub-Kandidaten prüfen etwas anderes: ob die Nachbarn einander verlinken. Die beiden Listen können verschiedene Seiten nennen, und keine schließt die andere ein.',
     lintHubLinkDensityNoRelated: ' (kein ## Related-Abschnitt gefunden)',
     lintContradictionOpen: 'Offene Widersprüche: {count}',
     lintContradictionItem: '- [{status}] [[{page}]] — {claim}',
