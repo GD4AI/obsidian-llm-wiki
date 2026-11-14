@@ -111,8 +111,13 @@ export async function runProgrammaticPhase(
   // 7. Hub link density (Issue #157 / #175, v1.23.0 P1-6) — detects hub
   // pages whose ## Related links are mutually redundant in graph
   // structure. Pure PPR-based scoring, zero IO, zero LLM.
+  // #1034: the two Related heading names this vault actually uses. Without them the
+  // scanner matches English headings that no page carries — the section was silent on
+  // every vault the plugin wrote, in all eleven locales.
+  const sectionLabels = getSectionLabels(ctx.settings);
   const hubLinkDensityIssues = scanHubLinkDensity(input.pageMap, input.graph, {
     wikiFolder: ctx.settings.wikiFolder,
+    relatedHeadings: [sectionLabels.related_entities, sectionLabels.related_concepts],
   });
   console.debug(`lintWiki: ${hubLinkDensityIssues.length} hub pages with link density issues`);
 

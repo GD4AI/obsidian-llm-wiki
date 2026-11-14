@@ -170,11 +170,17 @@ export function buildLintReport(input: ReportInput): string {
   }
 
   // 8b. Hub link density (v1.23.0 P1-6, Issue #157 / #175)
-  if (hubLinkDensityIssues.length > 0) {
-    const stripCount = hubLinkDensityIssues.filter(h => h.recommendation === 'strip').length;
-    const reviewCount = hubLinkDensityIssues.filter(h => h.recommendation === 'review').length;
-    progReport += `## ${t.lintHubLinkDensitySection.replace('{count}', String(hubLinkDensityIssues.length))}\n\n`;
-    for (const h of hubLinkDensityIssues) {
+  //
+  // Reported: `strip` and `review`. A `keep` verdict is not a finding, and printing it
+  // would have listed six healthy hubs per run on a 2,141-page vault — invisible until
+  // #1034, because the scanner could not read any page's Related section and this
+  // branch never ran. `runHubLinkFixes` filters the same two verdicts.
+  const actionableHubs = hubLinkDensityIssues.filter(h => h.recommendation !== 'keep');
+  if (actionableHubs.length > 0) {
+    const stripCount = actionableHubs.filter(h => h.recommendation === 'strip').length;
+    const reviewCount = actionableHubs.filter(h => h.recommendation === 'review').length;
+    progReport += `## ${t.lintHubLinkDensitySection.replace('{count}', String(actionableHubs.length))}\n\n`;
+    for (const h of actionableHubs) {
       const rel = h.pagePath.replace(folder + '/', '').replace('.md', '');
       const actionLabel = h.recommendation === 'strip'
         ? t.lintHubLinkDensityStrip

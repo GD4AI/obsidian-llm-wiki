@@ -15,7 +15,7 @@ import { activeVocabulary, domainVocabulary } from '../../core/vocabulary';
 import { mergeFrontmatterArrayField, replaceFrontmatterArrayField, parseFrontmatter } from '../../core/frontmatter';
 import { renderTemplate } from '../../core/template-renderer';
 import { TOKENS_LINT_ALIAS_BATCH, NOTICE_ERROR, NOTICE_RATE_LIMIT } from '../../constants';
-import { buildWikiLanguageDirective } from '../system-prompts';
+import { buildWikiLanguageDirective, getSectionLabels } from '../system-prompts';
 import { TagViolation } from './scanners';
 import { stripLowDistinctivenessLinks, type HubLinkDensityIssue } from '../../core/hub-link-distinctiveness';
 import { AliasGenerationLLMSchema, TagFixLLMSchema } from '../../llm-sdk/output-schemas';
@@ -739,6 +739,9 @@ export async function runHubLinkFixes(
   let fixed = 0;
   const fixNotice = new Notice('', 0);
   const wikiFolder = ctx.settings.wikiFolder;
+  // #1034: the headings the scanner read are the headings this must rewrite.
+  const labels = getSectionLabels(ctx.settings);
+  const relatedHeadings = [labels.related_entities, labels.related_concepts];
   try {
     for (let i = 0; i < todo.length; i += 1) {
       checkCancelled(signal);
@@ -754,7 +757,7 @@ export async function runHubLinkFixes(
       }
       const before = await ctx.app.vault.read(file);
       const { content: after, removed } = stripLowDistinctivenessLinks(
-        before, issue.lowDistinctivenessTargets, wikiFolder);
+        before, issue.lowDistinctivenessTargets, wikiFolder, relatedHeadings);
       if (removed === 0) {
         results.push(`${issue.pagePath}: ${t.lintFixNoAction}`);
         continue;
