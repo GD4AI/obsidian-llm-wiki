@@ -245,3 +245,37 @@ describe('contradiction marker section (#575 read half)', () => {
     expect(report).not.toContain('{topN}');
   });
 });
+
+// #1034 — a `keep` verdict is not a finding.
+//
+// Until the heading reader was fixed, this branch never ran on any vault, so nobody saw
+// that it printed every hub it had looked at: six healthy pages per run on a 2,141-page
+// vault. The section now lists what needs action, and disappears when nothing does.
+describe('hub link density section (#1034)', () => {
+  const hubIssue = (recommendation: 'strip' | 'review' | 'keep') => ({
+    pagePath: 'wiki/entities/Hub.md',
+    inDegree: 12,
+    totalRelatedLinks: 4,
+    distinctivenessScore: 0.2,
+    recommendation,
+    lowDistinctivenessTargets: ['entities/Redundant'],
+  });
+  const reportFor = (recommendation: 'strip' | 'review' | 'keep') =>
+    buildLintReport({
+      settings: makeSettings(),
+      findings: makeFindings({ hubLinkDensityIssues: [hubIssue(recommendation)] as ProgrammaticFindings['hubLinkDensityIssues'] }),
+      duplicates: [],
+      contradictionsReport: '',
+      elapsedSeconds: 1,
+      totalPages: 5,
+    });
+
+  it('omits the section when every hub is healthy', () => {
+    expect(reportFor('keep')).not.toMatch(/hub link density/i);
+  });
+
+  it('lists a hub that needs action', () => {
+    expect(reportFor('review')).toMatch(/hub link density/i);
+    expect(reportFor('strip')).toMatch(/hub link density/i);
+  });
+});

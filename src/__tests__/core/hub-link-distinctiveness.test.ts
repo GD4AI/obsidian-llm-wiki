@@ -40,6 +40,9 @@ import {
   stripLowDistinctivenessLinks,
   type HubLinkDensityIssue,
 } from '../../core/hub-link-distinctiveness';
+import { buildGraphFromContent } from '../../core/build-graph';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { Graph } from '../../core/monte-carlo-ppr';
 import { makeRng } from '../__support__/rng';
 
@@ -398,5 +401,106 @@ describe('stripLowDistinctivenessLinks (#729 Phase 8)', () => {
     const a = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
     const b = stripLowDistinctivenessLinks(PAGE, ['entities/Dup'], 'wiki');
     expect(a).toEqual(b);
+  });
+});
+
+// Issue #1034 — the scanner must read the headings this plugin writes.
+//
+// `parseRelatedTargets` compared the heading against `related`, `see also` and
+// `related pages`. The write path emits `Related Entities` / `Related Concepts`
+// (`system-prompts.ts:21`) or a localized pair, so the density section has been
+// silent on every vault this plugin wrote, in all eleven locales — and silent in
+// English too, because the heading carries a suffix.
+describe('#1034 — the headings the write path actually emits', () => {
+  const hubWith = (headings: string[]) =>
+    [
+      '# Hub',
+      '',
+      ...headings.flatMap(h => [`## ${h}`, '', '- [[entities/A|A]]', '- [[entities/B|B]]', '']),
+      '## Description',
+      '',
+      'A hub.',
+      '',
+    ].join('\n');
+
+  // 40 pages link the hub, so it clears the hub set's degree floor whatever the labels.
+  const graphFor = (pageMap: Map<string, { path: string; content: string }>) =>
+    buildGraphFromContent([...pageMap.values()], new Set(pageMap.keys()), 'wiki');
+
+  const pageMapWith = (hubContent: string) => {
+    const pageMap = new Map<string, { path: string; content: string }>();
+    pageMap.set('entities/Hub', { path: 'entities/Hub', content: hubContent });
+    pageMap.set('entities/A', { path: 'entities/A', content: '# A\n' });
+    pageMap.set('entities/B', { path: 'entities/B', content: '# B\n' });
+    for (let i = 0; i < 40; i++) {
+      const p = `entities/P${i}`;
+      pageMap.set(p, { path: p, content: `# P${i}\n\nText [[entities/Hub|Hub]].\n` });
+    }
+    return pageMap;
+  };
+
+  it('reads the English pair the plugin writes', () => {
+    const pageMap = pageMapWith(hubWith(['Related Entities', 'Related Concepts']));
+    const issues = scanHubLinkDensity(pageMap, graphFor(pageMap), { wikiFolder: 'wiki' });
+    expect(issues.length, 'the English sections were not read').toBe(1);
+  });
+
+  it('reads a localized pair when the caller passes those headings', () => {
+    const pageMap = pageMapWith(hubWith(['相关实体', '相关概念']));
+    const issues = scanHubLinkDensity(pageMap, graphFor(pageMap), {
+      wikiFolder: 'wiki',
+      relatedHeadings: ['相关实体', '相关概念'],
+    });
+    expect(issues.length).toBe(1);
+  });
+
+  it('reads both sections as one list, so a target in either counts once', () => {
+    // The writer puts entities in one section and concepts in the other, and dedupes
+    // across both. A scanner that stops at the first section sees half the list.
+    const twoSections = [
+      '# Hub', '',
+      '## Related Entities', '', '- [[entities/A|A]]', '- [[entities/B|B]]', '',
+      '## Related Concepts', '', '- [[concepts/C|C]]', '- [[concepts/D|D]]', '',
+    ].join('\n');
+    const pageMap = pageMapWith(twoSections);
+    const issues = scanHubLinkDensity(pageMap, graphFor(pageMap), { wikiFolder: 'wiki' });
+    // Two per section. Reading only the first section reports two, not four.
+    expect(issues[0].totalRelatedLinks, 'the two sections were not read as one list').toBe(4);
+  });
+
+  it('still reads a hand-written legacy heading', () => {
+    const pageMap = pageMapWith(hubWith(['Related']));
+    const issues = scanHubLinkDensity(pageMap, graphFor(pageMap), { wikiFolder: 'wiki' });
+    expect(issues.length).toBe(1);
+  });
+
+  it('strips low-distinctiveness links from a localized section', () => {
+    const before = hubWith(['相关实体']);
+    const { content, removed } = stripLowDistinctivenessLinks(before, ['entities/A'], 'wiki', ['相关实体']);
+    expect(removed, 'the localized section was not rewritten').toBe(1);
+    expect(content).not.toContain('[[entities/A|A]]');
+    expect(content).toContain('[[entities/B|B]]');
+  });
+});
+
+// The unit tests above call the scanner directly, so none of them would notice the
+// production path forgetting to pass the labels — which is the exact defect #1034
+// describes. These two assertions pin the wiring itself.
+describe('#1034 — the production path supplies the localized headings', () => {
+  const src = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+
+  it('the lint phase passes both labels from settings', () => {
+    const phase = src('../../wiki/lint/phases/programmatic.ts');
+    expect(phase, 'the density scan is called without the headings this vault uses').toMatch(
+      /scanHubLinkDensity\([\s\S]{0,400}relatedHeadings:/,
+    );
+    expect(phase).toMatch(/relatedHeadings: \[[^\]]*related_entities[^\]]*related_concepts[^\]]*\]/);
+  });
+
+  it('the fix runner rewrites the same headings the scanner read', () => {
+    const runner = src('../../wiki/lint/fix-runners.ts');
+    expect(runner, 'the strip call would miss a localized section').toMatch(
+      /stripLowDistinctivenessLinks\([\s\S]{0,200}relatedHeadings\s*\)/,
+    );
   });
 });

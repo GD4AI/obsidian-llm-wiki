@@ -53,6 +53,45 @@ export interface HubLinkDensityOptions extends PPROptions {
   reviewThreshold?: number;
   /** Wiki folder prefix used to strip when parsing ## Related links. */
   wikiFolder?: string;
+  /**
+   * Section headings that hold the Related list, already localized (#1034).
+   *
+   * The write path emits `Related Entities` / `Related Concepts` from
+   * `SECTION_LABELS` (`system-prompts.ts:21`), or the localized pair. This scanner
+   * matched `related` / `see also` / `related pages` only, so it read nothing on any
+   * vault the plugin wrote — in English too, because the heading carries a suffix.
+   * Callers pass `getSectionLabels(settings)` here.
+   *
+   * Defaults to the legacy headings, so a hand-written or older page still reads.
+   */
+  relatedHeadings?: readonly string[];
+}
+
+/**
+ * Headings a Related list has been written under: the legacy names plus the two the
+ * current write path uses in English. A caller with settings should pass the localized
+ * pair; this default keeps a page that predates localization, or one written by hand,
+ * readable.
+ */
+const DEFAULT_RELATED_HEADINGS: readonly string[] = [
+  'related',
+  'see also',
+  'related pages',
+  'related entities',
+  'related concepts',
+];
+
+/**
+ * The legacy headings PLUS whatever the caller passes.
+ *
+ * Union, not replacement: a vault written by an older version, or by hand, can carry
+ * `## Related` on one page and the localized pair on another, and both are the same
+ * list. Two Related sections on one page are also both Related lists, so reading every
+ * match is the right rule either way.
+ */
+function headingSet(headings: readonly string[] | undefined): Set<string> {
+  const all = [...DEFAULT_RELATED_HEADINGS, ...(headings ?? [])];
+  return new Set(all.map(h => h.trim().toLowerCase()).filter(Boolean));
 }
 
 const DEFAULT_STRIP_THRESHOLD = 0.3;
@@ -144,33 +183,34 @@ export function scoreHubLinkDistinctiveness(
  * wiki-engine contract) section. Returns the empty array if the
  * section is missing.
  */
-function parseRelatedTargets(content: string, wikiFolder: string): string[] {
-  // Split on `## ` headings.
+function parseRelatedTargets(content: string, wikiFolder: string, headings: Set<string>): string[] {
+  // Split on `## ` headings, and keep EVERY section whose heading names a Related
+  // list. The write path uses two of them — entities and concepts — and treats both as
+  // one deduped list, so stopping at the first section would read half of it.
   const sections = content.split(/^##\s+/m);
-  let relatedSection: string | null = null;
+  const relatedSections: string[] = [];
   for (const sec of sections) {
     const headingEnd = sec.indexOf('\n');
     const heading = (headingEnd === -1 ? sec : sec.slice(0, headingEnd)).trim().toLowerCase();
-    if (heading === 'related' || heading === 'see also' || heading === 'related pages') {
-      relatedSection = sec;
-      break;
-    }
+    if (headings.has(heading)) relatedSections.push(sec);
   }
-  if (relatedSection === null) return [];
+  if (relatedSections.length === 0) return [];
 
-  // Extract [[link]] targets.
+  // Extract [[link]] targets, one entry per target across both sections.
   const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
   const targets: string[] = [];
   const seen = new Set<string>();
-  let match: RegExpExecArray | null;
-  while ((match = linkRegex.exec(relatedSection)) !== null) {
-    const raw = match[1].trim();
-    // Strip wiki folder prefix.
-    const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
-    const target = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
-    if (!seen.has(target)) {
-      seen.add(target);
-      targets.push(target);
+  const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
+  for (const relatedSection of relatedSections) {
+    let match: RegExpExecArray | null;
+    while ((match = linkRegex.exec(relatedSection)) !== null) {
+      const raw = match[1].trim();
+      // Strip wiki folder prefix.
+      const target = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
+      if (!seen.has(target)) {
+        seen.add(target);
+        targets.push(target);
+      }
     }
   }
   return targets;
@@ -193,10 +233,14 @@ export function stripLowDistinctivenessLinks(
   content: string,
   targets: readonly string[],
   wikiFolder: string,
+  relatedHeadings?: readonly string[],
 ): { content: string; removed: number } {
   if (targets.length === 0) return { content, removed: 0 };
   const strip = new Set(targets.map(t => t.trim()));
   const prefix = wikiFolder.endsWith('/') ? wikiFolder : wikiFolder + '/';
+  // Same heading rule as the scanner (#1034): a section the scanner cannot read is a
+  // section this cannot rewrite, and both were matching English without the suffix.
+  const headings = headingSet(relatedHeadings);
   const sections = content.split(/^(?=##\s+)/m);
   let removed = 0;
   const linkRegex = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
@@ -204,7 +248,7 @@ export function stripLowDistinctivenessLinks(
     const headingEnd = sec.indexOf('\n');
     const heading = (headingEnd === -1 ? sec : sec.slice(0, headingEnd))
       .replace(/^##\s+/, '').trim().toLowerCase();
-    if (heading !== 'related' && heading !== 'see also' && heading !== 'related pages') return sec;
+    if (!headings.has(heading)) return sec;
     return sec.split('\n').filter(line => {
       let m: RegExpExecArray | null;
       linkRegex.lastIndex = 0;
@@ -231,6 +275,7 @@ export function scanHubLinkDensity(
   const stripThreshold = options.stripThreshold ?? DEFAULT_STRIP_THRESHOLD;
   const reviewThreshold = options.reviewThreshold ?? DEFAULT_REVIEW_THRESHOLD;
   const wikiFolder = options.wikiFolder ?? '';
+  const headings = headingSet(options.relatedHeadings);
 
   if (graph.nodes.length === 0 || pageMap.size === 0) return [];
 
@@ -246,7 +291,7 @@ export function scanHubLinkDensity(
   const issues: HubLinkDensityIssue[] = [];
   for (const [path, page] of pageMap) {
     if (!hubSet.has(path)) continue;
-    const targets = parseRelatedTargets(page.content, wikiFolder);
+    const targets = parseRelatedTargets(page.content, wikiFolder, headings);
     if (targets.length === 0) continue;
 
     // Score distinctiveness for each target.
