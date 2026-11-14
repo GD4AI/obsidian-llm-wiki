@@ -96,3 +96,53 @@ describe('renderRelatedSections', () => {
     expect(out).toContain('[[entities/tp-obsidian-templater|Templater]]');
   });
 });
+
+// Issue #664, first half — the list stops accepting NEW names at the budget ceiling.
+//
+// The thread settles the shape, and two of its three constraints are about what this
+// change must NOT do: it does not prune, and it does not rank. A cut ranked by shared
+// sources keeps the dead name and drops the cross-source page, so the ordering is
+// #729 Phase 2's. What lands here bounds additions only, which turns unbounded growth
+// into bounded growth without deciding which five survive.
+describe('#664 — additions are bounded, entries are never dropped', () => {
+  // A page that already carries three entries, rewritten with five names of which
+  // three are new.
+  const overCeiling = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n- [[entities/B|B]]\n\n## ${C}\n\n- [[concepts/C|C]]\n`;
+
+  it('keeps every entry the page already had, even when the ceiling is already passed', () => {
+    // Lists over the ceiling stay over it until the truncation step runs. Dropping a
+    // kept entry here would be the ranking decision this change is not allowed to make.
+    const out = renderRelatedSections(overCeiling, ['D', 'E'], ['F'], E, C, { ...opts, keepFrom: overCeiling, ceiling: 3 });
+    expect(out).toContain('- [[entities/A|A]]');
+    expect(out).toContain('- [[entities/B|B]]');
+    expect(out).toContain('- [[concepts/C|C]]');
+  });
+
+  it('accepts no new name once the ceiling is reached', () => {
+    const out = renderRelatedSections(overCeiling, ['D', 'E'], ['F'], E, C, { ...opts, keepFrom: overCeiling, ceiling: 3 });
+    expect(out, 'a new name was added past the ceiling').not.toContain('- [[entities/D|D]]');
+    expect(out).not.toContain('- [[concepts/F|F]]');
+  });
+
+  it('still accepts new names while there is room, so a page under the ceiling is unaffected', () => {
+    const one = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n\n## ${C}\n`;
+    const out = renderRelatedSections(one, ['B', 'C'], [], E, C, { ...opts, keepFrom: one, ceiling: 3 });
+    expect(out).toContain('- [[entities/A|A]]');
+    expect(out).toContain('- [[entities/B|B]]');
+    expect(out).toContain('- [[entities/C|C]]');
+  });
+
+  it('counts the ceiling across both sections, because a page has one Related list', () => {
+    const one = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n\n## ${C}\n`;
+    const out = renderRelatedSections(one, ['B'], ['C'], E, C, { ...opts, keepFrom: one, ceiling: 2 });
+    expect(out).toContain('- [[entities/A|A]]');
+    expect(out).toContain('- [[entities/B|B]]');
+    expect(out, 'the ceiling was applied per section instead of per page').not.toContain('- [[concepts/C|C]]');
+  });
+
+  it('is opt-in: without a ceiling the union path behaves exactly as before', () => {
+    const out = renderRelatedSections(overCeiling, ['D', 'E'], ['F'], E, C, { ...opts, keepFrom: overCeiling });
+    expect(out).toContain('- [[entities/D|D]]');
+    expect(out).toContain('- [[concepts/F|F]]');
+  });
+});

@@ -27,6 +27,19 @@ export interface RelatedRenderOpts {
   resolve: (name: string) => string | undefined;
   /** Body before the rewrite: its list entries are kept in front of the new ones. */
   keepFrom?: string;
+  /**
+   * Most entries one page's two Related sections may hold (#664, first half).
+   *
+   * Additions stop at this number. Entries already in the file are never dropped —
+   * a cut needs an ordering, and the ordering is #729 Phase 2's, because ranking by
+   * shared sources keeps a dead name and drops the cross-source page. So a list over
+   * the ceiling stays over it until that step runs; what changes today is that it
+   * stops growing.
+   *
+   * Absent means no bound, which is the union path this renders when the caller has
+   * no budget to apply.
+   */
+  ceiling?: number;
   /** Which Related section the page's schema puts first — decides where a missing one is inserted. */
   firstSection?: Folder;
   /**
@@ -132,14 +145,18 @@ export function renderRelatedSections(
     seen.add(k);
     lists[into].push(`- [[${rel}|${name}]]`);
   };
+  // Kept first, unconditionally: the ceiling bounds additions, never removals.
   const keptLines = opts.keepFrom ? opts.keepFrom.split('\n') : [];
   for (const folder of ['entities', 'concepts'] as const) {
     for (const e of keptEntries(keptLines, labelsOf[folder], universe, opts.resolve)) add(e.rel, e.name, folderOf(e.rel, folder));
   }
+  // Counted after the kept entries, because they are what the page already carries.
+  const atCeiling = () => opts.ceiling !== undefined && seen.size >= opts.ceiling;
   for (const [names, folder] of [[relatedEntities, 'entities'], [relatedConcepts, 'concepts']] as const) {
     for (const raw of names ?? []) {
       const name = raw.trim();
       if (!name) continue;
+      if (atCeiling()) break;
       const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
       // #676: a name that resolves to the page being written must not become a
       // self-link. The shaper excludes the page's own name key before this, but
