@@ -214,16 +214,12 @@ export function buildLintReport(input: ReportInput): string {
   // 8c. Source drift (Issue #220 Tier 0, read half) — origin notes edited
   // since their source page was built. Report-only: re-ingest is additive,
   // so the decision what to do with a revision stays editorial.
-  if (sourceDriftIssues.length > 0) {
-    progReport += `## ${t.lintSourceDriftSection.replace('{count}', String(sourceDriftIssues.length))}\n\n`;
-    for (const d of sourceDriftIssues) {
-      const rel = d.sourcePage.replace(folder + '/', '').replace('.md', '');
-      progReport += t.lintSourceDriftItem
-        .replace('{page}', rel)
-        .replace('{note}', d.note.replace('.md', '')) + '\n';
-    }
-    progReport += '\n';
-  }
+  //
+  // #677: `links-only` is its own section, because it asks for a different thing. A
+  // page move rewrites inbound links through Obsidian, so the note's text changed while
+  // its content did not; telling the user "edited after ingest" for that is the false
+  // alarm the issue measured on seven notes.
+  progReport += renderSourceDrift(sourceDriftIssues, t, folder);
 
   // 8d. Contradiction markers (#575 read half) — pages stamped by the merge
   // triage. Shown next to the contradiction-phase records so the two
@@ -272,6 +268,35 @@ export function buildLintReport(input: ReportInput): string {
   // see controller.ts comment block). The LintReportBody is therefore
   // pure programmatic findings + contradictions, with no LLM section.
   return `# ${t.lintReportTitle}\n\n> ${summaryText}\n\n${progReport}${contradictionsReport}`;
+}
+
+/**
+ * The source-drift sections (#220 Tier 0 read half, split by #677).
+ *
+ * Extracted for the same reason as the crystallized section: `buildLintReport` has a
+ * line ratchet, and the honest fix is a function, not a higher ceiling.
+ *
+ * Two sections, because they ask the user for different things. An edited note means the
+ * summary may be stale. A link-only change means a page moved and Obsidian rewrote the
+ * inbound paths — the summary is fine, and telling the user it was "edited" is the false
+ * alarm #677 measured on seven notes.
+ */
+function renderSourceDrift(
+  issues: readonly import('./scanners').SourceDriftIssue[],
+  t: (typeof TEXTS)[keyof typeof TEXTS],
+  folder: string,
+): string {
+  const relOf = (p: string) => p.replace(folder + '/', '').replace('.md', '');
+  const section = (rows: readonly import('./scanners').SourceDriftIssue[], heading: string, item: string) => {
+    if (rows.length === 0) return '';
+    let out = `## ${heading.replace('{count}', String(rows.length))}\n\n`;
+    for (const d of rows) out += item.replace('{page}', relOf(d.sourcePage)).replace('{note}', d.note.replace('.md', '')) + '\n';
+    return out + '\n';
+  };
+  return (
+    section(issues.filter(d => d.kind !== 'links-only'), t.lintSourceDriftSection, t.lintSourceDriftItem) +
+    section(issues.filter(d => d.kind === 'links-only'), t.lintSourceDriftLinksOnlySection, t.lintSourceDriftLinksOnlyItem)
+  );
 }
 
 /**

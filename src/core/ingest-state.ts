@@ -67,11 +67,69 @@ export function pageBelongsToNote(pageContent: string, notePath: string): boolea
  * that scanner asks whether a PAGE is stale (flagging only when no listed
  * note matches), which is decidable where this is not.
  */
-export function noteHasDrifted(pageContent: string, noteContent: string): boolean {
+/**
+ * The note body with every wikilink reduced to what the reader sees.
+ *
+ * A link target is a path, and a path changes when a page moves (#677): the move goes
+ * through `fileManager.renameFile` so inbound links keep working, and Obsidian writes
+ * out the new path. `[[Langzeitgedächtnis]]` becomes `[[Notizen/Langzeitgedächtnis]]` —
+ * the same link, eight characters longer. Hashing that literal body makes the plugin
+ * report "note changed since ingest" for notes nobody touched.
+ *
+ * Reducing each link to its display text — or to the target's last segment when it has
+ * none — gives a fingerprint that survives a path rewrite and still moves when the
+ * words around the link change. A link-blind hash would go further and hide a link edit
+ * the user made on purpose, which is why this keeps the heading and the display text.
+ */
+export function linkReducedBody(body: string): string {
+  return body.replace(/!?\[\[([^\]]+)\]\]/g, (_match, inner: string) => {
+    const [targetPart, display] = splitLink(inner);
+    if (display !== undefined) return display;
+    const hashAt = targetPart.indexOf('#');
+    const path = hashAt === -1 ? targetPart : targetPart.slice(0, hashAt);
+    const heading = hashAt === -1 ? '' : targetPart.slice(hashAt);
+    const name = path.slice(path.lastIndexOf('/') + 1);
+    return `${name}${heading}`;
+  });
+}
+
+function splitLink(inner: string): [string, string | undefined] {
+  const bar = inner.indexOf('|');
+  if (bar === -1) return [inner.trim(), undefined];
+  return [inner.slice(0, bar).trim(), inner.slice(bar + 1).trim()];
+}
+
+/** What a source page's two fingerprints say about its origin note. */
+export type NoteDriftState = 'unchanged' | 'links-only' | 'edited' | 'unknown';
+
+/**
+ * Three states, not one boolean (#677).
+ *
+ * `links-only` is the case the issue measured: the body hash moved, the link-reduced
+ * hash did not, so only link paths changed. It gets its own label rather than
+ * "note changed since ingest", and it is not treated as an edit anywhere.
+ *
+ * A page written before this change carries no `linkHash`, and a path rewrite stays
+ * indistinguishable from an edit there. That is deliberate: guessing from a missing
+ * field would hide real edits on every legacy page, and legacy pages age out as their
+ * notes are re-ingested.
+ */
+export function noteDriftState(pageContent: string, noteContent: string): NoteDriftState {
   const fm = parseFrontmatter(pageContent);
-  if (!fm) return false;
-  if (originNoteRefs(fm).length > 1) return false;
+  if (!fm) return 'unknown';
+  if (originNoteRefs(fm).length > 1) return 'unknown';
   const stored = fm.contentHash;
-  if (typeof stored !== 'string' || !stored) return false;
-  return hashBody(extractBody(noteContent)) !== stored;
+  if (typeof stored !== 'string' || !stored) return 'unknown';
+  const body = extractBody(noteContent);
+  if (hashBody(body) === stored) return 'unchanged';
+  const storedLink = fm.linkHash;
+  if (typeof storedLink === 'string' && storedLink && hashBody(linkReducedBody(body)) === storedLink) {
+    return 'links-only';
+  }
+  return 'edited';
+}
+
+export function noteHasDrifted(pageContent: string, noteContent: string): boolean {
+  // A rewritten link path is not an edit (#677), so only `edited` answers true here.
+  return noteDriftState(pageContent, noteContent) === 'edited';
 }

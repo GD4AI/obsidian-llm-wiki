@@ -667,6 +667,8 @@ export const RU_TEXTS = {
     lintNoIssuesFound: 'Дубликатов, мёртвых ссылок, пустых страниц, висячих страниц или неподтверждённых цитат не обнаружено.',
     lintSourceDriftSection: 'Исходные заметки изменены после импорта [{count}]',
     lintSourceDriftItem: '- [[{page}]] — исходная заметка [[{note}]] была изменена после импорта; страница может быть устаревшей',
+    lintSourceDriftLinksOnlySection: 'Исходные заметки, где изменились только ссылки [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — в [[{note}]] изменились только пути ссылок (страница перемещена); конспект не устарел',
     lintContradictionMarkerSection: 'Страницы с маркером противоречий (триаж слияния) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — конфликтующие источники: {sources}; после проверки удалите маркер contradictions:',
     lintQuoteGroundingSection: 'Неподтверждённые цитаты (обнаружено) [{count}]',

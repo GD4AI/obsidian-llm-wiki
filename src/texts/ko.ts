@@ -700,6 +700,8 @@ export const KO_TEXTS = {
     lintNoIssuesFound: '중복, 깨진 링크, 빈 페이지, 고아 페이지 또는 출처 없는 인용이 감지되지 않았습니다.',
     lintSourceDriftSection: '수집 후 변경된 소스 노트 [{count}개]',
     lintSourceDriftItem: '- [[{page}]] — 원본 노트 [[{note}]]가 수집 후 수정되었습니다. 페이지가 오래되었을 수 있습니다',
+    lintSourceDriftLinksOnlySection: '링크만 바뀐 원본 노트 [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — [[{note}]]에서 링크 경로만 바뀌었습니다(페이지 이동). 요약은 오래되지 않았습니다',
     lintContradictionMarkerSection: '모순 마커가 있는 페이지 (병합 분류) [{count}개]',
     lintContradictionMarkerItem: '- [[{page}]] — 충돌하는 소스: {sources}. 검토 후 contradictions: 마커를 제거하세요',
     lintQuoteGroundingSection: '출처 없는 인용 (감지됨) [{count}개]',

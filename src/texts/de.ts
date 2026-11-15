@@ -699,6 +699,8 @@ export const DE_TEXTS = {
     lintNoIssuesFound: 'Keine Duplikate, defekten Links, leeren Seiten, verwaisten Seiten oder unbelegten Zitate erkannt.',
     lintSourceDriftSection: 'Quellnotizen seit dem Ingest geändert [{count}]',
     lintSourceDriftItem: '- [[{page}]] — Ursprungsnotiz [[{note}]] wurde nach dem Ingest bearbeitet; die Seite ist womöglich veraltet',
+    lintSourceDriftLinksOnlySection: 'Quellnotizen mit geänderten Links, unverändertem Inhalt [{count}]',
+    lintSourceDriftLinksOnlyItem: '- [[{page}]] — in [[{note}]] haben sich nur Link-Pfade geändert (Seite verschoben); die Zusammenfassung ist nicht veraltet',
     lintContradictionMarkerSection: 'Seiten mit Widerspruchs-Marker (Merge-Triage) [{count}]',
     lintContradictionMarkerItem: '- [[{page}]] — widersprechende Quelle(n): {sources}; nach der Sichtung den contradictions:-Marker entfernen',
     lintQuoteGroundingSection: 'Unbelegte Zitate (erkannt) [{count}]',

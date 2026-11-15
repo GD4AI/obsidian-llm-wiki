@@ -39,6 +39,7 @@ import { setGenerationComplete } from '../core/incomplete-page-cleaner';
 import { convertPdfToMarkdown, UnsupportedProviderError, EncryptedPdfError } from './pdf-converter';
 import { MineruPdfError, MINERU_PHASE_KEY } from '../core/mineru-converter';
 import { hashBody, checkContentRequirements } from '../core/source-requirements';
+import { linkReducedBody } from '../core/ingest-state';
 import { resolveModelForTask } from '../core/model-resolver';
 import type { SourceRejection } from '../core/source-requirements';
 // v1.25.1 Phase C-PR1: detectRateLimitFailures is invoked exclusively by runBatchedWithRetry (engine-internals/page-batch-runner.ts).
@@ -2238,6 +2239,11 @@ export class WikiEngine {
     // #164: stamp a content fingerprint so future ingests can detect duplicates.
     // Injected programmatically — the LLM can't be trusted to emit it.
     let finalContent = upsertFrontmatterField(cleanedContent, 'contentHash', hashBody(extractBody(content)));
+    // #677: the second fingerprint. `contentHash` answers "did the body change";
+    // `linkHash` answers "did anything but link paths change". A folder move rewrites
+    // inbound links through Obsidian, so without it every note that linked the moved
+    // page reads as edited.
+    finalContent = upsertFrontmatterField(finalContent, 'linkHash', hashBody(linkReducedBody(extractBody(content))));
     // #679: `source_file` is the canonical owner (`originNoteRefs`), read by the
     // ingest skip and the drift scan — the same kind of field as `contentHash`.
     // The model copied it from the template; a copy came back misspelled.
