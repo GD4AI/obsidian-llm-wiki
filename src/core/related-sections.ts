@@ -20,6 +20,18 @@ import { slugify } from './slug';
 import { snapHeaderToCanonical } from './section-header-canonicalizer';
 import { nameKey } from './related-shaping';
 
+/**
+ * The cross-source names one write adds to one page (#664, second half).
+ *
+ * Shaped by `core/related-shaping.ts` and carried to the renderer, because the
+ * identity of a projected name is the only thing that separates it from a
+ * note-grounded one by the time both are plain strings in one list.
+ */
+export interface RelatedProjection {
+  entities?: readonly string[];
+  concepts?: readonly string[];
+}
+
 export interface RelatedRenderOpts {
   /** `slugCase: 'preserve'` — the planned path of a page not yet in the vault. */
   preserveCase: boolean;
@@ -40,6 +52,28 @@ export interface RelatedRenderOpts {
    * no budget to apply.
    */
   ceiling?: number;
+  /**
+   * The names this write adds from the cross-source projection (#664, second half).
+   *
+   * They are already present in `relatedEntities` / `relatedConcepts`; naming them
+   * again is what lets the ceiling tell them apart. A projection is the only entry
+   * on the page that carries information from **another** note, and the shaper places
+   * it last, so an arrival-ordered ceiling always refuses it first — on a page whose
+   * kept entries fill the budget, #729 Phase 1 added nothing, on that ingest and
+   * every later one (@DocTpoint's replay of `9237a1b6`).
+   *
+   * With this set, the note-grounded additions stop `reserve` slots early and the
+   * projection fills what is left. `ceiling` still bounds the page: this decides who
+   * is refused, never how many entries the page may carry.
+   */
+  projected?: RelatedProjection;
+  /**
+   * Most slots `projected` may hold back — `RELATED_BUDGET[tier].crossSource`.
+   *
+   * The reserve is the smaller of this and the number of projected names actually
+   * available, so a projection that found one page holds one slot back, not three.
+   */
+  projectedBudget?: number;
   /**
    * Called with the names the ceiling refused, per section.
    *
@@ -160,14 +194,31 @@ export function renderRelatedSections(
     for (const e of keptEntries(keptLines, labelsOf[folder], universe, opts.resolve)) add(e.rel, e.name, folderOf(e.rel, folder));
   }
   // Counted after the kept entries, because they are what the page already carries.
-  const atCeiling = () => opts.ceiling !== undefined && seen.size >= opts.ceiling;
+  const atPageCeiling = () => opts.ceiling !== undefined && seen.size >= opts.ceiling;
+  // #664, second half: the projection keeps `reserve` slots, and the note-grounded
+  // side stops there. Resolution runs through the same `opts.resolve` the write uses,
+  // so a name and its projected copy meet under one key.
+  const projectedKeys = new Set<string>();
+  for (const [names, folder] of [[opts.projected?.entities, 'entities'], [opts.projected?.concepts, 'concepts']] as const) {
+    for (const raw of names ?? []) {
+      const name = raw.trim();
+      if (!name) continue;
+      const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
+      projectedKeys.add(nameKey(rel.slice(rel.lastIndexOf('/') + 1)));
+    }
+  }
+  const reserve = Math.min(opts.projectedBudget ?? 0, projectedKeys.size);
+  const noteCeiling = opts.ceiling === undefined ? undefined : Math.max(0, opts.ceiling - reserve);
+  const atNoteCeiling = () => noteCeiling !== undefined && seen.size >= noteCeiling;
   for (const [names, folder] of [[relatedEntities, 'entities'], [relatedConcepts, 'concepts']] as const) {
     const refused: string[] = [];
     for (const raw of names ?? []) {
       const name = raw.trim();
       if (!name) continue;
-      if (atCeiling()) { refused.push(name); continue; }
       const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
+      const isProjected = projectedKeys.size > 0
+        && projectedKeys.has(nameKey(rel.slice(rel.lastIndexOf('/') + 1)));
+      if (isProjected ? atPageCeiling() : atNoteCeiling()) { refused.push(name); continue; }
       // #676: a name that resolves to the page being written must not become a
       // self-link. The shaper excludes the page's own name key before this, but
       // an alias or a differently-spelled title gets past that and only the

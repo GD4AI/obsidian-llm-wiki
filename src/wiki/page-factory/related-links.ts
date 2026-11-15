@@ -6,7 +6,7 @@
 
 import { correctRelatedLinkPrefixes, buildVaultResolver } from '../../core/related-link-corrector';
 import { renderRelatedSections } from '../../core/related-sections';
-import type { Folder } from '../../core/related-sections';
+import type { Folder, RelatedProjection } from '../../core/related-sections';
 import { RELATED_BUDGET } from '../../constants';
 import type { ExtractionGranularity } from '../../constants';
 import type { WikiPageRef } from '../../types';
@@ -25,12 +25,26 @@ interface RelatedLists {
 /** `getSectionLabels(settings)` — the two Related labels are read by key. */
 type RelatedLabels = Record<string, string>;
 
+/**
+ * The `opts` a writer passes to `applyRelatedLinks`, in one place (#664).
+ *
+ * Two callers need the same three-way union, and building it inline put the line
+ * ratchet over its ceiling on `mergePage`.
+ */
+export function relatedWriteOpts(
+  pageType: 'entity' | 'concept',
+  base: { keepFrom?: string; selfPath?: string },
+  projected?: RelatedProjection,
+): { pageType: 'entity' | 'concept'; keepFrom?: string; selfPath?: string; projected?: RelatedProjection } {
+  return { pageType, ...base, ...(projected !== undefined ? { projected } : {}) };
+}
+
 export async function applyRelatedLinks(
   ctx: RelatedLinkCtx,
   content: string,
   lists: RelatedLists,
   labels: RelatedLabels,
-  opts: { pageType: 'entity' | 'concept'; keepFrom?: string; selfPath?: string },
+  opts: { pageType: 'entity' | 'concept'; keepFrom?: string; selfPath?: string; projected?: RelatedProjection },
 ): Promise<string> {
   const firstSection: Folder = opts.pageType === 'concept' ? 'concepts' : 'entities';
   const vaultIndex = { wikiFolder: ctx.settings.wikiFolder, pages: await ctx.getExistingWikiPages() };
@@ -42,7 +56,8 @@ export async function applyRelatedLinks(
     labels.related_concepts,
     vaultIndex,
   );
-  const ceiling = RELATED_BUDGET[ctx.settings.extractionGranularity ?? 'standard'].total;
+  const budget = RELATED_BUDGET[ctx.settings.extractionGranularity ?? 'standard'];
+  const ceiling = budget.total;
   return renderRelatedSections(
     prefixed,
     lists.related_entities,
@@ -57,6 +72,11 @@ export async function applyRelatedLinks(
       // entries are untouched, so a list already over the ceiling keeps every entry
       // and simply stops growing until #729 Phase 2 truncates it.
       ceiling,
+      // #664, second half: the cross-source entries this write adds are named, so
+      // the ceiling can hold their slots back from the note-grounded names instead
+      // of refusing them last. Absent means the note-grounded side has the whole
+      // budget, which is every write that carried no projection.
+      ...(opts.projected !== undefined ? { projected: opts.projected, projectedBudget: budget.crossSource } : {}),
       // The ceiling refuses silently: nothing is written, so nothing shows on the
       // page. This line is the only trace, and it is `console.debug`, so production
       // builds strip it (#664).

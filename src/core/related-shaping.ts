@@ -66,6 +66,17 @@ export interface RelatedShapingResult {
   siblings: number;
   /** Cross-source entries added by the `candidates` source (one per list entry). */
   crossSource: number;
+  /**
+   * The names that source contributed, per page, keyed by `nameKey` of the page's
+   * name (#664, second half).
+   *
+   * They are already inside the returned `related_entities` / `related_concepts`,
+   * where they are indistinguishable from a note-grounded name. This map is what
+   * lets the renderer hold their slots back: the ceiling refuses by arrival order,
+   * and the projection arrives last, so without it the only signal a page carries
+   * from other notes is the first thing a full page loses.
+   */
+  projected: Map<string, { entities: string[]; concepts: string[] }>;
   /** Related names that were tag values, not pages — removed. */
   tags: Array<{ on: string; name: string }>;
 }
@@ -116,6 +127,7 @@ export function shapeRelatedLists(
 
   const shape = (self: string, ents: string[] | undefined, cons: string[] | undefined) => {
     const outE: string[] = []; const outC: string[] = []; const seen = new Set<string>([nameKey(self)]);
+    const projE: string[] = []; const projC: string[] = [];
     let hasLive = false;
     const put = (name: string, kind: RelatedKind | undefined, into: RelatedKind): boolean => {
       const k = nameKey(name);
@@ -192,24 +204,30 @@ export function shapeRelatedLists(
         // the dead-related-entry count the file header measures.
         const r = deps.resolve(name);
         if (!r) continue;
-        if (put(r.title, r.kind, r.kind)) crossSource++;
+        if (put(r.title, r.kind, r.kind)) {
+          crossSource++;
+          (r.kind === 'concept' ? projC : projE).push(r.title);
+        }
       }
     }
-    return { outE, outC };
+    return { outE, outC, projE, projC };
   };
 
+  const projected: RelatedShapingResult['projected'] = new Map();
   const entities = analysis.entities.map(e => {
-    const { outE, outC } = shape(e.name, e.related_entities, e.related_concepts);
+    const { outE, outC, projE, projC } = shape(e.name, e.related_entities, e.related_concepts);
+    if (projE.length || projC.length) projected.set(nameKey(e.name), { entities: projE, concepts: projC });
     const next: EntityInfo = { ...e };
     if (outE.length || e.related_entities) next.related_entities = outE;
     if (outC.length || e.related_concepts) next.related_concepts = outC;
     return next;
   });
   const concepts = analysis.concepts.map(c => {
-    const { outE, outC } = shape(c.name, c.related_entities, c.related_concepts);
+    const { outE, outC, projE, projC } = shape(c.name, c.related_entities, c.related_concepts);
+    if (projE.length || projC.length) projected.set(nameKey(c.name), { entities: projE, concepts: projC });
     const next: ConceptInfo = { ...c, related_concepts: outC };
     if (outE.length || c.related_entities) next.related_entities = outE;
     return next;
   });
-  return { entities, concepts, unanswered, siblings, tags, crossSource };
+  return { entities, concepts, unanswered, siblings, tags, crossSource, projected };
 }

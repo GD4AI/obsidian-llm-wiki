@@ -261,3 +261,36 @@ describe('shapeRelatedLists — M0 cross-source entries (#729 Phase 1)', () => {
     expect(twice.crossSource).toBe(0);
   });
 });
+
+// #664, second half: the renderer needs to know WHICH entries came from the
+// projection, because by the time they are plain strings in one list nothing else
+// separates them from the note's own names. The map is that record, and it is keyed
+// by `nameKey` of the page's name, which is the key the renderer compares under.
+describe('#664 — the projection is recorded per page, so its slots can be reserved', () => {
+  it('names the entries `candidates` contributed, keyed like the page', () => {
+    const r = shapeRelatedLists(
+      { entities: [ent('A', { related_entities: ['Metformin'] })], concepts: [] },
+      { ...deps, candidates: () => ['Oxidativer-Stress'] },
+    );
+    expect(r.entities[0].related_concepts).toEqual(['Oxidativer-Stress']);
+    expect(r.projected.get('a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
+  });
+
+  it('records nothing for a page the projection did not touch', () => {
+    const r = shapeRelatedLists(
+      { entities: [ent('A', { related_entities: ['Metformin'] })], concepts: [con('B', { related_entities: ['Metformin'] })] },
+      { ...deps, candidates: (self) => (self === 'A' ? ['Oxidativer-Stress'] : []) },
+    );
+    expect(r.projected.get('a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
+    expect(r.projected.has('b')).toBe(false);
+  });
+
+  it('names only what was actually written — a rejected candidate is not reserved for', () => {
+    const r = shapeRelatedLists(
+      { entities: [ent('A', { related_entities: ['Metformin'] })], concepts: [] },
+      { ...deps, candidates: () => ['Niemand'] },
+    );
+    expect(r.crossSource).toBe(0);
+    expect(r.projected.size).toBe(0);
+  });
+});

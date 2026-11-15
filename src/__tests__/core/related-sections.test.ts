@@ -171,3 +171,87 @@ describe('#664 — a name refused by the ceiling is reportable', () => {
     expect(dropped).toEqual([]);
   });
 });
+
+// Issue #664, second half — the ceiling reserves the cross-source slots.
+//
+// #1032 bounded additions, and @DocTpoint's replay found the side effect within a
+// day: a projection is shaped LAST, so the ceiling refuses it FIRST. On a page
+// whose kept entries already fill the budget, #729 Phase 1 added nothing — on that
+// ingest and every later one. The signal that carries information from OTHER notes
+// was the one the bound discarded.
+//
+// So the note-grounded additions stop `reserve` slots early, and the projection
+// fills what is left. `ceiling` still bounds the page: this changes who is refused,
+// never how many entries a page may carry.
+describe('#664 — the ceiling holds the projection slots back from note-grounded names', () => {
+  // Seven kept entries, one slot left. This is the page @DocTpoint measured: full
+  // before the note arrives, so whatever the note adds is refused.
+  const seven = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n- [[entities/B|B]]\n- [[entities/C|C]]\n- [[entities/D|D]]\n\n## ${C}\n\n- [[concepts/E|E]]\n- [[concepts/F|F]]\n- [[concepts/G|G]]\n`;
+  // `K`, not `C`: a note-grounded `C` would collide with a kept `C` and the
+  // dedupe would change the arithmetic these tests are about.
+  const two = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n\n## ${C}\n\n- [[concepts/K|K]]\n`;
+
+  it('lets the projection in on a page whose kept entries already fill the budget', () => {
+    const out = renderRelatedSections(seven, ['Fresh', 'P1'], [], E, C, {
+      ...opts, keepFrom: seven, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect(out, 'the projection was refused — #729 Phase 1 is starved again').toContain('- [[entities/P1|P1]]');
+    expect(out, 'a note-grounded name took the slot the projection was holding').not.toContain('- [[entities/Fresh|Fresh]]');
+    expect((out.match(/^- \[\[/gm) ?? []).length).toBe(8);
+  });
+
+  it('gives the note-grounded side the room the projection does not use', () => {
+    const out = renderRelatedSections(two, ['B', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6'], ['P1'], E, C, {
+      ...opts, keepFrom: two, ceiling: 8, projected: { concepts: ['P1'] }, projectedBudget: 3,
+    });
+    expect(out).toContain('- [[entities/B|B]]');
+    expect(out).toContain('- [[entities/N4|N4]]');
+    expect(out).toContain('- [[concepts/P1|P1]]');
+    expect(out, 'the reserve was not applied to the note-grounded side').not.toContain('- [[entities/N5|N5]]');
+    expect((out.match(/^- \[\[/gm) ?? []).length).toBe(8);
+  });
+
+  it('reserves as many slots as the projection has names, not as many as the tier allows', () => {
+    // The same page and the same lists, differing only in what the projection
+    // produced: three names hold three slots back, one name holds one.
+    const names = ['B', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6'];
+    const many = renderRelatedSections(two, names, ['P1', 'P2', 'P3'], E, C, {
+      ...opts, keepFrom: two, ceiling: 8, projected: { concepts: ['P1', 'P2', 'P3'] }, projectedBudget: 3,
+    });
+    const one = renderRelatedSections(two, names, ['P1', 'P2', 'P3'], E, C, {
+      ...opts, keepFrom: two, ceiling: 8, projected: { concepts: ['P1'] }, projectedBudget: 3,
+    });
+    expect(many).toContain('- [[concepts/P3|P3]]');
+    expect(one, 'the reserve was held at the tier budget instead of the projection size').not.toContain('- [[concepts/P3|P3]]');
+  });
+
+  it('caps the reserve at the tier budget when the projection is wider than it', () => {
+    const out = renderRelatedSections(two, ['B', 'C', 'D', 'E', 'F'], ['P1', 'P2', 'P3'], E, C, {
+      ...opts, keepFrom: two, ceiling: 8, projected: { concepts: ['P1', 'P2', 'P3'] }, projectedBudget: 1,
+    });
+    const projected = (out.match(/- \[\[concepts\/P[123]\|/g) ?? []).length;
+    expect(projected, 'more projection slots were reserved than the tier allows').toBe(1);
+  });
+
+  it('counts a projected name once, when the page already carries it', () => {
+    const out = renderRelatedSections(seven, ['A', 'P1'], [], E, C, {
+      ...opts, keepFrom: seven, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect((out.match(/\|A\]\]/g) ?? []).length).toBe(1);
+    expect(out).toContain('- [[entities/P1|P1]]');
+  });
+
+  it('is opt-in: without a projection the note-grounded side keeps today’s behaviour', () => {
+    const out = renderRelatedSections(seven, ['Fresh'], [], E, C, { ...opts, keepFrom: seven, ceiling: 8 });
+    expect(out).toContain('- [[entities/Fresh|Fresh]]');
+  });
+
+  it('reports the refused note-grounded names, so the trace says what the reserve cost', () => {
+    const refused: string[] = [];
+    renderRelatedSections(seven, ['Fresh'], [], E, C, {
+      ...opts, keepFrom: seven, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+      onRefused: (_s, names) => refused.push(...names),
+    });
+    expect(refused).toEqual(['Fresh']);
+  });
+});

@@ -40,6 +40,7 @@ import {
   createOrUpdatePage as _createOrUpdatePage,
   type CreatePageContext,
 } from './create-page';
+import type { RelatedProjection } from '../../core/related-sections';
 import { resolvePagePath, type PathResolutionContext } from './path-resolution';
 import { updateRelatedPage, type RelatedPageContext } from './related-page';
 import { mergePage as _mergePage, appendToReviewedPage as _appendToReviewedPage } from './merge-page';
@@ -106,6 +107,7 @@ export class PageFactory {
     sourceFile: PageFactorySourceFile,
     extraPagePaths: string[] = [],
     sourceSlug?: string,
+    projected?: RelatedProjection,
   ): Promise<PageCreationResult> {
     return createOrUpdateEntityPage(
       this.createCtx,
@@ -114,6 +116,7 @@ export class PageFactory {
       sourceFile,
       extraPagePaths,
       sourceSlug,
+      projected,
     );
   }
 
@@ -127,6 +130,7 @@ export class PageFactory {
     sourceFile: PageFactorySourceFile,
     extraPagePaths: string[] = [],
     sourceSlug?: string,
+    projected?: RelatedProjection,
   ): Promise<PageCreationResult> {
     return createOrUpdateConceptPage(
       this.createCtx,
@@ -135,6 +139,7 @@ export class PageFactory {
       sourceFile,
       extraPagePaths,
       sourceSlug,
+      projected,
     );
   }
 

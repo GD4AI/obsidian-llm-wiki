@@ -40,7 +40,8 @@ import {
   stripUnknownSections,
 } from '../../core/section-header-canonicalizer';
 import { guardBodyRewrite } from '../../core/paragraph-provenance';
-import { applyRelatedLinks } from './related-links';
+import { applyRelatedLinks, relatedWriteOpts } from './related-links';
+import type { RelatedProjection } from '../../core/related-sections';
 import { relatedListLines } from '../../core/related-sections';
 import { mergeFrontmatter, parseFrontmatter, extractBody } from '../../core/frontmatter';
 import { incomingTypeTag } from '../../core/tag-vocab';
@@ -97,7 +98,7 @@ export async function mergePage(
   extraPagePaths: string[],
   path: string,
   sourceSlug?: string,
-  sourceContext?: SourceContext,
+  sourceContext?: SourceContext, projected?: RelatedProjection,
 ): Promise<string | null> {
   const client = ctx.getClient();
   if (!client) throw new Error('LLM client not initialized');
@@ -351,7 +352,7 @@ export async function mergePage(
     const prunedBody = stripUnknownSections(canonicalizedBody, Object.values(labels));
     // Related links resolved against every page, sections written from the
     // lists with the page's earlier entries in front — see page-factory/related-links.ts.
-    const correctedBody = await applyRelatedLinks(ctx, prunedBody, info, labels, { pageType, keepFrom: existingBody });
+    const correctedBody = await applyRelatedLinks(ctx, prunedBody, info, labels, relatedWriteOpts(pageType, { keepFrom: existingBody }, projected));
     // Completeness is the schema's call, not the model's: sections the rewrite
     // dropped or collapsed come back (#618), footnoted paragraphs another source
     // owns come back, the H1 comes back (#419). The Mentions section is
