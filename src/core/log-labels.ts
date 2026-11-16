@@ -29,6 +29,9 @@ export const LOG_LABELS: Record<string, LogLabels> = {
   pt: { createdPages: 'Páginas criadas', updatedPages: 'Páginas atualizadas', contradictionsFound: 'Contradições encontradas' },
   it: { createdPages: 'Pagine create', updatedPages: 'Pagine aggiornate', contradictionsFound: 'Contraddizioni trovate' },
   ru: { createdPages: 'Созданные страницы', updatedPages: 'Обновлённые страницы', contradictionsFound: 'Найдены противоречия' },
+  nl: { createdPages: 'Gemaakte pagina\'s', updatedPages: 'Bijgewerkte pagina\'s', contradictionsFound: 'Gevonden tegenstrijdigheden' },
+  pl: { createdPages: 'Utworzone strony', updatedPages: 'Zaktualizowane strony', contradictionsFound: 'Znalezione sprzeczności' },
+  th: { createdPages: 'หน้าที่สร้าง', updatedPages: 'หน้าที่อัปเดต', contradictionsFound: 'พบข้อขัดแย้ง' },
 };
 
 /** Labels for `lang`; English when the language has no entry. */

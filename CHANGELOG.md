@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dutch, Polish and Thai join the interface and the wiki output (Issue #1048).** Each language brings a full string table (797 keys), a page-section label set, source page head labels, index labels and the four ingest-log labels. Both dropdowns read one list, so one entry makes the language selectable in the interface and as the wiki output language; the three tables behind the wiki output are what stops it falling back to English. A new guard, `wiki-output-language-parity.test.ts`, checks every selectable language against all four surfaces — it found three languages that were already selectable and already falling back (`zh-Hant`, `it`, `ru` had no index labels), and those rows are added here.
+
 ### Changed
 
 - **The cross-source ranking breaks a tie with two facts outside the pair (Issue #1028, step 1).** The comparator was `shared count → summed weight → path`, and the path was deciding cuts far more often than it should: 37.0 % of them on a 2,141-page vault, 72.7 % on `test10`. It now asks first how rare the **rarest** shared target is, then how well connected the **candidate** is — both measured from the graph, neither about the pair. The path decides 11.6 % and 9.1 % of cuts on those two vaults, and the share of entries starting with "A" falls from 2.0 % to 1.5 % against a 2.1 % base. Coverage is identical: 5,197 entries on 1,874 pages, because the change reorders and never adds or removes. 22.5 % of pages get a different top three. Degree ignores source pages, which are the notes the vault was built from rather than subjects, and it is a heuristic rather than a principle — it is the only key that is not about the pair.
