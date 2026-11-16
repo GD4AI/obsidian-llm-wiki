@@ -223,6 +223,14 @@ export class WikiEngine {
    *  entry is written from a method that has no access to it. Cleared when it
    *  is consumed so a later run cannot inherit a stale list. */
   private pendingUnanswered: ReadonlyArray<{ on: string; name: string }> = [];
+  /**
+   * The cross-source names the run added, per page (#664, second half).
+   *
+   * Set by `shapeRelatedListsForRun` for the note being ingested, read when that
+   * note's pages are written, and reset at the start of every shaping pass, so a
+   * page never inherits another note's projection.
+   */
+  private pendingProjected: ReadonlyMap<string, { entities: string[]; concepts: string[] }> = new Map();
   private ctx: EngineContext;
   /** SubtleCrypto from `activeWindow.crypto.subtle`. Used by PDF cache. */
   private subtle: SubtleCrypto | undefined;
@@ -1387,6 +1395,9 @@ export class WikiEngine {
     batchCtx: object | undefined;
   }): Promise<void> {
     const { analysis, file, stubPlan, domainVocabulary, batchCtx } = args;
+    // Reset first: a note whose page set is written without a shaping pass must not
+    // inherit the projection of the note before it (#664).
+    this.pendingProjected = new Map();
     // Every page born from this note links its siblings, a related name
     // the vault answers is written under the page's own title and kind,
     // and a name nothing answers stays as written and is counted.
@@ -1462,6 +1473,7 @@ export class WikiEngine {
       analysis.entities = shaped.entities;
       analysis.concepts = shaped.concepts;
       this.pendingUnanswered = shaped.unanswered;
+      this.pendingProjected = shaped.projected;
       if (shaped.unanswered.length > 0 || shaped.siblings > 0 || shaped.tags.length > 0 || shaped.crossSource > 0) {
         const list = shaped.unanswered.map(d => `${d.name} (on ${d.on})`).join('; ');
         const tagList = shaped.tags.map(d => `${d.name} (on ${d.on})`).join('; ');
@@ -1540,7 +1552,7 @@ export class WikiEngine {
         if (task.type === 'entity') {
           const entity = analysis.entities[task.index];
           try {
-            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug);
+            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug, this.pendingProjected.get(nameKey(entity.name)));
             if (entityResult.path) {
               if (entityResult.created) analysis.created_pages.push(entityResult.path);
               else recordUpdatedPage(analysis, entityResult.path);
@@ -1554,7 +1566,7 @@ export class WikiEngine {
         }
         const concept = analysis.concepts[task.index];
         try {
-          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug);
+          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug, this.pendingProjected.get(nameKey(concept.name)));
           if (conceptResult.path) {
             if (conceptResult.created) analysis.created_pages.push(conceptResult.path);
             else recordUpdatedPage(analysis, conceptResult.path);

@@ -20,6 +20,18 @@ import { slugify } from './slug';
 import { snapHeaderToCanonical } from './section-header-canonicalizer';
 import { nameKey } from './related-shaping';
 
+/**
+ * The cross-source names one write adds to one page (#664, second half).
+ *
+ * Shaped by `core/related-shaping.ts` and carried to the renderer, because the
+ * identity of a projected name is the only thing that separates it from a
+ * note-grounded one by the time both are plain strings in one list.
+ */
+export interface RelatedProjection {
+  entities?: readonly string[];
+  concepts?: readonly string[];
+}
+
 export interface RelatedRenderOpts {
   /** `slugCase: 'preserve'` — the planned path of a page not yet in the vault. */
   preserveCase: boolean;
@@ -28,18 +40,49 @@ export interface RelatedRenderOpts {
   /** Body before the rewrite: its list entries are kept in front of the new ones. */
   keepFrom?: string;
   /**
-   * Most entries one page's two Related sections may hold (#664, first half).
+   * Most **note-grounded** entries one page's two Related sections may hold
+   * (#664, first half).
    *
-   * Additions stop at this number. Entries already in the file are never dropped —
-   * a cut needs an ordering, and the ordering is #729 Phase 2's, because ranking by
+   * Additions stop at this number. Entries already in the file are never dropped — a
+   * cut needs an ordering, and the ordering is #729 Phase 2's, because ranking by
    * shared sources keeps a dead name and drops the cross-source page. So a list over
    * the ceiling stays over it until that step runs; what changes today is that it
    * stops growing.
+   *
+   * `projectedBudget` extends this for the projection, which has its own allowance
+   * rather than a share of this one — a page may therefore hold `ceiling +
+   * projectedBudget` entries in total.
    *
    * Absent means no bound, which is the union path this renders when the caller has
    * no budget to apply.
    */
   ceiling?: number;
+  /**
+   * The names this write adds from the cross-source projection (#664, second half).
+   *
+   * They are already present in `relatedEntities` / `relatedConcepts`; naming them
+   * again is what lets the ceiling tell them apart. A projection is the only entry
+   * on the page that carries information from **another** note, and the shaper places
+   * it last, so an arrival-ordered ceiling always refuses it first — on a page whose
+   * kept entries fill the budget, #729 Phase 1 added nothing, on that ingest and
+   * every later one (@DocTpoint's replay of `9237a1b6`).
+   *
+   * With this set, the note-grounded additions stop `reserve` slots early and the
+   * projection fills what is left. `ceiling` still bounds the page: this decides who
+   * is refused, never how many entries the page may carry.
+   */
+  projected?: RelatedProjection;
+  /**
+   * Most entries `projected` may add **beyond** `ceiling` — `RELATED_BUDGET[tier]
+   * .crossSource`.
+   *
+   * A projection does not take a slot the note's own names could have used. It is an
+   * addition on top, and the page total is `ceiling + min(projectedBudget, projection
+   * size)`, which is what keeps this bounded: without a hard total the projection
+   * would add up to its budget on every write, and #664 was filed about exactly that
+   * growth (18.4 entries at eight or more sources, 73 at the worst).
+   */
+  projectedBudget?: number;
   /**
    * Called with the names the ceiling refused, per section.
    *
@@ -160,14 +203,37 @@ export function renderRelatedSections(
     for (const e of keptEntries(keptLines, labelsOf[folder], universe, opts.resolve)) add(e.rel, e.name, folderOf(e.rel, folder));
   }
   // Counted after the kept entries, because they are what the page already carries.
-  const atCeiling = () => opts.ceiling !== undefined && seen.size >= opts.ceiling;
+  // #664, second half: the projection keeps `reserve` slots, and the note-grounded
+  // side stops there. Resolution runs through the same `opts.resolve` the write uses,
+  // so a name and its projected copy meet under one key.
+  const projectedKeys = new Set<string>();
+  for (const [names, folder] of [[opts.projected?.entities, 'entities'], [opts.projected?.concepts, 'concepts']] as const) {
+    for (const raw of names ?? []) {
+      const name = raw.trim();
+      if (!name) continue;
+      const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
+      projectedKeys.add(nameKey(rel.slice(rel.lastIndexOf('/') + 1)));
+    }
+  }
+  // #664, second half: the projection gets its own allowance above the note ceiling,
+  // sized by what it actually produced, so a page whose note side is full still gains
+  // its cross-source entries and no note-grounded name loses a slot to them.
+  const reserve = Math.min(opts.projectedBudget ?? 0, projectedKeys.size);
+  const noteCeiling = opts.ceiling;
+  const atNoteCeiling = () => noteCeiling !== undefined && seen.size >= noteCeiling;
+  const pageCeiling = noteCeiling === undefined ? undefined : noteCeiling + reserve;
   for (const [names, folder] of [[relatedEntities, 'entities'], [relatedConcepts, 'concepts']] as const) {
     const refused: string[] = [];
     for (const raw of names ?? []) {
       const name = raw.trim();
       if (!name) continue;
-      if (atCeiling()) { refused.push(name); continue; }
       const rel = opts.resolve(name) ?? `${folder}/${slugify(name, opts.preserveCase)}`;
+      const isProjected = projectedKeys.size > 0
+        && projectedKeys.has(nameKey(rel.slice(rel.lastIndexOf('/') + 1)));
+      const refusedNow = isProjected
+        ? pageCeiling !== undefined && seen.size >= pageCeiling
+        : atNoteCeiling();
+      if (refusedNow) { refused.push(name); continue; }
       // #676: a name that resolves to the page being written must not become a
       // self-link. The shaper excludes the page's own name key before this, but
       // an alias or a differently-spelled title gets past that and only the

@@ -171,3 +171,93 @@ describe('#664 — a name refused by the ceiling is reportable', () => {
     expect(dropped).toEqual([]);
   });
 });
+
+// Issue #664, second half — the projection has its own allowance.
+//
+// #1032 bounded additions, and @DocTpoint's replay found the side effect within a
+// day: a projection is shaped LAST, so the ceiling refuses it FIRST. On a page whose
+// kept entries already fill the budget, #729 Phase 1 added nothing — on that ingest
+// and every later one. The signal that carries information from OTHER notes was the
+// one the bound discarded.
+//
+// The projection therefore gets `projectedBudget` entries **above** the note ceiling
+// rather than a share of it: a note-grounded name never loses a slot to a projection,
+// and the page total (`ceiling + projection size`) stays the bound that keeps #664's
+// growth from returning. Measured on the 2,141-page vault: 904 pages carry six or
+// more entries, so a share-based split would have cost 43 % of them a new note name.
+describe('#664 — a projection adds to the page instead of taking a note slot', () => {
+  // Eight kept entries: the note side is full, so every note-grounded name arriving
+  // now is refused — and this is the page the projection must still reach.
+  const eight = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n- [[entities/B|B]]\n- [[entities/C|C]]\n- [[entities/D|D]]\n\n## ${C}\n\n- [[concepts/E|E]]\n- [[concepts/F|F]]\n- [[concepts/G|G]]\n- [[concepts/H|H]]\n`;
+  const seven = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n- [[entities/B|B]]\n- [[entities/C|C]]\n- [[entities/D|D]]\n\n## ${C}\n\n- [[concepts/E|E]]\n- [[concepts/F|F]]\n- [[concepts/G|G]]\n`;
+  const entries = (out: string) => (out.match(/^- \[\[/gm) ?? []).length;
+
+  it('adds the projection above the note ceiling, so a note-grounded name keeps its slot', () => {
+    const out = renderRelatedSections(seven, ['Fresh', 'P1'], [], E, C, {
+      ...opts, keepFrom: seven, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect(out, 'a note-grounded name was refused for the projection').toContain('- [[entities/Fresh|Fresh]]');
+    expect(out, 'the projection was refused').toContain('- [[entities/P1|P1]]');
+    expect(entries(out)).toBe(9);
+  });
+
+  it('reaches a page whose note side is already full', () => {
+    const out = renderRelatedSections(eight, ['Fresh', 'P1'], [], E, C, {
+      ...opts, keepFrom: eight, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect(out, 'the projection was refused — #729 Phase 1 is starved again').toContain('- [[entities/P1|P1]]');
+    expect(out).not.toContain('- [[entities/Fresh|Fresh]]');
+    expect(entries(out)).toBe(9);
+  });
+
+  it('caps the addition at the tier budget when the projection is wider than it', () => {
+    const out = renderRelatedSections(eight, ['P1', 'P2', 'P3', 'P4', 'P5'], [], E, C, {
+      ...opts, keepFrom: eight, ceiling: 8, projected: { entities: ['P1', 'P2', 'P3', 'P4', 'P5'] }, projectedBudget: 3,
+    });
+    expect(out).toContain('- [[entities/P3|P3]]');
+    expect(out, 'the projection added more than the tier allows').not.toContain('- [[entities/P4|P4]]');
+    expect(entries(out)).toBe(11);
+  });
+
+  it('adds only what the projection produced, not the whole budget', () => {
+    const one = renderRelatedSections(eight, ['P1', 'P2'], [], E, C, {
+      ...opts, keepFrom: eight, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect(one).toContain('- [[entities/P1|P1]]');
+    expect(one, 'the page grew by the tier budget instead of by the projection').not.toContain('- [[entities/P2|P2]]');
+    expect(entries(one)).toBe(9);
+  });
+
+  it('stops growing once the note ceiling and the projection allowance are both spent', () => {
+    const full = `# X\n\n## ${E}\n\n- [[entities/A|A]]\n- [[entities/B|B]]\n- [[entities/C|C]]\n- [[entities/D|D]]\n\n## ${C}\n\n- [[concepts/E|E]]\n- [[concepts/F|F]]\n- [[concepts/G|G]]\n- [[concepts/H|H]]\n- [[entities/P0|P0]]\n- [[entities/P1|P1]]\n- [[entities/P2|P2]]\n`;
+    const out = renderRelatedSections(full, ['Fresh', 'P3'], [], E, C, {
+      ...opts, keepFrom: full, ceiling: 8, projected: { entities: ['P3'] }, projectedBudget: 3,
+    });
+    expect(out).not.toContain('- [[entities/P3|P3]]');
+    expect(out).not.toContain('- [[entities/Fresh|Fresh]]');
+    expect(entries(out)).toBe(11);
+  });
+
+  it('counts a projected name once, when the page already carries it', () => {
+    const out = renderRelatedSections(seven, ['A', 'P1'], [], E, C, {
+      ...opts, keepFrom: seven, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+    });
+    expect((out.match(/\|A\]\]/g) ?? []).length).toBe(1);
+    expect(out).toContain('- [[entities/P1|P1]]');
+  });
+
+  it('is opt-in: without a projection the note-grounded side fills its ceiling as before', () => {
+    const out = renderRelatedSections(seven, ['Fresh'], [], E, C, { ...opts, keepFrom: seven, ceiling: 8 });
+    expect(out).toContain('- [[entities/Fresh|Fresh]]');
+    expect(entries(out)).toBe(8);
+  });
+
+  it('reports the refused note-grounded names, so the trace still says what was cut', () => {
+    const refused: string[] = [];
+    renderRelatedSections(eight, ['Fresh'], [], E, C, {
+      ...opts, keepFrom: eight, ceiling: 8, projected: { entities: ['P1'] }, projectedBudget: 3,
+      onRefused: (_s, names) => refused.push(...names),
+    });
+    expect(refused).toEqual(['Fresh']);
+  });
+});

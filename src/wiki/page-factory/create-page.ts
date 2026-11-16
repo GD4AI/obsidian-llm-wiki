@@ -31,7 +31,8 @@ import { PROMPTS } from '../../prompts';
 import { resolveModelForTask } from '../../core/model-resolver';
 import { cleanMarkdownResponse } from '../../core/markdown';
 import { canonicalizeSectionHeaders, stripUnknownSections } from '../../core/section-header-canonicalizer';
-import { applyRelatedLinks } from './related-links';
+import { applyRelatedLinks, relatedWriteOpts } from './related-links';
+import type { RelatedProjection } from '../../core/related-sections';
 import { parseFrontmatter, enforceFrontmatterConstraints, mergeFrontmatterArrayField } from '../../core/frontmatter';
 import { activeVocabulary } from '../../core/vocabulary';
 import { injectMentionsSection } from '../../core/mentions-injector';
@@ -85,6 +86,7 @@ export async function createOrUpdatePage(
   extraPagePaths: string[] = [],
   sourceSlug?: string,
   sourceContext?: SourceContext,
+  projected?: RelatedProjection,
 ): Promise<PageCreationResult> {
   if (!info.name || info.name.trim().length === 0) {
     console.warn(`${pageType} name is empty, skipping creation`);
@@ -108,7 +110,7 @@ export async function createOrUpdatePage(
   const existingContent = await ctx.tryReadFile(result.path);
 
   if (!existingContent) {
-    const createdPath = await createNewPage(ctx, info, pageType, sourceFile, extraPagePaths, result.path, sourceSlug);
+    const createdPath = await createNewPage(ctx, info, pageType, sourceFile, extraPagePaths, result.path, sourceSlug, projected);
     return { path: createdPath, created: true };
   }
 
@@ -120,7 +122,7 @@ export async function createOrUpdatePage(
     return { path: updatedPath, created: false };
   }
 
-  const mergedPath = await mergePage(ctx, info, pageType, sourceFile, existingContent, extraPagePaths, result.path, sourceSlug, sourceContext);
+  const mergedPath = await mergePage(ctx, info, pageType, sourceFile, existingContent, extraPagePaths, result.path, sourceSlug, sourceContext, projected);
   return { path: mergedPath, created: false };
 }
 
@@ -135,10 +137,11 @@ export async function createOrUpdateEntityPage(
   sourceFile: TFile | { path: string; basename: string },
   extraPagePaths: string[] = [],
   sourceSlug?: string,
+  projected?: RelatedProjection,
 ): Promise<PageCreationResult> {
   return createOrUpdatePage(
     ctx, entity, 'entity', sourceFile, extraPagePaths, sourceSlug,
-    sourceContextFromAnalysis(analysis),
+    sourceContextFromAnalysis(analysis), projected,
   );
 }
 
@@ -153,10 +156,11 @@ export async function createOrUpdateConceptPage(
   sourceFile: TFile | { path: string; basename: string },
   extraPagePaths: string[] = [],
   sourceSlug?: string,
+  projected?: RelatedProjection,
 ): Promise<PageCreationResult> {
   return createOrUpdatePage(
     ctx, concept, 'concept', sourceFile, extraPagePaths, sourceSlug,
-    sourceContextFromAnalysis(analysis),
+    sourceContextFromAnalysis(analysis), projected,
   );
 }
 
@@ -178,6 +182,7 @@ export async function createNewPage(
   extraPagePaths: string[],
   path: string,
   sourceSlug?: string,
+  projected?: RelatedProjection,
 ): Promise<string | null> {
   const client = ctx.getClient();
   if (!client) throw new Error('LLM client not initialized');
@@ -241,7 +246,7 @@ export async function createNewPage(
     const prunedContent = stripUnknownSections(canonicalizedContent, Object.values(labels));
     // Related links resolved against every page, sections written from the
     // lists — see page-factory/related-links.ts.
-    const correctedContent = await applyRelatedLinks(ctx, prunedContent, info, labels, { pageType });
+    const correctedContent = await applyRelatedLinks(ctx, prunedContent, info, labels, relatedWriteOpts(pageType, {}, projected));
     // Issue #244: programmatically inject the Mentions section.
     const isConv = isConversationSource(sourceFile, ctx.settings.wikiFolder);
     const mentionsForInject = isConv

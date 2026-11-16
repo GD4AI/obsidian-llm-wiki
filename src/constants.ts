@@ -374,6 +374,10 @@ export const CUSTOM_EXTRACTION_LIMIT_DEFAULT = 5;
  * - `crossSource` is what the feature adds. It is a **ceiling, never a
  *   quota** — a page with fewer candidates keeps the note-grounded entries it
  *   would have had (reserved-with-backfill allocation, MEMORY §"Allocation").
+ * - `total` is the note-grounded ceiling a page carries. A projection adds up to
+ *   `crossSource` entries on top of it rather than taking a share of it (#664), so
+ *   a page holds at most `total + crossSource` entries. The two numbers are read
+ *   together; neither alone is the page size.
  * - `siblings` will replace the flat `RELATED_SIBLING_CAP` in Phase 2. Reading
  *   it now would **not** be behaviour-preserving: it is 2 for `coarse` and 1 for
  *   `minimal`, where today every granularity gets 3. Phase 0's pass condition is
