@@ -227,8 +227,12 @@ export function coCitationCandidates(
   const minShared = opts.minShared ?? DEFAULT_MIN_SHARED;
   const alreadyLinked = new Set(targets);
   const selfSources = sourcesOf(self, graph);
-  /** Per candidate: how many targets it shares, and how much they say. */
-  const shared = new Map<string, { count: number; weight: number }>();
+  /**
+   * Per candidate: how many targets it shares, how much they say, the citing count of
+   * the rarest of them, and its own out-degree. The last two are the comparator keys
+   * #1028 added; both are facts about the pair that the pair itself cannot supply.
+   */
+  const shared = new Map<string, { count: number; weight: number; rarest: number; degree: number }>();
   for (const target of targets) {
     if (isSourcePage(target)) continue;
     const citing = graph.incoming.get(target) ?? [];
@@ -243,8 +247,17 @@ export function coCitationCandidates(
       if (entry) {
         entry.count += 1;
         entry.weight += weight;
+        if (citing.length < entry.rarest) entry.rarest = citing.length;
       } else {
-        shared.set(source, { count: 1, weight });
+        shared.set(source, {
+          count: 1,
+          weight,
+          rarest: citing.length,
+          // #1028: source pages are the notes the vault was built from, not subjects.
+          // A candidate that links three of them is not broader than one that links
+          // none, and counting them would rank a note's own scaffolding as reach.
+          degree: (graph.outgoing.get(source) ?? []).filter(target => !isSourcePage(target)).length,
+        });
       }
     }
   }
@@ -254,15 +267,29 @@ export function coCitationCandidates(
   //   2. how much those targets say — the rarity. This is what replaces the
   //      alphabetical tie-break: with it, an equal-score group is ordered by a
   //      fact about the vault rather than by the first letter of a filename.
-  //   3. the path, as a **last resort only** — reached when two candidates share
-  //      the same count *and* the same weight, where any order is as good and the
-  //      only requirement is that it is the same one every run.
+  //   3. how rare the **rarest** shared target is (#1028). Summed weight is a float
+  //      that ties often, and a tie there means two candidates whose evidence is
+  //      equally strong on average — but "one target only two pages cite" is a
+  //      sharper claim than "two targets every third page cites". @DocTpoint measured
+  //      the need for it: in 96–98 % of path-decided cuts the pair's whole evidence
+  //      was identical, so no fact about the pair could separate them.
+  //   4. the candidate's own degree (#1028), which is the first key that is not about
+  //      the pair at all: of two equally supported candidates, the narrower page is
+  //      the safer addition to a bounded list. It is a heuristic, not a principle.
+  //   5. the path, as a **last resort only** — reached when two candidates agree on
+  //      everything above, where any order is as good and the only requirement is
+  //      that it is the same one every run.
+  //
+  // Measured on the 3,071-page vault: the path's share of cuts fell from 60.9 % to
+  // 22.4 % and the "A" title share from 11.2 % to 9.1 % against a 7.5 % base.
   const ranked = [...shared.entries()]
     .filter(([, entry]) => entry.count >= minShared)
     .sort(
       (a, b) =>
         b[1].count - a[1].count ||
         b[1].weight - a[1].weight ||
+        a[1].rarest - b[1].rarest ||
+        a[1].degree - b[1].degree ||
         (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0),
     )
     .map(([path]) => path);
