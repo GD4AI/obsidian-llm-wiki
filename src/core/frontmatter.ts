@@ -695,6 +695,18 @@ function resolveCreated(options: FrontmatterDateOptions | undefined, today: stri
   return candidate && ISO_DATE.test(candidate) ? candidate : today;
 }
 
+/**
+ * Rewrite a page's frontmatter into the canonical shape for its type.
+ *
+ * `sources:` on a **source page** is dropped (#1038). The key means "the source pages
+ * that support this page" on `entities/` and `concepts/`; the schema used to ask for
+ * "the pages this source created" on `sources/` — downstream, already in the body, and
+ * read by `originNoteRefs` as a second origin. Two origins make `noteDriftState`
+ * answer `unknown`, and drift detection was off for exactly the pages that carried it
+ * (6 of 18 in `test10`). `source_file:` is the page's origin and stays; the body keeps
+ * its products. A source page with no `source_file:` keeps its list, because there the
+ * list is wrong provenance rather than missing provenance.
+ */
 export function enforceFrontmatterConstraints(
   content: string,
   pageType: 'entity' | 'concept' | 'source',
@@ -865,7 +877,7 @@ export function enforceFrontmatterConstraints(
       type: foundType ? pageType : undefined,
       created: resolveCreated(options, today),
       updated: today,
-      sources: Array.isArray(preservedSources) && preservedSources.length > 0 ? preservedSources : undefined,
+      sources: pageType === 'source' || !preservedSources?.length ? undefined : preservedSources,
       tags: dedupedTags,
       aliases: (foundAliases || aliases.length > 0) ? aliases : undefined,
     },
