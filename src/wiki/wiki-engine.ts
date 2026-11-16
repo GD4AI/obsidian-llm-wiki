@@ -8,6 +8,7 @@ import {
   LLMClient,
   SourceAnalysis,
   ContradictionInfo,
+  PageMove,
   IngestReport,
   IngestOptions,
   BatchRequirementsContext,
@@ -163,6 +164,15 @@ export class WikiEngine {
   private onFileWrite: ((path: string) => void) | null;
   /** Sink for the merge triage's contradictions during one ingestSource run; null outside of one. */
   private triageContradictions: ContradictionInfo[] | null = null;
+  /**
+   * Pages a classification decision moved during the current run (#677).
+   *
+   * `path-resolution.ts` reports the move through `EngineContext.onPageMoved`
+   * because the rename happens below the page factory, and `updateLog` consumes
+   * the list so the entry names the move. Cleared when consumed and again at the
+   * end of the run, so a failed run cannot leave its moves on the next entry.
+   */
+  private pendingMoves: PageMove[] = [];
   private onProgress: ((message: string) => void) | null;
   private onDone: ((report: IngestReport) => void) | null;
   /**
@@ -275,6 +285,7 @@ export class WikiEngine {
       ...(this.subtle ? { subtle: this.subtle } : {}),
       onFileWrite: path => this.onFileWrite?.(path),
       onContradiction: c => this.triageContradictions?.push(c),
+      onPageMoved: move => this.pendingMoves.push(move),
       onProgress: msg => this.notifyProgress(msg),
       onDone: report => this.onDone?.(report),
     };
@@ -1219,6 +1230,7 @@ export class WikiEngine {
       });
     } finally {
       this.triageContradictions = null;
+      this.pendingMoves = [];
       this.endIngestion();
     }
   }
@@ -2756,7 +2768,9 @@ export class WikiEngine {
     // Consume, not read: a later run must not inherit a stale list.
     const staged = this.pendingUnanswered;
     this.pendingUnanswered = [];
-    return this.logWriter.appendIngest(operation, analysis, contradictions, metrics, staged);
+    const moves = this.pendingMoves;
+    this.pendingMoves = [];
+    return this.logWriter.appendIngest(operation, analysis, contradictions, metrics, staged, moves);
   }
 
   /** Append a lint-fix entry to the operation log. */

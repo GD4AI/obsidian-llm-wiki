@@ -186,6 +186,45 @@ describe('LogWriter', () => {
     expect(line).not.toContain('[[wiki/');
   });
 
+  // #677: a classification decision moves a page between the entity and concept
+  // folders, and `fileManager.renameFile` rewrites the links pointing at it in
+  // other files. The log named neither the move nor the rewrite, so the user
+  // found changed notes and no record of why. The moved page's OLD address is
+  // written as plain text on purpose: that path no longer exists, and a
+  // wikilink to it would be a dead link in the log from the moment it is written.
+  it('appendIngest names a moved page by its live address and its old one', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const writer = new LogWriter({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
+      readFile: vi.fn().mockResolvedValue('# Wiki Operation Log\n'), writeFile,
+    });
+
+    await writer.appendIngest('ingest', makeAnalysis(), [], undefined, undefined, [
+      { from: 'wiki/concepts/Alzheimer-Demenz.md', to: 'wiki/entities/Alzheimer-Demenz.md', classification: 'entity' },
+    ]);
+
+    const [, content] = writeFile.mock.calls[0] as [string, string];
+    const line = content.split('\n').find(l => l.startsWith('**Moved pages**'))!;
+    expect(line).toBe(
+      '**Moved pages**：1 — [[entities/Alzheimer-Demenz.md]] ← concepts/Alzheimer-Demenz.md · entity',
+    );
+  });
+
+  it('appendIngest writes no moved-pages line when nothing moved', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const writer = new LogWriter({
+      wikiFolder: 'wiki', wikiLanguage: 'en',
+      commandName: TEXTS.en.cmdViewHistory,
+      readFile: vi.fn().mockResolvedValue('# Wiki Operation Log\n'), writeFile,
+    });
+
+    await writer.appendIngest('ingest', makeAnalysis(), []);
+
+    const [, content] = writeFile.mock.calls[0] as [string, string];
+    expect(content).not.toContain('Moved pages');
+  });
+
   it('appendLintFix writes H2 entry with details', async () => {
     const writeFile = vi.fn().mockResolvedValue(undefined);
     const readFile = vi.fn().mockResolvedValue('# Header\n');

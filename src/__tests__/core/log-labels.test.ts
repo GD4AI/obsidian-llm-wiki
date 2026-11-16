@@ -12,12 +12,22 @@ import { parseLogEntries } from '../../core/log-parser';
 import type { SourceAnalysis } from '../../types';
 
 describe('LOG_LABELS', () => {
-  it('covers every selectable wiki language with three non-empty labels', () => {
+  it('gives every selectable wiki language the same label keys as English', () => {
+    // The reference is `en`, not each row's own key list. Iterating a row's
+    // `Object.values` cannot see a key the row does not have, which is exactly
+    // how `movedPages` reached eleven rows while nl/pl/th shipped without it
+    // (#1051 rebased onto #1048). Nothing throws on the gap: `getLogLabels`
+    // hands the row back as it is, and the writer then puts `**undefined**` in
+    // the user's log. So the key set is the thing under test.
+    const reference = Object.keys(LOG_LABELS.en).sort();
+    expect(reference.length, 'en is the reference and cannot be empty').toBeGreaterThan(0);
     for (const lang of Object.keys(WIKI_LANGUAGES)) {
       const labels = LOG_LABELS[lang];
       expect(labels, lang).toBeDefined();
-      for (const value of Object.values(labels)) {
-        expect(value.trim().length, lang).toBeGreaterThan(0);
+      const entries = Object.entries(labels);
+      expect(entries.map(([key]) => key).sort(), `${lang} has a different label set than en`).toEqual(reference);
+      for (const [key, value] of entries) {
+        expect(value.trim().length, `${lang}.${key} is empty`).toBeGreaterThan(0);
       }
     }
   });

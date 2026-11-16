@@ -34,7 +34,7 @@ import { appendAliases, aliasClaimsFromPages, type AliasesContext } from './alia
 import { parseFrontmatter } from '../../core/frontmatter';
 import { PathResolutionLLMSchema } from '../../llm-sdk/output-schemas';
 import { callLlm, type LlmCallArgs, type LlmMessageArgs } from '../../core/llm-dispatch';
-import type { WikiPageRef } from '../../types';
+import type { PageMove, WikiPageRef } from '../../types';
 
 /** Page shape consumed by the dedup candidate pre-filter. */
 export interface DedupCandidatePage {
@@ -97,6 +97,10 @@ export interface PathResolutionContext extends AliasesContext {
   buildSystemPrompt(mode: 'full' | 'compact' | 'merge' | 'index'): Promise<string>;
   /** The wiki page index, through the engine's own held copy (Issue #662). */
   getExistingWikiPages(): Promise<WikiPageRef[]>;
+  /** Told when a classification decision moves a page (#677); see
+   *  `applyClassificationDecision`. Optional: a caller that keeps no log gets
+   *  no report, and that is the only difference. */
+  onPageMoved?: (move: PageMove) => void;
 }
 
 /**
@@ -443,6 +447,7 @@ async function applyClassificationDecision(
     return pagePath;
   }
   await writeTypeDecision(ctx, newPath, moved, { type: classification, confirmed: true });
+  ctx.onPageMoved?.({ from: pagePath, to: newPath, classification });
   console.debug(
     `Entity resolution: moved "${pagePath}" → "${newPath}" per classification decision`,
   );
