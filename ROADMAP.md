@@ -2,8 +2,8 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-13) for the canonical composition record. | **Updated:** 2026-11-13 — `main` at `5655feb5`, 5,449 tests / 406 files
-**Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12, scope decided 2026-11-13. Delivered in v1.31.0: the stream-transport cycle (#980), the output-ceiling memory (#912), the minified bundle (#1007), the two housekeeping tracks (#930 / #932), and both projection defects a review of #781 found (#1017, #1018). **v1.32.0 takes three fixes and two measurements** — #1016, #664's additions half, #677, plus #1025 and #910, which decide report text rather than code. Deferred with a reason each: #787 and #668 (both change the settings shape, so they follow #1016), #822 (declined as a parser), #891 (blocked on semantics), #729 / #1028 (waiting on a comparable measurement), #873 (MAJOR trigger 1, needs a migration design).
+**Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). See [CHANGELOG.md §1.31.0](./CHANGELOG.md#1310---2026-11-13) for the canonical composition record. | **Updated:** 2026-11-14 — `main` at `aa98d119`, 5,486 tests / 407 files
+**Next MINOR candidate:** **v1.32.0 MINOR**, opened 2026-11-12, order re-cut 2026-11-14. Delivered: the two projection defects (#1017, #1018), the runtime-only settings list (#1016), the additions bound on Related lists (#664 first half), the hub-link-density heading repair (#1034), and the two hub report sections told apart (#1025). **What is left runs in this order** — five items, each with its evidence in a thread rather than a preference. Deferred with a reason each: #787 and #668 (both change the settings shape), #910 (measurement of prompt fidelity), #891 (blocked on semantics), #873 (MAJOR trigger 1, needs a migration design).
 **#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 11 locales.
 
 **Milestone move (2026-10-26).** `v1.29.0 MINOR`'s open items moved to the new `v1.30.0 MINOR`: #895 #886 #781 #729 #787 #822 #873 #880 #896 #677 #668 #664 #568. The `v1.28.x PATCH` line's five open items moved to the new `v1.29.x PATCH`: #792 #816 #825 #891 #882. A released milestone may not carry unstarted work, and both moves happen before the release so the milestone state matches what the tag contains.
@@ -99,19 +99,20 @@ The ROI rule is [MEMORY.md §"Work lists — the ROI rule"](./MEMORY.md#work-lis
 
 | # | Item | Why here |
 |---|---|---|
-| **1** | **#1016** — the runtime-only field list, and stop writing `llmReady` | A derived value on disk is read back as fact. It also settles the settings shape that items 5 and 7 build on |
-| **2** | **#664's additions half** — bound the additions, delete nothing | Related lists grow linearly in source count (18.4 entries at ≥8 sources). Deleting entries needs a ranking, and that waits on #729 Phase 2 |
-| **3** | **#1025** — crystallized ∩ link-density `strip` | Two report sections may describe one property. The measurement decides a deletion, not a sentence |
-| **4** | **#677** — a move is not an edit | `renameFile` rewrites inbound links, the hash sees a new body, and untouched notes report drifted |
-| **5** | **#787** — source-document notes may skip the lemma guarantee | Needs a setting, so it follows #1016 rather than racing it |
+| **1** | **#664's reserve** — keep the additions bound, but keep the cross-source slots open | @DocTpoint's replay at `9237a1b6` measured the regression the bound introduced: cross-source entries are shaped **last**, so the ceiling refuses them **first**, and a full page gains nothing from #729 Phase 1 on any later ingest. `RELATED_BUDGET[granularity].noteGrounded` is defined and unread (`related-shaping.ts:110`) — cap the note-grounded side at it and the last `crossSource` slots stay available. Accepted cost: arrival order is the order, so a page's list becomes its first notes' list; 196 of 295 multi-note pages stop taking note-grounded names |
+| **2** | **#1038** — a source page is told to write `sources:` | `schema-manager.ts:268` instructs the model that `sources:` on a source page means the pages the note **created**, which is the opposite of the same key on entity/concept pages and duplicative of `source_file:` plus the body. Measured on three vaults: 8 source pages carry it, `originNoteRefs` then reports more than one origin, `noteDriftState` answers `unknown`, and drift detection is off on 6 of 18 `test10` source pages. Graph cost is 0.9 %; provenance cost is the reason |
+| **3** | **#1028 step 1** — the extended comparator, floor unchanged | Under either floor this is a strict improvement and needs no policy decision: path-decided cuts 60.9 % → 22.4 % and the A share 11.2 % → 9.1 % on @DocTpoint's 3,071-page vault; 6.1 % → 1.78 % on the 2,141-page one |
+| **4** | **#1028 step 2** — the specificity gate at K = 25 | Measured, not preferred: coverage 1,973 of 2,644 pages (75 %), hub-rest 5.3 %, A share 7.6 % against a 7.5 % base. K is a **judgement**, stated as one in the CHANGELOG, held in a single named constant |
+| **5** | **#787** — source-document notes may skip the lemma guarantee | Needs a setting, so it follows the settings shape #1016 settled |
 | **6** | **#910** — the chain of custody for exact values | No prompt changes before the coverage is counted |
-| **7** | **#668** — nine sections into three tabs | Last of the three settings-shape items, and the largest locale surface |
+| **7** | **#668** — nine sections into three tabs | Last of the settings-shape items, and the largest locale surface |
 | **8** | **#891** — align the four AI SDK packages | Blocked on semantics, not versions: what "interrupted" means decides the error branch |
-| **9** | **#822** — EPUB | **Declined as a parser**, ground from two comments on the issue: the gate accepts `md`/`txt`/`pdf` (`constants.ts:35`) and MinerU adds Office but not EPUB (`:43`); `wiki/pdf-converter.ts:155` sends the file as `mediaType: 'application/pdf'`, so nothing here parses PDF either and an EPUB has no media type to ride. Converting EPUB to PDF first is the boundary expansion itself, and reading EPUB means owning ZIP, XHTML, chapter order, images and CSS — a document reader, not a wiki. What stays is a conversion recipe in the docs |
+
+**Closed on the way:** #1034 (the density scanner read headings no page carries — an 8-minor-old silent section), #1025 (sections measured, neither implies the other), #91 (nested tags delivered by #569/#673, confirmed against `domain-axis.ts:147`), #822 (**declined as a parser**: `constants.ts:35`/`:43` fix the accepted formats and `pdf-converter.ts:155` sends the file as `mediaType: 'application/pdf'`; nothing here parses PDF, so an EPUB has no media type to ride, and the boundary is a conversion recipe in the docs).
 
 **Not work, so a review does not re-open it.** `arch-check` does not scan `require()` — `src/` holds three, all Node built-ins reached through `createRequire`, so the gap is theoretical and closing it costs more than the risk. **#880's second half** (clamping `max_tokens` to the remaining window, and calibrating the estimate from `usage`) is a new defect and needs its own issue, not a row.
 
-**Blocked:** #1028 and #729 Phase 2 wait on @DocTpoint's 3,071-page vault; #873 fires MAJOR trigger 1 and needs a migration design. The refactor track's status lives in #925.
+**Blocked:** #729 Phase 2 waits on the ranking question #664's thread opened; #873 fires MAJOR trigger 1 and needs a migration design. The refactor track's status lives in #925.
 
 ### The lint-fix correctness family (2026-10-12) — shipped 2026-10-22
 
