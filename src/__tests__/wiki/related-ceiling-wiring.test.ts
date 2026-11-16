@@ -62,3 +62,24 @@ describe('#664 — the projection reaches the renderer from the shaping pass', (
     );
   });
 });
+
+// Issue #1028, step 2 — the gate must reach the projection from the engine.
+//
+// Same reason as the reserve above: `coCitationCandidates` without `specificity`
+// behaves exactly as it did before the gate existed, so a wiring that forgets the
+// argument is invisible to every test that calls the function directly.
+describe('#1028 — the specificity gate is passed on the production path', () => {
+  it('the engine sets it from the constant, not from a literal', () => {
+    const engine = read('wiki/wiki-engine.ts');
+    const call = callText(engine, 'coCitationCandidates');
+    expect(call).toContain('specificity: CO_CITATION_SPECIFICITY');
+  });
+
+  it('the constant is one judgement with the measurement next to it', () => {
+    const constants = read('constants.ts');
+    const at = constants.indexOf('export const CO_CITATION_SPECIFICITY');
+    expect(at).toBeGreaterThan(-1);
+    expect(constants.slice(at, at + 400)).toContain('= 25');
+    expect(constants.slice(Math.max(0, at - 900), at)).toContain('judgement');
+  });
+});

@@ -384,6 +384,19 @@ export const CUSTOM_EXTRACTION_LIMIT_DEFAULT = 5;
  *   a zero output diff, so the switch belongs to Phase 2 where the change is
  *   intended, measured and tested.
  */
+/**
+ * Issue #1028, step 2 — how widely cited a shared target may be and still count.
+ *
+ * This is a **judgement**, not a measurement, and it is one constant so revisiting it
+ * is one line. What the measurement does say, on a 3,071-page vault: at K = 25 the
+ * projection reaches 1,973 pages against `minShared = 2`'s 1,023, the share of entries
+ * resting on a target cited by 50 or more pages falls from 50.3 % to 5.3 %, and the
+ * share of entries whose title starts with "A" holds at 7.6 % against a 7.5 % base.
+ * Between K = 20 and K = 40 nothing in those counts penalises a larger K — coverage
+ * rises and the other two stay flat — so the number itself comes from judgement.
+ */
+export const CO_CITATION_SPECIFICITY = 25;
+
 export const RELATED_BUDGET: Record<ExtractionGranularity, {
   noteGrounded: number;
   crossSource: number;
