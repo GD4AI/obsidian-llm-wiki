@@ -265,7 +265,6 @@ Pages in \`sources/\` MUST follow this structure:
 **Frontmatter fields:**
 - \`type: source\` — page category (MUST be exactly "source")
 - \`tags:\` — INHERITED from the source note's frontmatter (do NOT use LLM-derived concept names). The system programmatically populates this from the source file; the LLM must not overwrite it with extracted concept names. This preserves the user's existing tag vocabulary and prevents pollution from LLM hallucinations.
-- \`sources:\` — array of related wiki page links created from this source
 - \`created:\` / \`updated:\` — set by the system, see Date Fields below
 
 **Sections:**
