@@ -416,3 +416,84 @@ describe('#1018 — the cached graph follows a write', () => {
     expect(g.incoming.get('entities/New')).toBeUndefined();
   });
 });
+
+// Issue #1028, step 1 — the comparator, extended by two facts about the pair.
+//
+// @DocTpoint measured the old chain on a 3,071-page vault: with `count → weight →
+// path`, the path decided 60.9 % of all cuts, and in 96–98 % of those the last kept
+// and the first dropped candidate shared an **identical** target set. So the tie was
+// not a missing tie-break, it was two candidates the pair cannot separate. Two facts
+// outside the pair do: how rare the rarest shared target is, and how well connected
+// the candidate itself is.
+//
+// Measured on his vault, inserting them took the path's share from 60.9 % to 22.4 %
+// and the "A" title share from 11.2 % to 9.1 % against a 7.5 % base. On the
+// 2,141-page vault: 6.1 % → 1.78 %.
+//
+// Every case here shares **two** targets on purpose: the projection's floor is two,
+// and a one-target candidate is never offered at all.
+describe('#1028 — a cut prefers the rarer evidence, then the narrower page', () => {
+  it('keeps the amount of evidence first, then its weight', () => {
+    // `B` and `C` share Hub and Rare with `A`; `D`, `E` and `F` share Hub and Weak.
+    // Same count, and Rare is rarer than Weak, so the weight must order the two groups.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/Hub', 'concepts/Rare', 'concepts/Weak'],
+      'entities/B': ['concepts/Hub', 'concepts/Rare'],
+      'entities/C': ['concepts/Hub', 'concepts/Rare'],
+      'entities/D': ['concepts/Hub', 'concepts/Weak'],
+      'entities/E': ['concepts/Hub', 'concepts/Weak'],
+      'entities/F': ['concepts/Hub', 'concepts/Weak'],
+      'entities/G': ['concepts/Rare'], 'entities/H': ['concepts/Weak'],
+      'entities/I': ['concepts/Weak'], 'entities/J': ['concepts/Weak'],
+    }));
+    expect(coCitationCandidates('entities/A', g)).toEqual([
+      'entities/B', 'entities/C', 'entities/D', 'entities/E', 'entities/F',
+    ]);
+  });
+
+  it('prefers the candidate whose shared evidence is rarer when count and weight tie', () => {
+    // Both share two targets with `A` and both sums equal 5/12, so count and weight tie
+    // exactly. `Zebra`'s rarest evidence is a target one other page cites; `Aardvark`'s
+    // is one three pages cite. The path prefers `Aardvark`, so only the new key can put
+    // `Zebra` first.
+    const extra: Record<string, string[]> = {};
+    for (let i = 0; i < 9; i++) extra[`entities/E${i}`] = ['concepts/Tb'];
+    extra['entities/E9'] = ['concepts/Tc'];
+    for (let i = 10; i < 13; i++) extra[`entities/E${i}`] = ['concepts/Td'];
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/Ta', 'concepts/Tb', 'concepts/Tc', 'concepts/Td'],
+      'entities/Zebra': ['concepts/Ta', 'concepts/Tb'],
+      'entities/Aardvark': ['concepts/Tc', 'concepts/Td'],
+      ...extra,
+    }));
+    // Ta cited by A+Zebra (2 → 1/3); Tb by A+Zebra+E0..E8 (11 → 1/12).
+    // Tc by A+Aardvark+E9 (3 → 1/4); Td by A+Aardvark+E10..E12 (5 → 1/6).
+    expect(coCitationCandidates('entities/A', g)[0]).toBe('entities/Zebra');
+  });
+
+  it('uses the candidate’s own degree as the last fact before the path', () => {
+    // `P` and `Q` share the same two targets, cited equally often, so every key about
+    // the pair ties. `P` links five more pages; the narrower page is the safer addition
+    // to a bounded list, and the path prefers `P` — so only the degree key can reorder.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/X', 'concepts/Y'],
+      'entities/P': ['concepts/X', 'concepts/Y', 'concepts/X1', 'concepts/X2', 'concepts/X3', 'concepts/X4', 'concepts/X5'],
+      'entities/Q': ['concepts/X', 'concepts/Y'],
+    }));
+    expect(coCitationCandidates('entities/A', g)).toEqual(['entities/Q', 'entities/P']);
+  });
+
+  it('does not count source pages towards a candidate’s degree', () => {
+    // `Alpha` and `Zulu` share the same two targets. `Alpha` also links three source
+    // pages — the notes the vault was built from, not subjects. Counting them would
+    // make `Alpha` the broader page and `Zulu` would sort first; excluding them ties the
+    // degree, and the path puts `Alpha` first.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/X', 'concepts/Y'],
+      'entities/Alpha': ['concepts/X', 'concepts/Y', 'sources/n1', 'sources/n2', 'sources/n3'],
+      'entities/Zulu': ['concepts/X', 'concepts/Y'],
+      'sources/n1': [], 'sources/n2': [], 'sources/n3': [],
+    }));
+    expect(coCitationCandidates('entities/A', g)).toEqual(['entities/Alpha', 'entities/Zulu']);
+  });
+});
