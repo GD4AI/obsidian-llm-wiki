@@ -21,6 +21,7 @@ function makeCtx(overrides: {
   files?: Record<string, string>;
   client?: { createMessage: (...a: unknown[]) => Promise<string> } | null;
   mockVault?: { getMarkdownFiles: () => Array<{ path: string; basename: string }> };
+  onPageMoved?: (move: { from: string; to: string; classification: string }) => void;
 } = {}): PathResolutionContext & { written: Map<string, string> } {
   const files = new Map<string, string>(Object.entries(overrides.files ?? {}));
   const ctx: PathResolutionContext & { written: Map<string, string> } = {
@@ -48,6 +49,7 @@ function makeCtx(overrides: {
     getExistingWikiPages(): Promise<WikiPageRef[]> {
       return mockExistingWikiPages(this)();
     },
+    ...(overrides.onPageMoved ? { onPageMoved: overrides.onPageMoved } : {}),
   };
   Object.assign(ctx.settings, {
     wikiFolder: 'wiki',
@@ -413,6 +415,7 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
     withRename?: boolean;
   }) {
     const renamed: Array<[string, string]> = [];
+    const moves: Array<{ from: string; to: string; classification: string }> = [];
     const ctx = makeCtx({
       files: opts.files,
       mockVault: {
@@ -420,6 +423,7 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
           opts.indexed.map(p => ({ path: p, basename: p.split('/').pop()!.replace('.md', '') })),
       },
       client: { createMessage: async () => JSON.stringify(opts.reply) },
+      onPageMoved: m => moves.push(m),
     });
     const app = ctx.app as Record<string, unknown>;
     (app.vault as Record<string, unknown>).getAbstractFileByPath = (p: string) =>
@@ -433,7 +437,7 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
         },
       };
     }
-    return { ctx, renamed };
+    return { ctx, renamed, moves };
   }
 
   it('moves the matched page when the decided classification disagrees with its folder', async () => {
@@ -493,6 +497,64 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
     expect(marked).toContain('type_conflict: entity');
     // The question stays open for the run after the twin is healed.
     expect(marked).not.toContain('type_confirmed');
+  });
+
+  it('reports the move with both addresses and the decided classification (#677)', async () => {
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/concepts/Stress.md': '---\ntype: concept\n---\n\nbody' },
+      indexed: ['wiki/concepts/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'entity' },
+    });
+    await resolvePagePath(ctx, 'Stress', 'entity', 'desc');
+    expect(moves).toEqual([
+      { from: 'wiki/concepts/Stress.md', to: 'wiki/entities/Stress.md', classification: 'entity' },
+    ]);
+  });
+
+  it('reports the move in the other direction too, with the concept decision', async () => {
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/entities/Stress.md': '---\ntype: entity\n---\n\nbody' },
+      indexed: ['wiki/entities/Stress.md'],
+      reply: { match: true, path: 'wiki/entities/Stress.md', classification: 'concept' },
+    });
+    await resolvePagePath(ctx, 'Stress', 'concept', 'desc');
+    expect(moves).toEqual([
+      { from: 'wiki/entities/Stress.md', to: 'wiki/concepts/Stress.md', classification: 'concept' },
+    ]);
+  });
+
+  it('reports no move when the classification agrees with the folder', async () => {
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/concepts/Stress.md': '---\ntype: concept\n---\n\nbody' },
+      indexed: ['wiki/concepts/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'concept' },
+    });
+    await resolvePagePath(ctx, 'Stress', 'entity', 'desc');
+    expect(moves).toEqual([]);
+  });
+
+  it('reports no move when the target address is occupied by a twin', async () => {
+    const { ctx, moves } = makeMovableCtx({
+      files: {
+        'wiki/concepts/Stress.md': '---\ntype: concept\naliases:\n  - Psychischer Stress\n---\n\nbody',
+        'wiki/entities/Stress.md': '---\ntype: entity\n---\n\nthe twin',
+      },
+      indexed: ['wiki/concepts/Stress.md', 'wiki/entities/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'entity' },
+    });
+    await resolvePagePath(ctx, 'Psychischer Stress', 'entity', 'desc');
+    expect(moves).toEqual([]);
+  });
+
+  it('reports no move when the host offers no link-safe rename', async () => {
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/concepts/Stress.md': '---\ntype: concept\n---\n\nbody' },
+      indexed: ['wiki/concepts/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'entity' },
+      withRename: false,
+    });
+    await resolvePagePath(ctx, 'Stress', 'entity', 'desc');
+    expect(moves).toEqual([]);
   });
 
   it('marks the conflict when the host offers no link-safe rename', async () => {

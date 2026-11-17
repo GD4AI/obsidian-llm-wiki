@@ -6,7 +6,7 @@
  * the LLM client can change when the user edits settings without a restart.
  */
 import type { App } from 'obsidian';
-import type { ContradictionInfo, IngestReport } from './ingest';
+import type { ContradictionInfo, IngestReport, PageMove } from './ingest';
 import type { LLMClient } from './llm';
 import type { LLMWikiSettings } from './settings';
 import type { WikiPageRef } from './write';
@@ -55,6 +55,13 @@ export interface EngineContext {
    * invisible to the ingest log and the report count.
    */
   onContradiction?: (contradiction: ContradictionInfo) => void;
+  /**
+   * Fired when a classification decision moves an existing page between the
+   * entity and concept folders (#677). The move rewrites inbound links in other
+   * files, so a run that does it must be able to name it in its log entry —
+   * otherwise a note changes and nothing says why.
+   */
+  onPageMoved?: (move: PageMove) => void;
   onProgress?: (message: string) => void;
   onDone?: (report: IngestReport) => void;
 }

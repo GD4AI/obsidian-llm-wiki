@@ -26,7 +26,7 @@
  *     inject a custom writeFile and reuse the append-only invariants.
  */
 
-import type { ContradictionInfo, EmbeddedImageAnalysisReport, SourceAnalysis } from '../../types';
+import type { ContradictionInfo, EmbeddedImageAnalysisReport, PageMove, SourceAnalysis } from '../../types';
 import { getLogLabels } from '../../core/log-labels';
 import { dedupPages } from './dedup-pages';
 import { buildLogHeader } from '../../core/log-header';
@@ -96,6 +96,11 @@ export class LogWriter {
      *  recorded here rather than asserted on the page. DocTpoint's question was
      *  where the name goes once the write stops. This is where. */
     unanswered?: ReadonlyArray<{ on: string; name: string }>,
+    /** Pages a classification decision moved between the two folders (#677).
+     *  The move rewrites inbound links in other files, so the entry names it:
+     *  a note that changed because the plugin moved a page is not a note the
+     *  user edited, and without this line there is no record of the cause. */
+    moves?: ReadonlyArray<PageMove>,
   ): Promise<void> {
     const logPath = `${this.wikiFolder}/log.md`;
     const { date, time } = this.timestamp();
@@ -112,6 +117,12 @@ export class LogWriter {
         `${unanswered.map(u => `${u.name} (on ${u.on})`).join('; ')}\n\n`;
     }
     entry += `**${labels.updatedPages}**：${this.pageLinks(analysis.updated_pages)}\n\n`;
+    if (moves && moves.length > 0) {
+      // The old address is plain text: that path is gone, and a wikilink to it
+      // would be a dead link in the log from the moment it is written.
+      entry += `**${labels.movedPages}**：${moves.length} — ` +
+        `${moves.map(m => `${this.linkTo(m.to)} ← ${this.withoutWikiFolder(m.from)} · ${m.classification}`).join('; ')}\n\n`;
+    }
     if (metrics?.embeddedImageAnalysis) {
       const image = metrics.embeddedImageAnalysis;
       entry += `**Embedded images**: ${image.analyzed}/${image.discovered} analyzed; ${image.sent} sent from ${image.queued} queued in ${image.packages} package(s); ${image.convertedGifs} GIF first frame(s) converted; ${image.skipped.length} skipped; ${image.failedPackages} package(s) failed\n\n`;
@@ -181,8 +192,16 @@ export class LogWriter {
    *  link, `[[concepts/X.md]]` resolves. */
   private pageLinks(paths: string[]): string {
     return dedupPages(paths)
-      .map(p => `[[${p.replace(this.wikiFolder + '/', '')}]]`)
+      .map(p => this.linkTo(p))
       .join(', ');
+  }
+
+  private linkTo(path: string): string {
+    return `[[${this.withoutWikiFolder(path)}]]`;
+  }
+
+  private withoutWikiFolder(path: string): string {
+    return path.replace(this.wikiFolder + '/', '');
   }
 
   /** Format an ingest metrics suffix: ` · 28s · claude-sonnet-4-5 · 4.2KB`. */

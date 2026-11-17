@@ -178,6 +178,25 @@ export interface ContradictionInfo {
   resolution: string;
 }
 
+/**
+ * A page the dedup call moved from one folder to the other (#677).
+ *
+ * The move goes through `fileManager.renameFile` so inbound links keep
+ * resolving, and Obsidian therefore rewrites those links in other files: a
+ * note nobody edited comes back with `[[Name]]` written out as
+ * `[[Folder/Name]]`. The drift check answers that with a link-reduced
+ * fingerprint (#1037); this type answers the other half, which is that a
+ * rewrite the plugin caused has to appear in the log with a time and a reason.
+ */
+export interface PageMove {
+  /** The address the page had. By the time the log is read it no longer exists. */
+  from: string;
+  /** The address the page has now. */
+  to: string;
+  /** What the dedup call decided the page is, against the vault's own rules. */
+  classification: 'entity' | 'concept';
+}
+
 export interface WikiPage {
   path: string;
   title: string;
