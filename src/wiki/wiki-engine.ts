@@ -238,7 +238,9 @@ export class WikiEngine {
    *
    * Set by `shapeRelatedListsForRun` for the note being ingested, read when that
    * note's pages are written, and reset at the start of every shaping pass, so a
-   * page never inherits another note's projection.
+   * page never inherits another note's projection. The Map key is
+   * `<kind>:<nameKey>` (`entities:x` / `concepts:x`) — an entity and a concept
+   * may share a name.
    */
   private pendingProjected: ReadonlyMap<string, { entities: string[]; concepts: string[] }> = new Map();
   private ctx: EngineContext;
@@ -1474,10 +1476,18 @@ export class WikiEngine {
             const rel = relByKey.get(k);
             if (rel) skip.add(rel);
           }
+          // The page is written after this runs, so the graph has no entry for
+          // it; its source rel is the one fact the caller knows that the graph
+          // cannot. The shaper was about to offer same-note candidates on a
+          // first-time page (re-ingest) — hand it the rel (#1017).
+          const sourceRel = `sources/${resolveSourceSlug(file.path, {
+            preserveCase: this.settings.slugCase === 'preserve',
+          })}`;
           return coCitationCandidates(selfRel ?? self, coCitation, {
             exclude: skip,
             limit: crossSourceCap,
             selfTargets,
+            selfSources: new Set([sourceRel]),
             // #1028, step 2: a hub is not evidence. One specific shared target is
             // enough, which is why this replaces the count floor rather than adding
             // to it — see `CoCitationOptions.specificity`.
@@ -1568,7 +1578,7 @@ export class WikiEngine {
         if (task.type === 'entity') {
           const entity = analysis.entities[task.index];
           try {
-            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug, this.pendingProjected.get(nameKey(entity.name)));
+            const entityResult = await this.pageFactory.createOrUpdateEntityPage(entity, analysis, file, [], sourceSlug, this.pendingProjected.get(`entities:${nameKey(entity.name)}`));
             if (entityResult.path) {
               if (entityResult.created) analysis.created_pages.push(entityResult.path);
               else recordUpdatedPage(analysis, entityResult.path);
@@ -1582,7 +1592,7 @@ export class WikiEngine {
         }
         const concept = analysis.concepts[task.index];
         try {
-          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug, this.pendingProjected.get(nameKey(concept.name)));
+          const conceptResult = await this.pageFactory.createOrUpdateConceptPage(concept, analysis, file, [], sourceSlug, this.pendingProjected.get(`concepts:${nameKey(concept.name)}`));
           if (conceptResult.path) {
             if (conceptResult.created) analysis.created_pages.push(conceptResult.path);
             else recordUpdatedPage(analysis, conceptResult.path);
@@ -1794,6 +1804,16 @@ export class WikiEngine {
     error: unknown;
   }): Promise<void> {
     const { file, opts, analysis, failedItems, triageContradictions, summaryPagePath, totalStartTime, error } = args;
+    // A move is a durable change to the vault. The success path writes the moves
+    // into the ingest log; this failure path writes no log entry — enumerate the
+    // moves here so a failed run cannot leave the user with a renamed page and a
+    // log that says nothing (#677).
+    if (this.pendingMoves.length > 0) {
+      console.warn(
+        `Ingest failed for ${file.path}; ${this.pendingMoves.length} page(s) were moved during the run: ` +
+        this.pendingMoves.map(m => `${m.from} → ${m.to} (${m.classification})`).join('; '),
+      );
+    }
     const createdPages = dedupPages(analysis?.created_pages || []);
 
     if (error instanceof DOMException && error.name === 'AbortError') {

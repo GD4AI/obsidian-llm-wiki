@@ -67,9 +67,10 @@ export interface RelatedRenderOpts {
    * kept entries fill the budget, #729 Phase 1 added nothing, on that ingest and
    * every later one (@DocTpoint's replay of `9237a1b6`).
    *
-   * With this set, the note-grounded additions stop `reserve` slots early and the
-   * projection fills what is left. `ceiling` still bounds the page: this decides who
-   * is refused, never how many entries the page may carry.
+   * With this set, the note-grounded additions stop at the full note ceiling and the
+   * projection may exceed it by at most `reserve` entries. `ceiling` still bounds the
+   * note side: this decides who is refused, and the reserve decides how much the
+   * projected entries may pass it by.
    */
   projected?: RelatedProjection;
   /**
