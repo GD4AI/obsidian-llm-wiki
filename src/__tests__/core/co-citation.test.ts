@@ -331,6 +331,39 @@ describe('#1017 — a same-note pair is not a cross-source relation', () => {
     expect(coCitationCandidates('entities/Hypothesis', g)).toEqual([]);
   });
 
+  it('honours the caller-supplied source set for a page with no graph entry yet', () => {
+    // The re-ingest case: the page is being written for the first time, so the
+    // graph has no entry for it. The caller knows the note the page is born
+    // from and says so; the graph alone would offer the same-note pair.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Method': ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+      }),
+    );
+    const offered = coCitationCandidates('entities/Hypothesis', g, {
+      minShared: 1,
+      selfTargets: ['sources/Paper-A', 'concepts/Mechanism', 'concepts/Evidence'],
+      selfSources: new Set(['sources/Paper-A']),
+    });
+    expect(offered).toEqual([]);
+  });
+
+  it('still offers a cross-note pair when the subject carries no graph entry', () => {
+    // The exclusion is about the note, not about the graph: a candidate from a
+    // different note is what this phase exists to offer.
+    const g = buildCoCitationGraph(
+      graphOf({
+        'entities/Method': ['sources/Paper-B', 'concepts/Mechanism', 'concepts/Evidence'],
+      }),
+    );
+    const offered = coCitationCandidates('entities/Hypothesis', g, {
+      minShared: 1,
+      selfTargets: ['concepts/Mechanism', 'concepts/Evidence'],
+      selfSources: new Set(['sources/Paper-A']),
+    });
+    expect(offered).toEqual(['entities/Method']);
+  });
+
   it('excludes a same-note pair even when it shares two real targets', () => {
     // The larger half of the fix. Both pages come from Paper-A, so the pair is
     // intra-source whatever else it shares, and the sibling rule already links them.

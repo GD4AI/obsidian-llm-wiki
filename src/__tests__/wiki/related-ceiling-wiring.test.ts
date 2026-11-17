@@ -31,10 +31,10 @@ describe('#664 — the projection reaches the renderer from the shaping pass', (
   it('the engine hands each page its own projection at the two page-creation calls', () => {
     const engine = read('wiki/wiki-engine.ts');
     expect(callText(engine, 'this.pageFactory.createOrUpdateEntityPage')).toContain(
-      'this.pendingProjected.get(nameKey(entity.name))',
+      'this.pendingProjected.get(`entities:${nameKey(entity.name)}`)',
     );
     expect(callText(engine, 'this.pageFactory.createOrUpdateConceptPage')).toContain(
-      'this.pendingProjected.get(nameKey(concept.name))',
+      'this.pendingProjected.get(`concepts:${nameKey(concept.name)}`)',
     );
   });
 

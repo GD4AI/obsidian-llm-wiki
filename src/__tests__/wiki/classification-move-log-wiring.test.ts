@@ -33,4 +33,18 @@ describe('#677 — a classification move reaches the ingest log entry', () => {
     const tail = engine.slice(finallyAt, finallyAt + 200);
     expect(tail).toContain('this.pendingMoves = [];');
   });
+
+  it('a failed run enumerates its staged moves instead of dropping them', () => {
+    // A move is a durable change to the vault. The success path writes the moves
+    // into the ingest log via updateLog; the failure path (handleIngestFailure)
+    // writes no log entry at all today, so a failing run after a bridge move
+    // leaves the user with a renamed page and an ingest log that says nothing.
+    const start = engine.indexOf('private async handleIngestFailure');
+    expect(start).toBeGreaterThan(-1);
+    const end = engine.indexOf('\n  private async maybeRunConversion', start);
+    expect(end).toBeGreaterThan(start);
+    const body = engine.slice(start, end);
+    expect(body).toContain('pendingMoves.length');
+    expect(body).toContain('console.warn');
+  });
 });

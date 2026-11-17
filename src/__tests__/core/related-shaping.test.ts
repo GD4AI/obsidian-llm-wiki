@@ -273,7 +273,7 @@ describe('#664 — the projection is recorded per page, so its slots can be rese
       { ...deps, candidates: () => ['Oxidativer-Stress'] },
     );
     expect(r.entities[0].related_concepts).toEqual(['Oxidativer-Stress']);
-    expect(r.projected.get('a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
+    expect(r.projected.get('entities:a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
   });
 
   it('records nothing for a page the projection did not touch', () => {
@@ -281,8 +281,32 @@ describe('#664 — the projection is recorded per page, so its slots can be rese
       { entities: [ent('A', { related_entities: ['Metformin'] })], concepts: [con('B', { related_entities: ['Metformin'] })] },
       { ...deps, candidates: (self) => (self === 'A' ? ['Oxidativer-Stress'] : []) },
     );
-    expect(r.projected.get('a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
-    expect(r.projected.has('b')).toBe(false);
+    expect(r.projected.get('entities:a')).toEqual({ entities: [], concepts: ['Oxidativer-Stress'] });
+    expect(r.projected.has('concepts:b')).toBe(false);
+  });
+
+  it('records the entity and the concept of the same name under their own keys', () => {
+    // #664 second half, the #1017-shaped case: an entity and a concept may carry
+    // the same key. Until this was keyed per kind, the later loop overwrote the
+    // earlier one's `projected` entry, so one of the two pages lost its
+    // above-ceiling allowance and the entries were refused silently.
+    // A candidate must answer nothing for its entries to be recorded, so the pair
+    // uses 'Pluto', which resolves and is not one of the note-grounded names.
+    const resolvePluto = (n: string) =>
+      n.toLowerCase() === 'pluto'
+        ? { title: 'Pluto', kind: 'entity' as const }
+        : vault.get(n.toLowerCase().replace(/\s+/g, '-'));
+    const r2 = shapeRelatedLists(
+      {
+        entities: [ent('Mercury', { related_entities: ['Metformin'] })],
+        concepts: [con('Mercury', { related_entities: ['Metformin'] })],
+      },
+      { ...deps, resolve: resolvePluto, candidates: () => ['Pluto'] },
+    );
+    expect(r2.crossSource).toBe(2);
+    expect(r2.projected.size).toBe(2);
+    expect(r2.projected.get('entities:mercury')).toEqual({ entities: ['Pluto'], concepts: [] });
+    expect(r2.projected.get('concepts:mercury')).toEqual({ entities: ['Pluto'], concepts: [] });
   });
 
   it('names only what was actually written — a rejected candidate is not reserved for', () => {

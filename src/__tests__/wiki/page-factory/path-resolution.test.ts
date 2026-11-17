@@ -413,6 +413,8 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
     indexed: string[];
     reply: Record<string, unknown>;
     withRename?: boolean;
+    /** Simulate a rename that reports success but leaves no readable target. */
+    moveArrives?: boolean;
   }) {
     const renamed: Array<[string, string]> = [];
     const moves: Array<{ from: string; to: string; classification: string }> = [];
@@ -432,6 +434,12 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
       app.fileManager = {
         renameFile: async (file: { path: string }, newPath: string) => {
           renamed.push([file.path, newPath]);
+          if (opts.moveArrives === false) {
+            // The host reports success but the target never lands: the read below
+            // returns null. The source page must not silently keep its address.
+            ctx.written.delete(file.path);
+            return;
+          }
           ctx.written.set(newPath, ctx.written.get(file.path)!);
           ctx.written.delete(file.path);
         },
@@ -497,6 +505,43 @@ describe('resolvePagePath — a cross-folder match re-decides the classification
     expect(marked).toContain('type_conflict: entity');
     // The question stays open for the run after the twin is healed.
     expect(marked).not.toContain('type_confirmed');
+  });
+
+  it('reports the move even when the frontmatter write throws afterwards', async () => {
+    // The rename has already happened on disk; the frontmatter marker is the only
+    // thing between this page and a lost decision. If the marker write fails
+    // (disk full, sync conflict), the ingest is out of memory-safe territory —
+    // but the move is still a durable change to the vault and must be logged.
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/concepts/Stress.md': '---\ntype: concept\n---\n\nbody' },
+      indexed: ['wiki/concepts/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'entity' },
+    });
+    const fail = new Error('write failed (simulated)');
+    ctx.createOrUpdateFile = async () => { throw fail; };
+    await resolvePagePath(ctx, 'Stress', 'entity', 'desc');
+    expect(moves).toEqual([
+      { from: 'wiki/concepts/Stress.md', to: 'wiki/entities/Stress.md', classification: 'entity' },
+    ]);
+  });
+
+  it('marks a conflict on the moved page and reports the move even when it cannot be re-read', async () => {
+    // `renameFile` resolved, but the target reads back null (index lag, sync
+    // conflict). The page is at its new address and neither a trace nor a marker
+    // may be lost; before this, the branch returned the stale original address.
+    const { ctx, moves } = makeMovableCtx({
+      files: { 'wiki/concepts/Stress.md': '---\ntype: concept\n---\n\nbody' },
+      indexed: ['wiki/concepts/Stress.md'],
+      reply: { match: true, path: 'wiki/concepts/Stress.md', classification: 'entity' },
+      moveArrives: false,
+    });
+    const result = await resolvePagePath(ctx, 'Stress', 'entity', 'desc');
+    expect(result.path).toBe('wiki/entities/Stress.md');
+    expect(moves).toEqual([
+      { from: 'wiki/concepts/Stress.md', to: 'wiki/entities/Stress.md', classification: 'entity' },
+    ]);
+    const moved = ctx.written.get('wiki/entities/Stress.md');
+    expect(moved).toContain('type_conflict: entity');
   });
 
   it('reports the move with both addresses and the decided classification (#677)', async () => {

@@ -439,15 +439,21 @@ async function applyClassificationDecision(
   }
 
   await rename.call(app.fileManager, file, newPath);
+  // The rename already happened, so the move is a durable change to the vault:
+  // report it before any read or write below can fail and swallow it (#677).
+  ctx.onPageMoved?.({ from: pagePath, to: newPath, classification });
   const moved = await ctx.tryReadFile(newPath);
   if (moved === null) {
     console.error(
-      `Entity resolution: rename of "${pagePath}" to "${newPath}" reported success but the target is unreadable — resolving to the original path`,
+      `Entity resolution: rename of "${pagePath}" to "${newPath}" reported success but the target is unreadable — marking the conflict on the moved page`,
     );
-    return pagePath;
+    // `content` was read before the rename and is byte-identical to what the
+    // move copied to the new address; reuse it so the marker lands on the moved
+    // page instead of silently vanishing with this branch.
+    await writeTypeDecision(ctx, newPath, content, { conflict: classification });
+    return newPath;
   }
   await writeTypeDecision(ctx, newPath, moved, { type: classification, confirmed: true });
-  ctx.onPageMoved?.({ from: pagePath, to: newPath, classification });
   console.debug(
     `Entity resolution: moved "${pagePath}" → "${newPath}" per classification decision`,
   );

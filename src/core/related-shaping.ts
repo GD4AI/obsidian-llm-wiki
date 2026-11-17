@@ -67,8 +67,11 @@ export interface RelatedShapingResult {
   /** Cross-source entries added by the `candidates` source (one per list entry). */
   crossSource: number;
   /**
-   * The names that source contributed, per page, keyed by `nameKey` of the page's
-   * name (#664, second half).
+   * The names that source contributed, per page, keyed by `<kind>:<nameKey>` of
+   * the page's name — `entities:mercury` / `concepts:mercury` (#664, second half).
+   * An entity and a concept may carry the same name; without the namespace the
+   * later loop overwrote the earlier one and one of the two pages lost its
+   * above-ceiling allowance.
    *
    * They are already inside the returned `related_entities` / `related_concepts`,
    * where they are indistinguishable from a note-grounded name. This map is what
@@ -216,7 +219,7 @@ export function shapeRelatedLists(
   const projected: RelatedShapingResult['projected'] = new Map();
   const entities = analysis.entities.map(e => {
     const { outE, outC, projE, projC } = shape(e.name, e.related_entities, e.related_concepts);
-    if (projE.length || projC.length) projected.set(nameKey(e.name), { entities: projE, concepts: projC });
+    if (projE.length || projC.length) projected.set(`entities:${nameKey(e.name)}`, { entities: projE, concepts: projC });
     const next: EntityInfo = { ...e };
     if (outE.length || e.related_entities) next.related_entities = outE;
     if (outC.length || e.related_concepts) next.related_concepts = outC;
@@ -224,7 +227,7 @@ export function shapeRelatedLists(
   });
   const concepts = analysis.concepts.map(c => {
     const { outE, outC, projE, projC } = shape(c.name, c.related_entities, c.related_concepts);
-    if (projE.length || projC.length) projected.set(nameKey(c.name), { entities: projE, concepts: projC });
+    if (projE.length || projC.length) projected.set(`concepts:${nameKey(c.name)}`, { entities: projE, concepts: projC });
     const next: ConceptInfo = { ...c, related_concepts: outC };
     if (outE.length || c.related_entities) next.related_entities = outE;
     return next;

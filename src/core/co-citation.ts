@@ -41,6 +41,14 @@ export interface CoCitationOptions {
    * The projection also excludes itself and its own link targets regardless.
    */
   exclude?: ReadonlySet<string>;
+  /**
+   * The subject's own source page(s), when the caller knows them better than the
+   * graph does. A page being written has no graph entry yet, so `sourcesOf` finds
+   * nothing and the same-note exclusion (#1017) cannot fire on its first ingest —
+   * the re-ingest of a note that newly extracts an entity is exactly that case.
+   * Unioned with the graph-derived set, never a replacement.
+   */
+  selfSources?: ReadonlySet<string>;
   /** Bound on the returned list. Absent means all of them, ranked. */
   limit?: number;
   /**
@@ -244,7 +252,7 @@ export function coCitationCandidates(
   // The gate replaces the floor: with it, one specific target is the whole bar.
   const minShared = opts.specificity !== undefined ? 1 : (opts.minShared ?? DEFAULT_MIN_SHARED);
   const alreadyLinked = new Set(targets);
-  const selfSources = sourcesOf(self, graph);
+  const selfSources = new Set([...sourcesOf(self, graph), ...(opts.selfSources ?? [])]);
   /**
    * Per candidate: how many targets it shares, how much they say, the citing count of
    * the rarest of them, and its own out-degree. The last two are the comparator keys

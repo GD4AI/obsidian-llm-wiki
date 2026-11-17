@@ -11,16 +11,14 @@ read, and the version it expires in. Nothing here removes a setting, and nothing
 
 | Flag | Default | Read at | Test of the value | Exists because | Proposed expiry |
 |---|---|---|---|---|---|
-| `legacyScorer` | off | `select-seeds.ts:145`, `:157` | `settings.legacyScorer ? …` | #819 step 7 made BM25F the default scorer (shipped 1.29.0, PR #842). The two ranks differ — top-5 overlap measured 2.4 of 5 — and a user who sees worse results needs the old path back before the accuracy harness carries evidence. | 1.32.0 |
-| `skipMentionOnlyCandidates` | off | `applyCandidateGates` (`wiki-engine.ts:1173`, `:1208`) | `=== true` | #514 / PR #521. It changes *which pages an ingest writes*, so it is the user's choice rather than an upgrade's. Keyed on `wikiLanguage`; a wiki language with no profile reports that it could not apply. | 1.32.0 |
-| `gateDissentStubs` | off | `applyCandidateGates` (`wiki-engine.ts:1172`) | `=== true` | S135. When the two gate halves disagree, the candidate becomes a stub from the extraction's own summary instead of being dropped. Needs `skipMentionOnlyCandidates` on, because the table consumes the position verdict that setting opts into. | 1.32.0 |
+| `legacyScorer` | off | `select-seeds.ts:145`, `:157` | `settings.legacyScorer ? …` | #819 step 7 made BM25F the default scorer (shipped 1.29.0, PR #842). The two ranks differ — top-5 overlap measured 2.4 of 5 — and a user who sees worse results needs the old path back before the accuracy harness carries evidence. | 1.34.0 |
+| `skipMentionOnlyCandidates` | off | `applyCandidateGates` (`wiki-engine.ts`, the `skipMentionOnlyCandidates === true` branch) | `=== true` | #514 / PR #521. It changes *which pages an ingest writes*, so it is the user's choice rather than an upgrade's. Keyed on `wikiLanguage`; a wiki language with no profile reports that it could not apply. | 1.34.0 |
+| `gateDissentStubs` | off | `applyCandidateGates` (`wiki-engine.ts`, the `gateDissentStubs === true` branch) | `=== true` | S135. When the two gate halves disagree, the candidate becomes a stub from the extraction's own summary instead of being dropped. Needs `skipMentionOnlyCandidates` on, because the table consumes the position verdict that setting opts into. | 1.34.0 |
 | `createStubsForUnresolvableLinks` | **on** | `shouldCreateStubForUnresolvableLink` (`fix-dead-link.ts:165`) | `!== false` | #75. When *Fix Dead Links* cannot resolve a target, it writes an empty stub and re-points the link instead of leaving it dead. Default-on, so the flag is an opt-out, not an opt-in. | 1.33.0 |
 
-**The expiry column is a proposal, not an agreement.** Nobody has set a release date. The
-dates live in `src/core/experimental-flags.ts`, and `experimental-flags.test.ts` compares each
-one to `package.json`'s version — so the release that reaches an expiry fails the suite and
-forces the decision. Moving a date is allowed; moving it silently is what the test makes
-visible. The register below is checked against that file by the same test, in both directions.
+**The expiry column is a proposal, not an agreement — and when a release reaches a date, the date moves with the reason in writing.** Nobody has set a fixed retirement date for any row. The dates live in `src/core/experimental-flags.ts`, and `experimental-flags.test.ts` compares each one to `package.json`'s version — so the release that reaches an expiry fails the suite and forces the decision. Moving a date is allowed; moving it silently is what the test makes visible. The register below is checked against that file by the same test, in both directions.
+
+**2026-11-17 — three deadlines moved 1.32.0 → 1.34.0 in the v1.32.0 release, which reached all three.** v1.32.0 arrived at the dates with no retirement measurement for any of them: no harness comparison of BM25F against the linear scorer on the same vault, no wiki language gaining a profile since #521, and no multi-language user report. Deleting the flags instead would have removed a visible way back in a MINOR release, and `legacyScorer` is a MAJOR trigger on that account. Each move is written here and in code, and `createStubsForUnresolvableLinks` keeps its 1.33.0 date.
 
 ## Three things this table makes visible
 
