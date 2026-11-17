@@ -453,7 +453,7 @@ export const KO_TEXTS = {
     // Notices
     startupCheckSummary: '위키에 {pages}개의 페이지가 있습니다 ({entities} 엔티티, {concepts} 컨셉, {sources} 소스)',
     watcherActiveNotice: 'Wiki: 파일 감시 활성화 — 감시 폴더 모니터링 중',
-    watchIngestNotice: 'Wiki: sources/에서 {count}개의 파일이 변경되었습니다. "소스 수집"을 실행하여 처리하세요.',
+    watchIngestNotice: 'Wiki: sources/에서 {count}개의 파일이 변경되었습니다. "{command}"을 실행하여 처리하세요.',
     autoIngestRunning: '{count}개의 변경 파일 자동 수집 중...',
     autoIngestComplete: '자동 수집 완료: {success} 성공, {fail} 실패',
     scheduledLintRunning: '일정된 위키 린트 실행 중...',

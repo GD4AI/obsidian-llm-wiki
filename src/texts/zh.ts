@@ -452,7 +452,7 @@ export const ZH_TEXTS = {
     // 通知
     startupCheckSummary: 'Wiki 共 {pages} 页（{entities} 个实体、{concepts} 个概念、{sources} 个来源）',
     watcherActiveNotice: 'Wiki: 文件监听已启动 — 正在监控指定文件夹',
-    watchIngestNotice: 'Wiki: sources/ 中有 {count} 个文件变更。请执行"摄入源文件"处理。',
+    watchIngestNotice: 'Wiki: sources/ 中有 {count} 个文件变更。请执行"{command}"处理。',
     autoIngestRunning: '正在自动摄入 {count} 个变更文件...',
     autoIngestComplete: '自动摄入完成：成功 {success}，失败 {fail}',
     scheduledLintRunning: '正在执行定时 Wiki 维护...',

@@ -475,7 +475,7 @@ export const TH_TEXTS = {
     // Notices
     startupCheckSummary: 'วิกิมี {pages} หน้า ({entities} เอนทิตี {concepts} แนวคิด {sources} แหล่งข้อมูล)',
     watcherActiveNotice: 'วิกิ: การเฝ้าดูไฟล์ทำงานอยู่ — กำลังติดตามโฟลเดอร์ที่เฝ้าดู',
-    watchIngestNotice: 'วิกิ: มี {count} ไฟล์ใน sources/ เปลี่ยนแปลง เลือก "นำเข้าแหล่งข้อมูล" เพื่อประมวลผล',
+    watchIngestNotice: 'วิกิ: มี {count} ไฟล์ใน sources/ เปลี่ยนแปลง เลือก "{command}" เพื่อประมวลผล',
 
     // Startup quick fixes detail (Issue #81)
     startupCheckTitle: 'การซ่อมเร็วของวิกิเสร็จแล้ว',

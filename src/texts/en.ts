@@ -475,7 +475,7 @@ export const EN_TEXTS = {
     // Notices
     startupCheckSummary: 'Wiki has {pages} pages ({entities} entities, {concepts} concepts, {sources} sources)',
     watcherActiveNotice: 'Wiki: file watcher active — monitoring watched folders',
-    watchIngestNotice: 'Wiki: {count} file(s) changed in sources/. Run "Ingest Sources" to process.',
+    watchIngestNotice: 'Wiki: {count} file(s) changed in sources/. Run "{command}" to process.',
 
     // Startup quick fixes detail (Issue #81)
     startupCheckTitle: 'Wiki quick fixes complete',

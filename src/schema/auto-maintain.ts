@@ -272,7 +272,13 @@ export class AutoMaintainManager {
 
     if (this.settings.autoWatchMode === 'notify') {
       new Notice(
-        texts.watchIngestNotice.replace('{count}', String(sourceFiles.length)),
+        texts.watchIngestNotice
+          .replace('{count}', String(sourceFiles.length))
+          // The palette name comes from the command table, not from the
+          // message: the notice used to hardcode a translation of a command
+          // that does not exist ("Ingest Sources" against the real "Ingest
+          // from folder"), so every locale named a command nobody could run.
+          .replace('{command}', texts.cmdIngestFolder),
         8000
       );
     } else {

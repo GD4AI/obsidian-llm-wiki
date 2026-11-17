@@ -453,7 +453,7 @@ export const ES_TEXTS = {
     // Notices
     startupCheckSummary: 'La Wiki tiene {pages} páginas ({entities} entidades, {concepts} conceptos, {sources} fuentes)',
     watcherActiveNotice: 'Wiki: monitor de archivos activo — supervisando carpetas monitorizadas',
-    watchIngestNotice: 'Wiki: {count} archivo(s) modificado(s) en sources/. Ejecuta "Ingestar fuentes" para procesar.',
+    watchIngestNotice: 'Wiki: {count} archivo(s) modificado(s) en sources/. Ejecuta "{command}" para procesar.',
     autoIngestRunning: 'Ingestando automáticamente {count} archivo(s) modificado(s)...',
     autoIngestComplete: 'Ingestión automática completada: {success} correctas, {fail} fallidas',
     scheduledLintRunning: 'Ejecutando verificación lint programada de la Wiki...',

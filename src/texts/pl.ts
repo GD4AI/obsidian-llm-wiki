@@ -475,7 +475,7 @@ export const PL_TEXTS = {
     // Notices
     startupCheckSummary: 'Wiki ma {pages} stron ({entities} encji, {concepts} pojęć, {sources} źródeł)',
     watcherActiveNotice: 'Wiki: obserwowanie plików jest włączone — obserwowane foldery są sprawdzane',
-    watchIngestNotice: 'Wiki: {count} plików w sources/ zostało zmienionych. Wybierz "Wczytaj źródła", aby je przetworzyć.',
+    watchIngestNotice: 'Wiki: {count} plików w sources/ zostało zmienionych. Wybierz "{command}", aby je przetworzyć.',
 
     // Startup quick fixes detail (Issue #81)
     startupCheckTitle: 'Szybkie naprawy wiki zakończone',

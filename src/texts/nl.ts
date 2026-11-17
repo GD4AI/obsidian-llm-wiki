@@ -475,7 +475,7 @@ export const NL_TEXTS = {
     // Notices
     startupCheckSummary: 'De wiki heeft {pages} pagina\'s ({entities} entiteiten, {concepts} concepten, {sources} bronnen)',
     watcherActiveNotice: 'Wiki: het volgen van bestanden is actief — de gevolgde mappen worden in het oog gehouden',
-    watchIngestNotice: 'Wiki: {count} bestand(en) in sources/ is of zijn gewijzigd. Kies "Bronnen inlezen" om ze te verwerken.',
+    watchIngestNotice: 'Wiki: {count} bestand(en) in sources/ is of zijn gewijzigd. Kies "{command}" om ze te verwerken.',
 
     // Startup quick fixes detail (Issue #81)
     startupCheckTitle: 'Snelle herstellingen van de wiki zijn klaar',
