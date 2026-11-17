@@ -62,6 +62,23 @@ export interface CoCitationOptions {
    * vault is too sparse to reach two can lower this, and then it has said so.
    */
   minShared?: number;
+  /**
+   * How widely cited a shared target may be and still count — Issue #1028, step 2.
+   *
+   * With this set, a target cited by `specificity` or more pages is not evidence: it
+   * is dropped from the count, from the weight, and from the rarest-target key. One
+   * remaining target is enough to offer the pair, so this **replaces** the count floor
+   * rather than adding to it — `minShared = 2` asks how much evidence there is, and
+   * the gate asks whether any of it is specific.
+   *
+   * The reason is measured: on a 3,071-page vault, 50.3 % of chosen entries rested on
+   * at least one target cited by 50 or more pages, because a hub is shared by nearly
+   * everything. With the gate at 25 the hub-rest share fell to 5.3 % while coverage
+   * rose from 1,023 pages to 1,973.
+   *
+   * Absent means today's floor, exactly — every existing caller and test is unaffected.
+   */
+  specificity?: number;
 }
 
 /** The floor. See `CoCitationOptions.minShared`. */
@@ -224,7 +241,8 @@ export function coCitationCandidates(
   const targets = [...new Set([...(opts.selfTargets ?? []), ...(graph.outgoing.get(self) ?? [])])];
   if (targets.length === 0) return [];
 
-  const minShared = opts.minShared ?? DEFAULT_MIN_SHARED;
+  // The gate replaces the floor: with it, one specific target is the whole bar.
+  const minShared = opts.specificity !== undefined ? 1 : (opts.minShared ?? DEFAULT_MIN_SHARED);
   const alreadyLinked = new Set(targets);
   const selfSources = sourcesOf(self, graph);
   /**
@@ -236,6 +254,9 @@ export function coCitationCandidates(
   for (const target of targets) {
     if (isSourcePage(target)) continue;
     const citing = graph.incoming.get(target) ?? [];
+    // A target the whole vault cites says "these two pages are wiki pages". It is not
+    // evidence, and it must not reach the count, the weight, or the rarest key.
+    if (opts.specificity !== undefined && citing.length >= opts.specificity) continue;
     const weight = targetWeight(citing.length);
     for (const source of citing) {
       if (source === self) continue;

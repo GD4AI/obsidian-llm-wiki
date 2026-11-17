@@ -75,7 +75,7 @@ import { ContradictionManager } from './contradictions';
 // v1.25.1 Phase C-PR1: buildLogHeader moved into LogWriter.
 import { UNIVERSAL_LINK_CONSTRAINTS } from './prompts/constraints';
 import { SourceAnalyzer } from './source-analyzer';
-import { NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET } from '../constants';
+import { NOTICE_ABORT, NOTICE_RATE_LIMIT, NOTICE_NORMAL, NOTICE_SHORT, INGESTED_HASHES_TTL_MS, COMPATIBLE_SOURCE_EXTENSIONS, MINERU_API_TOKEN_SECRET_ID, MINERU_CONVERSION_EXTENSIONS, MINERU_MAX_PDF_MB, MINERU_MAX_PDF_PAGES, RELATED_BUDGET, CO_CITATION_SPECIFICITY } from '../constants';
 import { PageFactory } from './page-factory';
 import { ConversationIngestor, ConversationOrchestration, formatConversation, ConversationHistory } from './conversation-ingest';
 import { edgesForPage, type Graph } from '../core/build-graph';
@@ -1478,6 +1478,10 @@ export class WikiEngine {
             exclude: skip,
             limit: crossSourceCap,
             selfTargets,
+            // #1028, step 2: a hub is not evidence. One specific shared target is
+            // enough, which is why this replaces the count floor rather than adding
+            // to it — see `CoCitationOptions.specificity`.
+            specificity: CO_CITATION_SPECIFICITY,
           })
             .map(rel => titleByRel.get(rel) ?? rel);
         },

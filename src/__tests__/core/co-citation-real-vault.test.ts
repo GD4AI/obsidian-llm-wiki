@@ -18,7 +18,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraphFromContent } from '../../core/build-graph';
 import { buildCoCitationGraph, coCitationCandidates } from '../../core/co-citation';
-import { RELATED_BUDGET } from '../../constants';
+import { RELATED_BUDGET, CO_CITATION_SPECIFICITY } from '../../constants';
 
 // The cap the product applies at write time (`shapeRelatedLists` receives
 // `RELATED_BUDGET[granularity].crossSource`). Measuring without it was the defect
@@ -80,11 +80,17 @@ function measure(vault: { name: string; dir: string }): Measurement {
 	let withheldByFloor = 0;
 	let cutApplied = 0;
 	for (const page of pages) {
-		// What the product offers: the floor and the cap, as `shapeRelatedLists` calls it.
-		const kept = coCitationCandidates(page.path, co, { limit: CROSS_SOURCE_CAP });
+		// What the product offers: the specificity gate and the cap, as `shapeRelatedLists`
+		// calls it (`wiki-engine.ts` passes `specificity: CO_CITATION_SPECIFICITY`). This call
+		// measured the floor rule long after production stopped running it, so the
+		// CHANGELOG's before/after numbers had no test that could re-derive them.
+		const kept = coCitationCandidates(page.path, co, {
+			limit: CROSS_SOURCE_CAP,
+			specificity: CO_CITATION_SPECIFICITY,
+		});
 		offered.push(...kept);
-		// The same call without the cap, so the cut's own effect is separable from the
-		// floor's.
+		// The same call with no gate and no cap: the floor-2 baseline the gate replaced, so
+		// the two rules stay separable without editing this file.
 		const uncapped = coCitationCandidates(page.path, co);
 		offeredUncapped.push(...uncapped);
 		if (uncapped.length > kept.length) cutApplied += 1;

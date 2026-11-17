@@ -497,3 +497,130 @@ describe('#1028 — a cut prefers the rarer evidence, then the narrower page', (
     expect(coCitationCandidates('entities/A', g)).toEqual(['entities/Alpha', 'entities/Zulu']);
   });
 });
+
+// Issue #1028, step 2 — the floor becomes a specificity gate.
+//
+// `minShared = 2` asks *how many* targets two pages share. On @DocTpoint's vault that
+// let 50.3 % of chosen entries rest on at least one target cited by 50 or more pages:
+// a hub is shared by nearly everything, so "two targets in common" is often "two
+// hubs in common". The gate asks *whether any shared target is specific* — cited by
+// fewer than K pages — and one such target is enough.
+//
+// His table, on 3,071 pages with the extended comparator: K = 25 reaches 1,973 pages
+// against `minShared = 2`'s 1,023, drops the hub-rest share from 50.3 % to 5.3 %, and
+// holds the "A" share at 7.6 % against a 7.5 % base.
+describe('#1028 — a shared target counts only when it is specific', () => {
+  /** `A` and `B` share one target, and `citers` pages cite it. */
+  const hubPair = (citers: number) => {
+    const edges: Record<string, string[]> = {
+      'entities/A': ['concepts/Hub'],
+      'entities/B': ['concepts/Hub'],
+    };
+    for (let i = 0; i < citers - 2; i++) edges[`entities/H${i}`] = ['concepts/Hub'];
+    return buildCoCitationGraph(graphOf(edges));
+  };
+  /** `A` and `B` share a hub AND a rare target, so the rare one survives the gate. */
+  const hubAndRare = (citers: number) => {
+    const edges: Record<string, string[]> = {
+      'entities/A': ['concepts/Hub', 'concepts/Rare'],
+      'entities/B': ['concepts/Hub', 'concepts/Rare'],
+    };
+    for (let i = 0; i < citers - 2; i++) edges[`entities/H${i}`] = ['concepts/Hub'];
+    return buildCoCitationGraph(graphOf(edges));
+  };
+
+  it('offers a pair sharing a hub and a rare target, when no gate is set', () => {
+    // The floor of two asks *how many* targets two pages share, so a hub alone cannot
+    // carry a pair here — that is the very reason the gate lowers the floor to one.
+    // Naming this fixture "only shared target is a hub" was wrong: `hubAndRare` shares
+    // two, and the hub-only shape is unofferable under the floor.
+    expect(coCitationCandidates('entities/A', hubAndRare(60))).toEqual(['entities/B']);
+  });
+
+  it('drops a target cited by exactly K pages, so the boundary is inclusive', () => {
+    // Three places say "cited by `specificity` or more": the gate's comment in
+    // `co-citation.ts`, its option doc, and the CHANGELOG. Every other fixture here sits
+    // far from the boundary — 60 citers against K = 25, or 5 against K = 4 — so `>` in
+    // place of `>=` passed all of them.
+    expect(
+      coCitationCandidates('entities/A', hubPair(5), { specificity: 5 }),
+      'a target cited by exactly K pages counted as evidence',
+    ).toEqual([]);
+  });
+
+  it('leaks no hub weight into the ordering keys', () => {
+    // `B` and `C` each share one specific target, `R1`, and each also shares a hub — a
+    // different hub, at a different citing count. With the gate applied *before* the
+    // accumulation, both candidates hold identical keys (count 1, weight of R1, rarest
+    // 3, degree 2) and the tie falls to the path, which puts `B` first.
+    //
+    // `HubC` is cited by fewer pages than `HubB`, so its weight is higher. If a refactor
+    // filtered hubs after `weight` and `rarest` were accumulated, `C` would gain the
+    // larger weight and lead — and every other assertion in this file would still pass,
+    // because no other fixture has two candidates whose order depends on a leaked hub.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/R1', 'concepts/HubB', 'concepts/HubC'],
+      'entities/B': ['concepts/R1', 'concepts/HubB'],
+      'entities/C': ['concepts/R1', 'concepts/HubC'],
+      'entities/H1': ['concepts/HubB'], 'entities/H2': ['concepts/HubB'],
+      'entities/H3': ['concepts/HubB'], 'entities/H4': ['concepts/HubB'],
+      'entities/H5': ['concepts/HubC'], 'entities/H6': ['concepts/HubC'], 'entities/H7': ['concepts/HubC'],
+    }));
+    // HubB has six citers, HubC five, R1 three. K = 4 drops both hubs and keeps R1.
+    // HubC sits one above the boundary on purpose: at exactly 4 it would also be dropped by
+    // a `>` in the gate, and this test would then be measuring the boundary, not the leak.
+    expect(coCitationCandidates('entities/A', g, { specificity: 4 })).toEqual(['entities/B', 'entities/C']);
+  });
+
+  it('drops the hub and with it the pair, once the gate is set', () => {
+    const ids = coCitationCandidates('entities/A', hubPair(60), { specificity: 25 });
+    expect(ids, 'a target cited by 60 pages counted as evidence').not.toContain('entities/B');
+  });
+
+  it('offers the pair when one shared target is specific, even though the other is a hub', () => {
+    // One specific target is enough — the floor no longer asks for two.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/Hub', 'concepts/Rare'],
+      'entities/B': ['concepts/Hub', 'concepts/Rare'],
+      'entities/C': ['concepts/Hub'], 'entities/D': ['concepts/Hub'], 'entities/E': ['concepts/Hub'],
+    }));
+    // K must exceed the citing count of the specific target: `Rare` has two citers,
+    // and the gate keeps targets cited by **fewer than** K pages.
+    expect(coCitationCandidates('entities/A', g, { specificity: 3 })).toEqual(['entities/B']);
+  });
+
+  it('counts only specific targets towards the amount of evidence', () => {
+    // `B` shares a hub and a specific target with `A`; `C` shares two specifics. With
+    // the gate, `B` has one piece of evidence and `C` has two, so `C` leads — the hub
+    // does not inflate `B`'s count.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/Hub', 'concepts/R1', 'concepts/R2'],
+      'entities/B': ['concepts/Hub', 'concepts/R1'],
+      'entities/C': ['concepts/R1', 'concepts/R2'],
+      'entities/H1': ['concepts/Hub'], 'entities/H2': ['concepts/Hub'], 'entities/H3': ['concepts/Hub'],
+    }));
+    // Hub has five citers, R1 three, R2 two. K = 4 keeps R1 and R2 and drops the hub.
+    expect(coCitationCandidates('entities/A', g, { specificity: 4 })).toEqual(['entities/C', 'entities/B']);
+  });
+
+  it('keeps the comparator chain above the gate', () => {
+    // The gate decides who is *offered*; the chain still orders them, and with one
+    // target of evidence each the degree key separates the two equally weighted
+    // candidates: `X` links one page, `C` links two.
+    //
+    // Every candidate also shares `Hub`, which the gate drops. Without it K = 10 never
+    // fired on this fixture — no target is cited by ten pages — so the test named the
+    // gate while exercising only the chain.
+    const g = buildCoCitationGraph(graphOf({
+      'entities/A': ['concepts/R1', 'concepts/R2', 'concepts/Hub'],
+      'entities/B': ['concepts/R1', 'concepts/Hub'],
+      // `C` links two pages `A` does not, so it is the broader of the two candidates
+      // and the degree key must place it after `X`.
+      'entities/C': ['concepts/R2', 'concepts/Z1', 'concepts/Z2', 'concepts/Hub'],
+      'entities/X': ['concepts/R2', 'concepts/Hub'],
+      'entities/H1': ['concepts/Hub'], 'entities/H2': ['concepts/Hub'], 'entities/H3': ['concepts/Hub'],
+    }));
+    // Hub has seven citers, R1 two, R2 three. K = 4 drops the hub and keeps both specifics.
+    expect(coCitationCandidates('entities/A', g, { specificity: 4 })).toEqual(['entities/B', 'entities/X', 'entities/C']);
+  });
+});
