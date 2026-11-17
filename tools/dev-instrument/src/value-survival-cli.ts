@@ -29,6 +29,8 @@ import {
   type PageType,
   type Row,
 } from './value-survival';
+import { SECTION_LABELS } from '../../../src/wiki/system-prompts';
+import { escapeRegex } from '../../../src/core/regex-escape';
 
 /** The file access the report needs. The launcher supplies it from `node:fs`. */
 export interface CliIo {
@@ -49,7 +51,21 @@ const usage = (line: string): void => {
   process.stderr.write(line + '\n');
 };
 
-const QUOTE_HEADINGS = /^##\s+(?:来源提及|Mentions in Source)\s*$/gmu;
+/**
+ * The verbatim-quote heading, in every language the plugin can write.
+ *
+ * Read from `SECTION_LABELS` rather than typed here. This splitter shipped with two of
+ * the fourteen labels — English and Chinese — so every other language's quote section
+ * was counted as prose. The consequence is not cosmetic: `quoted` is the column that
+ * answers the issue's question, and on a German vault with four verbatim quotes the
+ * report said `quoted 0`.
+ */
+const QUOTE_HEADINGS = new RegExp(
+  `^##\\s+(?:${[...new Set(Object.values(SECTION_LABELS).map((l) => l.mentions_in_source))]
+    .map(escapeRegex)
+    .join('|')})\\s*$`,
+  'gmu',
+);
 
 interface Page {
   type: PageType;
