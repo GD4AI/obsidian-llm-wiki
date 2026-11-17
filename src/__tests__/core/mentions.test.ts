@@ -75,6 +75,26 @@ describe('formatMentionsSection', () => {
     expect(bullets.length).toBeLessThan(4);
   });
 
+  it('drops a quote that does not fit whole, and never emits half of it', () => {
+    // A quote is evidence, so a fragment of one is not evidence — it is a sentence
+    // that stops mid-word and a citation that still looks authoritative. The budget
+    // is applied per quote: either the whole bullet fits or the quote is left out.
+    // Pin it, because the cheaper implementation is to slice the overflowing quote to
+    // the remaining characters, and that passes the count-only assertion above.
+    //
+    // Measured on a 4.9 KB note: the source page's 2,000-char budget is full, and the
+    // quotes it drops are dropped whole (nothing truncated), which is why the values
+    // they carried still reach the page through the summary prose.
+    const whole = 'ERSTE VOLLSTAENDIGE AUSSAGE';
+    const tooLong = 'ZWEITE AUSSAGE ' + 'x'.repeat(400) + ' ENDE';
+    const out = formatMentionsSection([whole, tooLong], 'notes/x.md', 'Mentions in Source', { maxChars: 200 });
+    const bullets = out.split('\n').filter(l => l.startsWith('- '));
+    expect(bullets, 'the first quote must be emitted').toHaveLength(1);
+    expect(bullets[0]).toContain(whole);
+    expect(out, 'a fragment of the dropped quote reached the page').not.toContain('ZWEITE AUSSAGE');
+    expect(out, 'a fragment of the dropped quote reached the page').not.toContain('xxxx');
+  });
+
   it('emits only the section header line when mentions is empty (NOT a bare header)', () => {
     // The formatter contract: empty mentions → empty output (caller decides
     // whether to omit the section entirely or show "No specific mentions").
