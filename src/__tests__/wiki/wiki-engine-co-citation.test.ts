@@ -149,8 +149,6 @@ describe('#1018 — an ingest run sees the pages it has already written', () => 
     await h.engine.ingestSource(Object.assign(new TFile(), { path: 'Notizen/Erste.md', basename: 'Erste', extension: 'md' }), { batchCtx });
     await h.engine.ingestSource(Object.assign(new TFile(), { path: 'Notizen/Zweite.md', basename: 'Zweite', extension: 'md' }), { batchCtx });
 
-    console.log('DELTA2 >>>', h.files.get('wiki/entities/delta.md'));
-    console.log('GAMMA2 >>>', h.files.get('wiki/entities/gamma.md'));
     const gamma = h.files.get('wiki/entities/gamma.md') ?? '';
     const delta = h.files.get('wiki/entities/delta.md') ?? '';
     expect(gamma).toContain('[[concepts/Hub');

@@ -24,17 +24,19 @@ pnpm build
 
 ## Quality Checks
 
-All five checks must pass before submitting any change. **Order is non-negotiable: build before test.** `openai-codex-loopback-flow.test.ts:39` reads `main.js` to verify the esbuild bundle shape. So a test-before-build run on a fresh clone fails ENOENT:
+All seven checks must pass before submitting any change. **Order is non-negotiable: build before test.** `openai-codex-loopback-flow.test.ts:39` reads `main.js` to verify the esbuild bundle shape. So a test-before-build run on a fresh clone fails ENOENT:
 
 ```bash
 pnpm lint          # ESLint with Obsidian plugin rules (0 errors, 0 warnings)
-npx tsc --noEmit   # TypeScript type check (0 errors, 0 warnings) — Dual Gate
+pnpm arch-check    # Import graph: 0 cycles, 0 core → upper-layer edges
+pnpm typecheck     # TypeScript type check (0 errors, 0 warnings) — Dual Gate
+pnpm typecheck:tools # The dev-instrument tree has its own tsconfig and its own job
 pnpm build         # esbuild production build (must exit cleanly)
 pnpm test          # Vitest unit tests (all pass)
 pnpm css-lint      # styles.css contains no !important declarations
 ```
 
-The composite alias `pnpm gate:1` runs all five in the correct order.
+The composite alias `pnpm gate:1` runs all seven in the correct order. Two of them catch what the others cannot: `arch-check` is the only check that sees a layering violation, and `typecheck:tools` is the only check that compiles `tools/dev-instrument/` — the root `tsconfig.json` does not include that tree.
 
 ## Code Conventions
 
@@ -46,20 +48,23 @@ The composite alias `pnpm gate:1` runs all five in the correct order.
 - **Commit messages**: English, conventional commits format (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 - **Obsidian Bot compliance**: 15 `eslint-plugin-obsidianmd` rules enforced by `pnpm lint`
 - **llmReady guard**: New core features must call `requireLLMReady()` at entry points. The plugin needs a successful connection test first.
-- **i18n**: UI strings use the TEXTS system. English strings in `src/texts/en.ts` are canonical; all 9 other languages update in lockstep.
+- **i18n**: UI strings use the TEXTS system. English strings in `src/texts/en.ts` are canonical; all 13 other languages update in lockstep.
 
 > **Historical release notes** (v1.23.0+llm-client removal, v1.24.0 splits, v1.24.1 Bedrock + PPR + page-factory, v1.25.0 PDF Ingest): see [CHANGELOG.md](CHANGELOG.md). Keep a Changelog format is the canonical record; this file documents the project structure as it stands.
 
 ## Project Structure
+
+**This map is curated, not exhaustive.** `src/` holds 317 modules outside `src/__tests__/`. The entries below name the ones a new contributor needs before reading code; the rest are found by the import graph or by `pnpm arch-check`.
 
 ```
 src/
 ├── main.ts              # Plugin entry point
 ├── main-commands/       # Entry-point mixins, including Codex OAuth lifecycle commands
 ├── types.ts             # Shared types + EngineContext
+├── types/               # Split type modules (engine, ingest, settings, providers, query, task-policy, vocabulary, write)
 ├── constants.ts         # Centralized constants (token budgets, notice durations, WIKI_SUBFOLDERS)
 ├── texts.ts             # i18n texts (barrel, 14 locales: EN canonical + 13 translations)
-├── prompts/              # LLM prompt templates by domain
+├── prompts.ts           # LLM prompt barrel (the templates live in src/wiki/prompts/)
 ├── llm-client-wrapper.ts # Advanced settings injection wrapper
 ├── llm-sdk/             # Vercel AI-SDK v7 client factories (v1.23.0 as v6, #764 upgrade)
 │   ├── create-llm-client.ts        # Factory: async + sync shim + preload
@@ -68,6 +73,7 @@ src/
 │   ├── openai-compat-sdk-client.ts # OpenAI-compatible via @ai-sdk/openai-compatible — every preset except `openai` / `openai-codex` / `anthropic` / `anthropic-compatible` / `bedrock-anthropic`, and anything declaring `apiShape: 'responses'`
 │   ├── openai-codex-sdk-client.ts  # ChatGPT Plan (Codex OAuth) — separate Codex Responses client (OAuth device-code + loopback)
 │   ├── openai-codex/               # Codex OAuth private modules (adapter + token store)
+│   ├── bedrock-sso/                # Bedrock SSO / IAM private modules
 │ ├── compat-headers.ts # Per-provider request headers + preset header factory
 │   ├── reasoning-strip-probe.ts    # Per-baseURL 400-strip cache + two-marker (verb+field) classifier (v1.26.0 Batch 6)
 │   ├── token-key-probe.ts          # max_tokens ↔ max_completion_tokens runtime fallback (KISS, no regex)
@@ -114,6 +120,25 @@ src/
 │ ├── build-folder-tree.ts # Recursive folder tree for Multi-File Ingest
 │ ├── ingest-queue.ts # IngestQueue pub/sub store
 │ ├── build-graph.ts # Wiki-link graph builder
+│ ├── related-sections.ts # Related-section names + the per-granularity budget constants
+│ ├── related-shaping.ts # Related-list shaping: note-grounded entries vs cross-source slots, hub weighting
+│ ├── co-citation.ts     # The cross-source candidate projection (the #729 Phase 1 mechanism)
+│ ├── log-labels.ts      # The ingest-log labels, in all 14 locales
+│ ├── ingest-state.ts    # Per-run ingest state — the inputs of the drift fingerprint
+│ ├── mentions-formatter.ts # Builds the Mentions section; a quote that does not fit is dropped whole
+│ ├── mentions-injector.ts # Writes the Mentions section into a page body
+│ ├── mentions-parser.ts # Reads the Mentions section back out of a page
+│ ├── candidate-gate.ts  # Extraction candidate gate
+│ ├── candidate-window.ts # Candidate window selection
+│ ├── context-budget.ts  # Answer-context token budget
+│ ├── output-budget.ts   # Per-call output token budget
+│ ├── generation-ceiling.ts # The output-ceiling resolver — five layers, first available wins
+│ ├── output-ceiling-cache.ts # Remembers the ceiling a provider accepted
+│ ├── output-ceiling-probe.ts # Discovers that ceiling by rejection
+│ ├── experimental-flags.ts # Switches and the version that retires each of them
+│ ├── prompt-focus.ts    # Extraction focus injection
+│ ├── regex-escape.ts    # Regex escaping helper
+│ ├── repetition-loop.ts # Repetition-loop detector behind the halve-retry
 │ ├── monte-carlo-ppr.ts # Fogaras 2005 MC-PPR engine
 │   ├── ppr-cascade.ts          # Hybrid 3-tier retrieval cascade (213 LOC; v1.27.x PATCH PR #625: Unicode word runs, needleHits word-start, PPR-ranked merge)
 │ ├── section-extractor.ts # Zero-LLM Tier B section parser
@@ -153,11 +178,12 @@ src/
 ├── wiki/                # Wiki engine modules
 │ ├── page-write-guard.ts # pageGuard — the separately declared write-gate layer
 │   ├── wiki-engine.ts   # Orchestrator (ingest, lint, log) — v1.25.1: 4 internal modules extracted
-│ ├── graph-cache.ts # `_cachedGraph` + invalidate logic
-│ ├── index-generator.ts # generateFlatIndex + helpers
-│   ├── page-batch-runner.ts # Per-batch ingest runner
-│   ├── dedup-pages.ts   # Page-level dedup helpers
-│ ├── log-writer.ts # updateLog + formatters
+│   ├── engine-internals/  # The engine's extracted internals
+│   │   ├── graph-cache.ts      # `_cachedGraph` + invalidate logic
+│   │   ├── index-generator.ts  # generateFlatIndex + helpers
+│   │   ├── log-writer.ts       # updateLog + formatters (the `Moved pages` row lands here)
+│   │   ├── page-batch-runner.ts # Per-batch ingest runner
+│   │   └── dedup-pages.ts      # Page-level dedup helpers
 │   ├── query-engine/    # Conversational query with streaming + thinking UI
 │   │   ├── index.ts                           # re-export shim
 │   │   ├── types.ts + state.ts                # type declarations + InternalView
@@ -166,7 +192,10 @@ src/
 │   │   ├── renderers/                         # 7 pure-function modules
 │   │   └── pipeline/                          # 7 pure-function modules
 │   ├── source-analyzer.ts # Iterative batch extraction
-│   ├── page-factory/          # Entity/concept CRUD + merge (10 modules, v1.24.1 split)
+│   ├── pdf-converter.ts  # PDF → Markdown (LLM FilePart + OCR-style prompt)
+│   ├── source-page-head.ts # Source-page head labels, in all 14 locales
+│   ├── ingest-error-hint.ts # Localized advice when an ingest fails
+│   ├── page-factory/          # Entity/concept CRUD + merge (15 modules, v1.24.1 split)
 │   │   ├── index.ts                # Facade (preserves public API)
 │   │   ├── aliases.ts              # appendAliases
 │   │   ├── complementary-appends.ts # Tier-2 per-section appends
@@ -174,9 +203,14 @@ src/
 │   │   ├── create-page.ts          # 4 create functions
 │   │   ├── mentions-integration.ts # assembleFinalContent
 │   │   ├── merge-page.ts           # mergePage + appendToReviewedPage
+│   │   ├── merge-shared.ts         # Helpers shared by the merge paths
 │   │   ├── merge-triage.ts         # classifyMergeNeed + buildNewInfoSummary
+│   │   ├── note-window.ts          # The note window a page is built from
 │   │   ├── path-resolution.ts      # resolvePagePath + buildPagesListForPrompt
-│   │   └── related-page.ts         # updateRelatedPage (3-branch routing)
+│   │   ├── related-links.ts        # Cross-source relation wiring
+│   │   ├── related-page.ts         # updateRelatedPage (3-branch routing)
+│   │   ├── stub-page.ts            # Stub page writer
+│   │   └── contradiction-gates.ts  # Contradiction gates before a write
 │   ├── conversation-ingest.ts # Chat → wiki knowledge
 │   ├── contradictions.ts # Contradiction detection
 │   ├── system-prompts.ts # Language directive + section labels
@@ -199,23 +233,25 @@ src/
 │   │   ├── fix-polluted-page.ts  # Polluted basename rename
 │   │   ├── llm-phases/
 │   │   │   ├── dedup-phase.ts       # Lint dedup phase — inline retry/backoff/halving + force-disable thinking (v1.26.0 Batches 2+6+7)
-│ │ │ └── contradiction-phase.ts # Contradiction detection phase
+│   │   │   └── contradiction-phase.ts # Contradiction detection phase
 │   │   └── phases/
 │   │       ├── preparation.ts    # Page read, link fix, sources normalize
 │   │       └── programmatic.ts   # Fast programmatic scanners
-│   └── prompts/         # LLM prompt templates by domain (INGESTION / GENERATION / MERGE / FIX / LINT / CONVERSATION / PDF)
+│   └── prompts/         # LLM prompt templates by domain (ingestion / generation / merge / fixes / lint / conversation / pdf / seed-selection / constraints)
 │       ├── ingestion.ts
 │       ├── generation.ts
 │       ├── merge.ts
 │       ├── fixes.ts
 │       ├── lint.ts
 │       ├── conversation.ts
-│ └── pdf.ts # OCR-style verbatim transcriber + unwrapFencedMarkdown helper
+│       ├── pdf.ts
+│       ├── seed-selection.ts
+│       └── constraints.ts
 ├── schema/              # Schema co-evolution
 │   ├── schema-manager.ts # SchemaManager (read/write schema config)
 │   ├── auto-maintain.ts # File watcher, periodic lint, startup quick fixes
 │   └── analyze.ts       # Schema-analyze with cancel wiring
-├── ui/                  # Settings + history-modal/ (14-file split) + modals/ (7-file split)
+├── ui/                  # Settings + history-modal/ (5-file split) + modals/ (9-file split)
 │   ├── settings.ts      # LLMWikiSettingTab + tempSettings (v1.25.1: split into 10 settings-sections/ + helpers)
 │   ├── settings-helpers.ts        # Pure helpers (commitTempSettings logic, classification, etc.)
 │ ├── settings-per-task-helpers.ts # Per-task model dropdown rendering
@@ -230,14 +266,14 @@ src/
 │   │   ├── test-connection-section.ts
 │   │   ├── auto-maintain-section.ts
 │   │   └── wiki-config-section.ts
-│   ├── history-modal/  # 13 files (v1.24.0 split)
+│   ├── history-modal/  # 5 files (v1.24.0 split)
 │   │   ├── HistoryModal-class.ts
-│   │   └── renderers/  # 13 pure-function modules (entry, ingest-details, fix-details, etc.)
-│   ├── modals/          # 7+ files: MultiFileSuggestModal, FolderSuggest, etc.
+│   │   └── renderers/  # pure-function modules (entry, ingest-details, fix-details, etc.)
+│   ├── modals/          # 9 files: MultiFileSuggestModal, FolderSuggest, etc.
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (14 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH)
-└── __tests__/           # Unit tests (vitest, 5,243 tests / 386 files)
+└── __tests__/           # Unit tests (vitest, 5,648 tests / 413 files)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
 └── dev-instrument/ # UPSTREAM DEV-ONLY INSTRUMENT — engine contributors only
@@ -266,7 +302,7 @@ tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-
 ## Internationalization
 
 - **UI**: 14 locales (EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH), text keys in `src/texts/`. `en.ts` is the canonical source; `texts.ts` is the barrel.
-- **New text**: add the key to `en.ts` first, then translate it to all 10 other languages (in lockstep). The i18n-parity test
+- **New text**: add the key to `en.ts` first, then translate it to all 13 other languages (in lockstep). The i18n-parity test
   (`src/__tests__/root/i18n-parity.test.ts`) prevents silent EN fallback when a locale is missing keys.
 - **Wiki output**: 14 languages independent of UI, with custom input option
 
@@ -297,7 +333,7 @@ graph TD
     User -->|Cmd+P| main.ts
     main.ts -->|ingest| WikiEngine
     main.ts -->|query| QueryEngine
-    main.ts -->|lint| lint("lint/controller.ts + 4 LLM phase modules")
+    main.ts -->|lint| lint("lint/controller.ts + 4 phases")
     main.ts -->|Test Connection| modelResolver["core/model-resolver.ts (#208)"]
 
     WikiEngine -->|analyze| SourceAnalyzer
@@ -308,7 +344,7 @@ graph TD
     QueryEngine -->|pipeline: retrieval-plan → select-seeds → load-pages → assemble-context| Vault
     QueryEngine -->|streaming + render| LLMClient
 
-    lint("lint/controller.ts") -->|LLM scoring/synthesis/dedup/contradiction| llm-phases["lint/llm-phases/ (4 phase modules: scoring + synthesis + dedup + contradiction; analysis-phase removed v1.26.4 PR #494)"]
+    lint("lint/controller.ts") -->|LLM dedup + contradiction| llm-phases["lint/llm-phases/ (2 modules: dedup + contradiction; analysis-phase removed v1.26.4 PR #494)"]
     lint("lint/controller.ts") -->|dead links| fix-dead-link["lint/fix-dead-link.ts"]
     lint("lint/controller.ts") -->|empty pages| fill-empty-page["lint/fill-empty-page.ts"]
     lint("lint/controller.ts") -->|orphans| link-orphan["lint/link-orphan.ts"]
@@ -335,16 +371,16 @@ These four patterns appear throughout the engine. New contributors should recogn
 - **Tier 1/2 duplicate detection** — Tier 1 candidates are always LLM-verified (high-precision, low-recall). Tier 2 fills the remaining token
   budget (lower-precision, higher-recall). Implemented in `src/wiki/lint/duplicate-detection.ts` (`classifyTiers`) and used by `dedup-phase.ts`.
 - **`Promise.allSettled` error isolation** — One failed batch in a parallel scan does not crash the entire batch. Standard pattern in `dedup-phase.ts` and all parallel fix-runners.
-- **Pollution defense at write gate** — A centralised regex catches polluted `sources:`` frontmatter before any vault write. Single source of truth at `src/wiki/source-safety.ts` (or equivalent). Don't bypass it with inline checks.
+- **Pollution defense at write gate** — A centralised regex catches polluted `sources:`` frontmatter before any vault write. Single source of truth at `src/wiki/page-write-guard.ts`. Don't bypass it with inline checks.
 - **LLM semantic page selection** — Seed selection uses meaning-based matching (LLM or heuristic), not keyword match. Implemented in `query-engine.ts` seed selection.
 
 ## Pull Request Process
 
-1. Run `pnpm lint && pnpm test && npx tsc --noEmit && pnpm build` — all must pass
+1. Run `pnpm gate:1` — all seven checks must pass, in the order the alias runs them
 2. Add or update unit tests for any changed pure logic
 3. Update CHANGELOG.md if the change is user-visible
 4. Update all 14 README language variants if the change affects user-facing features or workflow
-5. Update CLAUDE.md and memory files to reflect completed work
+5. Update AGENTS.md and the memory files to reflect completed work
 6. Commit with English conventional commit message
 7. Open a PR against `main` branch
 

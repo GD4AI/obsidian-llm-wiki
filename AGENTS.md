@@ -1,9 +1,9 @@
 # LLM Wiki Plugin Project Development Standards
 
-**Last Updated:** 2026-11-13
+**Last Updated:** 2026-11-17
 
 **Current state pointer:** [ROADMAP.md](./ROADMAP.md) holds the active plan and the decision queue; [CHANGELOG.md](./CHANGELOG.md) holds shipped history.
-AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files). v1.30.0 MINOR (2026-11-07, 5,243 tests / 386 files).
+AGENTS.md is the single canonical source and carries process standards only; the historical mirror at `CLAUDE.md` is now a pointer stub to this file, and all new content goes here. **Latest shipped:** v1.32.0 MINOR (2026-11-17, 5,648 tests / 413 files). v1.31.0 MINOR (2026-11-13, 5,403 tests / 403 files).
 
 ## 🗣️ Communication standard — write so the reader can decide
 

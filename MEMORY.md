@@ -12,8 +12,8 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 
 | Need | Where |
 |---|---|
-| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-13](#current-state--2026-11-13) |
-| The rule for choosing what to work on, and the ranked queue it produces | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) → [ROADMAP §"The next-work order — 2026-10-29"](./ROADMAP.md#the-next-work-order--2026-10-29-re-ranked-by-roi) |
+| What is true **today** — released, open, blocked, and the next action | [Current state — 2026-11-17](#current-state--2026-11-17) |
+| The rule for choosing what to work on, and the ranked queue it produces | [Work lists — the ROI rule](#work-lists--the-roi-rule-tier-tables-archived) → [ROADMAP §"The v1.33.0 order"](./ROADMAP.md#the-v1330-order--2026-11-17-ranked-by-what-the-guardrail-proves) |
 | Rules that bind any change | [Process invariants](#process-invariants-non-negotiable) |
 | The decision list — one line per decision, with pointers | [Key design decisions](#key-design-decisions-canonical-references) |
 | Invariants that must never change | [Architectural invariants](#architectural-invariants-write-once) |
@@ -25,15 +25,14 @@ One file, indexed. Read the row you need. Do not read this file top to bottom.
 Both are kept in this file so there is one artifact to index and one place to search. Neither
 is current state.
 
-## Current state — 2026-11-13
+## Current state — 2026-11-17
 
-**Released:** v1.31.0 MINOR (2026-11-13) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.31.0), [discussion #1024](https://github.com/GD4AI/obsidian-llm-wiki/discussions/1024). Tag `1.31.0`, merge `57cf3142`. The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
+**Released:** v1.32.0 MINOR (2026-11-17) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.32.0), tag `1.32.0`. The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
 |---|---|
-| **Open PR** | #781 the co-citation projection — DocTpoint **lifted** `CHANGES_REQUESTED` at `94dd0827` on 2026-11-13; `d3337e44` takes his last two items (record sentence, test bound) and records the corrected 80.3 %. Merge awaits the maintainer, not a reviewer |
-| **Blocked on @DocTpoint** | #729 (name the scoring model and its prompt) |
-| **Owned, not blocked** | #664 — split on 2026-11-13: the union-only write path ships as its own change, the ranked cap waits on #729 Phase 2 |
+| **Open PR** | none — v1.32.0 is released and `main` is at `c6d11a4d` |
+| **v1.33.0 MINOR** | six open: #1054 (the source page's 2,000-character quote budget), #729 Phase 2 (the ranked cap that truncates a Related list), #664 (that cap's migration), #787 (the lemma-guarantee opt-out), #668 (the settings tabs), #891 (what "interrupted" means) |
 | **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
 | **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
 | **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
@@ -49,10 +48,7 @@ ancestor. The two dated copies disagreed with each other within two weeks. They 
 disagreed with the milestones. They are condensed in [Appendix B](#appendix-b--session-log-dated-blocks-verbatim),
 with their reasoning intact. They get the same rule the pre-release snapshots got: a stale
 "Next:" list reads as current.
-
-## Superseded snapshots (2026-09-05 → 2026-09-15)
-
-Three pre-release snapshots used to sit here, each with its own "Next:" list. They are removed, not archived, because **the per-version composition record is canonical in [CHANGELOG.md](./CHANGELOG.md)**. **A stale "Next:" list is worse than no list — it reads as current.**
+**Three pre-release snapshots (2026-09-05 → 2026-09-15) used to sit here too**, each with its own "Next:" list. They were removed, not archived, because the per-version composition record is canonical in [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -248,6 +244,10 @@ own header says it is not a session log. The standing decisions stay above, in
 **An acceptance criterion written on a wrong premise is not a test** (2026-10-28). #908's criterion 5 read "the base prompt … must not hardcode English section headings into the answer body", and the shipped code names the native heading first with the English one as a fallback. The criterion's premise was that the base prompt is localised; it is not — it is English throughout, with a `Respond in {language}` directive — so the criterion forbids the very thing that makes the rule usable: a vault ingested in English and switched to another keeps `## Mentions in Source` on the page while the prompt is built from the current setting. **A criterion has to be checked against the code it describes, and rewritten when the premise was wrong** — the alternative is changing correct code to satisfy a sentence that was never about the code.
 
 **A duplicate dependency is not only bytes** (2026-10-24). Bumping `ai` brought a third copy of `@ai-sdk/provider` into the bundle and cost 104.5 KB, which was measurable and expected. It also broke `err instanceof APICallError` — the class came from a different copy than the one `ai` re-exports — and that silently disabled the plugin's entire error normalization: the `status 403:` prefix, the `statusCode` field, the `responseBody` field, and every other AI SDK error class the function matched. Four tests caught it, and the tempting reading was "the upstream message wording changed, so update the assertions". **Updating them would have deleted the only signal that normalization had stopped.** Probe the thrown object (`constructor.name` against `instanceof`) before deciding that an error-shape test is stale.
+
+**A consumer that hardcodes a localized string measures the wrong thing** (2026-11-17). The value-survival counter matched the quote heading by literal text, and the literals were English and Chinese. On a German vault it reported `quoted 0 / prose 16` while the source page carried 11 quotes. The arithmetic was right and the pattern was wrong, because it recognised two of the fourteen languages. **This is the third instance of one class in three releases:** #793 let the command names drift in ten of eleven locales, and #1034's scanner compared the Related heading against three names no page writes. Every fix had the same shape — read the string from the locale table instead of naming it. **A string a user can see belongs in exactly one place, and every consumer reads it there.**
+
+**A threshold is only pinned by the case that sits on it** (2026-11-17). The specificity gate drops a target cited by `K` pages or more. The tests before #1028's second phase used targets cited 60 times against a gate of 25, so `>=` and `>` both passed them and the gate was free to move by one. The fixture that pins it is the one at exactly `K`; the hub-weight fixture sits one above the boundary, so a leak reads as a leak and not as the boundary. **A guard that compares a table against itself finds nothing:** the log-label check walked each locale's own values, so a locale missing a key still matched. It compares against English's key set now, and the reference must be the canonical side.
 
 Distilled from 75 session-level feedback entries. Full text lives in this
 file ([MEMORY.md](./MEMORY.md)); there is no separate per-agent private
@@ -1150,8 +1150,6 @@ Condensed 2026-10-06. The rules those sessions produced are in [§"Lessons learn
 Each was the live "current state" for a few days. Superseded; kept verbatim because the rules
 and incidents they cite are still referenced by §"Lessons learned".
 
-### Handoff — 2026-10-29, before compaction
-
 ### The maintainer's decisions, and what each one authorises
 
 1. **v1.29.0 shipped 2026-10-26** (PR #901 `c5bd0155`), and the tag points at the merge commit `97bd4d04` — a rebuild that carries #904's ingest-budget fix. 5,096 tests / 368 files at the tag. `main` is now `33b1e374`.
@@ -1184,12 +1182,6 @@ and incidents they cite are still referenced by §"Lessons learned".
 ### #855 — measured, approved, then un-approved by a rebase
 
 Branch `feat/two-stage-query-expansion`. @DocTpoint approved `975680bf`; the rebase onto #878 dismissed it, and the re-approval request of 2026-10-24 states exactly what moved: base `262c0096` → `83b8f73f`, two mechanical conflicts, plus tooling commits he had not seen. The `range-diff` across the base move showed 0 patch differences. **The measurement behind it, and the two claims it withdrew, are in [§"Current state (2026-10-22, later)"](#current-state-2026-10-22-later-855s-history-question-is-measured-and-the-answer-is-keep).**
-
-### The state of everything
-
-Five open PRs, all green: **#917** (the gateway that answers a non-streaming request with an event stream — the reported #916), **#886** (the answer context's token ceiling; the estimator measured 9/30 → 0/30 answers over 8,192 tokens on test8 and 27/30 → 0/30 on test10), **#895** (extraction focus and content requirements), **#882** (the follow-up rate on the user's own conversations), **#781** (the M0 co-citation projection, held on #729's design).
-
-Everything merged is recorded on the PR with an audit comment. Two facts worth keeping here: **#855 was 39 commits, and `range-diff` showed 0 patch differences across the base move**, and **the release artifact is built by npm while every gate runs on pnpm** — the released `main.js` was 4,876,194 B and the pnpm build 4,882,799 B, a 6,388-byte difference that no gate could see.
 
 ### What is not verified, and what a continuation must not assume
 

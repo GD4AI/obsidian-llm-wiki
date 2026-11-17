@@ -12,10 +12,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
 - docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
-- latest: v1.31.0
+- latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.30.0 (MINOR — un limite di token per il contesto della risposta, Extraction Focus nelle impostazioni e un report sugli hub cristallizzati)
-- last-updated: 2026-11-13
+- previous: v1.31.0 (MINOR — l'ingestione in streaming, un limite di output memorizzato e un bundle più piccolo)
+- last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basato su grafo, RAG senza embedding, recupero Personalized PageRank, secondo cervello Obsidian
 - search-intents: "Obsidian RAG senza embedding", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recupero note basato su grafo", "implementazione Karpathy LLM Wiki", "generazione automatica base di conoscenza Obsidian", "Obsidian Graph View + AI", "plugin second brain Obsidian", "grafo dei link tra note Obsidian AI", "plugin Obsidian 14 lingue", "plugin Obsidian 15 provider LLM", "RAG senza DB vettoriale", "Obsidian ingest PDF AI", "Obsidian Codex OAuth", "plugin Bedrock Obsidian", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingest Word PPT Excel", "credenziali IAM Obsidian"
 - features: recupero basato su grafo, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascata di selezione dei semi a 5 stadi, rilevamento duplicati Tier 1/Tier 2, interfaccia in 14 lingue + output del wiki in 14 lingue (indipendenti), 15+ provider LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), acquisizione multi-formato MinerU (PDF + immagini + Office), acquisizione PDF (solo cache, percorsi OCR), scansione di salute Lint, Smart Fix All, citazioni verbatim nella pagina sorgente, gate dei candidati in acquisizione, UI taskPolicies per passo, integrazione Obsidian Graph View, architettura zero-embedding zero-vector-DB, modalità local-first

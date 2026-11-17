@@ -7,7 +7,6 @@
 //   - lint/phases/programmatic.ts: alias/empty/orphan/tag/polluted/dead links/quote grounding
 //   - lint/llm-phases/dedup-phase.ts: LLM-assisted duplicate detection (extracted v1.24.0)
 //   - lint/llm-phases/contradiction-phase.ts: open-record report (extracted v1.24.0)
-//   - lint/llm-phases/analysis-phase.ts: LLM health analysis (extracted v1.24.0)
 //   - lint/report-builder.ts: pure-function report markdown builder
 //   - lint/fix-runners.ts: per-phase fix executors
 //   - lint/scanners.ts: pure-function scanners

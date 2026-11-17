@@ -50,19 +50,33 @@ export type ExperimentalFlagKey =
 
 export const EXPERIMENTAL_FLAGS = {
 	legacyScorer: {
-		expiry: '1.32.0',
+		// 2026-11-17 — expiry moved 1.32.0 → 1.34.0 by the v1.32.0 release, which reached the
+		// date without a retirement measurement. Reason: this cycle carried no harness
+		// comparison of BM25F against the linear scorer on the same vault. A date moved
+		// without a reason is what the register forbids; this one is written down here
+		// and in docs/EXPERIMENTAL-FLAGS.md.
+		expiry: '1.34.0',
 		issue: 819,
 		retiresWhen:
 			'The accuracy harness shows BM25F is not worse than the linear scorer on the same vault. Today the only measurement is that the two orders differ.',
 	},
 	skipMentionOnlyCandidates: {
-		expiry: '1.32.0',
+		// 2026-11-17 — expiry moved 1.32.0 → 1.34.0 by the v1.32.0 release. Reason: no
+		// wiki language gained a profile since #521 and no multi-language user report
+		// arrived this cycle. Moving without a reason is what the register forbids;
+		// this one is written down here and in docs/EXPERIMENTAL-FLAGS.md.
+		expiry: '1.34.0',
 		issue: 514,
 		retiresWhen:
 			'The candidate gate has an answer for every supported wiki language, and users on multi-language vaults report it as a net improvement.',
 	},
 	gateDissentStubs: {
-		expiry: '1.32.0',
+		// 2026-11-17 — expiry moved 1.32.0 → 1.34.0 by the v1.32.0 release. Reason:
+		// nobody asked for the drop-on-dissent behaviour, and the outcome-table
+		// measurement already exists — but "nobody asked" is not a decision this cycle
+		// is equipped to make. It retires after skipMentionOnlyCandidates, because it
+		// depends on it. Written down here and in docs/EXPERIMENTAL-FLAGS.md.
+		expiry: '1.34.0',
 		issue: 514,
 		retiresWhen:
 			'Nobody asks for the drop-on-dissent behaviour. The outcome table already measured equal to it over 1,153 items across three runs.',

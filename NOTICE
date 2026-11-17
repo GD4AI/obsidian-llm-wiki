@@ -4,7 +4,10 @@ Copyright 2025-2026 Greener-Dalii
 This product includes software developed by the following contributors,
 listed in alphabetical order by GitHub handle:
 
+- abhinav-neander — the settings panel keeps its scroll position when it is
+  rebuilt (PR #794).
 - CCRRAY-DESIGN (Ray) — ChatGPT Plan (Codex OAuth) provider (PR #273).
+- Chase07 — analysis of local Markdown image embeds during ingest (PR #687).
 - Dima Marchevsky (dmarchevsky) — code contributions and review feedback.
 - DocTpoint — co-maintainer since September 2026. Ingest reliability
   across v1.25.x → v1.27.0: folder-boundary
@@ -19,8 +22,20 @@ listed in alphabetical order by GitHub handle:
   repair at intake. Also dev-instrument exit codes, `stripUnknownSections`,
   NFC + Turkish-fold alias comparison, `folderBySlug`, `minAliasLength`,
   and drop self-named aliases. OpenRouter 404 fix, OpenRouter `:` variants,
-  and the #425 Bedrock Stage 2 design record. Per-PR / per-issue index
-  in [CHANGELOG.md](./CHANGELOG.md) §1.25.0 → §1.27.0.
+  and the #425 Bedrock Stage 2 design record. From v1.28.0 onward: the tag
+  vocabulary the prompt, the gate, the lint and the retag paths share; the
+  link-repair chain (the name before the stub, the double-nested repair, the
+  folder-wrong re-point); the source-page head and the note path read from
+  the code instead of the model; the ingest-log label table; the
+  contradiction gates and their prompt-reachable lane; a cancel that
+  reaches the running model call; the Related sections rendered from the
+  lists; the wiki page index held per file; heading normalization at the
+  write gate; the truncation retry raising `max_tokens`; the source-page
+  frontmatter and the stub-frontmatter serializer; the manual-ingest stage
+  Notice; the prompts no longer asking the model for what the code writes;
+  the Codex connection test checked at the caller; and the moved-page
+  drift fingerprint with its ingest-log row (#677). Per-PR / per-issue index
+  in [CHANGELOG.md](./CHANGELOG.md) §1.25.0 → §1.32.0.
 - eucher — headless ingest CLI under Node (PR #372), CLI sampling/thinking
   controls, plugin source resolution, and per-step LLM call timing ledger
   (PR #409). Also `repetitionPenalty` per-backend dialect dispatch (#414,
@@ -28,13 +43,34 @@ listed in alphabetical order by GitHub handle:
 - Franco Tampieri (FrancoTampieri) — code contributions.
 - Greener-Dalii (green-dalii) — project maintainer and primary author.
 - Hashim1999164 — wiki-folder-scope prefix fix (PR #384).
+- iveteamorim — the AI SDK v7 upgrade (PR #786).
+- Jan-Heldal — the schema diff modal no longer crashes on its first render
+  (PR #654); the schema-suggestion wording reads as a proposal rather than
+  something already applied (PR #655); `config.md`'s audit-trail metadata
+  stays in sync in UTC on every Apply (PR #656); and a dead-link repair
+  prefers a page's real display name over its filename slug (PR #653).
 - joffroy59 — `MAX_BATCH_DELAY_MS` ceiling raise (10000 ms; cherry-pick PR #323).
+- juliasadler — `cancelIngestion` aborts a model call stuck on `await`
+  (PR #867).
 - Matthew Harper (Indexed-Apogrypha) — source-slug fingerprint,
   pre-ingest requirements gate, Anthropic fallback fixes.
+- NotAFlightRisk — the periodic lint stops when it is switched off
+  (PR #922); the debounce-clamp Notice names its real 1-60 range
+  (PR #871); the quick-fixes Notice points at the setting that hides it
+  (PR #820); the welcome note calls the history command by its registered
+  name (PR #780); and the Marp Slides repository and the relative LICENSE
+  links (PR #622).
+- Noumenon-ai — the same-page dead-link fixes are serialized and their
+  writes verified (PR #833).
 - Roman Kuzmin (rkuzmin) — LM Studio no-key ingest (PR #272, #339).
 - weqoocu — machine-identifier entity-name guard, wired into the
   normalisation path (PR #894), and the prompt-customization settings
-  `extractionFocus` / `contentRequirements` (PR #895).
+  `extractionFocus` / `contentRequirements` (PR #895). Also the
+  gateway-style `response_format` rejection classified so the demotion
+  chain engages (PR #712).
+- x0Lazarus — the lint counts only completed alias and tag writes
+  (PR #784), and the custom-instruction source paths resolve on Windows
+  (PR #778).
 - Younian (YounianC, xiaochuanlu) — ingest status bar and Query Wiki side panel.
 
 ## Third-party components
