@@ -462,7 +462,7 @@ export const IT_TEXTS = {
     // Avvisi
     startupCheckSummary: 'La Wiki ha {pages} pagine ({entities} entità, {concepts} concetti, {sources} sorgenti)',
     watcherActiveNotice: 'Wiki: monitoraggio file attivo — sorveglianza delle cartelle monitorate',
-    watchIngestNotice: 'Wiki: {count} file modificati in sources/. Esegui "Acquisisci sorgenti" per elaborarli.',
+    watchIngestNotice: 'Wiki: {count} file modificati in sources/. Esegui "{command}" per elaborarli.',
 
     // Dettagli correzioni rapide all'avvio (Issue #81)
     startupCheckTitle: 'Correzioni rapide della Wiki completate',

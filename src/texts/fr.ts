@@ -454,7 +454,7 @@ export const FR_TEXTS = {
     // Notices
     startupCheckSummary: "Le wiki comporte {pages} pages ({entities} entités, {concepts} concepts, {sources} sources)",
     watcherActiveNotice: 'Wiki : surveillance de fichiers active — dossiers surveillés en cours de suivi',
-    watchIngestNotice: 'Wiki : {count} fichier(s) modifié(s) dans sources/. Exécutez « Importer les sources » pour traiter.',
+    watchIngestNotice: 'Wiki : {count} fichier(s) modifié(s) dans sources/. Exécutez « {command} » pour traiter.',
     autoIngestRunning: "Import automatique de {count} fichier(s) modifié(s) en cours...",
     autoIngestComplete: "Import automatique terminé : {success} réussi(s), {fail} échoué(s)",
     scheduledLintRunning: 'Exécution de la vérification périodique du wiki...',

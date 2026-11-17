@@ -479,7 +479,7 @@ export const RU_TEXTS = {
     // Уведомления
     startupCheckSummary: 'Wiki содержит {pages} стр. ({entities} сущностей, {concepts} концепций, {sources} источников)',
     watcherActiveNotice: 'Wiki: наблюдатель файлов активен — мониторинг отслеживаемых папок',
-    watchIngestNotice: 'Wiki: {count} файл(ов) изменились в sources/. Запустите «Импорт источников» для обработки.',
+    watchIngestNotice: 'Wiki: {count} файл(ов) изменились в sources/. Запустите «{command}» для обработки.',
 
     // Подробности быстрых исправлений при старте (Issue #81)
     startupCheckTitle: 'Быстрые исправления Wiki завершены',

@@ -451,7 +451,7 @@ export const JA_TEXTS = {
     // Notices
     startupCheckSummary: 'Wikiは{pages}ページ（{entities}エンティティ、{concepts}概念、{sources}ソース）',
     watcherActiveNotice: 'Wiki: ファイル監視有効 — 監視フォルダーをモニタリング中',
-    watchIngestNotice: 'Wiki: sources/ に{count}件のファイル変更あり。「ソースの取り込み」を実行して処理してください。',
+    watchIngestNotice: 'Wiki: sources/ に{count}件のファイル変更あり。「{command}」を実行して処理してください。',
     autoIngestRunning: '{count}件の変更ファイルを自動取り込み中...',
     autoIngestComplete: '自動取り込み完了：成功 {success}件、失敗 {fail}件',
     scheduledLintRunning: 'スケジュールされたWiki Lintを実行中...',

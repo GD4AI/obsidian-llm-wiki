@@ -370,6 +370,12 @@ export const EN_TEXTS = {
       fr: { subtitle: 'Répertoire de base de connaissances généré automatiquement', entities: 'Entités', concepts: 'Concepts', sources: 'Sources' },
       es: { subtitle: 'Directorio de base de conocimiento generado automáticamente', entities: 'Entidades', concepts: 'Conceptos', sources: 'Fuentes' },
       pt: { subtitle: 'Diretório de base de conhecimento gerado automaticamente', entities: 'Entidades', concepts: 'Conceitos', sources: 'Fontes' },
+      nl: { subtitle: 'Automatisch gegenereerde kennisbankmap', entities: 'Entiteiten', concepts: 'Concepten', sources: 'Bronnen' },
+      pl: { subtitle: 'Automatycznie generowany katalog bazy wiedzy', entities: 'Encje', concepts: 'Pojęcia', sources: 'Źródła' },
+      th: { subtitle: 'ไดเรกทอรีฐานความรู้ที่สร้างขึ้นอัตโนมัติ', entities: 'เอนทิตี', concepts: 'แนวคิด', sources: 'แหล่งข้อมูล' },
+      'zh-Hant': { subtitle: '自動產生的知識庫目錄', entities: '實體', concepts: '概念', sources: '來源' },
+      it: { subtitle: 'Elenco della base di conoscenza generato automaticamente', entities: 'Entità', concepts: 'Concetti', sources: 'Fonti' },
+      ru: { subtitle: 'Каталог базы знаний, создаваемый автоматически', entities: 'Сущности', concepts: 'Концепции', sources: 'Источники' },
     },
 
     // Extraction Settings
@@ -469,7 +475,7 @@ export const EN_TEXTS = {
     // Notices
     startupCheckSummary: 'Wiki has {pages} pages ({entities} entities, {concepts} concepts, {sources} sources)',
     watcherActiveNotice: 'Wiki: file watcher active — monitoring watched folders',
-    watchIngestNotice: 'Wiki: {count} file(s) changed in sources/. Run "Ingest Sources" to process.',
+    watchIngestNotice: 'Wiki: {count} file(s) changed in sources/. Run "{command}" to process.',
 
     // Startup quick fixes detail (Issue #81)
     startupCheckTitle: 'Wiki quick fixes complete',
@@ -994,10 +1000,14 @@ export const EN_TEXTS = {
     startupCheckWelcomeCreated: 'Welcome note created at {path}',
     // v1.23.0 Phase 5.1.5: Multi-File Suggest modal (cmdIngestMultipleFiles).
     // The modal's title, hint, search placeholder, action buttons,
-    // status labels and queue-empty placeholder all live here. Status
-    // labels double as both the right-pane text and the data-attribute
-    // keys for `updateLeftPaneSelections` to recognise, so they must
-    // remain stable English strings.
+    // status labels and queue-empty placeholder all live here.
+    //
+    // The `multiFileStatus*` labels are display text and are translated like
+    // every other label. What stays English is the `job.status` enum, which
+    // becomes a CSS class (`llm-wiki-multi-file-row-pending`) — a different
+    // string, read by the stylesheet, never by `getText` (#1048 corrected this
+    // comment: it used to say the labels had to stay English, and three new
+    // locales were written to obey it until `de.ts` showed it was never true).
     multiFileModalTitle: 'Ingest multiple files',
     multiFileModalHint: 'Select source notes to ingest. The right pane shows the live ingest queue and progress.',
     multiFileSearchPlaceholder: 'Filter files by path…',

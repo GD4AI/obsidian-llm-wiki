@@ -89,6 +89,9 @@ const README_BY_LOCALE: Record<string, string> = {
   pt: 'docs/README_PT.md',
   it: 'docs/README_IT.md',
   ru: 'docs/README_RU.md',
+  nl: 'docs/README_NL.md',
+  pl: 'docs/README_PL.md',
+  th: 'docs/README_TH.md',
 };
 
 describe('a translated README must not name an English command (#793)', () => {

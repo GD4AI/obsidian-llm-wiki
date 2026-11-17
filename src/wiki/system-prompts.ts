@@ -147,6 +147,42 @@ export const SECTION_LABELS: Record<string, Record<string, string>> = {
     existing_knowledge: 'Существующее знание', resolution_suggestion: 'Предложение по разрешению',
     source_page: 'Страница-источник', related_pages: 'Связанные страницы', updated: 'Обновлено', embedded_image_evidence: 'Визуальные свидетельства встроенных изображений',
   },
+  nl: {
+    basic_information: 'Basisinformatie', description: 'Beschrijving',
+    related_content: 'Verwante inhoud', mentions_in_source: 'Genoemd in de bron',
+    new_information: 'Nieuwe informatie', definition: 'Definitie',
+    key_characteristics: 'Belangrijkste kenmerken', applications: 'Toepassingen',
+    related_concepts: 'Verwante concepten', related_entities: 'Verwante entiteiten',
+    source: 'Bron', core_content: 'Kerninhoud', key_entities: 'Belangrijkste entiteiten',
+    key_concepts: 'Belangrijkste concepten', main_points: 'Belangrijkste punten',
+    new_claim: 'Nieuwe bewering',
+    existing_knowledge: 'Bestaande kennis', resolution_suggestion: 'Voorstel om het op te lossen',
+    source_page: 'Bronpagina', related_pages: 'Verwante pagina\'s', updated: 'Bijgewerkt', embedded_image_evidence: 'Beeldmateriaal bij de notitie'
+  },
+  pl: {
+    basic_information: 'Podstawowe informacje', description: 'Opis',
+    related_content: 'Powiązana treść', mentions_in_source: 'Wzmianki w źródle',
+    new_information: 'Nowe informacje', definition: 'Definicja',
+    key_characteristics: 'Najważniejsze cechy', applications: 'Zastosowania',
+    related_concepts: 'Powiązane pojęcia', related_entities: 'Powiązane encje',
+    source: 'Źródło', core_content: 'Treść główna', key_entities: 'Najważniejsze encje',
+    key_concepts: 'Najważniejsze pojęcia', main_points: 'Najważniejsze punkty',
+    new_claim: 'Nowe twierdzenie',
+    existing_knowledge: 'Istniejąca wiedza', resolution_suggestion: 'Propozycja rozwiązania',
+    source_page: 'Strona źródłowa', related_pages: 'Powiązane strony', updated: 'Zaktualizowano', embedded_image_evidence: 'Materiał obrazowy z notatki'
+  },
+  th: {
+    basic_information: 'ข้อมูลพื้นฐาน', description: 'คำอธิบาย',
+    related_content: 'เนื้อหาที่เกี่ยวข้อง', mentions_in_source: 'การกล่าวถึงในแหล่งข้อมูล',
+    new_information: 'ข้อมูลใหม่', definition: 'นิยาม',
+    key_characteristics: 'ลักษณะสำคัญ', applications: 'การนำไปใช้',
+    related_concepts: 'แนวคิดที่เกี่ยวข้อง', related_entities: 'เอนทิตีที่เกี่ยวข้อง',
+    source: 'แหล่งข้อมูล', core_content: 'เนื้อหาหลัก', key_entities: 'เอนทิตีสำคัญ',
+    key_concepts: 'แนวคิดสำคัญ', main_points: 'ประเด็นสำคัญ',
+    new_claim: 'ข้อกล่าวอ้างใหม่',
+    existing_knowledge: 'ความรู้ที่มีอยู่', resolution_suggestion: 'ข้อเสนอในการแก้ไข',
+    source_page: 'หน้าต้นทาง', related_pages: 'หน้าที่เกี่ยวข้อง', updated: 'อัปเดตแล้ว', embedded_image_evidence: 'หลักฐานภาพจากโน้ต'
+  },
 };
 
 export function getSectionLabels(settings: LLMWikiSettings): Record<string, string> {
@@ -177,6 +213,9 @@ export const SOURCE_PAGE_HEAD_LABELS: Record<string, SourcePageHeadLabels> = {
   pt: { summary: 'Resumo', original_file: 'Arquivo original', ingested: 'Ingerido' },
   it: { summary: 'Riepilogo', original_file: 'File originale', ingested: 'Acquisito' },
   ru: { summary: 'Сводка', original_file: 'Исходный файл', ingested: 'Импортировано' },
+  nl: { summary: 'Samenvatting', original_file: 'Oorspronkelijk bestand', ingested: 'Ingelezen' },
+  pl: { summary: 'Podsumowanie', original_file: 'Plik źródłowy', ingested: 'Wczytano' },
+  th: { summary: 'สรุป', original_file: 'ไฟล์ต้นฉบับ', ingested: 'นำเข้าแล้ว' },
 };
 
 export function getSourcePageHeadLabels(settings: LLMWikiSettings): SourcePageHeadLabels & { source: string } {

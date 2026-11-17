@@ -19,6 +19,9 @@ export const WIKI_LANGUAGES: Record<string, string> = {
   'pt': 'Português',
   'it': 'Italiano',
   'ru': 'Русский',        // v1.26.0: Russian
+  'nl': 'Nederlands',     // #1048: Dutch
+  'pl': 'Polski',         // #1048: Polish
+  'th': 'ไทย',            // #1048: Thai
 };
 
 // Valid frontmatter tag values per schema classification rules.

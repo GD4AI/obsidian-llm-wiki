@@ -363,8 +363,8 @@ and says nothing about what was captured wrongly.
 
 ## 🌍 Internationalization
 
-- **UI**: 11 locales (EN canonical + 10 translations: ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU), 277+ fields per locale. Locale list lives in `src/texts/`.
-- **Wiki output**: 11 languages independent of UI + custom input option
+- **UI**: 14 locales (EN canonical + 13 translations: ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH), 797 fields per locale. Locale list lives in `src/texts/`.
+- **Wiki output**: 14 languages independent of UI + custom input option
 - **Code**: English only, minimal comments
 - **User-facing strings** = user language, not implementation language
 
@@ -514,7 +514,7 @@ See the **Architect-level contributors** row in [MEMORY.md §"Key design decisio
 | **ROADMAP.md** | Planning | Next Milestone / Version Timeline (condensed) / Deferred & Backlog | Per-version detail (use CHANGELOG) |
 | **CHANGELOG.md** | History (Keep a Changelog) | Per-version Added/Changed/Fixed/Removed — ancient versions are pre-aggregated, **do not re-merge** | Forward-looking plans, dev standards |
 | **CONTRIBUTING.md** | Contributor guide | Project structure tree, architecture, Mermaid, dev setup | User docs, design philosophy |
-| **11 READMEs (EN + 10 i18n)** | User docs | Features / Quick Start / FAQ | Implementation details, internal version numbers, What's New |
+| **14 READMEs (EN + 13 i18n)** | User docs | Features / Quick Start / FAQ | Implementation details, internal version numbers, What's New |
 | **docs/MODEL-GUIDE.md** | Provider + model setup | Per-provider keys, endpoints, model picks | Process standards, internal version numbers |
 | **docs/PDF-OCR-GUIDE.md** + `_CN` | Long-form ingest guide | The four PDF/Office ingestion paths | Process standards, release history |
 | **memory/** | Session-persistent lessons | [[feedback-*]] (rules) + [[project-*]] (current state) | Code references that drift (use code comments) |
@@ -556,7 +556,7 @@ A docs change that only adds lines says why the addition cannot be an edit to te
 | `ROADMAP.md` | **500 lines** | 500 | **at the ceiling**: the next addition has to remove a line in the same commit |
 | `CONTRIBUTING.md` | **450 lines** | 384 | same |
 | `CHANGELOG.md` | **no ceiling** | 1372 | **append-only by design** — Keep a Changelog. Pruning it is the regression, not the fix |
-| 11 READMEs | 13 H2 each, in step across locales | 13/13 ✓ | structural drift between locales is a defect, not a translation choice |
+| 14 READMEs | 13 H2 each, in step across locales | 14/14 ✓ | structural drift between locales is a defect, not a translation choice |
 
 **Where it is enforced:** `doc-review` (release Step 4b) checks the ceilings and the numbers, and `pre-release-gate` re-runs at release time.
 A release that leaves a file over its ceiling records the overage and the plan **in the release PR body**, not in silence.

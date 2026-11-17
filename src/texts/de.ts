@@ -453,7 +453,7 @@ export const DE_TEXTS = {
     // Notices
     startupCheckSummary: 'Wiki enthält {pages} Seiten ({entities} Entitäten, {concepts} Konzepte, {sources} Quellen)',
     watcherActiveNotice: 'Wiki: Datei-Beobachtung aktiv — beobachtete Ordner werden überwacht',
-    watchIngestNotice: 'Wiki: {count} Datei(en) in sources/ geändert. "Quellen aufnehmen" ausführen, um zu verarbeiten.',
+    watchIngestNotice: 'Wiki: {count} Datei(en) in sources/ geändert. "{command}" ausführen, um zu verarbeiten.',
     autoIngestRunning: 'Automatische Aufnahme von {count} geänderter(n) Datei(en)...',
     autoIngestComplete: 'Automatische Aufnahme abgeschlossen: {success} erfolgreich, {fail} fehlgeschlagen',
     scheduledLintRunning: 'Geplante Wiki-Prüfung wird ausgeführt...',

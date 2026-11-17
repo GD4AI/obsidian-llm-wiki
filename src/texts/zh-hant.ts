@@ -451,7 +451,7 @@ export const ZH_HANT_TEXTS = {
     // 通知
     startupCheckSummary: 'Wiki 共 {pages} 頁（{entities} 個實體、{concepts} 個概念、{sources} 個來源）',
     watcherActiveNotice: 'Wiki: 檔案監聽已啟動 — 正在監控指定資料夾',
-    watchIngestNotice: 'Wiki: sources/ 中有 {count} 個檔案變更。請執行"攝入原始檔"處理。',
+    watchIngestNotice: 'Wiki: sources/ 中有 {count} 個檔案變更。請執行"{command}"處理。',
     autoIngestRunning: '正在自動攝入 {count} 個變更檔案...',
     autoIngestComplete: '自動攝入完成：成功 {success}，失敗 {fail}',
     scheduledLintRunning: '正在執行定時 Wiki 維護...',

@@ -58,7 +58,7 @@ src/
 ├── main-commands/       # Entry-point mixins, including Codex OAuth lifecycle commands
 ├── types.ts             # Shared types + EngineContext
 ├── constants.ts         # Centralized constants (token budgets, notice durations, WIKI_SUBFOLDERS)
-├── texts.ts             # i18n texts (barrel, 11 locales: EN canonical + 10 translations)
+├── texts.ts             # i18n texts (barrel, 14 locales: EN canonical + 13 translations)
 ├── prompts/              # LLM prompt templates by domain
 ├── llm-client-wrapper.ts # Advanced settings injection wrapper
 ├── llm-sdk/             # Vercel AI-SDK v7 client factories (v1.23.0 as v6, #764 upgrade)
@@ -236,7 +236,7 @@ src/
 │   ├── modals/          # 7+ files: MultiFileSuggestModal, FolderSuggest, etc.
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
-├── texts/               # i18n (11 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397)
+├── texts/               # i18n (14 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH)
 └── __tests__/           # Unit tests (vitest, 5,243 tests / 386 files)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
@@ -265,10 +265,10 @@ tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-
 
 ## Internationalization
 
-- **UI**: 11 locales (EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU; Russian added v1.26.0 PR #397), text keys in `src/texts/`. `en.ts` is the canonical source; `texts.ts` is the barrel.
+- **UI**: 14 locales (EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH), text keys in `src/texts/`. `en.ts` is the canonical source; `texts.ts` is the barrel.
 - **New text**: add the key to `en.ts` first, then translate it to all 10 other languages (in lockstep). The i18n-parity test
   (`src/__tests__/root/i18n-parity.test.ts`) prevents silent EN fallback when a locale is missing keys.
-- **Wiki output**: 11 languages independent of UI, with custom input option
+- **Wiki output**: 14 languages independent of UI, with custom input option
 
 ## Testing
 
@@ -343,7 +343,7 @@ These four patterns appear throughout the engine. New contributors should recogn
 1. Run `pnpm lint && pnpm test && npx tsc --noEmit && pnpm build` — all must pass
 2. Add or update unit tests for any changed pure logic
 3. Update CHANGELOG.md if the change is user-visible
-4. Update all 11 README language variants if the change affects user-facing features or workflow
+4. Update all 14 README language variants if the change affects user-facing features or workflow
 5. Update CLAUDE.md and memory files to reflect completed work
 6. Commit with English conventional commit message
 7. Open a PR against `main` branch

@@ -61,6 +61,9 @@ const README_FILES: ReadmeLocation[] = [
   { label: 'docs/README_PT.md', path: join(REPO_ROOT, 'docs/README_PT.md') },
   { label: 'docs/README_IT.md', path: join(REPO_ROOT, 'docs/README_IT.md') },
   { label: 'docs/README_RU.md', path: join(REPO_ROOT, 'docs/README_RU.md') },
+  { label: 'docs/README_NL.md', path: join(REPO_ROOT, 'docs/README_NL.md') },
+  { label: 'docs/README_PL.md', path: join(REPO_ROOT, 'docs/README_PL.md') },
+  { label: 'docs/README_TH.md', path: join(REPO_ROOT, 'docs/README_TH.md') },
 ];
 
 /**
@@ -144,7 +147,12 @@ describe('v1.25.11 PATCH #375 — README links are absolute https:// or known-sa
     });
   }
 
-  it('every locale README references all 10 sibling locale READMEs (language switcher)', () => {
+  it('every locale README references every sibling locale README (language switcher)', () => {
+    // The expected count is derived from the list, never written down: a new
+    // locale is one more row in `README_FILES`, so the switcher either gains
+    // its link or this test names the file that forgot. Twelve READMEs sat at
+    // a hardcoded ten when this file was last edited by hand (#1048).
+    const EXPECTED_SIBLINGS = README_FILES.length - 1;
     for (const { label, path } of README_FILES) {
       const body = readFileSync(path, 'utf8');
       // Find the language-switcher line: the single line that begins with
@@ -170,7 +178,7 @@ describe('v1.25.11 PATCH #375 — README links are absolute https:// or known-sa
       // added as the 10th locale.)
       const bodyWithoutSeo = body.replace(/<!--[\s\S]*?-->/g, '');
       const totalLinkCount = (bodyWithoutSeo.match(/blob\/main\/(README\.md|docs\/README_)/g) ?? []).length;
-      expect(totalLinkCount, `expected exactly 10 absolute README anchors in ${label} switcher`).toBe(10);
+      expect(totalLinkCount, `expected ${EXPECTED_SIBLINGS} absolute README anchors in ${label} switcher`).toBe(EXPECTED_SIBLINGS);
     }
   });
 
