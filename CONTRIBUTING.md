@@ -273,7 +273,7 @@ src/
 │   ├── tag-chip-input.ts
 │   └── schema-diff-modal.ts
 ├── texts/               # i18n (14 locales: EN canonical + ZH/ZH-Hant/JA/KO/DE/FR/ES/PT/IT/RU/NL/PL/TH)
-└── __tests__/           # Unit tests (vitest, 5,648 tests / 413 files)
+└── __tests__/           # Unit tests (vitest, 5,654 tests / 413 files)
 
 tools/                  # Dev-only toolchain — NOT shipped (no `bin`, no user-facing script)
 └── dev-instrument/ # UPSTREAM DEV-ONLY INSTRUMENT — engine contributors only
