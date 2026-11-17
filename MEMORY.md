@@ -31,7 +31,7 @@ is current state.
 
 | Track | Where it stands |
 |---|---|
-| **Open PR** | none — v1.32.0 is released and `main` is at `c6d11a4d` |
+| **Open PR** | none — v1.32.0 is released; `main` at `38ea8541`; tag `1.32.0`; Ruleset `16884813` restored (`bypass_actors: []`) after the admin squash merge |
 | **v1.33.0 MINOR** | six open: #1054 (the source page's 2,000-character quote budget), #729 Phase 2 (the ranked cap that truncates a Related list), #664 (that cap's migration), #787 (the lemma-guarantee opt-out), #668 (the settings tabs), #891 (what "interrupted" means) |
 | **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
 | **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |

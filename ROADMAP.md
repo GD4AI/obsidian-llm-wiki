@@ -2,7 +2,7 @@
 
 > Feature planning and improvement proposals
 
-**Latest shipped:** v1.32.0 MINOR (2026-11-17, 5,654 tests / 413 files). See [CHANGELOG.md §1.32.0](./CHANGELOG.md#1320---2026-11-17) for the canonical composition record. | **Updated:** 2026-11-17 — the v1.32.0 release is staged on `chore/v1.32.0-release` (`4f51054b` + `7d019ea0`), 5,654 tests / 413 files
+**Latest shipped:** v1.32.0 MINOR (2026-11-17, 5,654 tests / 413 files). See [CHANGELOG.md §1.32.0](./CHANGELOG.md#1320---2026-11-17) for the canonical composition record. | **Updated:** 2026-11-17 — v1.32.0 released (tag `1.32.0` @ `38ea8541`; Release Notes + Discussion #1056; 5,654 tests / 413 files)
 **Next MINOR candidate:** **v1.33.0 MINOR**, opened 2026-11-17. Six items are open, each with its evidence in a thread rather than a preference. The order is the table under §"The v1.33.0 order" below. Deferred with a reason each: **#873** (MAJOR trigger 1, needs a migration design, so it is not in this window) and **#880's second half** (a new defect, needs its own issue, not a row).
 **#895's design question is answered: Option A.** A content rule shapes the sections a page already has; it does not add one. The reading that lets a rule own the page structure changes what an existing vault looks like, so it belongs to #873. Shipped in #958, both strings narrowed in all 14 locales.
 

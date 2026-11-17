@@ -202,11 +202,11 @@ Seis caminhos, alternáveis em cada ingestão:
 
 ### 🌐 Idioma
 
-- **🌍 14 idiomas de interface** — Inglês, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. O idioma da interface e o da saída da wiki são independentes — a sua wiki pode estar em chinês com a interface em inglês.
+- **🌍 14 idiomas de interface** — Inglês, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. O idioma da interface e o da saída da wiki são independentes — a sua wiki pode estar em chinês com a interface em inglês.
   
   ![O idioma da interface e o idioma de saída da wiki são duas definições separadas, por isso uma wiki em chinês pode correr atrás de uma interface em inglês](assets/readme/readme-06-language-settings.webp)
 - **📚 14 idiomas de saída da wiki** — o mesmo conjunto; escolha em Configurações → Configuração Wiki. Opção *Custom input* para prompts pontuais.
-- **Todas as strings de interface traduzidas por locale** — cada rótulo, modal e aviso. Acrescentar um 12.º idioma depende de contribuidores (o padrão da PR #159).
+- **Todas as strings de interface traduzidas por locale** — cada rótulo, modal e aviso. Acrescentar outro idioma depende de contribuidores (o padrão da PR #159).
 - **🔧 Cabeçalhos personalizados por provedor** — um campo de texto livre logo abaixo do API Base URL. Uma linha `Name: value` por linha, enviada em todos os pedidos. Traz um preset OpenCode e uma variante `(Responses)` para endpoints que falam `/v1/responses`.
 - **📡 Um stream que sobrevive a uma origem bloqueada** — quando um pedido cross-origin é recusado, o stream é repetido por um transporte `node:https` do desktop em vez de degradar para uma resposta em buffer, e uma repetição que falha fica registada em vez de ser engolida.
 
@@ -335,7 +335,7 @@ Escolha uma nota, uma pasta ou uma seleção: o LLM extrai entidades e conceitos
 
 ### Posso usar o plugin no meu idioma?
 
-🌍 14 idiomas tanto para a interface como para a saída da wiki, definidos de forma independente. Um 12.º depende de contribuidores (a PR #159 é o padrão).
+🌍 14 idiomas tanto para a interface como para a saída da wiki, definidos de forma independente. Outro idioma depende de contribuidores (a PR #159 é o padrão).
 
 ### Em que difere de um chatbot RAG?
 
