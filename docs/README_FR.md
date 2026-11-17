@@ -202,11 +202,11 @@ Six points d'entrée, réglables ingestion par ingestion :
 
 ### 🌐 Langue
 
-- **🌍 14 langues d'interface** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. L'interface et la langue de sortie du wiki sont indépendantes — votre wiki peut être en chinois pendant que l'interface est en anglais.
+- **🌍 14 langues d'interface** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. L'interface et la langue de sortie du wiki sont indépendantes — votre wiki peut être en chinois pendant que l'interface est en anglais.
   
   ![Deux réglages séparés, langue de l'interface et langue de sortie du wiki, pour un wiki en chinois derrière une interface en anglais](assets/readme/readme-06-language-settings.webp)
 - **📚 14 langues de sortie wiki** — le même ensemble ; à choisir dans Paramètres → Configuration du Wiki. L'option *Custom input* sert aux prompts ponctuels.
-- **Toutes les chaînes traduites, langue par langue** — chaque libellé, chaque fenêtre, chaque notice. Une 12e langue vient des contributeurs (le modèle est la PR #159).
+- **Toutes les chaînes traduites, langue par langue** — chaque libellé, chaque fenêtre, chaque notice. D'autres langues viennent des contributeurs (le modèle est la PR #159).
 - **🔧 En-têtes personnalisés par fournisseur** — un champ libre juste sous l'API Base URL. Un `Nom: valeur` par ligne, envoyé à chaque requête. Livré avec un préréglage OpenCode et une variante `(Responses)` pour les endpoints qui parlent `/v1/responses`.
 - **📡 Un flux qui survit à une origine bloquée** — quand une requête cross-origin est refusée, le flux repart sur un transport `node:https` de bureau au lieu de retomber sur une réponse mise en tampon, et un repli échoué est consigné au lieu d'être avalé.
 
@@ -335,7 +335,7 @@ Choisissez une note, un dossier ou une sélection : le LLM extrait les entités 
 
 ### Puis-je utiliser le plugin dans ma langue ?
 
-🌍 14 langues pour l'interface comme pour la sortie du wiki, réglées indépendamment. Une 12e langue vient des contributeurs (la PR #159 en est le modèle).
+🌍 14 langues pour l'interface comme pour la sortie du wiki, réglées indépendamment. D'autres langues viennent des contributeurs (la PR #159 en est le modèle).
 
 ### En quoi est-ce différent d'un chatbot RAG ?
 

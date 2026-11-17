@@ -202,11 +202,11 @@ Sei percorsi, scegliibili a ogni acquisizione:
 
 ### 🌐 Lingua
 
-- **🌍 14 lingue per l'interfaccia** — inglese, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. L'interfaccia e la lingua di output del wiki sono indipendenti: il tuo wiki può essere in cinese mentre l'interfaccia è in inglese.
+- **🌍 14 lingue per l'interfaccia** — inglese, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. L'interfaccia e la lingua di output del wiki sono indipendenti: il tuo wiki può essere in cinese mentre l'interfaccia è in inglese.
   
   ![Lingua dell'interfaccia e lingua di output del wiki sono due impostazioni separate, quindi un wiki in cinese può girare dietro un'interfaccia in inglese](assets/readme/readme-06-language-settings.webp)
 - **📚 14 lingue per l'output del wiki** — lo stesso insieme; si sceglie in Impostazioni → Configurazione Wiki. L'opzione *Input personalizzato* serve per i prompt ad-hoc.
-- **Tutte le stringhe dell'interfaccia tradotte per lingua** — ogni etichetta, modale e notifica. Aggiungere una dodicesima lingua dipende dai contributori (il modello è la PR #159).
+- **Tutte le stringhe dell'interfaccia tradotte per lingua** — ogni etichetta, modale e notifica. Aggiungere un'altra lingua dipende dai contributori (il modello è la PR #159).
 - **🔧 Intestazioni personalizzate per provider** — un campo di testo libero subito sotto l'URL di base API. Una riga `Name: value` per riga, inviata con ogni richiesta. Include un preset OpenCode e una variante `(Responses)` per gli endpoint che parlano `/v1/responses`.
 - **📡 Uno stream che sopravvive a un'origine bloccata** — quando una richiesta cross-origin viene rifiutata, lo stream viene ritentato su un trasporto desktop `node:https` invece di degradare a una risposta bufferizzata, e un fallback fallito viene registrato anziché inghiottito.
 
@@ -335,7 +335,7 @@ Scegli una nota, una cartella o una selezione: l'LLM estrae entità e concetti e
 
 ### Posso usare il plugin nella mia lingua?
 
-🌍 14 lingue, sia per l'interfaccia sia per l'output del wiki, impostate in modo indipendente. La dodicesima dipende dai contributori (la PR #159 è il modello).
+🌍 14 lingue, sia per l'interfaccia sia per l'output del wiki, impostate in modo indipendente. Un'altra lingua dipende dai contributori (la PR #159 è il modello).
 
 ### In cosa è diverso da un chatbot RAG?
 

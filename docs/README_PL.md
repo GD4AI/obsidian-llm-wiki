@@ -200,11 +200,11 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 
 ### 🌐 Język
 
-- **🌍 14 języków interfejsu** — angielski, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski. Język interfejsu i język wyniku wiki są niezależne — wiki może być chińska, gdy interfejs jest polski.
+- **🌍 14 języków interfejsu** — angielski, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. Język interfejsu i język wyniku wiki są niezależne — wiki może być chińska, gdy interfejs jest polski.
   
   ![Język interfejsu i język wyniku wiki to dwa osobne ustawienia, więc chińska wiki może działać pod polskim interfejsem](assets/readme/readme-06-language-settings.webp)
 - **📚 14 języków wyniku wiki** — ten sam zestaw; wybór w Ustawienia → Konfiguracja wiki. Opcja *Wpisz własny* dla języka spoza listy.
-- **Wszystkie teksty interfejsu przetłumaczone na każdy język** — każda etykieta, okno i komunikat. Dodanie 12. języka robią współtwórcy (PR #159 jest wzorem).
+- **Wszystkie teksty interfejsu przetłumaczone na każdy język** — każda etykieta, okno i komunikat. Dodanie kolejnych języków robią współtwórcy (PR #159 jest wzorem).
 - **🔧 Własne nagłówki dla dostawcy** — pole tekstowe zaraz pod bazowym adresem API. Jedna pozycja `Nazwa: wartość` w wierszu, wysyłana z każdym żądaniem. Jest ustawienie gotowe dla OpenCode i wariant `(Responses)` dla punktów końcowych mówiących po `/v1/responses`.
 - **📡 Strumień, który przetrwa zablokowane źródło** — gdy żądanie z innego źródła jest odrzucane, strumień jest ponawiany przez transport `node:https` na komputerze, zamiast przechodzić na odpowiedź buforowaną, a nieudane przejście awaryjne jest zapisywane, nie połykane.
 
@@ -333,7 +333,7 @@ Wybierasz notatkę, folder albo zaznaczenie: model wyodrębnia encje i pojęcia 
 
 ### Czy mogę używać wtyczki w swoim języku?
 
-🌍 14 języków dla interfejsu i dla wyniku wiki, ustawianych osobno. 12. język dodają współtwórcy (wzorem jest PR #159).
+🌍 14 języków dla interfejsu i dla wyniku wiki, ustawianych osobno. Kolejny język dodają współtwórcy (wzorem jest PR #159).
 
 ### Czym to się różni od chatbota RAG?
 

@@ -200,11 +200,11 @@ Six on-ramps, switchable per ingest:
 
 ### 🌐 Language
 
-- **🌍 14 UI languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI and wiki-output language are independent — your wiki can be Chinese while the interface is English.
+- **🌍 14 UI languages** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. UI and wiki-output language are independent — your wiki can be Chinese while the interface is English.
   
   ![Interface language and wiki output language are two separate settings, so a Chinese wiki can run behind an English interface](/docs/assets/readme/readme-06-language-settings.webp)
 - **📚 14 wiki-output languages** — same set; pick in Settings → Wiki Configuration. *Custom input* option for ad-hoc prompts.
-- **All UI strings translated per locale** — every label, modal, and notice. Adding a 12th language is contributor-driven (PR #159 pattern).
+- **All UI strings translated per locale** — every label, modal, and notice. Adding another language is contributor-driven (PR #159 pattern).
 - **🔧 Custom Headers per provider** — a free-text field directly below the API Base URL. One `Name: value` per line, sent with every request. Ships with an OpenCode preset and a `(Responses)` variant for endpoints that speak `/v1/responses`.
 - **📡 A stream that survives a blocked origin** — when a cross-origin request is refused, the stream is retried over a desktop `node:https` transport instead of degrading to a buffered answer, and a failed fallback is recorded rather than swallowed.
 
@@ -333,7 +333,7 @@ Pick a note, folder or selection: the LLM extracts entities and concepts and wri
 
 ### Can I use the plugin in my language?
 
-🌍 14 languages for both interface and wiki output, set independently. A 12th is contributor-driven (PR #159 is the pattern).
+🌍 14 languages for both interface and wiki output, set independently. Another language is contributor-driven (PR #159 is the pattern).
 
 ### How is this different from a RAG chatbot?
 

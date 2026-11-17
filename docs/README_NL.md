@@ -200,11 +200,11 @@ Zes routes, per inleesronde te kiezen:
 
 ### 🌐 Taal
 
-- **🌍 14 talen in de interface** — Engels, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands. De taal van de interface en de taal van de wiki-uitvoer staan los van elkaar — je wiki kan Chinees zijn terwijl de interface Engels is.
+- **🌍 14 talen in de interface** — Engels, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. De taal van de interface en de taal van de wiki-uitvoer staan los van elkaar — je wiki kan Chinees zijn terwijl de interface Engels is.
   
   ![Taal van de interface en taal van de wiki-uitvoer zijn twee aparte instellingen, dus een Chinese wiki kan achter een Nederlandse interface draaien](assets/readme/readme-06-language-settings.webp)
 - **📚 14 talen voor de wiki-uitvoer** — dezelfde reeks; te kiezen in Instellingen → Configuratie van de wiki. De optie *Zelf invullen* is er voor een taal die er niet bij staat.
-- **Alle teksten per taal vertaald** — elk label, elk venster en elke melding. Een 12e taal toevoegen gebeurt door bijdragers (PR #159 is het voorbeeld).
+- **Alle teksten per taal vertaald** — elk label, elk venster en elke melding. Een andere taal toevoegen gebeurt door bijdragers (PR #159 is het voorbeeld).
 - **🔧 Eigen headers per provider** — een vrij tekstveld direct onder de basis-URL. Eén `Naam: waarde` per regel, meegestuurd met elk verzoek. Er is een voorinstelling voor OpenCode en een `(Responses)`-variant voor eindpunten die `/v1/responses` spreken.
 - **📡 Een stream die een geblokkeerde herkomst overleeft** — wordt een verzoek van een andere herkomst geweigerd, dan gaat de stream opnieuw over een `node:https`-transport op de desktop in plaats van terug te vallen op een gebufferd antwoord, en een mislukte terugval wordt vastgelegd in plaats van ingeslikt.
 
@@ -333,7 +333,7 @@ Kies een notitie, een map of een selectie: de LLM haalt entiteiten en concepten 
 
 ### Kan ik de plug-in in mijn taal gebruiken?
 
-🌍 14 talen voor zowel de interface als de wiki-uitvoer, apart in te stellen. Een 12e taal wordt door bijdragers toegevoegd (PR #159 is het voorbeeld).
+🌍 14 talen voor zowel de interface als de wiki-uitvoer, apart in te stellen. Een volgende taal wordt door bijdragers toegevoegd (PR #159 is het voorbeeld).
 
 ### Hoe verschilt dit van een RAG-chatbot?
 

@@ -202,11 +202,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本�
 
 ### 🌐 语言
 
-- **🌍 14 种界面语言** —— English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Русский。界面语言与 Wiki 输出语言相互独立——你的 Wiki 可以是中文，界面是英文。
+- **🌍 14 种界面语言** —— English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Русский、Nederlands、Polski、ไทย。界面语言与 Wiki 输出语言相互独立——你的 Wiki 可以是中文，界面是英文。
   
   ![界面语言与 Wiki 输出语言是两个各自独立的设置，所以中文 Wiki 能跑在英文界面后面](assets/readme/readme-06-language-settings.webp)
 - **📚 14 种 Wiki 输出语言** —— 同样是这一组；在 设置 → Wiki 配置 里选。另有 *自定义输入* 选项，用于临时提示。
-- **所有界面文案按语种翻译** —— 每个标签、弹窗、通知都翻了。加第 12 种语言由贡献者推动（PR #159 的模式）。
+- **所有界面文案按语种翻译** —— 每个标签、弹窗、通知都翻了。加更多语言由贡献者推动（PR #159 的模式）。
 - **🔧 按提供商自定义请求头** —— API Base URL 正下方的一个自由文本字段。每行一条 `Name: value`，随每个请求发出。自带 OpenCode 预设，以及给说 `/v1/responses` 的端点的 `(Responses)` 变体。
 - **📡 源被挡了，流还能走** —— 跨域请求被拒时，流会改走桌面端的 `node:https` 传输重试，而不是降级成缓冲式回答；回退失败会被记录，不会被吞掉。
 
@@ -335,7 +335,7 @@ PDF / 图片 / Office 摄入，见特性章节的 [文档 / PDF / 图片 摄入]
 
 ### 能用我的语言使用吗？
 
-🌍 界面与 Wiki 输出都是 14 种语言，各自独立设置。第 12 种由贡献者推动（PR #159 就是范例）。
+🌍 界面与 Wiki 输出都是 14 种语言，各自独立设置。下一种语言由贡献者推动（PR #159 就是范例）。
 
 ### 这和 RAG 聊天机器人有什么不同？
 

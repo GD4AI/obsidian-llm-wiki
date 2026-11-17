@@ -202,11 +202,11 @@ Seis rutas de entrada, conmutables en cada ingesta:
 
 ### 🌐 Idioma
 
-- **🌍 14 idiomas de interfaz** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. La interfaz y el idioma de salida del wiki son independientes: tu wiki puede estar en chino mientras la interfaz está en inglés.
+- **🌍 14 idiomas de interfaz** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. La interfaz y el idioma de salida del wiki son independientes: tu wiki puede estar en chino mientras la interfaz está en inglés.
   
   ![El idioma de la interfaz y el idioma de salida del wiki son dos ajustes separados, así que un wiki en chino puede correr detrás de una interfaz en inglés](assets/readme/readme-06-language-settings.webp)
 - **📚 14 idiomas de salida del wiki** — el mismo conjunto; se eligen en Configuración → Configuración del Wiki. Opción de *entrada personalizada* para prompts puntuales.
-- **Todas las cadenas de la interfaz traducidas en cada idioma** — cada etiqueta, cada modal y cada aviso. Añadir un duodécimo idioma depende de contribuciones (el patrón del PR #159).
+- **Todas las cadenas de la interfaz traducidas en cada idioma** — cada etiqueta, cada modal y cada aviso. Añadir otro idioma depende de contribuciones (el patrón del PR #159).
 - **🔧 Cabeceras personalizadas por proveedor** — un campo de texto libre justo debajo de la API Base URL. Una línea `Name: value` por línea, enviada con cada petición. Incluye un preajuste de OpenCode y una variante `(Responses)` para los endpoints que hablan `/v1/responses`.
 - **📡 Un flujo que sobrevive a un origen bloqueado** — cuando se rechaza una petición de otro origen, el flujo se reintenta por un transporte `node:https` de escritorio en lugar de degradarse a una respuesta en búfer, y un reintento fallido queda registrado en vez de silenciarse.
 
@@ -335,7 +335,7 @@ Elige una nota, una carpeta o una selección: el LLM extrae entidades y concepto
 
 ### ¿Puedo usar el plugin en mi idioma?
 
-🌍 14 idiomas, tanto para la interfaz como para la salida del wiki, y se ajustan por separado. Un duodécimo depende de contribuciones (el PR #159 es el patrón).
+🌍 14 idiomas, tanto para la interfaz como para la salida del wiki, y se ajustan por separado. Otro idioma depende de contribuciones (el PR #159 es el patrón).
 
 ### ¿En qué se diferencia de un chatbot RAG?
 

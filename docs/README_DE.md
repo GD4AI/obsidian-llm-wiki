@@ -202,11 +202,11 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 ### 🌐 Sprache
 
-- **🌍 14 Sprachen für die Oberfläche** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. Oberflächensprache und Ausgabesprache des Wikis sind unabhängig — dein Wiki kann auf Chinesisch laufen, während die Oberfläche Englisch ist.
+- **🌍 14 Sprachen für die Oberfläche** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. Oberflächensprache und Ausgabesprache des Wikis sind unabhängig — dein Wiki kann auf Chinesisch laufen, während die Oberfläche Englisch ist.
   
   ![Oberflächensprache und Wiki-Ausgabesprache sind zwei getrennte Einstellungen; ein chinesisches Wiki kann hinter einer englischen Oberfläche laufen](assets/readme/readme-06-language-settings.webp)
 - **📚 14 Ausgabesprachen für das Wiki** — dieselbe Auswahl; einzustellen unter Einstellungen → Wiki-Konfiguration. Die Option *Benutzerdefinierte Eingabe* deckt Ad-hoc-Prompts ab.
-- **Alle Oberflächentexte je Sprache übersetzt** — jedes Label, jedes Modal, jeder Hinweis. Eine zwölfte Sprache kommt aus der Community (Muster: PR #159).
+- **Alle Oberflächentexte je Sprache übersetzt** — jedes Label, jedes Modal, jeder Hinweis. Weitere Sprachen kommen aus der Community (Muster: PR #159).
 - **🔧 Eigene Header je Anbieter** — ein Freitextfeld direkt unter der Basis-URL. Eine Zeile `Name: wert` pro Zeile, mit jeder Anfrage gesendet. Ein OpenCode-Preset und eine `(Responses)`-Variante für Endpunkte, die `/v1/responses` sprechen, liegen bei.
 - **📡 Ein Stream, der einen blockierten Origin übersteht** — wird eine Cross-Origin-Anfrage abgelehnt, läuft der Stream über einen `node:https`-Transport auf dem Desktop erneut, statt zu einer gepufferten Antwort zu verkommen; ein gescheiterter Rückfallweg wird festgehalten und nicht verschluckt.
 
@@ -335,7 +335,7 @@ Wähle eine Notiz, einen Ordner oder eine Auswahl: Das LLM zieht Entitäten und 
 
 ### Kann ich das Plugin in meiner Sprache nutzen?
 
-🌍 14 Sprachen für die Oberfläche und für die Wiki-Ausgabe, getrennt voneinander einstellbar. Eine zwölfte Sprache kommt aus der Community (PR #159 ist das Muster).
+🌍 14 Sprachen für die Oberfläche und für die Wiki-Ausgabe, getrennt voneinander einstellbar. Weitere Sprachen kommen aus der Community (PR #159 ist das Muster).
 
 ### Worin unterscheidet sich das von einem RAG-Chatbot?
 
