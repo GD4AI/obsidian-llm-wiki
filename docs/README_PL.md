@@ -10,15 +10,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0 (MINOR — a token ceiling on the answer context, Extraction Focus in the settings tab, and crystallized-hub reporting)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -26,18 +26,18 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md
 -->
 
-![Baner wtyczki Karpathy LLM Wiki — sieć powiązanych stron wiki zbudowana z twoich notatek w Obsidianie](/docs/assets/llm_wiki_banner.webp)
+![Baner wtyczki Karpathy LLM Wiki — sieć powiązanych stron wiki zbudowana z twoich notatek w Obsidianie](assets/llm_wiki_banner.webp)
 
 # 🧠 Wtyczka Karpathy LLM Wiki do Obsidiana
 
 > Wtyczka do Obsidiana, która zamienia twoje notatki w połączoną bazę wiedzy, o którą można pytać — pomysł [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) wbudowany w edytor, w którym już piszesz.
 
-**Pełna punktacja w przeglądzie Obsidiana • Wyszukiwanie po grafie bez embeddingów • 11 języków natywnie • Natywne wczytywanie PDF, obrazów i Office • Działa z każdym dostawcą • Najpierw lokalnie • Bez backendu • Zgodne z RODO**
+**Pełna punktacja w przeglądzie Obsidiana • Wyszukiwanie po grafie bez embeddingów • 14 języków natywnie • Natywne wczytywanie PDF, obrazów i Office • Działa z każdym dostawcą • Najpierw lokalnie • Bez backendu • Zgodne z RODO**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
-[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | **Polski**
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | **Polski** | [ไทย](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md)
 
 [Oficjalna strona](https://llmwiki.greenerai.top/) | [Sklep z wtyczkami Obsidiana](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Dyskusje](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
@@ -61,7 +61,7 @@ Piszesz notatki. Leżą w folderach. Aby zobaczyć, co z czym się wiąże, musi
 |---|---|---|---|---|
 | **Forma** | ✅ Wtyczka do Obsidiana, jedno kliknięcie | 🟡 aplikacja desktopowa na Tauri | 🟡 umiejętność dla Claude Code / Codex / OpenCode / Gemini CLI | 🟡 potok TypeScript w wierszu poleceń |
 | **Zależności** | ✅ Brak — tylko wtyczka | 🟡 środowisko Python + sqlite | 🟡 środowisko Claude Code / Codex / OpenCode | ❌ model embeddingów + baza wektorowa (według ich dokumentacji) |
-| **i18n (interfejs + wynik wiki)** | ✅ 11 języków | 🟡 angielski / chiński | ❌ tylko angielski | ❌ tylko angielski |
+| **i18n (interfejs + wynik wiki)** | ✅ 14 języków | 🟡 angielski / chiński | ❌ tylko angielski | ❌ tylko angielski |
 | **Dostawcy LLM** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, zgodne z Anthropic, …) | 🟡 zgodne z OpenAI | 🟡 przez abonament Claude Code / Codex | 🟡 zgodne z OpenAI |
 | **Wyszukiwanie i pytania** | ✅ **PPR + Monte Carlo** po grafie `[[wiki-link]]` | 🟡 wygaszanie po 2 krokach (heurystyka z 4 sygnałów) | 🟡 wykrywanie społeczności Louvain | 🟡 BM25 + semantyka po fragmentach |
 | **Wizualizacja grafu** | ✅ wbudowany widok grafu Obsidiana (bez dodatkowego rozmiaru) | 🟡 własny sigma.js + graphology w aplikacji | 🟡 vis.js w osobnym `graph.html` | ❌ przeglądarka tylko do odczytu |
@@ -77,7 +77,7 @@ Piszesz notatki. Leżą w folderach. Aby zobaczyć, co z czym się wiąże, musi
 
 - **Chcesz zacząć w 5 minut.** Instalujesz z biblioteki wtyczek, wybierasz dostawcę, wczytujesz jedną notatkę. Strony wiki pojawiają się w `wiki/` w kilka sekund, bez wiersza poleceń, bez Pythona i bez bazy wektorowej.
 - **Chcesz odpowiedzi z własnych notatek,** przy czym każda odpowiedź wskazuje strony, z których pochodzi. Ollama lub LM Studio trzymają całe wywołanie na twoim komputerze.
-- **Piszesz lub czytasz w jednym z 11 języków.** Interfejs i wynik wiki są niezależne: chińska wiki pod polskim interfejsem to obsługiwany układ.
+- **Piszesz lub czytasz w jednym z 14 języków.** Interfejs i wynik wiki są niezależne: chińska wiki pod polskim interfejsem to obsługiwany układ.
 - **Chcesz konserwacji jednym kliknięciem.** Kontrola lint i Inteligentna automatyczna naprawa trzymają w ryzach duplikaty, martwe odsyłacze i osierocone strony bez ręcznej pracy.
 
 **Nie dla ciebie**, jeśli szukasz ogólnego zamiennika ChatGPT, wyszukiwania po zbiorach zewnętrznych, takich jak Confluence czy arXiv, albo usługi hostowanej ze współpracą zespołu. Odpowiedzi pochodzą ze skarbca, wczytywanie obejmuje skarbiec i pliki spoza niego, a backendu nie ma czym się dzielić.
@@ -90,7 +90,7 @@ Piszesz notatki. Leżą w folderach. Aby zobaczyć, co z czym się wiąże, musi
 
 1. **Zainstaluj.** Obsidian → Ustawienia → Wtyczki społeczności → Przeglądaj → szukaj „Karpathy LLM Wiki” → Zainstaluj → Włącz. Możesz też wejść na [stronę wtyczki](https://community.obsidian.md/plugins/karpathywiki) i kliknąć **Add to Obsidian**.
    
-   ![Karpathy LLM Wiki zainstalowana i włączona na liście wtyczek Obsidiana](/docs/assets/readme/readme-02-install.webp)
+   ![Karpathy LLM Wiki zainstalowana i włączona na liście wtyczek Obsidiana](assets/readme/readme-02-install.webp)
 2. **Ustaw dostawcę.** Otwórz Ustawienia → Karpathy LLM Wiki → wybierz dostawcę (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) itd.) → wpisz klucz API (przy modelu lokalnym niepotrzebny) → kliknij **Test połączenia** → Zapisz.
 3. **Wczytaj jedną notatkę.** Dwie drogi:
    - **⌨️ Klawiatura:** `Cmd+P/Ctrl+P` → „Wczytaj jedno źródło” → wybierz plik Markdown (albo PDF, od v1.25.0).
@@ -98,14 +98,14 @@ Piszesz notatki. Leżą w folderach. Aby zobaczyć, co z czym się wiąże, musi
    
    Pierwsze strony wiki pojawiają się w `wiki/sources/`, `wiki/entities/` i `wiki/concepts/` w kilka sekund.
    
-   ![Po lewej notatka, po prawej strona z niej utworzona — właściwości, opis i powiązane pojęcia](/docs/assets/readme/readme-01-before-after.webp)
+   ![Po lewej notatka, po prawej strona z niej utworzona — właściwości, opis i powiązane pojęcia](assets/readme/readme-01-before-after.webp)
 4. **Pytaj swoją wiki.** Też dwie drogi:
    - **⌨️ Klawiatura:** `Cmd+P/Ctrl+P` → „Zadaj pytanie do wiki”.
    - **🖱️ Ikona we wstążce:** kliknij **ikonę dymka** we wstążce po lewej stronie.
    
    Po prawej otwiera się panel boczny, jak u kopilota, w którym rozmawiasz ze swoją wiki. Odpowiedzi niosą `[[wiki-link]]` z powrotem do twojego grafu wiedzy.
 
-![Odpowiedź Query Wiki w panelu po prawej, gdzie każde twierdzenie ma przypis do strony wiki, z której pochodzi](/docs/assets/readme/readme-07-query-citations.webp)
+![Odpowiedź Query Wiki w panelu po prawej, gdzie każde twierdzenie ma przypis do strony wiki, z której pochodzi](assets/readme/readme-07-query-citations.webp)
 
 To wszystko. Wtyczka nie zmienia twoich notatek — tworzy tylko nowe strony w `wiki/`. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki po lewej, więc zawsze w zasięgu jednego kliknięcia. (`Cmd` na macOS, `Ctrl` na Windows i Linuksie.)
 
@@ -123,7 +123,7 @@ To wszystko. Wtyczka nie zmienia twoich notatek — tworzy tylko nowe strony w `
 | **⏹ Zatrzymaj** | `Cmd+P/Ctrl+P` → „Zatrzymaj wczytywanie” albo kliknij pasek stanu — zatrzymuje się czysto na granicy kolejnej rundy |
 | **📊 Historia** | `Cmd+P/Ctrl+P` → „Historia operacji” — przeszukiwalny widok wcześniejszych wczytań, raportów lint i konserwacji |
 
-![Wszystkie polecenia Karpathy LLM Wiki, zgrupowane pod jednym prefiksem w palecie poleceń Obsidiana](/docs/assets/readme/readme-03-commands.webp)
+![Wszystkie polecenia Karpathy LLM Wiki, zgrupowane pod jednym prefiksem w palecie poleceń Obsidiana](assets/readme/readme-03-commands.webp)
 
 | Przed | Po |
 |--------|-------|
@@ -143,7 +143,7 @@ To wszystko. Wtyczka nie zmienia twoich notatek — tworzy tylko nowe strony w `
 - **🧩 Scalanie i stan sprzeczności** — duplikaty są scalane z zachowaniem aliasów; sprzeczności są oznaczane wraz ze źródłem; strony z `reviewed: true` nigdy nie są nadpisywane.
 - **🎨 Jedna lista tagów, twoja** — tagi, które strona może nosić, pochodzą z zagnieżdżonych tagów twoich notatek, z tagów już obecnych na stronach wiki oraz z listy *Własne* w Ustawienia → Wiki → Lista tagów. Prompt, kontrola zapisu, lint i ponowne tagowanie czytają tę jedną listę, więc to, co dostaje model, trafia na dysk; wartość spoza listy jest odrzucana i nigdy nie zapisywana. Małe modele nadal się mylą (mniej więcej co dziesiąta runda zwraca własną taksonomię) — kontrola to wychwytuje, a lint zgłasza stronę. Punkt zaczepienia projektu: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-![Wygenerowana strona pojęcia: tag z listy, z którym ją zapisano, aliasy AF i AFib, definicja oraz powiązane strony](/docs/assets/readme/readme-04-entity-page.webp)
+![Wygenerowana strona pojęcia: tag z listy, z którym ją zapisano, aliasy AF i AFib, definicja oraz powiązane strony](assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Dokumenty, PDF i obrazy
 
@@ -183,7 +183,7 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 - **🔍 Kontrola lint** — jedno polecenie wychwytuje duplikaty, martwe odsyłacze, puste strony, strony osierocone, brakujące aliasy i sprzeczności. Wymienia też węzły, których sąsiedztwo już się wykrystalizowało: węzeł zastępujący powiązania, których treść nie potrafi już nawiązać.
 - **⚡ Inteligentna naprawa wszystkiego** — naprawa jednym kliknięciem w kolejności przyczyn: uzupełnij aliasy → scal duplikaty → napraw martwe odsyłacze → podlinkuj strony osierocone → uzupełnij puste strony, z raportem po każdym etapie.
   
-  ![Raport lint wiki — linia stanu, znalezione martwe odsyłacze i przycisk, który naprawia je w jednym przebiegu](/docs/assets/readme/readme-08-lint-report.webp)
+  ![Raport lint wiki — linia stanu, znalezione martwe odsyłacze i przycisk, który naprawia je w jednym przebiegu](assets/readme/readme-08-lint-report.webp)
 - **🚧 Zostawianie martwych odsyłaczy** — Ustawienia → Zaawansowane → *Twórz puste strony dla odsyłaczy donikąd* (domyślnie włączone). Wyłącz to, a martwy odsyłacz zostanie widoczny w każdym raporcie lint, dopóki prawdziwe źródło go nie zdefiniuje, zamiast zamieniać się w pustą stronę. Zasada z #197 — nigdy nie uzupełniaj bez źródła — zostaje bez zmian; ten przełącznik decyduje tylko, czy pusta strona ma powstać.
 - **📊 Panel historii operacji** — przeszukiwalny i filtrowany widok wcześniejszych wczytań, raportów lint i przebiegów konserwacji.
 **Kontrole, które działają, zanim zapłacisz za wywołanie**
@@ -200,10 +200,10 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 
 ### 🌐 Język
 
-- **🌍 11 języków interfejsu** — angielski, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski. Język interfejsu i język wyniku wiki są niezależne — wiki może być chińska, gdy interfejs jest polski.
+- **🌍 14 języków interfejsu** — angielski, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski. Język interfejsu i język wyniku wiki są niezależne — wiki może być chińska, gdy interfejs jest polski.
   
-  ![Język interfejsu i język wyniku wiki to dwa osobne ustawienia, więc chińska wiki może działać pod polskim interfejsem](/docs/assets/readme/readme-06-language-settings.webp)
-- **📚 11 języków wyniku wiki** — ten sam zestaw; wybór w Ustawienia → Konfiguracja wiki. Opcja *Wpisz własny* dla języka spoza listy.
+  ![Język interfejsu i język wyniku wiki to dwa osobne ustawienia, więc chińska wiki może działać pod polskim interfejsem](assets/readme/readme-06-language-settings.webp)
+- **📚 14 języków wyniku wiki** — ten sam zestaw; wybór w Ustawienia → Konfiguracja wiki. Opcja *Wpisz własny* dla języka spoza listy.
 - **Wszystkie teksty interfejsu przetłumaczone na każdy język** — każda etykieta, okno i komunikat. Dodanie 12. języka robią współtwórcy (PR #159 jest wzorem).
 - **🔧 Własne nagłówki dla dostawcy** — pole tekstowe zaraz pod bazowym adresem API. Jedna pozycja `Nazwa: wartość` w wierszu, wysyłana z każdym żądaniem. Jest ustawienie gotowe dla OpenCode i wariant `(Responses)` dla punktów końcowych mówiących po `/v1/responses`.
 - **📡 Strumień, który przetrwa zablokowane źródło** — gdy żądanie z innego źródła jest odrzucane, strumień jest ponawiany przez transport `node:https` na komputerze, zamiast przechodzić na odpowiedź buforowaną, a nieudane przejście awaryjne jest zapisywane, nie połykane.
@@ -232,7 +232,7 @@ Wtyczka współpracuje z resztą twojego zestawu w Obsidianie — każde narzęd
 - **📄 [MinerU dla wielu formatów](https://mineru.net/apiManage/docs) (wbudowane od v1.27.0)** — to, co było osobnym krokiem w wierszu poleceń lub w interfejsie, jest teraz przełącznikiem; pełna tabela dróg jest w [Dokumenty, PDF i obrazy](#-dokumenty-pdf-i-obrazy). [Usługa online MinerU](https://mineru.net/OpenSourceTools/Extractor) zostaje dla tych, którzy wolą szybki interfejs od tokenu API; [własny hosting MinerU](https://github.com/opendatalab/mineru) też jest możliwy.
 - **🕸️ Widok grafu Obsidiana** — otwórz zwykły graf na dowolnej stronie wiki; każdy `[[wiki-link]]` staje się węzłem, a każdy odsyłacz zwrotny krawędzią. Wbudowane, bez dodatkowego rozmiaru.
   
-  ![Widok grafu Obsidiana na wygenerowanej wiki — strony źródeł, encji i pojęć jako jeden spójny graf](/docs/assets/readme/readme-05-graph-view.webp)
+  ![Widok grafu Obsidiana na wygenerowanej wiki — strony źródeł, encji i pojęć jako jeden spójny graf](assets/readme/readme-05-graph-view.webp)
 - **✂️ [Obsidian Web Clipper](https://obsidian.md/clipper)** — oficjalne rozszerzenie do przeglądarki. Zapisuj strony (artykuły, wpisy blogów, wątki z Reddita, Hacker News, przepisy, artykuły naukowe, transkrypcje z YouTube przez Interpreter) do dowolnego folderu skarbca, a potem uruchom polecenie `Wczytaj z folderu`, aby wyodrębnić encje i pojęcia w jednym przebiegu.
 - **📊 [Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — pytaj wiki jak bazę danych przez DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) albo API JS. Wtyczka zapisuje na każdej stronie zwykły frontmatter (`tags:`, `type:`, `aliases:`), więc Dataview działa od razu.
 - **🌿 Git** — trzymaj skarbiec w systemie kontroli wersji (dowolnym klientem Git). Wtyczka nigdy nie przepisuje twoich plików źródłowych; tworzy tylko nowe strony w `wiki/`, więc `git diff` czysto oddziela twoją pracę od treści wygenerowanej przez model.
@@ -333,7 +333,7 @@ Wybierasz notatkę, folder albo zaznaczenie: model wyodrębnia encje i pojęcia 
 
 ### Czy mogę używać wtyczki w swoim języku?
 
-🌍 11 języków dla interfejsu i dla wyniku wiki, ustawianych osobno. 12. język dodają współtwórcy (wzorem jest PR #159).
+🌍 14 języków dla interfejsu i dla wyniku wiki, ustawianych osobno. 12. język dodają współtwórcy (wzorem jest PR #159).
 
 ### Czym to się różni od chatbota RAG?
 

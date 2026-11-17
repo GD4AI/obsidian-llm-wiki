@@ -10,15 +10,15 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0 (MINOR — 답변 컨텍스트의 토큰 상한, 설정 탭의 추출 초점, 결정화된 hub 보고)
 - last-updated: 2026-11-13
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (프로젝트 볼트 코퍼스 기준이며, 공개 벤치마크 세트가 아닙니다)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -33,12 +33,12 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 
 > 노트를 연결된 질의 가능한 지식베이스로 바꿔 주는 Obsidian 플러그인 — [Karpathy의 LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 아이디어를, 여러분이 이미 글을 쓰고 있는 편집기 안에 구현했습니다.
 
-**Obsidian 공식 마켓 만점 평가 • 임베딩 없는 그래프 검색 • 11개 언어 네이티브 • PDF + 이미지 + Office 네이티브 수집 • 모든 공급자와 호환 • 로컬 우선 • 백엔드 없음 • GDPR 친화**
+**Obsidian 공식 마켓 만점 평가 • 임베딩 없는 그래프 검색 • 14개 언어 네이티브 • PDF + 이미지 + Office 네이티브 수집 • 모든 공급자와 호환 • 로컬 우선 • 백엔드 없음 • GDPR 친화**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
-[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | **한국어** | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md)
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | **한국어** | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | [Polski](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md) | [ไทย](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md)
 
 [공식 사이트](https://llmwiki.greenerai.top/) | [Obsidian 마켓플레이스](https://community.obsidian.md/plugins/karpathywiki) | [블로그](https://llmwiki.greenerai.top/blog/) | [Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
@@ -62,7 +62,7 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 |---|---|---|---|---|
 | **제공 형태** | ✅ 원클릭 Obsidian 플러그인 | 🟡 Tauri 데스크톱 앱 | 🟡 Claude Code / Codex / OpenCode / Gemini CLI 스킬 | 🟡 TypeScript CLI 파이프라인 |
 | **의존성** | ✅ 없음 — 플러그인 하나뿐 | 🟡 Python 런타임 + sqlite | 🟡 Claude Code / Codex / OpenCode 런타임 | ❌ 임베딩 모델 + 벡터 DB (상대 문서 기준) |
-| **i18n (UI + 위키 출력)** | ✅ 11개 언어 | 🟡 EN / 中文 | ❌ 영어 전용 | ❌ 영어 전용 |
+| **i18n (UI + 위키 출력)** | ✅ 14개 언어 | 🟡 EN / 中文 | ❌ 영어 전용 | ❌ 영어 전용 |
 | **LLM 공급자** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, …) | 🟡 OpenAI 호환 | 🟡 Claude Code / Codex 구독 | 🟡 OpenAI 호환 |
 | **검색 및 질의 파이프라인** | ✅ `[[wiki-link]]` 그래프 위의 **PPR + Monte Carlo** | 🟡 2홉 감쇠 (4-신호 휴리스틱) | 🟡 Louvain 커뮤니티 탐지 | 🟡 청크 단위 BM25 + 시맨틱 |
 | **그래프 시각화** | ✅ Obsidian 네이티브 Graph View (내장, 추가 크기 0) | 🟡 데스크톱 앱 안의 자체 sigma.js + graphology | 🟡 vis.js `graph.html` (별도 파일) | ❌ 읽기 전용 브라우저 뷰어 |
@@ -78,7 +78,7 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 
 - **5분 안에 설정을 끝내고 싶습니다.** 커뮤니티 플러그인에서 설치 → 공급자 선택 → 노트 하나 수집. CLI도, Python도, 먼저 띄워야 할 벡터 데이터베이스도 없이 몇 초 만에 `wiki/`에 위키 페이지가 생깁니다.
 - **내 노트에서 답을 얻고 싶고, 그 답이 근거 페이지를 인용하기를 원합니다.** Ollama나 LM Studio를 쓰면 호출 전체가 내 기기 안에서 끝납니다.
-- **11개 언어 중 하나로 쓰거나 읽습니다.** 인터페이스와 위키 출력 언어는 따로 정합니다. 영어 인터페이스 뒤에 중국어 위키를 두는 구성도 지원합니다.
+- **14개 언어 중 하나로 쓰거나 읽습니다.** 인터페이스와 위키 출력 언어는 따로 정합니다. 영어 인터페이스 뒤에 중국어 위키를 두는 구성도 지원합니다.
 - **원클릭 유지관리를 원합니다.** Lint 상태 검사와 Smart Fix All이 중복, 데드 링크, 고아 페이지를 손으로 관리하지 않아도 되게 잡아 줍니다.
 
 **다음 경우에는 맞지 않습니다:** 범용 ChatGPT 대체품을 원하거나, Confluence·arXiv 같은 외부 코퍼스에 대한 RAG가 필요하거나, 팀 협업이 되는 호스팅 서비스를 원하는 경우. 답은 여러분의 볼트에서 나오고, 수집 범위는 볼트와 독립 파일까지이며, 공유할 백엔드는 없습니다.
@@ -203,10 +203,10 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 
 ### 🌐 언어
 
-- **🌍 UI 11개 언어** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI 언어와 위키 출력 언어는 따로 정합니다 — 인터페이스가 영어여도 위키는 중국어일 수 있습니다.
+- **🌍 UI 14개 언어** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. UI 언어와 위키 출력 언어는 따로 정합니다 — 인터페이스가 영어여도 위키는 중국어일 수 있습니다.
   
   ![인터페이스 언어와 위키 출력 언어는 서로 다른 두 설정이라, 영어 인터페이스 뒤에서 중국어 위키를 돌릴 수 있습니다](assets/readme/readme-06-language-settings.webp)
-- **📚 위키 출력 11개 언어** — 같은 목록이며 설정 → Wiki Configuration에서 고릅니다. 임시 프롬프트를 위한 *Custom input* 옵션도 있습니다.
+- **📚 위키 출력 14개 언어** — 같은 목록이며 설정 → Wiki Configuration에서 고릅니다. 임시 프롬프트를 위한 *Custom input* 옵션도 있습니다.
 - **모든 UI 문자열이 언어별로 번역되어 있습니다** — 라벨, 모달, Notice까지 전부. 열두 번째 언어 추가는 기여자 주도입니다(PR #159 방식).
 - **🔧 공급자별 Custom Headers** — API Base URL 바로 아래의 자유 입력 필드입니다. 한 줄에 `Name: value` 하나씩, 모든 요청에 함께 전송합니다. OpenCode 프리셋과 `/v1/responses`를 쓰는 엔드포인트용 `(Responses)` 변형이 함께 들어 있습니다.
 - **📡 출처가 막혀도 살아남는 스트림** — 교차 출처 요청이 거부되면 버퍼링 답변으로 떨어지는 대신 데스크톱 `node:https` 전송으로 다시 시도하고, 폴백까지 실패하면 그 사실을 삼키지 않고 기록합니다.
@@ -336,7 +336,7 @@ PDF / 이미지 / Office 수집은 기능 섹션의 [문서 / PDF / 이미지 �
 
 ### 내 언어로 쓸 수 있나요?
 
-🌍 인터페이스와 위키 출력 양쪽에 11개 언어가 있고, 따로 설정합니다. 열두 번째 언어는 기여자 주도입니다(PR #159가 그 방식입니다).
+🌍 인터페이스와 위키 출력 양쪽에 14개 언어가 있고, 따로 설정합니다. 열두 번째 언어는 기여자 주도입니다(PR #159가 그 방식입니다).
 
 ### RAG 챗봇과 무엇이 다른가요?
 

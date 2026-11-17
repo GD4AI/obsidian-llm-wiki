@@ -10,15 +10,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md（11 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md（14 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0（MINOR — 回答コンテキストのトークン上限、設定の Extraction Focus、結晶化 hub のレポート）
 - last-updated: 2026-11-13
 - alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
-- search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 11 言語プラグイン", "Obsidian 15+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
-- features: グラフベース検索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 段階シード選択カスケード, Tier 1/Tier 2 重複検出, 11 言語 UI + 11 言語 Wiki 出力（独立設定）, 15+ LLM プロバイダー（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-互換, Codex OAuth）, MinerU マルチフォーマット取り込み（PDF + 画像 + Office）, PDF 取り込み（キャッシュのみ、OCR パス）, Lint ヘルススキャン, Smart Fix All, ソースページ逐語引用, 取り込み候補ゲート, ステップ別 taskPolicies UI, Obsidian Graph View 連携, ゼロ埋め込み・ゼロベクトル DB アーキテクチャ, ローカルファーストモード
+- search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 14 言語プラグイン", "Obsidian 15+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
+- features: グラフベース検索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 段階シード選択カスケード, Tier 1/Tier 2 重複検出, 14 言語 UI + 14 言語 Wiki 出力（独立設定）, 15+ LLM プロバイダー（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-互換, Codex OAuth）, MinerU マルチフォーマット取り込み（PDF + 画像 + Office）, PDF 取り込み（キャッシュのみ、OCR パス）, Lint ヘルススキャン, Smart Fix All, ソースページ逐語引用, 取り込み候補ゲート, ステップ別 taskPolicies UI, Obsidian Graph View 連携, ゼロ埋め込み・ゼロベクトル DB アーキテクチャ, ローカルファーストモード
 - direct-competitors: nashsu/llm_wiki（Tauri デスクトップアプリ）、SamurAIGPT/llm-wiki-agent（Claude Code / Codex / OpenCode / Gemini CLI スキル）、atomicstrata/llm-wiki-compiler（TypeScript の CLI、チャンクベースの検索）
 - retrieval-benchmark: PPR @5 = 27.1% vs 純粋 kNN 24.1%（本プロジェクトの vault コーパスでの測定。公開ベンチマークセットではない）
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -32,12 +32,12 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 > ノートを、つながった問い合わせ可能なナレッジベースに変える Obsidian プラグインです。[Karpathy の LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) のアイデアを、あなたがすでに書いているエディタの中に作りました。
 
-**Obsidian レビュー満点 • 埋め込み不要のグラフ検索 • 11 言語ネイティブ • PDF + 画像 + Office をネイティブ取り込み • すべてのプロバイダーに対応 • ローカルファースト • バックエンドなし • GDPR フレンドリー**
+**Obsidian レビュー満点 • 埋め込み不要のグラフ検索 • 14 言語ネイティブ • PDF + 画像 + Office をネイティブ取り込み • すべてのプロバイダーに対応 • ローカルファースト • バックエンドなし • GDPR フレンドリー**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
-[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | **日本語** | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md)
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | **日本語** | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | [Polski](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md) | [ไทย](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md)
 
 [公式サイト](https://llmwiki.greenerai.top/) | [Obsidian マーケットプレース](https://community.obsidian.md/plugins/karpathywiki) | [ブログ](https://llmwiki.greenerai.top/blog/) | [Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
@@ -61,7 +61,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 |---|---|---|---|---|
 | **提供の形** | ✅ Obsidian プラグインをワンクリックで | 🟡 Tauri のデスクトップアプリ | 🟡 Claude Code / Codex / OpenCode / Gemini CLI のスキル | 🟡 TypeScript の CLI パイプライン |
 | **依存関係** | ✅ なし — プラグイン単体 | 🟡 Python ランタイム + sqlite | 🟡 Claude Code / Codex / OpenCode のランタイム | ❌ 埋め込みモデル + ベクトル DB（先方のドキュメントによる） |
-| **i18n（UI + Wiki 出力）** | ✅ 11 言語 | 🟡 EN / 中文 | ❌ 英語のみ | ❌ 英語のみ |
+| **i18n（UI + Wiki 出力）** | ✅ 14 言語 | 🟡 EN / 中文 | ❌ 英語のみ | ❌ 英語のみ |
 | **LLM プロバイダー** | ✅ 15+（Anthropic、OpenAI、Bedrock、Gemini、DeepSeek、Qwen、Grok、Kimi、GLM、MiniMax、Step、Hunyuan、MiMo、Gemma、Codex OAuth、Ollama、LM Studio、OpenRouter、Anthropic 互換、…） | 🟡 OpenAI 互換 | 🟡 Claude Code / Codex 経由の契約 | 🟡 OpenAI 互換 |
 | **検索とクエリのパイプライン** | ✅ `[[wiki-link]]` グラフ上の **PPR + Monte Carlo** | 🟡 2 ホップ減衰（4 信号のヒューリスティック） | 🟡 Louvain のコミュニティ検出 | 🟡 チャンク上の BM25 + セマンティック検索 |
 | **グラフの可視化** | ✅ Obsidian ネイティブのグラフビュー（内蔵、追加サイズゼロ） | 🟡 デスクトップアプリ内の独自 sigma.js + graphology | 🟡 vis.js の `graph.html`（別ファイル） | ❌ 読み取り専用のブラウザビューア |
@@ -77,7 +77,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 - **5 分で使い始めたい。** コミュニティプラグインからインストール → プロバイダーを選ぶ → ノートを 1 つ取り込む。数秒で Wiki ページが `wiki/` に現れます。CLI も Python もベクトル DB も、先に用意するものはありません。
 - **自分のノートから答えが欲しい。** しかも、どの答えにも根拠のページが付く形で。Ollama か LM Studio なら、呼び出しはすべて手元のマシンで終わります。
-- **11 言語のどれかで書き、読みます。** インターフェースと Wiki 出力は独立です。英語の UI のまま中国語の Wiki を動かす構成も、正規の使い方です。
+- **14 言語のどれかで書き、読みます。** インターフェースと Wiki 出力は独立です。英語の UI のまま中国語の Wiki を動かす構成も、正規の使い方です。
 - **ワンクリックで保守したい。** Lint ヘルススキャンと一括スマート修復が、重複、リンク切れ、孤立ページを手作業なしで抑えます。
 
 **向いていない場合：** 汎用の ChatGPT の代わりが欲しい、Confluence や arXiv のような外部コーパスへの RAG が欲しい、チームで共有するホスティングサービスが欲しい — そのときは別の道具を探してください。答えはあなたの vault から出ます。取り込みの対象は vault と単体のファイルです。共有すべきバックエンドはありません。
@@ -202,10 +202,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ロー�
 
 ### 🌐 言語
 
-- **🌍 UI は 11 言語** — English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Русский。UI の言語と Wiki 出力の言語は独立です。UI は英語のまま、Wiki は中国語、という構成も成り立ちます。
+- **🌍 UI は 14 言語** — English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Русский。UI の言語と Wiki 出力の言語は独立です。UI は英語のまま、Wiki は中国語、という構成も成り立ちます。
   
   ![インターフェースの言語と Wiki 出力の言語は別々の設定 — 英語の UI のまま中国語の Wiki を動かせる](assets/readme/readme-06-language-settings.webp)
-- **📚 Wiki 出力も 11 言語** — 同じ顔ぶれです。設定 → Wiki Configuration で選びます。その場限りのプロンプト用に *カスタム入力* もあります。
+- **📚 Wiki 出力も 14 言語** — 同じ顔ぶれです。設定 → Wiki Configuration で選びます。その場限りのプロンプト用に *カスタム入力* もあります。
 - **UI の文字列はロケールごとに全訳** — ラベル、モーダル、通知のすべて。12 言語目の追加はコントリビューター主導です（PR #159 が前例）。
 - **🔧 プロバイダーごとのカスタムヘッダー** — API Base URL のすぐ下にある自由入力欄です。1 行に 1 つ `名前: 値` を書き、すべてのリクエストに付けます。OpenCode のプリセットと、`/v1/responses` を話すエンドポイント向けの `(Responses)` 版を同梱しています。
 - **📡 オリジンが遮断されても生き残るストリーム** — クロスオリジンのリクエストが拒否されたとき、バッファ済みの答えに落ちるのではなく、デスクトップの `node:https` トランスポートで再試行します。フォールバックが失敗した場合も、握りつぶさずに記録します。
@@ -335,7 +335,7 @@ PDF / 画像 / Office の取り込みは、特徴の [ドキュメント / PDF /
 
 ### 自分の言語で使えますか？
 
-🌍 インターフェースも Wiki 出力も 11 言語で、それぞれ独立に設定します。12 言語目はコントリビューター主導です（PR #159 が前例）。
+🌍 インターフェースも Wiki 出力も 14 言語で、それぞれ独立に設定します。12 言語目はコントリビューター主導です（PR #159 が前例）。
 
 ### RAG のチャットボットと何が違うのですか？
 

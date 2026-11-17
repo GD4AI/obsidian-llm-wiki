@@ -10,15 +10,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0 (MINOR — лимит токенов для контекста ответа, Extraction Focus в настройках и отчёт о кристаллизованных хабах)
 - last-updated: 2026-11-13
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (корпус собственного хранилища проекта, а не публичный бенчмарк-набор)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -32,12 +32,12 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 > Плагин для Obsidian, который превращает ваши заметки в связанную базу знаний, готовую отвечать на вопросы — идея [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), встроенная в редактор, в котором вы уже пишете.
 
-**Идеальная оценка обзора Obsidian • Графовый поиск без эмбеддингов • Родные 11 языков • Нативный импорт PDF + изображений + Office • Работает с любым провайдером • Локально-ориентированный • Без бэкенда • Соответствует GDPR**
+**Идеальная оценка обзора Obsidian • Графовый поиск без эмбеддингов • Родные 14 языков • Нативный импорт PDF + изображений + Office • Работает с любым провайдером • Локально-ориентированный • Без бэкенда • Соответствует GDPR**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
-[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | **Русский**
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | **Русский** | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | [Polski](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md) | [ไทย](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md)
 
 [Официальный сайт](https://llmwiki.greenerai.top/) | [Каталог плагинов Obsidian](https://community.obsidian.md/plugins/karpathywiki) | [Блог](https://llmwiki.greenerai.top/blog/) | [Обсуждения](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
@@ -61,7 +61,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 |---|---|---|---|---|
 | **Способ поставки** | ✅ Плагин Obsidian в один клик | 🟡 Десктопное приложение на Tauri | 🟡 Навык Claude Code / Codex / OpenCode / Gemini CLI | 🟡 Конвейер CLI на TypeScript |
 | **Зависимости** | ✅ Нет — только плагин | 🟡 Рантайм Python + sqlite | 🟡 Рантайм Claude Code / Codex / OpenCode | ❌ Модель эмбеддингов + векторная БД (по их документации) |
-| **i18n (интерфейс + вывод Wiki)** | ✅ 11 языков | 🟡 EN / 中文 | ❌ Только EN | ❌ Только EN |
+| **i18n (интерфейс + вывод Wiki)** | ✅ 14 языков | 🟡 EN / 中文 | ❌ Только EN | ❌ Только EN |
 | **Провайдеры LLM** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, …) | 🟡 OpenAI-compatible | 🟡 Подписка через Claude Code / Codex | 🟡 OpenAI-compatible |
 | **Поиск и конвейер запросов** | ✅ **PPR + Monte Carlo** по графу `[[wiki-link]]` | 🟡 Затухание на 2 шага (эвристика из 4 сигналов) | 🟡 Обнаружение сообществ методом Лувена | 🟡 BM25 + семантика по чанкам |
 | **Визуализация графа** | ✅ Нативный Graph View в Obsidian (встроен, не добавляет размера) | 🟡 Свой sigma.js + graphology в десктопном приложении | 🟡 vis.js `graph.html` (отдельный файл) | ❌ Просмотр в браузере только для чтения |
@@ -77,7 +77,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 - **Вам нужна настройка за 5 минут.** Установите из Community Plugins → выберите провайдера → импортируйте одну заметку. Страницы Wiki появятся в `wiki/` за секунды, без CLI, без Python и без векторной базы данных, которую нужно поднимать первой.
 - **Вы хотите получать ответы из своих заметок,** и чтобы каждый ответ ссылался на страницы, из которых он взят. Ollama или LM Studio держат весь вызов на вашей машине.
-- **Вы пишете или читаете на любом из 11 языков.** Интерфейс и вывод Wiki независимы: китайская Wiki при английском интерфейсе — поддерживаемая конфигурация.
+- **Вы пишете или читаете на любом из 14 языков.** Интерфейс и вывод Wiki независимы: китайская Wiki при английском интерфейсе — поддерживаемая конфигурация.
 - **Вам нужно обслуживание в один клик.** Сканирование здоровья Lint и Smart Fix All держат дубликаты, мёртвые ссылки и висячие страницы под контролем без ручной курации.
 
 **Он не для вас, если** вам нужна замена ChatGPT общего назначения, RAG по внешним корпусам вроде Confluence или arXiv либо хостинговый сервис с командной работой. Ответы приходят из вашего хранилища, импорт покрывает ваше хранилище плюс отдельные файлы, а бэкенда, которым можно поделиться, нет вовсе.
@@ -202,10 +202,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ### 🌐 Язык
 
-- **🌍 11 языков интерфейса** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. Язык интерфейса и язык вывода Wiki независимы — ваша Wiki может быть на китайском при английском интерфейсе.
+- **🌍 14 языков интерфейса** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский. Язык интерфейса и язык вывода Wiki независимы — ваша Wiki может быть на китайском при английском интерфейсе.
   
   ![Язык интерфейса и язык вывода Wiki — две отдельные настройки, поэтому китайская Wiki может работать при английском интерфейсе](assets/readme/readme-06-language-settings.webp)
-- **📚 11 языков вывода Wiki** — тот же набор; выбирается в Настройки → Конфигурация Wiki. Опция *Custom input* для разовых промптов.
+- **📚 14 языков вывода Wiki** — тот же набор; выбирается в Настройки → Конфигурация Wiki. Опция *Custom input* для разовых промптов.
 - **Все строки интерфейса переведены для каждого языка** — каждая метка, модальное окно и уведомление. Двенадцатый язык добавляют контрибьюторы (образец — PR #159).
 - **🔧 Свои заголовки для каждого провайдера** — свободное текстовое поле сразу под API Base URL. По одной строке `Name: value`, отправляется с каждым запросом. В комплекте пресет OpenCode и вариант `(Responses)` для эндпоинтов, говорящих на `/v1/responses`.
 - **📡 Поток, который переживает заблокированный origin** — когда кросс-доменный запрос отклонён, поток повторяется через десктопный транспорт `node:https`, а не деградирует до буферизованного ответа; неудачный откат записывается, а не проглатывается.
@@ -335,7 +335,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ### Можно пользоваться плагином на моём языке?
 
-🌍 11 языков и для интерфейса, и для вывода Wiki, задаются независимо. Двенадцатый добавляют контрибьюторы (образец — PR #159).
+🌍 14 языков и для интерфейса, и для вывода Wiki, задаются независимо. Двенадцатый добавляют контрибьюторы (образец — PR #159).
 
 ### Чем это отличается от RAG-чатбота?
 

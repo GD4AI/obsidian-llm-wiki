@@ -10,15 +10,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0 (MINOR — a token ceiling on the answer context, Extraction Focus in the settings tab, and crystallized-hub reporting)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -26,18 +26,18 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md
 -->
 
-![Banner van de Karpathy LLM Wiki-plug-in — een netwerk van onderling gekoppelde wikipagina's, gebouwd uit je Obsidian-notities](/docs/assets/llm_wiki_banner.webp)
+![Banner van de Karpathy LLM Wiki-plug-in — een netwerk van onderling gekoppelde wikipagina's, gebouwd uit je Obsidian-notities](assets/llm_wiki_banner.webp)
 
 # 🧠 Karpathy LLM Wiki-plug-in voor Obsidian
 
 > Een Obsidian-plug-in die je notities omzet in een samenhangende kennisbank waar je vragen aan kunt stellen — het idee van de [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), ingebouwd in de editor waarin je al schrijft.
 
-**Perfecte score bij de Obsidian-beoordeling • Graafzoekopdrachten zonder embeddings • 11 talen native • PDF, afbeeldingen en Office native inlezen • Werkt met elke provider • Lokaal eerst • Geen backend • AVG-vriendelijk**
+**Perfecte score bij de Obsidian-beoordeling • Graafzoekopdrachten zonder embeddings • 14 talen native • PDF, afbeeldingen en Office native inlezen • Werkt met elke provider • Lokaal eerst • Geen backend • AVG-vriendelijk**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
-[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | **Nederlands**
+[English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | **Nederlands** | [Polski](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md) | [ไทย](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md)
 
 [Officiële site](https://llmwiki.greenerai.top/) | [Obsidian-marktplaats](https://community.obsidian.md/plugins/karpathywiki) | [Blog](https://llmwiki.greenerai.top/blog/) | [Discussies](https://github.com/GD4AI/obsidian-llm-wiki/discussions)
 
@@ -61,7 +61,7 @@ Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moe
 |---|---|---|---|---|
 | **Vorm** | ✅ Obsidian-plug-in, één klik | 🟡 desktop-app op Tauri | 🟡 skill voor Claude Code / Codex / OpenCode / Gemini CLI | 🟡 TypeScript-pijplijn op de opdrachtregel |
 | **Afhankelijkheden** | ✅ Geen — alleen de plug-in | 🟡 Python-runtime + sqlite | 🟡 runtime van Claude Code / Codex / OpenCode | ❌ embeddingmodel + vectordatabase (volgens hun documentatie) |
-| **i18n (interface + wiki-uitvoer)** | ✅ 11 talen | 🟡 Engels / Chinees | ❌ alleen Engels | ❌ alleen Engels |
+| **i18n (interface + wiki-uitvoer)** | ✅ 14 talen | 🟡 Engels / Chinees | ❌ alleen Engels | ❌ alleen Engels |
 | **LLM-providers** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-compatibel, …) | 🟡 OpenAI-compatibel | 🟡 via een abonnement op Claude Code / Codex | 🟡 OpenAI-compatibel |
 | **Zoeken en vragen** | ✅ **PPR + Monte Carlo** over de graaf van `[[wiki-link]]`s | 🟡 verval over 2 stappen (heuristiek met 4 signalen) | 🟡 communitydetectie met Louvain | 🟡 BM25 + semantiek over brokstukken |
 | **Grafiekweergave** | ✅ de ingebouwde grafiekweergave van Obsidian (geen extra omvang) | 🟡 eigen sigma.js + graphology in de desktop-app | 🟡 vis.js in een los `graph.html` | ❌ alleen-lezen weergave in de browser |
@@ -77,7 +77,7 @@ Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moe
 
 - **Je wilt binnen 5 minuten beginnen.** Installeren uit de plug-inbibliotheek, een provider kiezen, één notitie inlezen. Binnen enkele seconden staan er wikipagina's in `wiki/`, zonder opdrachtregel, zonder Python en zonder vectordatabase.
 - **Je wilt antwoorden uit je eigen notities,** waarbij elk antwoord de pagina's noemt waar het vandaan komt. Met Ollama of LM Studio blijft de hele aanroep op je eigen machine.
-- **Je schrijft of leest in een van de 11 talen.** Interface en wiki-uitvoer staan los van elkaar: een Chinese wiki achter een Nederlandse interface is een ondersteunde opzet.
+- **Je schrijft of leest in een van de 14 talen.** Interface en wiki-uitvoer staan los van elkaar: een Chinese wiki achter een Nederlandse interface is een ondersteunde opzet.
 - **Je wilt onderhoud met één klik.** De lintcontrole en Alles slim herstellen houden dubbelen, dode koppelingen en verweesde pagina's in bedwang zonder handwerk.
 
 **Niet voor jou** als je een algemene vervanger van ChatGPT zoekt, zoeken over externe verzamelingen zoals Confluence of arXiv, of een gehoste dienst met samenwerking in een team. De antwoorden komen uit je kluis, het inlezen dekt je kluis plus losse bestanden, en er is geen backend om te delen.
@@ -90,7 +90,7 @@ Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moe
 
 1. **Installeren.** Obsidian → Instellingen → Plug-ins van de community → Bladeren → zoek "Karpathy LLM Wiki" → Installeren → Inschakelen. Of ga naar de [pagina in de plug-inbibliotheek](https://community.obsidian.md/plugins/karpathywiki) en klik op **Add to Obsidian**.
    
-   ![Karpathy LLM Wiki geïnstalleerd en ingeschakeld in de plug-inlijst van Obsidian](/docs/assets/readme/readme-02-install.webp)
+   ![Karpathy LLM Wiki geïnstalleerd en ingeschakeld in de plug-inlijst van Obsidian](assets/readme/readme-02-install.webp)
 2. **Een provider instellen.** Open Instellingen → Karpathy LLM Wiki → kies een provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), enz.) → vul de API-sleutel in (niet nodig bij een lokaal model) → klik op **Verbinding testen** → Opslaan.
 3. **Eén notitie inlezen.** Dat kan op twee manieren:
    - **⌨️ Toetsenbord:** `Cmd+P/Ctrl+P` → "Eén bron inlezen" → kies een Markdown-bestand (of een PDF, vanaf v1.25.0).
@@ -98,14 +98,14 @@ Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moe
    
    Je eerste wikipagina's verschijnen binnen enkele seconden in `wiki/sources/`, `wiki/entities/` en `wiki/concepts/`.
    
-   ![Links de notitie, rechts de pagina die eruit is gemaakt — eigenschappen, beschrijving en verwante concepten](/docs/assets/readme/readme-01-before-after.webp)
+   ![Links de notitie, rechts de pagina die eruit is gemaakt — eigenschappen, beschrijving en verwante concepten](assets/readme/readme-01-before-after.webp)
 4. **Je wiki bevragen.** Ook op twee manieren:
    - **⌨️ Toetsenbord:** `Cmd+P/Ctrl+P` → "Wiki bevragen".
    - **🖱️ Pictogram in het lint:** klik op het **pictogram met de tekstballon** in het linkerlint.
    
    Rechts opent een zijpaneel, zoals bij een copiloot, waarin je met je wiki kunt praten. De antwoorden dragen `[[wiki-link]]`s terug naar je kennisgraaf.
 
-![Een antwoord van Query Wiki in het zijpaneel rechts, waarbij elke bewering verwijst naar de wikipagina waar hij vandaan komt](/docs/assets/readme/readme-07-query-citations.webp)
+![Een antwoord van Query Wiki in het zijpaneel rechts, waarbij elke bewering verwijst naar de wikipagina waar hij vandaan komt](assets/readme/readme-07-query-citations.webp)
 
 Dat is alles. De plug-in verandert niets in je oorspronkelijke notities — hij maakt alleen nieuwe pagina's onder `wiki/`. **Inlezen** en **Wiki bevragen** staan allebei in het linkerlint, dus altijd binnen één klik. (`Cmd` op macOS, `Ctrl` op Windows en Linux.)
 
@@ -123,7 +123,7 @@ Dat is alles. De plug-in verandert niets in je oorspronkelijke notities — hij 
 | **⏹ Stoppen** | `Cmd+P/Ctrl+P` → "Inlezen stoppen" of klik op de statusbalk — stopt netjes aan het begin van de volgende ronde |
 | **📊 Geschiedenis** | `Cmd+P/Ctrl+P` → "Geschiedenis van handelingen" — doorzoekbaar overzicht van eerdere inleesrondes, lintrapporten en onderhoud |
 
-![Alle opdrachten van Karpathy LLM Wiki, gegroepeerd onder één voorvoegsel in het opdrachtenpalet van Obsidian](/docs/assets/readme/readme-03-commands.webp)
+![Alle opdrachten van Karpathy LLM Wiki, gegroepeerd onder één voorvoegsel in het opdrachtenpalet van Obsidian](assets/readme/readme-03-commands.webp)
 
 | Voor | Na |
 |--------|-------|
@@ -143,7 +143,7 @@ Dat is alles. De plug-in verandert niets in je oorspronkelijke notities — hij 
 - **🧩 Slim samenvoegen en tegenstrijdigheden** — dubbelen worden samengevoegd met behoud van aliassen; tegenstrijdigheden worden gemarkeerd met hun bron; pagina's met `reviewed: true` worden nooit overschreven.
 - **🎨 Eén taglijst, de jouwe** — de tags die een pagina mag dragen komen uit de geneste tags van je notities, de tags die al op wikipagina's staan, en de lijst onder *Eigen* in Instellingen → Wiki → Taglijst. Prompt, schrijfcontrole, lint en opnieuw taggen lezen allemaal die ene lijst, dus wat het model aangeboden krijgt is wat er op schijf komt; een waarde daarbuiten wordt weggegooid en nooit geschreven. Kleine modellen wijken toch af (ongeveer één op de tien rondes geeft de eigen indeling van het model) — de controle vangt dat en de lintcontrole meldt de pagina. Ontwerpanchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-![Een gegenereerde conceptpagina: de tag uit de lijst waarmee hij is geschreven, de aliassen AF en AFib, de definitie en de pagina's die ermee samenhangen](/docs/assets/readme/readme-04-entity-page.webp)
+![Een gegenereerde conceptpagina: de tag uit de lijst waarmee hij is geschreven, de aliassen AF en AFib, de definitie en de pagina's die ermee samenhangen](assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Documenten, PDF en afbeeldingen inlezen
 
@@ -183,7 +183,7 @@ Zes routes, per inleesronde te kiezen:
 - **🔍 Lintcontrole** — één opdracht vangt dubbelen, dode koppelingen, lege pagina's, verweesde pagina's, ontbrekende aliassen en tegenstrijdigheden. Hij noemt ook knooppunten waarvan de omgeving is uitgekristalliseerd: een knooppunt dat staat voor verbanden die de inhoud niet meer kan leggen.
 - **⚡ Alles slim herstellen** — herstel in de juiste volgorde met één klik: aliassen aanvullen → dubbelen samenvoegen → dode koppelingen herstellen → verweesde pagina's koppelen → lege pagina's aanvullen, met een rapport per fase.
   
-  ![Lintrapport van de wiki — de statusregel, de gevonden dode koppelingen en de knop die ze in één keer herstelt](/docs/assets/readme/readme-08-lint-report.webp)
+  ![Lintrapport van de wiki — de statusregel, de gevonden dode koppelingen en de knop die ze in één keer herstelt](assets/readme/readme-08-lint-report.webp)
 - **🚧 Dode koppelingen laten staan** — Instellingen → Geavanceerd → *Lege pagina's maken voor koppelingen die nergens heen gaan* (standaard aan). Zet je het uit, dan blijft een dode koppeling in elk lintrapport zichtbaar tot een echte bron hem definieert, in plaats van dat er een lege pagina ontstaat. De regel uit #197 — nooit aanvullen zonder bron — blijft ongewijzigd; deze schakelaar beslist alleen of de lege pagina wordt geschreven.
 - **📊 Paneel met de geschiedenis** — doorzoekbaar en te filteren overzicht van eerdere inleesrondes, lintrapporten en onderhoud.
 **Controles voordat je voor een aanroep betaalt**
@@ -200,10 +200,10 @@ Zes routes, per inleesronde te kiezen:
 
 ### 🌐 Taal
 
-- **🌍 11 talen in de interface** — Engels, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands. De taal van de interface en de taal van de wiki-uitvoer staan los van elkaar — je wiki kan Chinees zijn terwijl de interface Engels is.
+- **🌍 14 talen in de interface** — Engels, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands. De taal van de interface en de taal van de wiki-uitvoer staan los van elkaar — je wiki kan Chinees zijn terwijl de interface Engels is.
   
-  ![Taal van de interface en taal van de wiki-uitvoer zijn twee aparte instellingen, dus een Chinese wiki kan achter een Nederlandse interface draaien](/docs/assets/readme/readme-06-language-settings.webp)
-- **📚 11 talen voor de wiki-uitvoer** — dezelfde reeks; te kiezen in Instellingen → Configuratie van de wiki. De optie *Zelf invullen* is er voor een taal die er niet bij staat.
+  ![Taal van de interface en taal van de wiki-uitvoer zijn twee aparte instellingen, dus een Chinese wiki kan achter een Nederlandse interface draaien](assets/readme/readme-06-language-settings.webp)
+- **📚 14 talen voor de wiki-uitvoer** — dezelfde reeks; te kiezen in Instellingen → Configuratie van de wiki. De optie *Zelf invullen* is er voor een taal die er niet bij staat.
 - **Alle teksten per taal vertaald** — elk label, elk venster en elke melding. Een 12e taal toevoegen gebeurt door bijdragers (PR #159 is het voorbeeld).
 - **🔧 Eigen headers per provider** — een vrij tekstveld direct onder de basis-URL. Eén `Naam: waarde` per regel, meegestuurd met elk verzoek. Er is een voorinstelling voor OpenCode en een `(Responses)`-variant voor eindpunten die `/v1/responses` spreken.
 - **📡 Een stream die een geblokkeerde herkomst overleeft** — wordt een verzoek van een andere herkomst geweigerd, dan gaat de stream opnieuw over een `node:https`-transport op de desktop in plaats van terug te vallen op een gebufferd antwoord, en een mislukte terugval wordt vastgelegd in plaats van ingeslikt.
@@ -232,7 +232,7 @@ De plug-in werkt samen met de rest van je Obsidian-opstelling — elk programma 
 - **📄 [MinerU voor meerdere formaten](https://mineru.net/apiManage/docs) (ingebouwd sinds v1.27.0)** — wat eerst een aparte stap op de opdrachtregel of in een scherm was, is nu een schakelaar in de plug-in; zie [Documenten, PDF en afbeeldingen inlezen](#-documenten-pdf-en-afbeeldingen-inlezen) voor de volledige tabel met routes. De [online dienst van MinerU](https://mineru.net/OpenSourceTools/Extractor) blijft beschikbaar voor wie liever een scherm gebruikt dan een API-token; [MinerU zelf hosten](https://github.com/opendatalab/mineru) kan ook.
 - **🕸️ Grafiekweergave van Obsidian** — open de gewone grafiek op elke wikipagina; elke `[[wiki-link]]` wordt een knooppunt en elke koppeling terug een verbinding. Ingebouwd, zonder extra omvang.
   
-  ![De grafiekweergave van Obsidian op een gegenereerde wiki — bron-, entiteits- en conceptpagina's als één samenhangende graaf](/docs/assets/readme/readme-05-graph-view.webp)
+  ![De grafiekweergave van Obsidian op een gegenereerde wiki — bron-, entiteits- en conceptpagina's als één samenhangende graaf](assets/readme/readme-05-graph-view.webp)
 - **✂️ [Obsidian Web Clipper](https://obsidian.md/clipper)** — de officiële uitbreiding voor de browser. Bewaar webpagina's (artikelen, blogposts, Reddit-threads, Hacker News, recepten, artikelen uit tijdschriften, transcripties van YouTube via Interpreter) in elke map van je kluis en gebruik daarna de opdracht `Een map inlezen` om entiteiten en concepten in één keer eruit te halen.
 - **📊 [Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ondervraag de wiki als een database met DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) of met de JS-API. De plug-in schrijft op elke pagina gewone frontmatter (`tags:`, `type:`, `aliases:`), dus Dataview werkt meteen.
 - **🌿 Git** — houd je kluis in versiebeheer (met welke Git-client dan ook). De plug-in herschrijft je bronbestanden nooit; hij maakt alleen nieuwe pagina's onder `wiki/`, zodat `git diff` jouw werk netjes scheidt van wat de LLM maakte.
@@ -333,7 +333,7 @@ Kies een notitie, een map of een selectie: de LLM haalt entiteiten en concepten 
 
 ### Kan ik de plug-in in mijn taal gebruiken?
 
-🌍 11 talen voor zowel de interface als de wiki-uitvoer, apart in te stellen. Een 12e taal wordt door bijdragers toegevoegd (PR #159 is het voorbeeld).
+🌍 14 talen voor zowel de interface als de wiki-uitvoer, apart in te stellen. Een 12e taal wordt door bijdragers toegevoegd (PR #159 is het voorbeeld).
 
 ### Hoe verschilt dit van een RAG-chatbot?
 

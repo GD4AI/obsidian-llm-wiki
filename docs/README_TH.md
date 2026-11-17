@@ -10,15 +10,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (11 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.31.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
 - previous: v1.30.0 (MINOR — a token ceiling on the answer context, Extraction Focus in the settings tab, and crystallized-hub reporting)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
-- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 11 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 11-language UI + 11-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -26,15 +26,15 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md
 -->
 
-![แบนเนอร์ปลั๊กอิน Karpathy LLM Wiki — เครือข่ายหน้าวิกิที่เชื่อมโยงกัน สร้างจากโน้ตใน Obsidian ของคุณ](/docs/assets/llm_wiki_banner.webp)
+![แบนเนอร์ปลั๊กอิน Karpathy LLM Wiki — เครือข่ายหน้าวิกิที่เชื่อมโยงกัน สร้างจากโน้ตใน Obsidian ของคุณ](assets/llm_wiki_banner.webp)
 
 # 🧠 ปลั๊กอิน Karpathy LLM Wiki สำหรับ Obsidian
 
 > ปลั๊กอิน Obsidian ที่เปลี่ยนโน้ตของคุณให้เป็นฐานความรู้ที่เชื่อมโยงกันและถามตอบได้ — แนวคิด [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) ที่ฝังอยู่ในโปรแกรมที่คุณเขียนงานอยู่แล้ว
 
-**คะแนนเต็มจากการตรวจของ Obsidian • ค้นหาบนกราฟโดยไม่ใช้ embedding • รองรับ 11 ภาษาพื้นเมือง • นำเข้า PDF รูปภาพ และ Office ได้ในตัว • ใช้ได้กับทุกผู้ให้บริการ • ทำงานในเครื่องเป็นหลัก • ไม่มี backend • เป็นมิตรกับ GDPR**
+**คะแนนเต็มจากการตรวจของ Obsidian • ค้นหาบนกราฟโดยไม่ใช้ embedding • รองรับ 14 ภาษาพื้นเมือง • นำเข้า PDF รูปภาพ และ Office ได้ในตัว • ใช้ได้กับทุกผู้ให้บริการ • ทำงานในเครื่องเป็นหลัก • ไม่มี backend • เป็นมิตรกับ GDPR**
 
-![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-11-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
+![Version](https://img.shields.io/github/v/release/GD4AI/obsidian-llm-wiki?style=flat-square) ![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square) ![Obsidian](https://img.shields.io/badge/obsidian-1.11.4%2B-purple?style=flat-square) ![Languages](https://img.shields.io/badge/languages-14-informational?style=flat-square) ![Providers](https://img.shields.io/badge/providers-15%2B-cyan?style=flat-square) <br>
 ![Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=483699&label=downloads&query=$[karpathywiki].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&style=flat-square) [![Release Obsidian plugin](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml/badge.svg)](https://github.com/GD4AI/obsidian-llm-wiki/actions/workflows/release.yml)
 
 [English](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md) | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_CN.md) | [繁體中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ZH-Hant.md) | [日本語](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_JA.md) | [한국어](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_KO.md) | [Deutsch](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_DE.md) | [Français](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_FR.md) | [Español](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_ES.md) | [Português](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PT.md) | [Italiano](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_IT.md) | [Русский](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_RU.md) | [Nederlands](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md) | [Polski](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_PL.md) | **ไทย**
@@ -61,7 +61,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 |---|---|---|---|---|
 | **รูปแบบ** | ✅ ปลั๊กอิน Obsidian ติดตั้งคลิกเดียว | 🟡 แอปเดสก์ท็อปบน Tauri | 🟡 สกิลของ Claude Code / Codex / OpenCode / Gemini CLI | 🟡 ไปป์ไลน์ TypeScript บนบรรทัดคำสั่ง |
 | **สิ่งที่ต้องติดตั้งเพิ่ม** | ✅ ไม่มี — มีแค่ปลั๊กอิน | 🟡 Python + sqlite | 🟡 สภาพแวดล้อม Claude Code / Codex / OpenCode | ❌ โมเดล embedding + ฐานข้อมูลเวกเตอร์ (ตามเอกสารของเขา) |
-| **i18n (หน้าจอ + ผลลัพธ์วิกิ)** | ✅ 11 ภาษา | 🟡 อังกฤษ / จีน | ❌ อังกฤษเท่านั้น | ❌ อังกฤษเท่านั้น |
+| **i18n (หน้าจอ + ผลลัพธ์วิกิ)** | ✅ 14 ภาษา | 🟡 อังกฤษ / จีน | ❌ อังกฤษเท่านั้น | ❌ อังกฤษเท่านั้น |
 | **ผู้ให้บริการ LLM** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, ที่รองรับ Anthropic, …) | 🟡 ที่รองรับ OpenAI | 🟡 ผ่านแพ็กเกจ Claude Code / Codex | 🟡 ที่รองรับ OpenAI |
 | **การค้นหาและถามตอบ** | ✅ **PPR + Monte Carlo** บนกราฟ `[[wiki-link]]` | 🟡 ลดทอน 2 ฮอป (ฮิวริสติก 4 สัญญาณ) | 🟡 ตรวจจับคอมมิวนิตี Louvain | 🟡 BM25 + ความหมายบนชิ้นข้อความ |
 | **การแสดงกราฟ** | ✅ กราฟวิวของ Obsidian เอง (มีในตัว ไม่เพิ่มขนาด) | 🟡 sigma.js + graphology ในแอป | 🟡 vis.js ในไฟล์ `graph.html` แยก | ❌ ดูได้อย่างเดียวในเบราว์เซอร์ |
@@ -77,7 +77,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 - **อยากเริ่มภายใน 5 นาที** ติดตั้งจากคลังปลั๊กอิน เลือกผู้ให้บริการ นำเข้าโน้ตหนึ่งฉบับ หน้าวิกิจะขึ้นใน `wiki/` ภายในไม่กี่วินาที โดยไม่ต้องใช้บรรทัดคำสั่ง ไม่ต้องมี Python และไม่ต้องตั้งฐานข้อมูลเวกเตอร์
 - **อยากได้คำตอบจากโน้ตของตัวเอง** โดยทุกคำตอบอ้างอิงหน้าที่มา Ollama หรือ LM Studio ทำให้การเรียกทั้งหมดอยู่บนเครื่องคุณ
-- **คุณเขียนหรืออ่านภาษาหนึ่งใน 11 ภาษา** ภาษาหน้าจอและภาษาผลลัพธ์วิกิแยกจากกัน วิกิภาษาจีนคู่กับหน้าจอภาษาไทยเป็นรูปแบบที่รองรับ
+- **คุณเขียนหรืออ่านภาษาหนึ่งใน 14 ภาษา** ภาษาหน้าจอและภาษาผลลัพธ์วิกิแยกจากกัน วิกิภาษาจีนคู่กับหน้าจอภาษาไทยเป็นรูปแบบที่รองรับ
 - **อยากดูแลด้วยคลิกเดียว** การตรวจ lint และการซ่อมอัตโนมัติอัจฉริยะคุมหน้าซ้ำ ลิงก์ตาย และหน้าที่ไม่มีใครลิงก์ถึง โดยไม่ต้องแก้ด้วยมือ
 
 **ไม่เหมาะถ้า**คุณต้องการตัวแทน ChatGPT ทั่วไป การค้นหาบนคลังภายนอกอย่าง Confluence หรือ arXiv หรือบริการโฮสต์ที่มีการทำงานเป็นทีม คำตอบมาจาก vault การนำเข้าครอบ vault บวกไฟล์เดี่ยว และไม่มี backend ให้แชร์
@@ -90,7 +90,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 1. **ติดตั้ง** Obsidian → การตั้งค่า → ปลั๊กอินของชุมชน → เรียกดู → ค้นหา "Karpathy LLM Wiki" → ติดตั้ง → เปิดใช้งาน หรือเข้าที่[หน้าปลั๊กอิน](https://community.obsidian.md/plugins/karpathywiki) แล้วกด **Add to Obsidian**
    
-   ![Karpathy LLM Wiki ที่ติดตั้งและเปิดใช้งานในรายการปลั๊กอินของ Obsidian](/docs/assets/readme/readme-02-install.webp)
+   ![Karpathy LLM Wiki ที่ติดตั้งและเปิดใช้งานในรายการปลั๊กอินของ Obsidian](assets/readme/readme-02-install.webp)
 2. **ตั้งค่าผู้ให้บริการ** เปิด การตั้งค่า → Karpathy LLM Wiki → เลือกผู้ให้บริการ (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) ฯลฯ) → ใส่คีย์ API (ไม่ต้องใช้ถ้าเป็นโมเดลในเครื่อง) → กด **ทดสอบการเชื่อมต่อ** → บันทึก
 3. **นำเข้าโน้ตหนึ่งฉบับ** ทำได้สองทาง:
    - **⌨️ แป้นพิมพ์:** `Cmd+P/Ctrl+P` → "นำเข้าแหล่งข้อมูลเดียว" → เลือกไฟล์ Markdown (หรือ PDF ตั้งแต่ v1.25.0)
@@ -98,14 +98,14 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
    
    หน้าวิกิชุดแรกจะขึ้นใน `wiki/sources/`, `wiki/entities/` และ `wiki/concepts/` ภายในไม่กี่วินาที
    
-   ![โน้ตทางซ้าย หน้าที่สร้างจากโน้ตทางขวา — คุณสมบัติ คำอธิบาย และแนวคิดที่เกี่ยวข้อง](/docs/assets/readme/readme-01-before-after.webp)
+   ![โน้ตทางซ้าย หน้าที่สร้างจากโน้ตทางขวา — คุณสมบัติ คำอธิบาย และแนวคิดที่เกี่ยวข้อง](assets/readme/readme-01-before-after.webp)
 4. **ถามวิกิของคุณ** ก็สองทาง:
    - **⌨️ แป้นพิมพ์:** `Cmd+P/Ctrl+P` → "ถามวิกิ"
    - **🖱️ ไอคอนบนริบบอน:** กด**ไอคอนกรอบข้อความ**บนริบบอนด้านซ้าย
    
    แผงด้านขวาจะเปิดขึ้นเหมือนผู้ช่วยข้างเคียง ให้คุณคุยกับวิกิได้ คำตอบมี `[[wiki-link]]` พากลับไปยังกราฟความรู้ของคุณ
 
-![คำตอบของ Query Wiki ในแผงด้านขวา ทุกข้อความอ้างอิงถึงหน้าวิกิที่มา](/docs/assets/readme/readme-07-query-citations.webp)
+![คำตอบของ Query Wiki ในแผงด้านขวา ทุกข้อความอ้างอิงถึงหน้าวิกิที่มา](assets/readme/readme-07-query-citations.webp)
 
 เท่านี้ ปลั๊กอินไม่แก้โน้ตต้นฉบับของคุณเลย สร้างเฉพาะหน้าใหม่ใน `wiki/` ทั้ง **นำเข้า** และ **ถามวิกิ** ปักไว้บนริบบอนด้านซ้าย ใช้ได้ในคลิกเดียวเสมอ (`Cmd` บน macOS, `Ctrl` บน Windows และ Linux)
 
@@ -123,7 +123,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 | **⏹ หยุด** | `Cmd+P/Ctrl+P` → "หยุดการนำเข้าปัจจุบัน" หรือกดแถบสถานะ — หยุดอย่างเรียบร้อยที่ขอบรอบถัดไป |
 | **📊 ประวัติ** | `Cmd+P/Ctrl+P` → "ดูประวัติการทำงาน" — ดูย้อนหลังได้ทั้งการนำเข้า รายงาน lint และงานดูแลระบบ |
 
-![คำสั่งทั้งหมดของ Karpathy LLM Wiki รวมอยู่ใต้คำนำหน้าเดียวในพาเลตคำสั่งของ Obsidian](/docs/assets/readme/readme-03-commands.webp)
+![คำสั่งทั้งหมดของ Karpathy LLM Wiki รวมอยู่ใต้คำนำหน้าเดียวในพาเลตคำสั่งของ Obsidian](assets/readme/readme-03-commands.webp)
 
 | ก่อน | หลัง |
 |--------|-------|
@@ -143,7 +143,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🧩 รวมหน้าและการบันทึกข้อขัดแย้ง** — หน้าซ้ำถูกรวมโดยเก็บ alias ไว้ ข้อขัดแย้งถูกทำเครื่องหมายพร้อมแหล่งที่มา หน้าที่มี `reviewed: true` ไม่ถูกเขียนทับ
 - **🎨 ชุดแท็กเดียวที่เป็นของคุณ** — แท็กที่หน้าใดมีได้มาจากแท็กซ้อนในโน้ตของคุณ แท็กที่อยู่บนหน้าวิกิแล้ว และรายการ *กำหนดเอง* ใน การตั้งค่า → วิกิ → ชุดแท็ก พรอมต์ การตรวจตอนเขียน lint และการติดแท็กใหม่อ่านรายการเดียวกันหมด สิ่งที่โมเดลได้จึงเป็นสิ่งที่ลงดิสก์ ค่าที่อยู่นอกรายการถูกทิ้ง ไม่ถูกเขียน โมเดลเล็กยังคลาดได้ (ประมาณหนึ่งในสิบรอบตอบอนุกรมของตัวเอง) การตรวจจับได้และ lint รายงานหน้าไว้ จุดยึดของการออกแบบ: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)
 
-![หน้าของแนวคิดที่สร้างขึ้น: แท็กจากชุดที่ใช้เขียน alias AF และ AFib คำนิยาม และหน้าที่เกี่ยวข้อง](/docs/assets/readme/readme-04-entity-page.webp)
+![หน้าของแนวคิดที่สร้างขึ้น: แท็กจากชุดที่ใช้เขียน alias AF และ AFib คำนิยาม และหน้าที่เกี่ยวข้อง](assets/readme/readme-04-entity-page.webp)
 
 ### 📄 เอกสาร PDF และรูปภาพ
 
@@ -183,7 +183,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **🔍 การตรวจ lint** — คำสั่งเดียวจับ หน้าซ้ำ ลิงก์ตาย หน้าว่าง หน้าที่ไม่มีใครลิงก์ถึง alias ที่ขาด และข้อขัดแย้ง พร้อมระบุฮับที่บริเวณรอบ ๆ ตกผลึกแล้ว คือฮับที่ยืนแทนความเชื่อมโยงที่เนื้อหาสร้างไม่ได้อีก
 - **⚡ ซ่อมอัตโนมัติอัจฉริยะ** — ซ่อมในคลิกเดียวตามลำดับเหตุและผล: เติม alias → รวมหน้าซ้ำ → ซ่อมลิงก์ตาย → ใส่ลิงก์ให้หน้าที่ไม่มีใครลิงก์ถึง → เติมหน้าว่าง พร้อมรายงานแยกขั้น
   
-  ![รายงาน lint ของวิกิ — บรรทัดสถานะ ลิงก์ตายที่พบ และปุ่มที่ซ่อมทั้งหมดในครั้งเดียว](/docs/assets/readme/readme-08-lint-report.webp)
+  ![รายงาน lint ของวิกิ — บรรทัดสถานะ ลิงก์ตายที่พบ และปุ่มที่ซ่อมทั้งหมดในครั้งเดียว](assets/readme/readme-08-lint-report.webp)
 - **🚧 ปล่อยลิงก์ตายไว้ได้** — การตั้งค่า → ขั้นสูง → *สร้างหน้าเปล่าสำหรับลิงก์ที่ไม่มีปลายทาง* (เปิดไว้เป็นค่าเริ่มต้น) ถ้าปิด ลิงก์ตายจะยังเห็นในรายงาน lint ทุกครั้งจนกว่าแหล่งข้อมูลจริงจะนิยามมัน แทนที่จะกลายเป็นหน้าเปล่า กฎจาก #197 — ไม่เติมเนื้อหาโดยไม่มีแหล่งข้อมูล — ยังเหมือนเดิม สวิตช์นี้ตัดสินเพียงว่าจะเขียนหน้าเปล่าหรือไม่
 - **📊 แผงประวัติการทำงาน** — ดูย้อนหลังได้ ค้นหาและกรองได้ ทั้งการนำเข้า รายงาน lint และงานดูแลระบบ
 **การตรวจก่อนจ่ายค่าการเรียก**
@@ -200,10 +200,10 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ### 🌐 ภาษา
 
-- **🌍 11 ภาษาของหน้าจอ** — อังกฤษ, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย ภาษาหน้าจอและภาษาผลลัพธ์วิกิแยกจากกัน วิกิภาษาจีนคู่กับหน้าจอภาษาไทยได้
+- **🌍 14 ภาษาของหน้าจอ** — อังกฤษ, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย ภาษาหน้าจอและภาษาผลลัพธ์วิกิแยกจากกัน วิกิภาษาจีนคู่กับหน้าจอภาษาไทยได้
   
-  ![ภาษาหน้าจอและภาษาผลลัพธ์วิกิเป็นการตั้งค่าสองอย่าง วิกิภาษาจีนจึงทำงานคู่กับหน้าจอภาษาไทยได้](/docs/assets/readme/readme-06-language-settings.webp)
-- **📚 11 ภาษาของผลลัพธ์วิกิ** — ชุดเดียวกัน เลือกได้ที่ การตั้งค่า → การตั้งค่าวิกิ และมีตัวเลือก *กรอกเอง* สำหรับภาษาที่ไม่อยู่ในรายการ
+  ![ภาษาหน้าจอและภาษาผลลัพธ์วิกิเป็นการตั้งค่าสองอย่าง วิกิภาษาจีนจึงทำงานคู่กับหน้าจอภาษาไทยได้](assets/readme/readme-06-language-settings.webp)
+- **📚 14 ภาษาของผลลัพธ์วิกิ** — ชุดเดียวกัน เลือกได้ที่ การตั้งค่า → การตั้งค่าวิกิ และมีตัวเลือก *กรอกเอง* สำหรับภาษาที่ไม่อยู่ในรายการ
 - **ข้อความหน้าจอแปลครบทุกภาษา** — ทุกป้าย ทุกหน้าต่าง และทุกประกาศ การเพิ่มภาษาที่ 12 มาจากผู้ร่วมพัฒนา (PR #159 เป็นตัวอย่าง)
 - **🔧 ส่วนหัวที่กำหนดเองต่อผู้ให้บริการ** — ช่องข้อความใต้ Base URL ของ API หนึ่งบรรทัดต่อหนึ่งรายการในรูป `ชื่อ: ค่า` ส่งไปกับทุกคำขอ มีค่าที่ตั้งไว้สำหรับ OpenCode และแบบ `(Responses)` สำหรับปลายทางที่รับ `/v1/responses`
 - **📡 สตรีมที่อยู่รอดเมื่อต้นทางถูกบล็อก** — เมื่อคำขอข้ามต้นทางถูกปฏิเสธ สตรีมจะลองใหม่ผ่าน transport `node:https` บนคอมพิวเตอร์ แทนที่จะลดลงเป็นคำตอบแบบรอทั้งก้อน และการถอยกลับที่ล้มเหลวถูกบันทึกไว้ ไม่ถูกกลืนหาย
@@ -232,7 +232,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - **📄 [MinerU สำหรับหลายรูปแบบ](https://mineru.net/apiManage/docs) (มีในตัวตั้งแต่ v1.27.0)** — สิ่งที่เคยเป็นขั้นแยกบนบรรทัดคำสั่งหรือหน้าเว็บ ตอนนี้เป็นสวิตช์ในปลั๊กอิน ตารางเส้นทางแบบเต็มอยู่ที่ [เอกสาร PDF และรูปภาพ](#-เอกสาร-pdf-และรูปภาพ) [บริการออนไลน์ของ MinerU](https://mineru.net/OpenSourceTools/Extractor) ยังใช้ได้สำหรับคนที่ชอบหน้าเว็บมากกว่าโทเคน API และ[ติดตั้ง MinerU เอง](https://github.com/opendatalab/mineru)ก็เป็นทางเลือกได้
 - **🕸️ กราฟวิวของ Obsidian** — เปิดกราฟปกติบนหน้าวิกิใดก็ได้ ทุก `[[wiki-link]]` กลายเป็นโหนด และทุก backlink เป็นเส้นเชื่อม มีในตัว ไม่เพิ่มขนาดแพ็กเกจ
   
-  ![กราฟวิวของ Obsidian บนวิกิที่สร้างขึ้น — หน้าต้นทาง เอนทิตี และแนวคิดเป็นกราฟเดียวที่เชื่อมกัน](/docs/assets/readme/readme-05-graph-view.webp)
+  ![กราฟวิวของ Obsidian บนวิกิที่สร้างขึ้น — หน้าต้นทาง เอนทิตี และแนวคิดเป็นกราฟเดียวที่เชื่อมกัน](assets/readme/readme-05-graph-view.webp)
 - **✂️ [Obsidian Web Clipper](https://obsidian.md/clipper)** — ส่วนขยายเบราว์เซอร์อย่างเป็นทางการ เก็บหน้าเว็บ (บทความ บล็อก กระทู้ Reddit, Hacker News, สูตรอาหาร บทความวิจัย ถอดความ YouTube ผ่าน Interpreter) ลงโฟลเดอร์ใดก็ได้ใน vault แล้วใช้คำสั่ง `นำเข้าจากโฟลเดอร์` เพื่อสกัดเอนทิตีและแนวคิดในครั้งเดียว
 - **📊 [Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ถามวิกิเหมือนฐานข้อมูลด้วย DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) หรือ JS API ปลั๊กอินเขียน frontmatter มาตรฐาน (`tags:`, `type:`, `aliases:`) ทุกหน้า Dataview จึงใช้ได้ทันที
 - **🌿 Git** — เก็บ vault ในระบบควบคุมเวอร์ชัน (ไคลเอนต์ Git ตัวไหนก็ได้) ปลั๊กอินไม่เขียนทับไฟล์ต้นฉบับของคุณ สร้างเฉพาะหน้าใหม่ใน `wiki/` ฉะนั้น `git diff` แยกงานของคุณออกจากเนื้อหาที่โมเดลสร้างได้ชัดเจน
@@ -333,7 +333,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 ### ใช้ปลั๊กอินในภาษาของฉันได้ไหม
 
-🌍 11 ภาษาสำหรับทั้งหน้าจอและผลลัพธ์วิกิ ตั้งแยกกันได้ ภาษาที่ 12 มาจากผู้ร่วมพัฒนา (PR #159 เป็นตัวอย่าง)
+🌍 14 ภาษาสำหรับทั้งหน้าจอและผลลัพธ์วิกิ ตั้งแยกกันได้ ภาษาที่ 12 มาจากผู้ร่วมพัฒนา (PR #159 เป็นตัวอย่าง)
 
 ### ต่างจากแชตบอต RAG อย่างไร
 
