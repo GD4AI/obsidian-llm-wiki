@@ -151,4 +151,36 @@ describe('value-survival-cli — report path without a filesystem', () => {
 		expect(out, 'the fixture path was not printed').toContain('fixture: /tool/fixtures/note.md');
 		expect(out, 'the length line is missing').toContain('must equal');
 	});
+
+	it('recognises the quote heading in every wiki-output language, not two of them', async () => {
+		// The heading comes from the plugin's own `SECTION_LABELS`, which carries fourteen
+		// languages. This splitter shipped with two of them (English and Chinese), so a Dutch,
+		// German or Thai vault counted every verbatim quote as prose — and the count is the
+		// whole point of the instrument. Measured on a real German vault on 2026-11-17: the
+		// source page had four quotes and the report said `quoted 0`.
+		const germanSource = [
+			'---',
+			'type: source',
+			'source_file: "[[notes/pumpe.md]]"',
+			'---',
+			'Kurze Zusammenfassung ohne Betraege.',
+			'',
+			'## Erwähnungen in der Quelle',
+			'',
+			'- "Die Pumpe kostet $420 am 2026-04-28."',
+			'',
+		].join('\n');
+		const io = memoryIo({
+			'/v/test10/sources/pumpe.md': germanSource,
+			'/v/notes/pumpe.md': 'Die Pumpe kostet $420 am 2026-04-28.\n',
+		});
+
+		const { code, out } = await capture(() => main(['/v', 'test10'], io, '/nope/fixture.md'));
+
+		expect(code).toBe(0);
+		const sourceRow = out.split('\n').find((line) => line.startsWith('source '));
+		expect(sourceRow, 'no source row in the page-type table').toBeDefined();
+		// Columns: page type · n · quoted · prose · absent · absent share.
+		expect(sourceRow, `a German quote section counted as prose: ${sourceRow}`).toMatch(/^source\s+\d+\s+[1-9]/u);
+	});
 });
