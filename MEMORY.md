@@ -27,12 +27,12 @@ is current state.
 
 ## Current state — 2026-11-17
 
-**Released:** v1.32.0 MINOR (2026-11-17) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.32.0), tag `1.32.0`. The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
+**Released:** v1.32.0 MINOR (2026-11-17) — [release](https://github.com/GD4AI/obsidian-llm-wiki/releases/tag/1.32.0), tag `1.32.0`; docs sweep PR #1057 merged (signals / README lists corrected). The open plan is [ROADMAP.md](./ROADMAP.md); shipped history is [CHANGELOG.md](./CHANGELOG.md); the rules those older sessions produced are in §"Lessons learned".
 
 | Track | Where it stands |
 |---|---|
 | **Open PR** | none — v1.32.0 is released; `main` at `38ea8541`; tag `1.32.0`; Ruleset `16884813` restored (`bypass_actors: []`) after the admin squash merge |
-| **v1.33.0 MINOR** | six open: #1054 (the source page's 2,000-character quote budget), #729 Phase 2 (the ranked cap that truncates a Related list), #664 (that cap's migration), #787 (the lemma-guarantee opt-out), #668 (the settings tabs), #891 (what "interrupted" means) |
+| **v1.33.0 MINOR** | seven open: #1054 (**decision recorded:** source-page quote budget raised 2,000 → 3,000 in `feat/1054-mentions-budget`), #1058 (report modal UI — structure + semantics, D3 couples with #668), #787 (source-lemma guarantee opt-out, confirmed), #668 (settings tabs, shares tab paradigm with #1058's D3), #729 Phase 2 (ranked cap — **mechanism decided:** gate-zero prune + co-citation comparator), #664 (migration — **decided:** two-track, new writes capped + legacy lint action with preview), #891 (what "interrupted" means — blocked on AI SDK alignment) |
 | **Blocked on a decision** | #873 (MAJOR — page-type taxonomy, now also the home of #902's Option B), #915 (math: render-time vs generate-time) |
 | **Refactor track** | #926 net, #927 ratchet and all five #928 modules settled: three deleted, one wired (#955), two moved out of `src/` (#959) |
 | **Found while fixing #957** | #961 — the periodic-lint baseline resets on every settings save, so a monthly user who saves twice a month never reaches the gate |
