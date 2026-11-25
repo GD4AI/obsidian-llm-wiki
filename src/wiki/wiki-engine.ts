@@ -153,7 +153,12 @@ function errorToString(value: unknown): string {
 // Issue #496: on a source page the Mentions section IS the payload, so its
 // total budget is raised above the formatter's 500-char default — the same
 // default that would otherwise ellipsize exactly what this route preserves.
-const SOURCE_PAGE_MENTIONS_MAX_CHARS = 2000;
+// The 2,000 figure was a guess (#1054): on a 4.9 KB note it filled before
+// 25 % of the note's values survived, so the verbatim-hit channel was
+// starved of evidence. Raised to 3,000 by maintainer decision after the
+// #1054 review sweep (2026-11-17) — quotes are dropped whole past the
+// budget, never sliced.
+const SOURCE_PAGE_MENTIONS_MAX_CHARS = 3000;
 
 export class WikiEngine {
   private app: App;
