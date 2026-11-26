@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Karpathy LLM Wiki plugin banner — a network of interconnected wiki pages built from your Obsidian notes](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)](docs/assets/llm_wiki_banner.webp)
+[![Karpathy LLM Wiki plugin banner — a network of interconnected wiki pages built from your Obsidian notes](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Karpathy LLM Wiki Plugin for Obsidian
 
@@ -58,7 +58,7 @@ English | [简体中文](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/do
 
 <p align="center">
   <a href="https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-01-before-after.webp">
-    <img src="docs/assets/readme/readme-01-before-after.webp" alt="The note on the left, the page ingest generated from it on the right — properties, description and related concepts" width="860" />
+    <img src="https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-01-before-after.webp" alt="The note on the left, the page ingest generated from it on the right — properties, description and related concepts" width="860" />
   </a>
   <br/>
   <em><b>Left:</b> your untouched original note. <b>Right:</b> the interlinked wiki page generated from it — properties, aliases, description, and related concepts.</em>
@@ -125,7 +125,7 @@ your-vault/
 
 1. **Install.** Obsidian → Settings → Community plugins → Browse → search **"Karpathy LLM Wiki"** → Install → Enable. Or visit the [Community Plugin page](https://community.obsidian.md/plugins/karpathywiki) and click **Add to Obsidian**.
 
-   [![Karpathy LLM Wiki installed and enabled in Obsidian's Community plugins list](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)](docs/assets/readme/readme-02-install.webp)
+   [![Karpathy LLM Wiki installed and enabled in Obsidian's Community plugins list](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **Configure a provider.** Open Settings → Karpathy LLM Wiki → pick a provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → enter API key (not needed for local) → click **Test Connection** → **Save**.
 
@@ -141,7 +141,7 @@ your-vault/
 
    A right-docked side panel opens (Copilot-style) where you can chat with your wiki. Answers carry `[[wiki-links]]` back into your knowledge graph.
 
-   [![A Query Wiki answer in the right-docked side panel, each claim footnoted to the wiki page it came from](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)](docs/assets/readme/readme-07-query-citations.webp)
+   [![A Query Wiki answer in the right-docked side panel, each claim footnoted to the wiki page it came from](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for one-click access anytime. (`Cmd` on macOS, `Ctrl` on Windows/Linux.)
 
@@ -159,7 +159,7 @@ That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for 
 | ⏹ **Cancel** | `Cmd+P` / `Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary. |
 | 📊 **Ingestion history** | `Cmd+P` / `Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, and maintenance runs. |
 
-[![Every Karpathy LLM Wiki command, grouped under one prefix in Obsidian's command palette](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)](docs/assets/readme/readme-03-commands.webp)
+[![Every Karpathy LLM Wiki command, grouped under one prefix in Obsidian's command palette](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | Before | After |
 | --- | --- |
@@ -179,7 +179,7 @@ That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for 
 - 🧩 **Smart merge & contradiction state** — duplicates merge while preserving aliases; contradictions are flagged with source attribution; `reviewed: true` pages are protected from overwrite.
 - 🎨 **One tag vocabulary, yours** — the tags a page may carry come from your notes' nested tags, the tags already on wiki pages, and the Custom list in Settings → Wiki → Tag Vocabulary. Prompt, write gate, lint, and retag all read that one list, so what the model is offered is what lands on disk; a value outside it is dropped, never written. Small models still drift (about one run in ten returns the model's own taxonomy) — the gate catches it and Lint reports the page. Design anchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![A generated concept page: the vocabulary tag it was written with, its aliases AF and AFib, its definition and the pages related to it](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)](docs/assets/readme/readme-04-entity-page.webp)
+[![A generated concept page: the vocabulary tag it was written with, its aliases AF and AFib, its definition and the pages related to it](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Document / PDF / Image ingest
 
@@ -227,7 +227,7 @@ Six on-ramps, switchable per ingest:
 - ⚡ **Smart Fix All** — one-click causal-order repair: fill aliases → merge duplicates → fix dead links → link orphans → expand empty pages, with a per-phase report.
 - 📊 **Operation history panel** — searchable, filterable UI for past ingestions, lint reports, and maintenance runs.
 
-[![Wiki lint report — the status line, the dead links it found, and the Smart fix all button that repairs them in one pass](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)](docs/assets/readme/readme-08-lint-report.webp)
+[![Wiki lint report — the status line, the dead links it found, and the Smart fix all button that repairs them in one pass](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Gates that run before a call is paid for & settings that shape a run</strong></summary>
@@ -269,7 +269,7 @@ Most of what the plugin does is decided for you. These eight settings change tha
 - 📚 **14 wiki-output languages** — same set; pick in Settings → Wiki Configuration, plus a Custom input option for ad-hoc prompts.
 - **All UI strings translated per locale** — every label, modal, and notice. Adding another language is contributor-driven (PR #159 pattern).
 
-[![Interface language and wiki output language are two separate settings, so a Chinese wiki can run behind an English interface](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)](docs/assets/readme/readme-06-language-settings.webp)
+[![Interface language and wiki output language are two separate settings, so a Chinese wiki can run behind an English interface](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ The plugin composes with the rest of your Obsidian stack — each tool below plu
 - 📄 **[MinerU multi-format backend](https://mineru.net/apiManage/docs)** — what used to be a separate CLI/UI step is a built-in plugin switch; see [Document / PDF / Image ingest](#-document--pdf--image-ingest). The [MinerU online service](https://mineru.net/OpenSourceTools/Extractor) and [self-hosted MinerU](https://github.com/opendatalab/mineru) are also supported.
 - 🕸️ **Obsidian Graph View** — open the native graph on any wiki page; every `[[wiki-link]]` becomes a node, every back-link an edge. Built in, zero extra bundle size.
 
-  [![Obsidian's native Graph View on a generated wiki — source, entity and concept pages as one connected graph](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)](docs/assets/readme/readme-05-graph-view.webp)
+  [![Obsidian's native Graph View on a generated wiki — source, entity and concept pages as one connected graph](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — official browser extension. Save web pages (articles, blog posts, Reddit threads, Hacker News, research papers, YouTube transcripts) into any folder of your vault, then run **Ingest from folder** to batch-extract entities and concepts.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — query the wiki like a database with DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) or JS API. The plugin writes standard frontmatter (`tags:`, `type:`, `aliases:`) on every page.
