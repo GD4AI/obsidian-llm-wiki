@@ -1,26 +1,26 @@
 <!--
-SEO metadata (not user-visible, parsed by crawlers / LLMs) — 简体中文本地化版本：
+SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - name: karpathy-llm-wiki-plugin-for-obsidian
-- type: 软件 / Obsidian 社区插件 / 知识库生成器 / RAG 替代方案
+- type: software / Obsidian community plugin / knowledge-base generator / RAG alternative
 - license: Apache-2.0
 - language: TypeScript
-- runtime: Obsidian >= 1.11.4 (桌面端 + 移动端)
-- dependencies: 零运行时依赖（Vercel AI SDK v7 已打包）
+- runtime: Obsidian >= 1.11.4 (desktop + mobile)
+- dependencies: zero runtime dependencies (Vercel AI SDK v7 bundled)
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md（14 种语言）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0（MINOR — 流式摄入、被记住的输出上限，以及更小的包体）
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
-- alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki 插件、基于图谱的 RAG、无嵌入 RAG、Personalized PageRank 检索、Obsidian 第二大脑
-- search-intents: "Obsidian 无嵌入 RAG", "Obsidian wiki 插件", "Personalized PageRank Obsidian", "基于图谱的笔记检索", "Karpathy LLM Wiki 实现", "Obsidian 知识库自动生成", "Obsidian 图谱视图 + AI", "Obsidian 第二大脑插件", "Obsidian 笔记链接图 AI", "Obsidian 14 语言插件", "Obsidian 15+ LLM 提供商插件", "无向量数据库 RAG", "Obsidian PDF 摄入 AI", "Obsidian Codex OAuth", "Obsidian Bedrock 插件", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 导入", "Obsidian IAM 凭据"
-- features: 基于图谱的检索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 级种子选择级联, Tier 1/Tier 2 重复检测, 14 语言界面 + 14 语言 Wiki 输出（独立设置）, 15+ LLM 提供商（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-兼容, Codex OAuth）,MinerU 多格式导入（PDF + 图像 + Office）, PDF 摄入（仅缓存、OCR 路径）, Lint 健康扫描, 一键修复所有问题, 源页原句引用, 摄入候选门, 按步骤任务策略 UI, Obsidian 图谱视图集成, 零嵌入零向量数据库架构, 本地优先模式
-- direct-competitors: nashsu/llm_wiki（Tauri 桌面应用）, SamurAIGPT/llm-wiki-agent（Claude Code / Codex / OpenCode / Gemini CLI 技能）, atomicstrata/llm-wiki-compiler（TypeScript CLI，分块检索）
-- retrieval-benchmark: PPR @5 = 27.1% vs 纯 kNN 24.1%（项目自有 vault 语料，不是公开基准集）
+- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -157,13 +157,13 @@ your-vault/
 | ⚡ **一键修复所有问题** | 在 Lint 弹窗内——按因果关系顺序一键修复，附各阶段报告。 |
 | 📋 **重新生成索引** | `Cmd+P` / `Ctrl+P` → “重新生成索引”——用当前页面与别名重建 `wiki/index.md`。 |
 | ⏹ **取消** | `Cmd+P` / `Ctrl+P` → “取消当前提取”，或点状态栏——在下一个批次边界干净停下。 |
-| 📊 **摄入历史** | `Cmd+P` / `Ctrl+P` → “查看摄入历史”——可搜索的界面，回看摄入、Lint 报告与维护运行。 |
+| 📊 **操作历史** | `Cmd+P` / `Ctrl+P` → “查看摄入历史”——可搜索的界面，回看摄入、Lint 报告与维护运行。 |
 
 [![Obsidian 命令面板里，Karpathy LLM Wiki 的每条命令都归在同一个前缀下](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
 
 | 之前 | 之后 |
 | --- | --- |
-| `notes/machine-learning.md`（一个平铺的文件） | `wiki/concepts/supervised-learning.md`，带 `[[双向链接]]`、别名、来源归属，以及 `wiki/index.md` 里的一条索引 |
+| `notes/machine-learning.md`（一个平铺的文件） | `wiki/concepts/supervised-learning.md`，带 `[[bidirectional links]]`、别名、来源归属，以及 `wiki/index.md` 里的一条索引 |
 
 📖 逐步教程在 [GitHub Discussions → 指南](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides)。觉得有用？[给仓库点个 Star](https://github.com/GD4AI/obsidian-llm-wiki)，跟进后续发布。
 
@@ -177,7 +177,7 @@ your-vault/
 - 🏷️ **强制别名** —— 每个页面至少带一个别名（译名、缩写、变体），跨语言重复检测才成立。
 - 🔄 **分级重复检测** —— Tier 1（直接名称匹配：跨语言、缩写、高相似度标题）一律验证；Tier 2（共享链接、中等相似度）填满剩余的 token 预算。
 - 🧩 **智能合并与矛盾状态** —— 重复页合并时保留别名；矛盾被标记并注明来源；`reviewed: true` 的页面受保护，不会被覆盖。
-- 🎨 **一套标签词汇表，由你掌握** —— 一个页面能带的标签，来自你笔记里的嵌套标签、wiki 页面已有的标签，以及 设置 → Wiki 配置 → 标签（Tags)词汇表配置 里的自定义 (用户定义) 列表。提示词、写入闸门、Lint 与 retag 读的都是这一份列表，所以模型拿到的就是最终会落盘的内容；列表之外的值被丢弃，绝不写入。小模型仍会漂移（大约十次运行有一次返回模型自己的分类法）——闸门会拦下，Lint 会报告该页面。设计锚点见 [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
+- 🎨 **一套标签词汇表，由你掌握** —— 一个页面能带的标签，来自你笔记里的嵌套标签、wiki 页面已有的标签，以及 设置 → Wiki 配置 → 标签（Tags)词汇表配置 里的自定义 (用户定义) 列表。提示词、写入闸门、Lint 与重新打标签读的都是这一份列表，所以模型拿到的就是最终会落盘的内容；列表之外的值被丢弃，绝不写入。小模型仍会漂移（大约十次运行有一次返回模型自己的分类法）——闸门会拦下，Lint 会报告该页面。设计锚点见 [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
 [![一个生成的概念页：写作时用的词汇表标签、它的别名 AF 与 AFib、它的定义，以及与之相关的页面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -216,14 +216,14 @@ your-vault/
 
 - 🧭 **5 级 PPR 级联** —— `[[wiki-link]]` 图上的 Personalized PageRank 给出图感知的多跳上下文（见 [检索工作原理](#-检索工作原理)）。
 - 🔤 **正文感知的词法打分** —— 快速路径用 BM25F 对标题、别名、摘要和正文打分，页面上最长的那段文字也能进入打分器。这是本项目做过的最大的单次召回改进。
-- 🧩 **相关页塑形** —— 一个 hub 页不再能把其他所有页面都拽向自己。相关列表每次写入时按存活的名称重算、排序、封顶。
+- 🧩 **相关页塑形** —— 一个枢纽页不再能把其他所有页面都拽向自己。相关列表每次写入时按存活的名称重算、排序、封顶。
 - 📏 **16,000 token 的答案预算** —— 预算用尽时管线会明说，不再静默停下。上下文在拼装前先按页面预算装填，于是 20 个页面是按计划进提示词的，不是靠运气。
 - 🔖 **引用按学术格式排** —— 每条结论都脚注到它出自的 Wiki 页面。输入框随内容长高，*清空历史* 真的会清掉记录。
 - 🪟 **右侧停靠面板** —— 查询 Wiki 开在 Copilot 风格的右侧叶面板，不再用居中弹窗。
 
 **维护与修复**
 
-- 🔍 **Lint 健康扫描** —— 一条命令查出重复页、断链、空洞页、孤立页、缺失别名和矛盾。它还会列出周边关系已经结晶化的 hub 页——一个枢纽顶替了内容再也连不出的那些连接。
+- 🔍 **Lint 健康扫描** —— 一条命令查出重复页、断链、空洞页、孤立页、缺失别名和矛盾。它还会列出周边关系已经结晶化的枢纽页——一个枢纽顶替了内容再也连不出的那些连接。
 - ⚡ **一键修复所有问题** —— 按因果关系顺序的一次性修复：补别名 → 合并重复 → 修断链 → 连孤立页 → 扩空洞页，附各阶段报告。
 - 📊 **操作历史面板** —— 可搜索、可筛选的界面，回看过去的摄入、Lint 报告与维护运行。
 
@@ -286,7 +286,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** —— 用 DQL（`LIST FROM "wiki/entities" WHERE contains(tags, "person")`）或 JS API 把 Wiki 当数据库查。插件在每个页面都写标准 frontmatter（`tags:`、`type:`、`aliases:`）。
 - 🌿 **Git** —— 用任意 Git 客户端给 vault 做版本管理。因为插件从不重写你的源文件，只在 `wiki/` 下新建页面，所以 `git diff` 能把你的编辑和 LLM 生成的内容干净分开。
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** —— 靠 Marp frontmatter（`marp: true`）把任意 Wiki 页面变成幻灯片。
-- 🖼️ **Canvas** —— 把 Wiki 卡片拖到 Obsidian 原生无限画布上，拼出学习指南、思维导图或研究综述。
+- 🖼️ **Canvas** —— 把 Wiki 卡片拖到 Obsidian 原生无限画布上，用 `[[wiki-links]]` 拼出学习指南、思维导图或研究综述。
 
 ---
 
@@ -381,7 +381,7 @@ flowchart LR
 
 ### 这个插件到底做什么？
 
-选一篇笔记、一个文件夹或一组文件：LLM 抽出实体与概念，在 `wiki/` 下写出一套用 `[[双向链接]]` 互联的 Wiki。提一个问题，答案来自那些页面，并带引用。你的原始笔记永不被修改。
+选一篇笔记、一个文件夹或一组文件：LLM 抽出实体与概念，在 `wiki/` 下写出一套用 `[[bidirectional links]]` 互联的 Wiki。提一个问题，答案来自那些页面，并带引用。你的原始笔记永不被修改。
 
 ### 我现有的 Wiki 跨版本升级安全吗？
 

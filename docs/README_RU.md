@@ -14,13 +14,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — потоковая загрузка, запомненный лимит вывода и меньший пакет)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix всех, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
-- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (корпус собственного хранилища проекта, а не публичный бенчмарк-набор)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -163,7 +163,7 @@ your-vault/
 
 | До | После |
 | --- | --- |
-| `notes/machine-learning.md` (плоский файл) | `wiki/concepts/supervised-learning.md` с `[[двунаправленными ссылками]]`, псевдонимами, указанием источника и записью в `wiki/index.md` |
+| `notes/machine-learning.md` (плоский файл) | `wiki/concepts/supervised-learning.md` с `[[bidirectional links]]`, псевдонимами, указанием источника и записью в `wiki/index.md` |
 
 📖 Пошаговые руководства — в [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Полезно? [Поставьте звезду репозиторию](https://github.com/GD4AI/obsidian-llm-wiki), чтобы следить за релизами.
 
@@ -216,7 +216,7 @@ your-vault/
 
 - 🧭 **Каскад PPR из 5 стадий** — Personalized PageRank по `[[wiki-link]]` даёт многошаговый контекст с учётом графа (см. [Как работает поиск](#-как-работает-поиск)).
 - 🔤 **Лексическое оценивание с учётом тела страницы** — быстрый путь оценивает по BM25F заголовок, псевдонимы, краткое описание и текст страницы, поэтому самый длинный текст доходит до оценщика. Это самое крупное улучшение полноты за историю проекта.
-- 🧩 **Формирование списков Related** — одна страница-хаб больше не тянет все остальные к себе. Списки Related пересчитываются при каждой записи из уцелевших, отсортированных и ограниченных по длине названий.
+- 🧩 **Формирование списков связанных страниц** — одна страница-хаб больше не тянет все остальные к себе. Списки связанных страниц пересчитываются при каждой записи из уцелевших, отсортированных и ограниченных по длине названий.
 - 📏 **Бюджет ответа — 16 000 токенов** — конвейер прямо говорит, когда бюджет исчерпан, вместо того чтобы молча остановиться. Контекст подгоняется под бюджет страниц до сборки, поэтому 20 страниц попадают в промпт по плану, а не по удаче.
 - 🔖 **Ссылки в академическом оформлении** — каждое утверждение получает сноску на страницы Wiki, из которых оно взято. Поле ввода растёт вместе с содержимым, а очистка истории действительно очищает запись.
 - 🪟 **Боковая панель справа** — «Запрос к Wiki» открывается в закреплённой справа панели в стиле Copilot, а не в центрированном модальном окне.
@@ -230,14 +230,14 @@ your-vault/
 [![Отчёт lint по Wiki: строка состояния, найденные мёртвые ссылки и кнопка Smart fix all, которая исправляет их за один проход](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>Шлюзы, которые срабатывают до оплаченного вызова, и настройки, определяющие прогон</strong></summary>
+<summary>⚙️ <strong>Шлюзы, которые срабатывают до того, как провайдер возьмёт плату за вызов, и настройки, определяющие прогон</strong></summary>
 <br/>
 
 **Шлюзы до вызова и переключатели отката**
 
 - 🛡️ **Шлюз перед импортом** — пустые заметки, заметки из одних пробелов и заметки с одним frontmatter отклоняются до любого вызова LLM; дедупликация по хешу содержимого ловит одинаковые файлы по разным путям.
-- 🚦 **Шлюз кандидатов импорта** — включается по желанию (`skipMentionOnlyCandidates`, по умолчанию выключен). Кандидат, названный только в скобках, в перечислении или в коротком пункте списка, отсекается до того, как он потратит генерацию и вызов дедупликации. Шлюз работает только для языков с измеренным профилем; межъязыковые заметки не шлюзуются никогда молча.
-- 🚧 **Исход «оставить как есть» для мёртвых ссылок** — Настройки → Показать расширенные настройки → **Создавать страницы-заглушки для неразрешённых ссылок** (включено по умолчанию). Выключите — и мёртвая ссылка остаётся видимой в каждом отчёте lint, пока её не определит реальный источник, вместо того чтобы стать пустой страницей-заглушкой.
+- 🚦 **Шлюз кандидатов импорта** — включается по желанию (`skipMentionOnlyCandidates`, по умолчанию выключен). Кандидат, названный только в скобках, в перечислении или в коротком пункте списка, отсекается до того, как он потратит генерацию и вызов дедупликации. Шлюз работает только для языков с измеренным профилем; для межъязыковых заметок шлюз никогда не применяется молча.
+- 🚧 **Исправление мёртвых ссылок: вариант «оставить как есть»** — Настройки → Показать расширенные настройки → **Создавать страницы-заглушки для неразрешённых ссылок** (включено по умолчанию). Выключите — и мёртвая ссылка остаётся видимой в каждом отчёте lint, пока её не определит реальный источник, вместо того чтобы стать пустой страницей-заглушкой.
 - 🔁 **Переключатель прежнего оценщика запросов** — Настройки → Показать расширенные настройки → **Старый ранжирующий оценщик запросов** запускает прежнее вручную настроенное линейное ранжирование вместо стандартного оценщика BM25F.
 
 **Восемь настроек, которые определяют прогон**
@@ -259,7 +259,7 @@ your-vault/
 
 ### 🦙 Локально-ориентированный
 
-- 🖥️ **Ollama, LM Studio, OpenRouter, свой эндпоинт** — из коробки. Локальные модели хорошо работают для запросов (у них меньше контекстные окна); импорт в хранилище на 2 000 страниц обычно выигрывает от облачной модели с длинным контекстом.
+- 🖥️ **Ollama, LM Studio, OpenRouter, свой эндпоинт** — из коробки. Локальные модели хорошо работают для запросов (у них меньшие контекстные окна); импорт в хранилище на 2 000 страниц обычно выигрывает от облачной модели с длинным контекстом.
 - 📄 **Полностью локальный OCR для PDF на Apple Silicon** — см. [Импорт документов / PDF / изображений](#-импорт-документов--pdf--изображений) выше.
 - 🔐 **ChatGPT Plan (Codex OAuth)** — loopback на десктопе или device-code на мобильном; учётные данные живут только в Obsidian SecretStorage.
 
@@ -286,7 +286,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — запрашивайте Wiki как базу данных через DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) или JS API. Плагин пишет стандартный frontmatter (`tags:`, `type:`, `aliases:`) на каждой странице.
 - 🌿 **Git** — версионируйте хранилище любым Git-клиентом. Так как плагин никогда не переписывает ваши исходные файлы и пишет только в `wiki/`, `git diff` чисто отделяет ваши правки от сгенерированного LLM содержимого.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — превращайте любую страницу Wiki в слайды через frontmatter Marp (`marp: true`).
-- 🖼️ **Canvas** — перетаскивайте карточки Wiki на нативный бесконечный холст Obsidian, чтобы собрать учебные материалы, интеллект-карты или обзоры исследований.
+- 🖼️ **Canvas** — перетаскивайте карточки Wiki на нативный бесконечный холст Obsidian, чтобы собрать учебные материалы, интеллект-карты или обзоры исследований из `[[wiki-links]]`.
 
 ---
 
@@ -338,7 +338,7 @@ flowchart LR
 
 Пятнадцать именованных провайдеров плюс любой OpenAI- или Anthropic-совместимый эндпоинт. Полная таблица выбора по уровням — облако, локальные модели, OCR, квантизация, железо — живёт в **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**, проверена по [models.dev](https://models.dev/).
 
-- **Фронтирные облака** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. Нативный PDF у Anthropic, OpenAI и Gemini.
+- **Топовые облачные провайдеры** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. Нативный PDF у Anthropic, OpenAI и Gemini.
 - **Бюджетные и open-weight** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
 - **Корпоративные** — AWS Bedrock (варианты Anthropic и OpenAI, с API-ключом, SSO или IAM) и ChatGPT Plan через Codex OAuth.
 - **Локальные и шлюзы** — Ollama, LM Studio, OpenRouter, Anthropic-совместимые шлюзы.
@@ -381,7 +381,7 @@ flowchart LR
 
 ### Что плагин на самом деле делает?
 
-Выберите заметку, папку или набор файлов: LLM извлекает сущности и концепции и пишет связанную Wiki с `[[двунаправленными ссылками]]` в папке `wiki/`. Задайте вопрос — ответ придёт с этих страниц, со ссылками на них. Ваши исходные заметки не меняются никогда.
+Выберите заметку, папку или набор файлов: LLM извлекает сущности и концепции и пишет связанную Wiki с `[[bidirectional links]]` в папке `wiki/`. Задайте вопрос — ответ придёт с этих страниц, со ссылками на них. Ваши исходные заметки не меняются никогда.
 
 ### Безопасна ли моя существующая Wiki при обновлениях?
 

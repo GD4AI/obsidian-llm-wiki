@@ -1,5 +1,5 @@
 <!--
-SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LLM이 읽습니다):
+SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - name: karpathy-llm-wiki-plugin-for-obsidian
 - type: software / Obsidian community plugin / knowledge-base generator / RAG alternative
 - license: Apache-2.0
@@ -14,16 +14,15 @@ SEO 메타데이터 (사용자 화면에는 보이지 않으며, 크롤러와 LL
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — 스트리밍 수집, 기억되는 출력 한도, 그리고 더 작은 번들)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
-- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (프로젝트 볼트 코퍼스 기준이며, 공개 벤치마크 세트가 아닙니다)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
-- readme-locale: ko
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
 -->
 
@@ -158,13 +157,13 @@ your-vault/
 | ⚡ **Smart Fix All** | Lint 모달 안에서 — 인과 순서대로 한 번에 수리하고, 단계별 보고서를 남깁니다. |
 | 📋 **인덱스 재생성** | `Cmd+P` / `Ctrl+P` → "인덱스 재생성" — 현재 페이지와 alias로 `wiki/index.md`를 다시 만듭니다. |
 | ⏹ **작업 취소** | `Cmd+P` / `Ctrl+P` → "현재 수집 취소" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 멈춥니다. |
-| 📊 **수집 기록** | `Cmd+P` / `Ctrl+P` → "수집 이력 보기" — 지난 수집, 린트 보고서, 유지보수 실행을 검색할 수 있는 화면. |
+| 📊 **작업 기록** | `Cmd+P` / `Ctrl+P` → "수집 이력 보기" — 지난 수집, 린트 보고서, 유지보수 실행을 검색할 수 있는 화면. |
 
 [![Obsidian 명령 팔레트에서 하나의 접두사 아래 묶여 있는 Karpathy LLM Wiki의 모든 명령](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
 
 | 전 | 후 |
 | --- | --- |
-| `notes/machine-learning.md` (평범한 파일 하나) | `wiki/concepts/supervised-learning.md` — `[[양방향 링크]]`, alias, 출처 표기, 그리고 `wiki/index.md`의 항목까지 |
+| `notes/machine-learning.md` (평범한 파일 하나) | `wiki/concepts/supervised-learning.md` — `[[bidirectional links]]`, alias, 출처 표기, 그리고 `wiki/index.md`의 항목까지 |
 
 📖 자세한 사용법은 [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides)에 있습니다. 도움이 되셨다면 [저장소에 Star](https://github.com/GD4AI/obsidian-llm-wiki)를 눌러 릴리스를 따라오세요.
 
@@ -217,7 +216,7 @@ your-vault/
 
 - 🧭 **5-단계 PPR 캐스케이드** — `[[wiki-link]]` 위의 Personalized PageRank가 그래프를 아는 멀티홉 문맥을 만듭니다([검색 작동 방식](#-검색-작동-방식) 참고).
 - 🔤 **본문까지 읽는 어휘 점수화** — 빠른 경로가 제목, alias, 요약, 본문을 BM25F로 채점합니다. 페이지에서 가장 긴 텍스트가 채점기까지 도달합니다. 이 프로젝트가 재현율에서 이룬 가장 큰 개선입니다.
-- 🧩 **Related 목록의 정형** — 이제 hub 페이지 하나가 다른 모든 페이지를 자기 쪽으로 끌어당기지 못합니다. Related 목록은 쓰기가 일어날 때마다 살아남은 이름들로 다시 계산되고, 순위가 매겨지고, 상한이 적용됩니다.
+- 🧩 **관련 페이지 구성** — 이제 hub 페이지 하나가 다른 모든 페이지를 자기 쪽으로 끌어당기지 못합니다. 관련 목록은 쓰기가 일어날 때마다 살아남은 이름들로 다시 계산되고, 순위가 매겨지고, 상한이 적용됩니다.
 - 📏 **16,000 토큰 답변 예산** — 예산이 다 쓰이면 파이프라인이 조용히 멈추지 않고 분명히 알려 줍니다. 문맥은 조립 전에 페이지 예산에 맞춰지므로 20 페이지가 운이 아니라 계획으로 프롬프트에 들어갑니다.
 - 🔖 **학술 형식 인용** — 모든 주장이 근거가 된 위키 페이지에 각주로 붙습니다. 작성창은 내용에 따라 늘어나고, 기록을 지우면 기록도 지워집니다.
 - 🪟 **우측 도킹 사이드 패널** — 위키 질의는 가운데 모달이 아니라 Copilot 스타일의 우측 사이드바 리프에서 열립니다.
@@ -226,7 +225,7 @@ your-vault/
 
 - 🔍 **Lint 상태 검사** — 명령 하나로 중복, 데드 링크, 빈 페이지, 고아, 누락된 alias, 모순을 잡습니다. 주변부가 결정화된 hub 페이지, 즉 더 이상 내용으로 만들 수 없는 연결을 대신 떠받치고 있는 hub도 함께 보고합니다.
 - ⚡ **Smart Fix All** — 한 번의 클릭으로 인과 순서대로 수리합니다: alias 채우기 → 중복 병합 → 데드 링크 수정 → 고아 연결 → 빈 페이지 확장, 단계별 보고서 포함.
-- 📊 **작업 이력 패널** — 지난 수집, 린트 보고서, 유지보수 실행을 검색하고 걸러 볼 수 있는 화면입니다.
+- 📊 **작업 기록** — 지난 수집, 린트 보고서, 유지보수 실행을 검색하고 걸러 볼 수 있는 화면입니다.
 
 [![위키 린트 보고서 — 상태 줄, 발견된 데드 링크, 그리고 한 번에 고치는 Smart fix all 버튼이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
@@ -288,7 +287,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — DQL(`LIST FROM "wiki/entities" WHERE contains(tags, "person")`)이나 JS API로 위키를 데이터베이스처럼 질의합니다. 플러그인이 모든 페이지에 표준 frontmatter(`tags:`, `type:`, `aliases:`)를 씁니다.
 - 🌿 **Git** — 아무 Git 클라이언트로 볼트를 버전 관리하세요. 플러그인은 원본 파일을 다시 쓰지 않고 `wiki/` 아래에만 쓰기 때문에, `git diff`가 여러분의 편집과 LLM이 만든 내용을 깔끔하게 나눠 줍니다.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — Marp frontmatter(`marp: true`)로 어느 위키 페이지든 슬라이드로 만듭니다.
-- 🖼️ **Canvas** — 위키 카드를 Obsidian 네이티브 무한 캔버스로 끌어다 놓으면 학습 가이드, 마인드맵, 연구 개요를 조립할 수 있습니다.
+- 🖼️ **Canvas** — 위키 카드를 Obsidian 네이티브 무한 캔버스로 끌어다 놓으면 학습 가이드, 마인드맵, 연구 개요를 `[[wiki-links]]`로 조립할 수 있습니다.
 
 ---
 
@@ -383,7 +382,7 @@ Monte Carlo PPR(Fogaras 2005)을 씁니다 — 무작위 워크 3,000 회 × 각
 
 ### 이 플러그인은 실제로 무엇을 하나요?
 
-노트 하나, 폴더 하나, 혹은 파일 선택을 고르면 LLM이 엔티티와 개념을 뽑아 `wiki/` 아래에 `[[양방향 링크]]`로 이어진 위키를 씁니다. 질문하면 그 페이지들에서 답이 나오고, 답에는 인용이 붙습니다. 원본 노트는 절대 고치지 않습니다.
+노트 하나, 폴더 하나, 혹은 파일 선택을 고르면 LLM이 엔티티와 개념을 뽑아 `wiki/` 아래에 `[[bidirectional links]]`로 이어진 위키를 씁니다. 질문하면 그 페이지들에서 답이 나오고, 답에는 인용이 붙습니다. 원본 노트는 절대 고치지 않습니다.
 
 ### 업그레이드해도 기존 위키가 안전한가요?
 

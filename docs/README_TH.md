@@ -14,16 +14,16 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — การนำเข้าแบบสตรีม, เพดานเอาต์พุตที่จดจำไว้ และแพ็กเกจที่เล็กลง)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
-- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_TH.md
+- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
 -->
 
 <div align="center">
@@ -139,7 +139,7 @@ your-vault/
    - ⌨️ **แป้นพิมพ์:** `Cmd+P` / `Ctrl+P` → **"ถามวิกิ"**
    - 🖱️ **ไอคอนบนริบบอน:** กดไอคอนกรอบข้อความบนริบบอนด้านซ้าย
 
-   แผงด้านขวาจะเปิดขึ้นเหมือนผู้ช่วยข้างเคียง ให้คุณคุยกับวิกิได้ คำตอบมี `[[wiki-link]]` พากลับไปยังกราฟความรู้ของคุณ
+   แผงด้านขวาจะเปิดขึ้นเหมือนผู้ช่วยข้างเคียง ให้คุณคุยกับวิกิได้ คำตอบมี `[[wiki-links]]` พากลับไปยังกราฟความรู้ของคุณ
 
    [![คำตอบของ Query Wiki ในแผงด้านขวา ทุกข้อความอ้างอิงถึงหน้าวิกิที่มา](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
 
@@ -152,7 +152,7 @@ your-vault/
 | 📥 **นำเข้าแหล่งข้อมูลเดียว** | `Cmd+P` / `Ctrl+P` → "นำเข้าแหล่งข้อมูลเดียว" — เลือกไฟล์ Markdown หรือ PDF แล้วได้หน้าของเอนทิตี แนวคิด และแหล่งข้อมูล นอกจากนี้: 🖱️ ไอคอนสติกเกอร์บนริบบอนสำหรับโน้ตที่เปิดอยู่ |
 | 📂 **นำเข้าจากโฟลเดอร์** | `Cmd+P` / `Ctrl+P` → "นำเข้าจากโฟลเดอร์" — นำเข้าทุกโน้ตในโฟลเดอร์ พร้อมข้ามไฟล์ที่นำเข้าแล้วอย่างชาญฉลาด |
 | 📑 **นำเข้าหลายไฟล์** | `Cmd+P` / `Ctrl+P` → "นำเข้าหลายไฟล์" — เลือกบางส่วนจากต้นไม้สองแผง (มีคิวและยกเลิกทีละไฟล์) |
-| 🔍 **ถามวิกิ** | `Cmd+P` / `Ctrl+P` → "ถามวิกิ" — คุยกับวิกิในแผงด้านขวา คำตอบมี `[[wiki-link]]` นอกจากนี้: 🖱️ ไอคอนกรอบข้อความบนริบบอน |
+| 🔍 **ถามวิกิ** | `Cmd+P` / `Ctrl+P` → "ถามวิกิ" — คุยกับวิกิในแผงด้านขวา คำตอบมี `[[wiki-links]]` นอกจากนี้: 🖱️ ไอคอนกรอบข้อความบนริบบอน |
 | 🛠️ **ตรวจวิกิ** | `Cmd+P` / `Ctrl+P` → "ตรวจวิกิ" — ตรวจทั้งระบบ: หน้าซ้ำ ลิงก์ตาย หน้าว่าง หน้าที่ไม่มีใครลิงก์ถึง alias ที่ขาด และข้อขัดแย้ง |
 | ⚡ **ซ่อมทั้งหมดอัตโนมัติ** | ในหน้าต่าง lint — ซ่อมทั้งหมดในคลิกเดียวตามลำดับเหตุและผล พร้อมรายงานแยกแต่ละขั้น |
 | 📋 **สร้างดัชนีใหม่** | `Cmd+P` / `Ctrl+P` → "สร้างดัชนีใหม่" — สร้าง `wiki/index.md` ใหม่จากหน้าและ alias ที่มีอยู่ |
@@ -163,7 +163,7 @@ your-vault/
 
 | ก่อน | หลัง |
 | --- | --- |
-| `notes/machine-learning.md` (ไฟล์แบนไฟล์เดียว) | `wiki/concepts/supervised-learning.md` พร้อม `[[ลิงก์สองทาง]]` alias ที่มา และรายการใน `wiki/index.md` |
+| `notes/machine-learning.md` (ไฟล์แบนไฟล์เดียว) | `wiki/concepts/supervised-learning.md` พร้อม `[[bidirectional links]]` alias ที่มา และรายการใน `wiki/index.md` |
 
 📖 คำอธิบายทีละขั้นอยู่ใน[ดิสคัสชัน GitHub → คู่มือ](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides) เห็นว่ามีประโยชน์ไหม [ให้ดาวกับรีโป](https://github.com/GD4AI/obsidian-llm-wiki) เพื่อติดตามรุ่นใหม่
 
@@ -189,7 +189,7 @@ your-vault/
 | --- | --- | --- |
 | **1. 🧾 backend MinerU ในตัว** | PDF, รูปภาพ (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | การตั้งค่า → การตั้งค่าวิกิ → ตัวแปลงเป็น Markdown → **MinerU ผ่านอินเทอร์เน็ต** ใช้[ตัวแยกวิเคราะห์แบบละเอียดของ MinerU](https://mineru.net/apiManage/docs) เหมาะกับบทความที่สแกนและไฟล์ Office ที่รูปแบบสำคัญ |
 | **2. ☁️ ผู้ให้บริการบนคลาวด์ที่อ่าน PDF ได้** | PDF | Anthropic, OpenAI, Google Gemini และ AWS Bedrock (ทั้งแบบ Anthropic และ OpenAI) อ่าน PDF เป็นส่วนของไฟล์ได้ทันที ไม่ต้องตั้งค่าเพิ่มนอกจากเลือกผู้ให้บริการ |
-| **3. 🖥️ OCR ในเครื่องบน Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) รวม Microsoft Markitdown และ OCR ภาพในเครื่อง ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)) ชี้ปลั๊กอินไปที่ oMLX ในฐานะผู้ให้บริการที่รองรับ OpenAI แล้วเปิด **บังคับให้รองรับ PDF** PDF ไม่เคยออกจากเครื่องคุณ |
+| **3. 🖥️ OCR ในเครื่องบน Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) รวม Microsoft Markitdown และ OCR ภาพในเครื่อง ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)) ชี้ปลั๊กอินไปที่ oMLX ในฐานะผู้ให้บริการแบบกำหนดเองที่ใช้โปรโตคอลของ OpenAI (Custom OpenAI-Compatible) แล้วเปิด **บังคับให้รองรับ PDF** PDF ไม่เคยออกจากเครื่องคุณ |
 | **4. 🛠️ เครื่องมือภายนอก (หน้าเว็บ MinerU)** | PDF, Office, รูปภาพ | ใช้[บริการ MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) เมื่ออยากได้หน้าเว็บเร็ว ๆ โดยไม่ต้องตั้งโทเคน API วางไฟล์ `.md` ที่ดาวน์โหลดไว้ใน vault แล้วนำเข้าเป็นโน้ต Markdown ปกติ |
 | **5. 🔌 บังคับให้รองรับ PDF** | PDF | สำหรับปลายทางอื่นที่รองรับ OpenAI หรือ Anthropic และรับส่วนของไฟล์ได้ (การตั้งค่า → การตั้งค่า LLM → พารามิเตอร์ LLM ขั้นสูง) ถ้าล้มเหลวจะมีประกาศในภาษาของคุณ |
 | **6. 🖼️ รูปภาพที่ฝังใน Markdown** | `![[image.png]]` และ `![alt](image.png)` ในเครื่อง ภายใน `.md` | เปิด **วิเคราะห์ภาพในโน้ตระหว่างนำเข้า Markdown** ในการตั้งค่าขั้นสูง แต่ละรูปในเครื่องจะถูกวิเคราะห์คู่กับย่อหน้า Markdown ที่ใกล้ที่สุด |
@@ -214,7 +214,7 @@ your-vault/
 
 **การค้นหาและคำตอบ**
 
-- 🧭 **ขั้นตอน PPR 5 ขั้น** — Personalized PageRank บน `[[wiki-link]]` ให้บริบทที่เดินผ่านกราฟหลายทอด (ดู [การค้นหาทำงานอย่างไร](#-การค้นหาทำงานอย่างไร))
+- 🧭 **ขั้นตอน PPR 5 ขั้น** — Personalized PageRank บน `[[wiki-link]]` ให้บริบทหลายทอดที่คำนึงถึงกราฟ (ดู [การค้นหาทำงานอย่างไร](#-การค้นหาทำงานอย่างไร))
 - 🔤 **การให้คะแนนที่อ่านเนื้อหาด้วย** — เส้นทางเร็วให้คะแนนชื่อ alias บทสรุป และเนื้อหาจริง ด้วย BM25F ข้อความที่ยาวที่สุดในหน้าจึงไปถึงตัวให้คะแนน นี่คือการปรับปรุงความแม่นในการค้นครั้งใหญ่ที่สุดที่โปรเจกต์ทำ
 - 🧩 **การจัดรูปหน้าเกี่ยวข้อง** — หน้าฮับหน้าหนึ่งไม่อาจดึงหน้าอื่นมาหาตัวเองได้อีก รายการที่เกี่ยวข้องถูกคำนวณใหม่ทุกครั้งที่เขียน จากชื่อที่เหลืออยู่ เรียงลำดับ และจำกัดจำนวน
 - 📏 **งบคำตอบ 16,000 โทเคน** — ไปป์ไลน์บอกชัดเมื่องบหมด แทนที่จะหยุดเงียบ ๆ บริบทถูกจัดให้พอดีงบจำนวนหน้าก่อนประกอบขึ้น หน้า 20 หน้าจึงอยู่ในพรอมต์ตามแผน ไม่ใช่ตามบังเอิญ
@@ -230,14 +230,14 @@ your-vault/
 [![รายงาน lint ของวิกิ — บรรทัดสถานะ ลิงก์ตายที่พบ และปุ่มที่ซ่อมทั้งหมดในครั้งเดียว](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>ด่านที่ทำงานก่อนจ่ายเงินค่าการเรียก และการตั้งค่าที่กำหนดการทำงาน</strong></summary>
+<summary>⚙️ <strong>ด่านที่ทำงานก่อนผู้ให้บริการจะคิดเงินค่าการเรียก และการตั้งค่าที่กำหนดการทำงาน</strong></summary>
 <br/>
 
 **ด่านก่อนเรียกและตัวควบคุมสำรอง**
 
 - 🛡️ **การตรวจก่อนนำเข้า** — โน้ตว่าง โน้ตที่มีแต่ช่องว่าง และโน้ตที่มีแต่ frontmatter ถูกปฏิเสธก่อนมีการเรียกโมเดล และแฮชเนื้อหาเดียวกันจับไฟล์ที่เหมือนกันคนละที่อยู่
 - 🚦 **การตรวจผู้สมัคร** — เปิดใช้ได้ (`skipMentionOnlyCandidates` ปิดเป็นค่าเริ่มต้น) ผู้สมัครที่ชื่อปรากฏเพียงในวงเล็บ ในรายการแจงนับ หรือในข้อสั้น ๆ ของรายการ จะถูกตัดออกก่อนเสียค่าสร้างและค่าวิเคราะห์หน้าซ้ำ ใช้กับภาษาที่มีโปรไฟล์วัดแล้วเท่านั้น โน้ตต่างภาษาไม่ถูกกรองเงียบ ๆ
-- 🚧 **ปล่อยลิงก์ตายไว้ได้** — การตั้งค่า → ขั้นสูง → **สร้างหน้าเปล่าสำหรับลิงก์ที่ไม่มีปลายทาง** (เปิดไว้เป็นค่าเริ่มต้น) ถ้าปิด ลิงก์ตายจะยังเห็นในรายงาน lint ทุกครั้งจนกว่าแหล่งข้อมูลจริงจะนิยามมัน แทนที่จะกลายเป็นหน้าเปล่า
+- 🚧 **ผลลัพธ์แบบปล่อยลิงก์ตายไว้ของขั้นตอนซ่อมลิงก์ตาย** — การตั้งค่า → ขั้นสูง → **สร้างหน้าเปล่าสำหรับลิงก์ที่ไม่มีปลายทาง** (เปิดไว้เป็นค่าเริ่มต้น) ถ้าปิด ลิงก์ตายจะยังเห็นในรายงาน lint ทุกครั้งจนกว่าแหล่งข้อมูลจริงจะนิยามมัน แทนที่จะกลายเป็นหน้าเปล่า
 - 🔁 **กลับไปใช้การจัดอันดับแบบเดิม** — การตั้งค่า → ขั้นสูง → **วิธีจัดอันดับแบบเดิม** ใช้การจัดอันดับเชิงเส้นแบบปรับมือของรุ่นก่อนหน้า แทนตัวให้คะแนน BM25F ที่เป็นค่าเริ่มต้น
 
 **แปดการตั้งค่าที่กำหนดการทำงาน**
@@ -286,7 +286,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ถามวิกิเหมือนฐานข้อมูลด้วย DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) หรือ JS API ปลั๊กอินเขียน frontmatter มาตรฐาน (`tags:`, `type:`, `aliases:`) ทุกหน้า
 - 🌿 **Git** — เก็บ vault ในระบบควบคุมเวอร์ชัน (ไคลเอนต์ Git ตัวไหนก็ได้) เพราะปลั๊กอินไม่เขียนทับไฟล์ต้นฉบับของคุณและเขียนเฉพาะใต้ `wiki/` `git diff` จึงแยกงานของคุณออกจากเนื้อหาที่โมเดลสร้างได้ชัดเจน
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — เปลี่ยนหน้าวิกิใดก็ได้เป็นสไลด์ด้วย frontmatter ของ Marp (`marp: true`)
-- 🖼️ **Canvas** — ลากการ์ดวิกิลงผืนผ้าใบไม่สิ้นสุดของ Obsidian เพื่อประกอบคู่มือเรียน แผนที่ความคิด หรือภาพรวมงานวิจัย
+- 🖼️ **Canvas** — ลากการ์ดวิกิลงผืนผ้าใบไม่สิ้นสุดของ Obsidian เพื่อประกอบคู่มือเรียน แผนที่ความคิด หรือภาพรวมงานวิจัยจาก `[[wiki-links]]`
 
 ---
 
@@ -312,9 +312,9 @@ flowchart LR
 
 1. **เส้นทางคำศัพท์เร็ว** — BM25F บนชื่อเอนทิตีและแนวคิดทุกชื่อ บน alias บนบทสรุป และบนเนื้อหาจริง พร้อมค่าอิ่มตัวต่อฟิลด์และ IDF จากตารางความถี่เอกสารจริง ฟรี ทันที และเป็นประตูให้ทุกอย่างที่ตามมา
 2. **สร้างคำค้นด้วยโมเดล** — โมเดลเสนอคำข้ามภาษา 8–12 คำจากคำถามของคุณ (คำพ้อง คำย่อ และคำที่ตัวอักษรร่วมกันน้อย ในครั้งเดียว)
-3. **ค้นข้อความในเครื่อง** — คำที่เสนอทุกคำถูกเทียบซ้ำในเครื่องกับชื่อ alias และข้อความตอน ไม่มีการเรียกโมเดลเพิ่ม และช่วยเสริมความทนต่อเสียงรบกวน
+3. **ค้นข้อความในเครื่อง** — คำที่เสนอทุกคำถูกเทียบซ้ำในเครื่องกับชื่อ alias และข้อความตอน ไม่มีการเรียกโมเดลเพิ่ม และช่วยให้การค้นหาแม่นขึ้นแม้ข้อความจะมีสัญญาณรบกวน
 4. **ถอยกลับไปหาฐานความรู้ด้วยโมเดล** — เมื่อเส้นทางคำศัพท์และการค้นคำได้สัญญาณอ่อน โมเดลจะเทียบผู้สมัคร N อันดับแรกกับวิกิทั้งชุดอีกครั้งหนึ่งเพื่อให้ได้ความหมายในรอบเดียว
-5. **ขยายผ่านกราฟด้วย PPR** — Personalized PageRank (Haveliwala 2002) บนกราฟ `[[wiki-link]]` เริ่มจากชุดจุดเริ่มที่เลือก สิ่งนี้ให้บริบทที่เดินหลายทอด: *"Bill Gates"* → *"Microsoft"* → *"คู่แข่ง"* ไม่ใช่แค่ชื่อที่ตรงตัวอักษร
+5. **ขยายผ่านกราฟด้วย PPR** — Personalized PageRank (Haveliwala 2002) บนกราฟ `[[wiki-link]]` เริ่มจากชุดจุดเริ่มที่เลือก สิ่งนี้ให้บริบทหลายทอดที่คำนึงถึงกราฟ: *"Bill Gates"* → *"Microsoft"* → *"คู่แข่ง"* ไม่ใช่แค่ชื่อที่ตรงตัวอักษร
 
 ขบวนการหยุดที่ขั้นที่ให้สัญญาณพอ ไม่มีค่าใช้จ่ายคงที่ของ 5 ขั้น ไม่มีการเรียกโมเดลเมื่อเส้นทางคำศัพท์พอ และถอยกลับเชิงความหมายเฉพาะเมื่อเส้นทางคำศัพท์กับคำค้นด้วยกันยังไม่พอ
 
@@ -381,7 +381,7 @@ flowchart LR
 
 ### ปลั๊กอินนี้ทำอะไรจริง ๆ
 
-เลือกโน้ต โฟลเดอร์ หรือส่วนที่เลือก โมเดลจะสกัดเอนทิตีและแนวคิด แล้วเขียนวิกิที่เชื่อมโยงกันด้วย `[[ลิงก์สองทาง]]` ไว้ใต้ `wiki/` ถามคำถาม คำตอบมาจากหน้าเหล่านั้นพร้อมการอ้างอิง โน้ตต้นฉบับของคุณไม่ถูกแก้เลย
+เลือกโน้ต โฟลเดอร์ หรือส่วนที่เลือก โมเดลจะสกัดเอนทิตีและแนวคิด แล้วเขียนวิกิที่เชื่อมโยงกันด้วย `[[bidirectional links]]` ไว้ใต้ `wiki/` ถามคำถาม คำตอบมาจากหน้าเหล่านั้นพร้อมการอ้างอิง โน้ตต้นฉบับของคุณไม่ถูกแก้เลย
 
 ### วิกิเดิมของฉันปลอดภัยเมื่ออัปเกรดไหม
 

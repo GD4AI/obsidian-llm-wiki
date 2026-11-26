@@ -286,7 +286,7 @@ The plugin composes with the rest of your Obsidian stack — each tool below plu
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — query the wiki like a database with DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) or JS API. The plugin writes standard frontmatter (`tags:`, `type:`, `aliases:`) on every page.
 - 🌿 **Git** — version your vault with any Git client. Because the plugin never rewrites your source files and only writes under `wiki/`, `git diff` cleanly separates your edits from LLM-generated content.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — turn any wiki page into slide decks via Marp frontmatter (`marp: true`).
-- 🖼️ **Canvas** — drag wiki cards onto Obsidian's native infinite canvas to assemble study guides, mind maps, or research overviews.
+- 🖼️ **Canvas** — drag wiki cards onto Obsidian's native infinite canvas to assemble study guides, mind maps, or research overviews from `[[wiki-links]]`.
 
 ---
 

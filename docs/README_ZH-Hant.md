@@ -14,11 +14,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0（MINOR — 串流攝入、被記住的輸出上限，以及更小的套件）
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -163,7 +163,7 @@ your-vault/
 
 | 之前 | 之後 |
 | --- | --- |
-| `notes/machine-learning.md`（一個平面檔案） | `wiki/concepts/supervised-learning.md`，帶 `[[雙向連結]]`、別名、來源歸屬，以及 `wiki/index.md` 裡的一筆條目 |
+| `notes/machine-learning.md`（一個平面檔案） | `wiki/concepts/supervised-learning.md`，帶 `[[bidirectional links]]`、別名、來源歸屬，以及 `wiki/index.md` 裡的一筆條目 |
 
 📖 操作教學收在 [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides)。覺得有用？[到 GitHub 給個 Star](https://github.com/GD4AI/obsidian-llm-wiki) 就能追蹤新版本。
 
@@ -225,7 +225,7 @@ your-vault/
 
 - 🔍 **Lint 健康掃描**——一個指令抓出重複頁、斷鏈、空頁、孤立頁、缺少別名與矛盾。它也會列出鄰域已經結晶化的 hub 頁——一個 hub 代替了內容再也連不上的那些連結。
 - ⚡ **一鍵修復所有問題**——依因果順序一鍵修復：補別名 → 合併重複 → 修斷鏈 → 連結孤立頁 → 擴充空頁，附各階段報告。
-- 📊 **操作歷史面板**——可搜尋、可篩選的介面，瀏覽過去的攝入、Lint 報告與維護執行。
+- 📊 **檢視攝入歷史**——可搜尋、可篩選的介面，瀏覽過去的攝入、Lint 報告與維護執行。
 
 [![Wiki 維護報告：狀態列、找到的斷鏈，以及一次修完的一鍵修復按鈕](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
@@ -253,7 +253,7 @@ your-vault/
 | **LLM 併發度** | LLM 配置 | 1–20 個並行呼叫。調高讓大批攝入早點結束，調低讓本機模型留在記憶體裡。 |
 | **提取重點與內容生成要求** | 顯示進階設定 | 寫進 `schema/config.md` 的自由文字。左右模型提取什麼，你不必手改 schema。 |
 | **按步驟設定輸出模式與思考** | LLM 高階參數 | 只覆寫某一步（提取、合併、查詢）的文字模式或思考檔位，其他步驟不動。 |
-| **Excluded files** | Obsidian 自己的清單 | 資料夾攝入、檔案監看與自動路徑都遵守你在 Obsidian 設定的排除規則。 |
+| **排除的檔案** | Obsidian 自己的清單 | 資料夾攝入、檔案監看與自動路徑都遵守你在 Obsidian 設定的排除規則。 |
 
 </details>
 
@@ -286,7 +286,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)**——用 DQL（`LIST FROM "wiki/entities" WHERE contains(tags, "person")`）或 JS API 像查資料庫一樣查 Wiki。外掛在每一頁寫標準 frontmatter（`tags:`、`type:`、`aliases:`）。
 - 🌿 **Git**——用任何 Git 客戶端做版本控制。因為外掛絕不改寫你的來源檔案、只在 `wiki/` 底下寫入，`git diff` 能乾淨分開你的編輯與 LLM 生成的內容。
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)**——透過 Marp frontmatter（`marp: true`）把任何 Wiki 頁面變成投影片。
-- 🖼️ **Canvas**——把 Wiki 卡片拖到 Obsidian 原生無限畫布上，拼出學習指南、心智圖或研究概覽。
+- 🖼️ **Canvas**——把 Wiki 卡片拖到 Obsidian 原生無限畫布上，以 `[[wiki-links]]` 拼出學習指南、心智圖或研究概覽。
 
 ---
 
@@ -381,7 +381,7 @@ flowchart LR
 
 ### 這個外掛到底做什麼？
 
-選一則筆記、一個資料夾或一段檔案選取範圍：LLM 抽出實體與概念，在 `wiki/` 底下寫成一套帶 `[[雙向連結]]` 的互聯 Wiki。提出問題，答案就從這些頁面來，並附引用。你的原始筆記永遠不會被修改。
+選一則筆記、一個資料夾或一段檔案選取範圍：LLM 抽出實體與概念，在 `wiki/` 底下寫成一套帶 `[[bidirectional links]]` 的互聯 Wiki。提出問題，答案就從這些頁面來，並附引用。你的原始筆記永遠不會被修改。
 
 ### 我現有的 Wiki 在升級時安全嗎？
 

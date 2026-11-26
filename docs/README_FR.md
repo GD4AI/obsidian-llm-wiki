@@ -1,26 +1,26 @@
 <!--
-Métadonnées SEO (invisibles pour l'utilisateur, lues par les crawlers et les LLM) :
+SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - name: karpathy-llm-wiki-plugin-for-obsidian
-- type: logiciel / plugin communautaire Obsidian / générateur de base de connaissances / alternative au RAG
+- type: software / Obsidian community plugin / knowledge-base generator / RAG alternative
 - license: Apache-2.0
 - language: TypeScript
-- runtime: Obsidian >= 1.11.4 (ordinateur + mobile)
-- dependencies: aucune dépendance à l'exécution (Vercel AI SDK v7 embarqué)
+- runtime: Obsidian >= 1.11.4 (desktop + mobile)
+- dependencies: zero runtime dependencies (Vercel AI SDK v7 bundled)
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md (14 langues) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — l'ingestion en streaming, un plafond de sortie mémorisé et un bundle plus petit)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
-- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basé sur un graphe, RAG sans embedding, recherche Personalized PageRank, deuxième cerveau Obsidian
-- search-intents: "Obsidian RAG sans embeddings", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recherche par graphe de notes", "implémentation Karpathy LLM Wiki", "génération automatique de base de connaissances Obsidian", "Obsidian Graph View + IA", "plugin deuxième cerveau Obsidian", "Obsidian IA graphe de liens", "plugin Obsidian 14 langues", "plugin Obsidian 15 fournisseurs LLM", "RAG sans base vectorielle", "ingestion PDF Obsidian IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "ingestion Obsidian Word PPT Excel", "identifiants Obsidian IAM"
-- features: recherche par graphe, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascade de sélection de graines en 5 étapes, détection de doublons Tier 1/Tier 2, interface en 14 langues + sortie wiki en 14 langues (indépendantes), 15+ fournisseurs LLM (Anthropic, OpenAI, Bedrock [clé API + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingestion MinerU multi-format (PDF + images + Office), ingestion PDF (cache seul, voies OCR), analyse de santé Lint, Réparation intelligente de tout, citations verbatim des pages sources, filtre des candidats à l'ingestion, interface taskPolicies par étape, intégration Obsidian Graph View, architecture sans embedding ni base vectorielle, mode local d'abord
-- direct-competitors: nashsu/llm_wiki (application de bureau Tauri), SamurAIGPT/llm-wiki-agent (skill Claude Code / Codex / OpenCode / Gemini CLI), atomicstrata/llm-wiki-compiler (CLI TypeScript, recherche par morceaux)
-- retrieval-benchmark: PPR @5 = 27,1 % vs kNN pur 24,1 % (corpus d'un coffre du projet, pas un jeu de référence public)
+- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -81,7 +81,7 @@ D'autres réimplémentations open source de l'idée LLM Wiki de Karpathy existen
 Le plugin traite vos dossiers existants comme strictement **en lecture seule**. Tout ce qu'il crée vit dans un dossier `wiki/` dédié — facile à inspecter, à interroger avec Dataview, ou à isoler dans `git diff` :
 
 ```text
-votre-coffre/
+your-vault/
 ├── notes/                       # 🔒 Strictement en lecture seule — jamais modifiées ni réécrites
 │   ├── machine-learning.md
 │   └── attention-paper.pdf
@@ -97,7 +97,7 @@ votre-coffre/
 - **Vous voulez une installation en 5 minutes.** Plugins communautaires → choisissez un fournisseur → ingérez une note. Les pages wiki apparaissent dans `wiki/` en quelques secondes, sans ligne de commande, sans Python et sans base vectorielle à monter d'abord.
 - **Vous voulez des réponses tirées de vos propres notes,** chaque réponse citant les pages d'où elle vient. Ollama ou LM Studio gardent tout l'appel sur votre machine.
 - **Vous écrivez ou lisez dans l'une des 14 langues.** L'interface et la sortie du wiki sont indépendantes : un wiki en chinois derrière une interface en anglais est une configuration prise en charge.
-- **Vous voulez une maintenance d'un clic.** L'analyse de santé et Réparation intelligente de tout contiennent doublons, liens morts et pages orphelines sans curation à la main.
+- **Vous voulez une maintenance d'un clic.** L'analyse de santé et la Réparation intelligente de tout gardent les doublons, les liens morts et les pages orphelines sous contrôle, sans curation à la main.
 
 *Ce plugin n'est pas pour vous* si vous cherchez un remplacement généraliste de ChatGPT, du RAG sur des corpus externes comme Confluence ou arXiv, ou un service hébergé avec collaboration d'équipe. Les réponses viennent de votre coffre, l'ingestion couvre votre coffre plus des fichiers autonomes, et il n'y a aucun backend à partager.
 
@@ -163,7 +163,7 @@ Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglée
 
 | Avant | Après |
 | --- | --- |
-| `notes/machine-learning.md` (un fichier plat) | `wiki/concepts/supervised-learning.md` avec des `[[liens bidirectionnels]]`, des alias, l'attribution des sources et une entrée dans `wiki/index.md` |
+| `notes/machine-learning.md` (un fichier plat) | `wiki/concepts/supervised-learning.md` avec des `[[bidirectional links]]`, des alias, l'attribution des sources et une entrée dans `wiki/index.md` |
 
 📖 Tutoriels dans [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Utile ? [Mettez une étoile au dépôt](https://github.com/GD4AI/obsidian-llm-wiki) pour suivre les versions.
 
@@ -214,9 +214,9 @@ Six voies, permutables à chaque ingestion :
 
 **Recherche et réponses**
 
-- 🧭 **Cascade PPR en 5 étapes** — Personalized PageRank sur le graphe `[[wiki-link]]` donne un contexte multi-sauts conscient du graphe (voir [Fonctionnement de la recherche](#-fonctionnement-de-la-recherche)).
+- 🧭 **Cascade PPR en 5 étapes** — Personalized PageRank sur le graphe `[[wiki-link]]` donne un contexte multi-sauts calculé en tenant compte du graphe (voir [Fonctionnement de la recherche](#-fonctionnement-de-la-recherche)).
 - 🔤 **Score lexical qui lit le corps du texte** — le chemin rapide note le titre, les alias, le résumé et le texte avec BM25F, si bien que le plus long texte d'une page atteint le scoreur. C'est la plus forte amélioration du rappel que ce projet ait apportée.
-- 🧩 **Listes de pages liées façonnées** — une page hub n'attire plus toutes les autres vers elle. Les listes sont recalculées à chaque écriture à partir des noms survivants, puis classées et plafonnées.
+- 🧩 **Listes de pages liées ajustées** — une page hub n'attire plus toutes les autres vers elle. Les listes sont recalculées à chaque écriture à partir des noms survivants, puis classées et plafonnées.
 - 📏 **Budget de réponse de 16 000 tokens** — le pipeline annonce explicitement quand le budget est épuisé au lieu de s'arrêter en silence. Le contexte est ajusté à un budget de pages avant l'assemblage : 20 pages entrent dans l'invite par le plan, pas par hasard.
 - 🔖 **Citations en forme académique** — chaque affirmation renvoie en note aux pages wiki dont elle vient. Le champ de saisie grandit avec le contenu, et *Vider l'historique* efface la trace.
 - 🪟 **Panneau latéral ancré à droite** — Interroger le wiki s'ouvre dans un panneau latéral droit façon Copilot plutôt que dans une fenêtre centrée.
@@ -286,7 +286,7 @@ Le plugin s'articule avec le reste de votre pile Obsidian — chaque outil ci-de
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — interrogez le wiki comme une base de données, avec DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) ou l'API JS. Le plugin écrit un frontmatter standard (`tags:`, `type:`, `aliases:`) sur chaque page : les requêtes Dataview fonctionnent aussitôt.
 - 🌿 **Git** — versionnez votre coffre avec n'importe quel client Git. Comme le plugin ne réécrit jamais vos fichiers sources et n'écrit que sous `wiki/`, `git diff` sépare vos modifications du contenu produit par le LLM.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — transformez n'importe quelle page wiki en diapositives, via le frontmatter Marp (`marp: true`).
-- 🖼️ **Canvas** — le canevas infini d'Obsidian. Déposez-y des cartes wiki pour composer fiches d'apprentissage, cartes mentales ou synthèses de recherche.
+- 🖼️ **Canvas** — le canevas infini d'Obsidian. Déposez-y des cartes wiki pour composer fiches d'apprentissage, cartes mentales ou synthèses de recherche à partir de `[[wiki-links]]`.
 
 ---
 
@@ -312,9 +312,9 @@ Quand vous demandez « *Qui a fondé Microsoft ?* », Interroger le wiki parcour
 
 1. **Chemin lexical rapide** — BM25F sur chaque titre d'entité ou de concept, les alias, le résumé et le corps du texte, avec saturation par champ et IDF issu d'un vrai tableau de fréquence documentaire. Gratuit, instantané, et c'est la porte de tout ce qui suit.
 2. **Génération de mots-clés par le LLM** — le LLM propose 8 à 12 mots-clés entre langues à partir de votre question (synonymes, sigles et termes résistants au recouvrement de tokens tiennent en un seul appel).
-3. **Analyse locale de sous-chaînes** — chaque mot-clé généré est.researché à nouveau localement contre les titres, les alias et des extraits de texte. Aucun appel LLM supplémentaire ; cela complète le rappel tolérant au bruit.
+3. **Analyse locale de sous-chaînes** — chaque mot-clé généré est recherché à nouveau localement contre les titres, les alias et des extraits de texte. Aucun appel LLM supplémentaire ; cela complète le rappel tolérant au bruit.
 4. **Repli sur la base de connaissances du LLM** — quand le lexique et l'analyse de mots-clés ne renvoient que des signaux faibles, le LLM réamorce les N meilleurs candidats sur l'ensemble du wiki lors d'un passage sémantique.
-5. **Expansion par PPR** — Personalized PageRank (Haveliwala 2002) sur le graphe de `[[wiki-link]]`, à partir de l'ensemble de candidats. C'est ce qui donne le contexte multi-sauts conscient du graphe : « Bill Gates » → « Microsoft » → « concurrents », et pas seulement un recouvrement littéral de titres.
+5. **Expansion par PPR** — Personalized PageRank (Haveliwala 2002) sur le graphe de `[[wiki-link]]`, à partir de l'ensemble de candidats. C'est ce qui donne le contexte multi-sauts calculé en tenant compte du graphe : « Bill Gates » → « Microsoft » → « concurrents », et pas seulement un recouvrement littéral de titres.
 
 La cascade s'arrête à l'étape qui a renvoyé assez de signal — pas de coût fixe sur cinq étapes, aucun appel LLM quand le lexique suffit, et le repli sémantique seulement quand lexique plus analyse de mots-clés ne suffisent pas.
 
@@ -324,7 +324,7 @@ Lorsque la cascade atteint l'étape du graphe, la requête est étendue deux foi
 
 ### Personalized PageRank à l'échelle
 
-Nous utilisons le PPR de Monte-Carlo (Fogaras 2005) — 3 000 marches aléatoires de 50 pas chacune — avec la règle des culs-de-sac de Haveliwala 2002. Le coût est $O(K \times L)$ ($K$ = marches, $L$ = pas par marche), indépendant du nombre de pages : un coffre de 2 000 pages voit donc la même latence d'expansion qu'un coffre de 200 pages.
+Nous utilisons le PPR de Monte-Carlo (Fogaras 2005) — 3 000 marches aléatoires de 50 pas chacune — avec la règle du nœud cul-de-sac de Haveliwala 2002. Le coût est $O(K \times L)$ ($K$ = marches, $L$ = pas par marche), indépendant du nombre de pages : un coffre de 2 000 pages voit donc la même latence d'expansion qu'un coffre de 200 pages.
 
 `PPR @5 = 27.1%` face à une base kNN pure de `24.1%`, mesuré sur un coffre du projet. Le corpus n'est pas public ; lisez ce chiffre comme la comparaison que le projet a mesurée pour lui-même, pas comme une affirmation sur votre coffre. `tools/dev-instrument/run-recall-harness.mjs` est l'outil de mesure qui évalue le rappel sur un coffre.
 
@@ -381,7 +381,7 @@ Les trois modes partagent la même discipline Obsidian SecretStorage (aucun iden
 
 ### Que fait exactement le plugin ?
 
-Choisissez une note, un dossier ou une sélection : le LLM extrait entités et concepts et écrit un wiki relié par des `[[liens bidirectionnels]]` sous `wiki/`. Posez une question et la réponse vient de ces pages, avec citations. Vos notes d'origine ne sont jamais modifiées.
+Choisissez une note, un dossier ou une sélection : le LLM extrait entités et concepts et écrit un wiki relié par des `[[bidirectional links]]` sous `wiki/`. Posez une question et la réponse vient de ces pages, avec citations. Vos notes d'origine ne sont jamais modifiées.
 
 ### Mon wiki existant est-il en sécurité à travers les mises à jour ?
 

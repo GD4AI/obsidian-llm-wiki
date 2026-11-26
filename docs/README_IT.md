@@ -14,13 +14,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — l'ingestione in streaming, un limite di output memorizzato e un bundle più piccolo)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
-- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basato su grafo, RAG senza embedding, recupero Personalized PageRank, secondo cervello Obsidian
-- search-intents: "Obsidian RAG senza embedding", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recupero note basato su grafo", "implementazione Karpathy LLM Wiki", "generazione automatica base di conoscenza Obsidian", "Obsidian Graph View + AI", "plugin second brain Obsidian", "grafo dei link tra note Obsidian AI", "plugin Obsidian 14 lingue", "plugin Obsidian 15 provider LLM", "RAG senza DB vettoriale", "Obsidian ingest PDF AI", "Obsidian Codex OAuth", "plugin Bedrock Obsidian", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian ingest Word PPT Excel", "credenziali IAM Obsidian"
-- features: recupero basato su grafo, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascata di selezione dei semi a 5 stadi, rilevamento duplicati Tier 1/Tier 2, interfaccia in 14 lingue + output del wiki in 14 lingue (indipendenti), 15+ provider LLM (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), acquisizione multi-formato MinerU (PDF + immagini + Office), acquisizione PDF (solo cache, percorsi OCR), scansione di salute Lint, Correzione intelligente totale, citazioni verbatim nella pagina sorgente, gate dei candidati in acquisizione, UI taskPolicies per passo, integrazione Obsidian Graph View, architettura zero-embedding zero-vector-DB, modalità local-first
-- direct-competitors: nashsu/llm_wiki (app desktop Tauri), SamurAIGPT/llm-wiki-agent (skill per Claude Code / Codex / OpenCode / Gemini CLI), atomicstrata/llm-wiki-compiler (CLI TypeScript, recupero a chunk)
-- retrieval-benchmark: PPR @5 = 27,1% vs kNN pura 24,1% (un corpus di vault del progetto, non un benchmark pubblico)
+- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -97,7 +97,7 @@ your-vault/
 - **Vuoi una configurazione da 5 minuti.** Installi dai Plugin della community → scegli un provider → acquisisci una nota. Le pagine wiki compaiono in `wiki/` in pochi secondi, senza CLI, senza Python e senza database vettoriale da tirare su prima.
 - **Vuoi risposte dalle tue note**, e ogni risposta cita le pagine da cui viene. Ollama o LM Studio tengono l'intera chiamata sulla tua macchina.
 - **Scrivi o leggi in una qualsiasi delle 14 lingue.** Interfaccia e output del wiki sono indipendenti: un wiki in cinese dietro un'interfaccia in inglese è una configurazione supportata.
-- **Vuoi manutenzione con un clic.** La scansione di salute Lint e Correzione intelligente totale tengono a bada duplicati, link morti e orfani senza curatela manuale.
+- **Vuoi manutenzione con un clic.** L'analisi di integrità del Lint e la Correzione intelligente totale tengono a bada duplicati, link morti e orfani senza curatela manuale.
 
 *Non fa per te se* cerchi un sostituto generico di ChatGPT, un RAG su corpora esterni come Confluence o arXiv, oppure un servizio ospitato con collaborazione di squadra. Le risposte arrivano dal tuo vault, l'acquisizione copre il tuo vault più i file singoli, e non c'è nessun backend da condividere.
 
@@ -139,7 +139,7 @@ your-vault/
    - ⌨️ **Da tastiera:** `Cmd+P` / `Ctrl+P` → **"Interroga wiki"**.
    - 🖱️ **Icona nella barra:** clicca l'icona fumetto nella barra laterale sinistra di Obsidian.
 
-   Si apre un pannello laterale ancorato a destra (in stile Copilot) in cui conversi con il tuo wiki. Le risposte portano `[[wiki-link]]` che rientrano nel tuo grafo della conoscenza.
+   Si apre un pannello laterale ancorato a destra (in stile Copilot) in cui conversi con il tuo wiki. Le risposte portano `[[wiki-links]]` che rientrano nel tuo grafo della conoscenza.
 
    [![Una risposta di Interroga wiki nel pannello laterale a destra, con ogni affermazione annotata verso la pagina wiki da cui proviene](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
 
@@ -152,8 +152,8 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 | 📥 **Acquisisci singola sorgente** | `Cmd+P` / `Ctrl+P` → "Acquisisci singola sorgente": scegli un file Markdown o PDF e ottieni pagine entità, concetti e wiki. Inoltre: 🖱️ l'icona adesivo della barra laterale, sulla nota attiva. |
 | 📂 **Acquisisci da cartella** | `Cmd+P` / `Ctrl+P` → "Acquisisci da cartella": acquisisce in blocco tutte le note di una cartella, con salto intelligente dei file già trattati. |
 | 📑 **Acquisisci più file** | `Cmd+P` / `Ctrl+P` → "Acquisisci più file": scegli un sottoinsieme con un albero dei file a due pannelli (coda in tempo reale e annullamento per singolo file). |
-| 🔍 **Interroga wiki** | `Cmd+P` / `Ctrl+P` → "Interroga wiki": conversa con il wiki in un pannello laterale ancorato a destra; le risposte portano `[[wiki-link]]`. Inoltre: 🖱️ l'icona fumetto della barra laterale. |
-| 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki": scansione di salute completa — duplicati, link morti, pagine vuote, orfani, alias mancanti, contraddizioni. |
+| 🔍 **Interroga wiki** | `Cmd+P` / `Ctrl+P` → "Interroga wiki": conversa con il wiki in un pannello laterale ancorato a destra; le risposte portano `[[wiki-links]]`. Inoltre: 🖱️ l'icona fumetto della barra laterale. |
+| 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki": analisi di integrità completa — duplicati, link morti, pagine vuote, orfani, alias mancanti, contraddizioni. |
 | ⚡ **Correzione intelligente totale** | dentro il modale Lint: riparazione in un clic, in ordine causale, con report per ogni fase. |
 | 📋 **Rigenera indice** | `Cmd+P` / `Ctrl+P` → "Rigenera indice": ricostruisce `wiki/index.md` con le pagine e gli alias attuali. |
 | ⏹ **Annulla** | `Cmd+P` / `Ctrl+P` → "Annulla acquisizione corrente", oppure clicca la barra di stato: si ferma in modo pulito al confine del lotto successivo. |
@@ -163,7 +163,7 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 
 | Prima | Dopo |
 | --- | --- |
-| `notes/machine-learning.md` (un file piatto) | `wiki/concepts/supervised-learning.md` con `[[collegamenti bidirezionali]]`, alias, attribuzione della fonte e una voce in `wiki/index.md` |
+| `notes/machine-learning.md` (un file piatto) | `wiki/concepts/supervised-learning.md` con `[[bidirectional links]]`, alias, attribuzione della fonte e una voce in `wiki/index.md` |
 
 📖 Guide passo passo in [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Ti è servito? [Metti una stella al repository](https://github.com/GD4AI/obsidian-llm-wiki) per seguire le release.
 
@@ -177,7 +177,7 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 - 🏷️ **Alias obbligatori** — ogni pagina nasce con almeno un alias (traduzione, abbreviazione, variante), così il rilevamento dei duplicati tra lingue funziona.
 - 🔄 **Rilevamento duplicati a livelli** — il Livello 1 (corrispondenza diretta del nome: cross-lingua, abbreviazione, titoli molto simili) viene sempre verificato; il Livello 2 (link condivisi, similarità media) riempie il budget di token rimasto.
 - 🧩 **Fusione intelligente e stato delle contraddizioni** — i duplicati vengono fusi conservando gli alias; le contraddizioni vengono segnalate con l'attribuzione della fonte; le pagine con `reviewed: true` sono protette dalla sovrascrittura.
-- 🎨 **Un vocabolario di tag solo, il tuo** — i tag che una pagina può portare vengono dai tag annidati delle tue note, dai tag già presenti nelle pagine wiki e dalla lista Personalizzato (definito dall'utente) in Impostazioni → Configurazione Wiki → Configurazione vocabolario tag. Prompt, gate di scrittura, Lint e retag leggono tutti quell'unica lista, quindi quello che viene offerto al modello è esattamente quello che finisce su disco; un valore fuori lista viene scartato, mai scritto. I modelli piccoli derivano comunque (circa una volta su dieci restituiscono la tassonomia interna del modello) — il gate la intercetta e Lint segnala la pagina. Ancora di progetto: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Un solo vocabolario di tag, il tuo** — i tag che una pagina può portare vengono dai tag annidati delle tue note, dai tag già presenti nelle pagine wiki e dalla lista Personalizzato (definito dall'utente) in Impostazioni → Configurazione Wiki → Configurazione vocabolario tag. Prompt, gate di scrittura, Lint e retag leggono tutti quell'unica lista, quindi quello che viene offerto al modello è esattamente quello che finisce su disco; un valore fuori lista viene scartato, mai scritto. I modelli piccoli derivano comunque (circa una volta su dieci restituiscono la tassonomia interna del modello) — il gate la intercetta e Lint segnala la pagina. Ancora di progetto: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Una pagina di concetto generata: il tag del vocabolario con cui è stata scritta, i suoi alias AF e AFib, la definizione e le pagine collegate](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -214,10 +214,10 @@ Sei vie d'ingresso, scegliibili a ogni acquisizione:
 
 **Recupero e risposte**
 
-- 🧭 **Cascata PPR a 5 stadi** — Personalized PageRank sul grafo `[[wiki-link]]` dà un contesto multi-hop consapevole del grafo (vedi [Come funziona il recupero](#-come-funziona-il-recupero)).
+- 🧭 **Cascata PPR a 5 stadi** — Personalized PageRank sul grafo `[[wiki-link]]` dà un contesto multi-hop che tiene conto del grafo (vedi [Come funziona il recupero](#-come-funziona-il-recupero)).
 - 🔤 **Punteggio lessicale che legge il corpo** — il percorso rapido valuta titolo, alias, sintesi e testo del corpo con BM25F, quindi il testo più lungo di una pagina arriva al punteggio. È il singolo cambiamento di richiamo più grande che il progetto abbia fatto.
-- 🧩 **Forma delle pagine correlate** — una pagina hub non riesce più a trascinare tutte le altre verso di sé. Gli elenchi delle pagine correlate vengono ricalcolati a ogni scrittura a partire dai nomi sopravvissuti, ordinati e limitati.
-- 📏 **Budget della risposta di 16.000 token** — la pipeline dice esplicitamente quando il budget finisce, invece di interrompersi in silenzio. Il contesto viene adattato a un budget di pagine prima dell'assemblaggio, quindi 20 pagine entrano nel prompt per progetto e non per fortuna.
+- 🧩 **Rifinitura degli elenchi di pagine correlate** — una pagina hub non riesce più a trascinare tutte le altre verso di sé. Gli elenchi delle pagine correlate vengono ricalcolati a ogni scrittura a partire dai nomi sopravvissuti, ordinati e limitati.
+- 📏 **Budget della risposta di 16.000 token** — la pipeline dice esplicitamente quando il budget finisce, invece di interrompersi in silenzio. Il contesto viene adattato a un budget di pagine prima dell'assemblaggio, quindi 20 pagine entrano nel prompt secondo un piano e non per fortuna.
 - 🔖 **Citazioni in forma accademica** — ogni affermazione annota a piè di pagina le pagine wiki da cui proviene. Il composer cresce con i tuoi contenuti, e cancellare la cronologia cancella davvero il registro.
 - 🪟 **Pannello laterale ancorato a destra** — Query Wiki si apre in un leaf laterale destro in stile Copilot invece che in un modale centrato.
 
@@ -237,8 +237,8 @@ Sei vie d'ingresso, scegliibili a ogni acquisizione:
 
 - 🛡️ **Gate di pre-acquisizione** — le note vuote, fatte di soli spazi o di solo frontmatter, vengono rifiutate prima di qualsiasi chiamata LLM; la deduplicazione per hash del contenuto intercetta file identici su percorsi diversi.
 - 🚦 **Gate dei candidati in acquisizione** — opzionale (`skipMentionOnlyCandidates`, disattivato per default). Un candidato nominato solo dentro parentesi, dentro un'enumerazione o in una voce di elenco breve viene potato prima di costare una generazione e una chiamata di deduplicazione. Vale solo per le lingue che hanno un profilo misurato; le note cross-lingua non passano mai da questo gate in silenzio.
-- 🚧 **Esito «lascia stare» di Fix Dead Links** — Impostazioni → Mostra impostazioni avanzate → **Crea pagine segnaposto per i collegamenti irrisolti** (attivo per default). Se lo disattivi, un link morto resta visibile in ogni report Lint finché una fonte reale non lo definisce, invece di diventare una pagina segnaposto vuota.
-- 🔁 **Interruttore per il vecchio scorer di query** — Impostazioni → Mostra impostazioni avanzate → **Vecchio punteggio di ricerca** esegue il precedente ordinamento lineare scritto a mano invece dello scorer BM25F predefinito.
+- 🚧 **Esito «il collegamento resta com'è» di Fix Dead Links** — Impostazioni → Mostra impostazioni avanzate → **Crea pagine segnaposto per i collegamenti irrisolti** (attivo per default). Se lo disattivi, un link morto resta visibile in ogni report Lint finché una fonte reale non lo definisce, invece di diventare una pagina segnaposto vuota.
+- 🔁 **Interruttore del vecchio punteggio di ricerca** — Impostazioni → Mostra impostazioni avanzate → **Vecchio punteggio di ricerca** esegue il precedente ordinamento lineare scritto a mano invece dello scorer BM25F predefinito.
 
 **Le otto impostazioni che danno forma a un'esecuzione**
 
@@ -286,13 +286,13 @@ Il plugin si compone con il resto del tuo stack Obsidian: ogni strumento qui sot
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — interroga il wiki come un database con DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) o con l'API JS. Il plugin scrive frontmatter standard (`tags:`, `type:`, `aliases:`) su ogni pagina.
 - 🌿 **Git** — versiona il vault con qualsiasi client Git. Poiché il plugin non riscrive mai i tuoi file sorgente e scrive solo sotto `wiki/`, `git diff` separa nettamente le tue modifiche dal contenuto generato dall'LLM.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — trasforma qualsiasi pagina wiki in una presentazione tramite il frontmatter Marp (`marp: true`).
-- 🖼️ **Canvas** — trascina le schede del wiki sulla tela infinita nativa di Obsidian per comporre guide di studio, mappe mentali o panoramiche di ricerca.
+- 🖼️ **Canvas** — trascina le schede del wiki sulla tela infinita nativa di Obsidian per comporre guide di studio, mappe mentali o panoramiche di ricerca da `[[wiki-links]]`.
 
 ---
 
 ## 🔍 Come funziona il recupero
 
-La maggior parte dei plugin di "ricerca AI" spezzetta le tue note in chunk e le incorpora in un database vettoriale. Noi no. L'[argomento di Karpathy contro il RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) è che il chunking rompe la capacità dell'LLM di ragionare su tutto il tuo grafo della conoscenza, e quell'argomento regge nella pratica. Noi percorriamo invece il grafo che già mantieni scrivendo `[[wiki-link]]`.
+La maggior parte dei plugin di "ricerca AI" spezzetta le tue note in chunk e le incorpora in un database vettoriale. Noi no. L'[argomento di Karpathy contro il RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) è che il chunking rompe la capacità dell'LLM di ragionare su tutto il tuo grafo della conoscenza, e quell'argomento regge nella pratica. Noi percorriamo invece il grafo che già mantieni scrivend`[[wiki-links]]`]`.
 
 ```mermaid
 flowchart LR
@@ -314,7 +314,7 @@ Quando chiedi *"Chi ha fondato Microsoft?"*, Interroga wiki esegue cinque stadi 
 2. **Generazione di keyword via LLM** — l'LLM propone da 8 a 12 keyword cross-lingua dalla tua domanda: gestisce sinonimi, abbreviazioni e termini che resistono alla sovrapposizione di token in una sola chiamata LLM.
 3. **Scansione locale di sottostringhe** — ogni keyword generata viene ricercata localmente nei titoli delle pagine, negli alias e negli estratti del corpo. Nessuna chiamata LLM in più; completa il richiamo tollerante al rumore.
 4. **Fallback sulla KB via LLM** — quando il percorso lessicale e la scansione delle keyword danno segnali deboli, l'LLM risemina i primi N candidati contro l'intero wiki, in un unico passaggio semantico.
-5. **Espansione del grafo con PPR** — Personalized PageRank (Haveliwala 2002) sul grafo `[[wiki-link]]`, a partire dall'insieme dei semi candidati. È questo che dà un contesto multi-hop consapevole del grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrenti"*, non la sola sovrapposizione letterale dei titoli.
+5. **Espansione del grafo con PPR** — Personalized PageRank (Haveliwala 2002) sul grafo `[[wiki-link]]`, a partire dall'insieme dei semi candidati. È questo che dà un contesto multi-hop che tiene conto del grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrenti"*, non la sola sovrapposizione letterale dei titoli.
 
 La cascata si ferma allo stadio che ha restituito segnale sufficiente: nessun costo fisso di cinque stadi, nessuna chiamata LLM quando il percorso lessicale basta, fallback semantico solo quando lessicale e scansione delle keyword da soli non bastano.
 
@@ -381,7 +381,7 @@ Tutte e tre le modalità condividono la disciplina di Obsidian SecretStorage (ne
 
 ### Cosa fa esattamente il plugin?
 
-Scegli una nota, una cartella o una selezione di file: l'LLM estrae entità e concetti e scrive un wiki interconnesso con `[[collegamenti bidirezionali]]` sotto `wiki/`. Fai una domanda e la risposta arriva da quelle pagine, con le citazioni. Le tue note originali non vengono mai modificate.
+Scegli una nota, una cartella o una selezione di file: l'LLM estrae entità e concetti e scrive un wiki interconnesso con `[[bidirectional links]]` sotto `wiki/`. Fai una domanda e la risposta arriva da quelle pagine, con le citazioni. Le tue note originali non vengono mai modificate.
 
 ### Il mio wiki esistente è al sicuro?
 
@@ -412,7 +412,7 @@ Questo plugin è elencato nel Marketplace dei plugin della community di Obsidian
 - 🚫 **Nessun backend proprio, nessuna telemetria, nessuna raccolta dati.** È software puramente locale che gira dentro Obsidian. Il plugin non gestisce alcun server e non riporta niente da nessuna parte.
 - 🔐 **L'accesso alla rete è opt-in ed esplicito.** Serve solo a raggiungere i servizi che configuri: il tuo provider LLM e, se attivi il backend documenti MinerU, `mineru.net`. Il secondo è l'eccezione che vale la pena nominare: carica il documento in una giurisdizione che non hai scelto e che non pubblica alcuna dichiarazione sulla conservazione. [Dove viene elaborato il tuo documento](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) elenca ogni percorso e dove finisce il file.
 - 📁 **L'accesso ai file del vault** serve esclusivamente alla gestione del wiki (leggere note, generare pagine sotto `wiki/`, scansionare link morti, rilevare duplicati). Il plugin non modifica mai i tuoi file sorgente.
-- 📋 **L'accesso agli appunti** è usato esclusivamente dal pulsante "Copy" nel pannello di interrogazione, e solo quando ci clicchi.
+- 📋 **L'accesso agli appunti di sistema** è usato esclusivamente dal pulsante "Copy" nel pannello di interrogazione, e solo quando ci clicchi.
 
 Per la località completa dei dati, usa **Ollama** o **LM Studio**. Con un provider locale i tuoi dati non lasciano mai la tua macchina.
 

@@ -14,11 +14,11 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — streaming-ingest, een onthouden uitvoerplafond en een kleinere bundel)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -68,7 +68,7 @@ Een Obsidian-plug-in die je notities en documenten omzet in een samenhangende ke
 
 Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moet je je herinneren wat je maanden geleden hebt opgeschreven.
 
-Er bestaan andere open-source uitwerkingen van Karpathy's LLM Wiki-idee, maar geen ervan komt als Obsidian-plug-in die je met één klik installeert. De meeste zijn opdrachtregelprogramma's, skills voor Claude Code of losse desktop-apps; deze draait ín Obsidian — met de grafiekweergave, het lint en het opdrachtenpalet erbij.
+Er bestaan andere open-source uitwerkingen van Karpathy's LLM Wiki-idee, maar geen ervan komt als Obsidian-plug-in die je met één klik installeert. De meeste zijn opdrachtregelprogramma's, skills voor Claude Code of losse desktop-apps; deze draait ín Obsidian — met de grafiekweergave, de zijlint en het opdrachtenpalet erbij.
 
 ### Drie keuzes die we met opzet maakten
 
@@ -131,19 +131,19 @@ your-vault/
 
 3. **Eén notitie inlezen.** Dat kan op twee manieren:
    - ⌨️ **Toetsenbord:** `Cmd+P` / `Ctrl+P` → **"Eén bron inlezen"** → kies een Markdown- of PDF-bestand.
-   - 🖱️ **Pictogram in het lint:** klik op het stickerpictogram in het linkerlint van Obsidian om de notitie die je open hebt meteen in te lezen — zonder in menu's te zoeken.
+   - 🖱️ **Pictogram in de zijlint:** klik op het stickerpictogram in de linkerzijlint van Obsidian om de notitie die je open hebt meteen in te lezen — zonder in menu's te zoeken.
 
    Je eerste wikipagina's verschijnen binnen enkele seconden in `wiki/sources/`, `wiki/entities/` en `wiki/concepts/`.
 
 4. **Je wiki bevragen.** Ook op twee manieren:
    - ⌨️ **Toetsenbord:** `Cmd+P` / `Ctrl+P` → **"Wiki bevragen"**.
-   - 🖱️ **Pictogram in het lint:** klik op het pictogram met de tekstballon in het linkerlint.
+   - 🖱️ **Pictogram in de zijlint:** klik op het pictogram met de tekstballon in de linkerzijlint.
 
-   Rechts opent een zijpaneel, zoals bij een copiloot, waarin je met je wiki kunt praten. De antwoorden dragen `[[wiki-link]]`s terug naar je kennisgraaf.
+   Rechts opent een zijpaneel, zoals bij een copiloot, waarin je met je wiki kunt praten. De antwoorden dragen `[[wiki-links]]`s terug naar je kennisgraaf.
 
    [![Een antwoord van Query Wiki in het zijpaneel rechts, waarbij elke bewering verwijst naar de wikipagina waar hij vandaan komt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
 
-Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in het linkerlint, dus altijd binnen één klik. (`Cmd` op macOS, `Ctrl` op Windows en Linux.)
+Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in de linkerzijlint, dus altijd binnen één klik. (`Cmd` op macOS, `Ctrl` op Windows en Linux.)
 
 ### De belangrijkste opdrachten
 
@@ -152,7 +152,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in het linkerlint, 
 | 📥 **Eén bron inlezen** | `Cmd+P` / `Ctrl+P` → "Eén bron inlezen" — kies een Markdown- of PDF-bestand en je krijgt pagina's voor entiteiten, concepten en de bron. Ook: 🖱️ het stickerpictogram bij de notitie die open staat. |
 | 📂 **Een map inlezen** | `Cmd+P` / `Ctrl+P` → "Een map inlezen" — leest elke notitie in een map in, met slim overslaan van wat al gedaan is. |
 | 📑 **Meerdere bestanden inlezen** | `Cmd+P` / `Ctrl+P` → "Meerdere bestanden inlezen" — kies een deelverzameling in een boom met twee panelen (met wachtrij en stoppen per bestand). |
-| 🔍 **Wiki bevragen** | `Cmd+P` / `Ctrl+P` → "Wiki bevragen" — praat met je wiki in een zijpaneel rechts; de antwoorden dragen `[[wiki-link]]`s. Ook: 🖱️ het pictogram met de tekstballon. |
+| 🔍 **Wiki bevragen** | `Cmd+P` / `Ctrl+P` → "Wiki bevragen" — praat met je wiki in een zijpaneel rechts; de antwoorden dragen `[[wiki-links]]`s. Ook: 🖱️ het pictogram met de tekstballon. |
 | 🛠️ **Wiki controleren** | `Cmd+P` / `Ctrl+P` → "Wiki controleren" — volledige controle: dubbelen, dode koppelingen, lege pagina's, verweesde pagina's, ontbrekende aliassen, tegenstrijdigheden. |
 | ⚡ **Alles slim herstellen** | In het lintvenster — herstelt in één klik in de juiste volgorde, met een rapport per fase. |
 | 📋 **Index opnieuw maken** | `Cmd+P` / `Ctrl+P` → "Index opnieuw maken" — bouwt `wiki/index.md` opnieuw met de huidige pagina's en aliassen. |
@@ -163,7 +163,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in het linkerlint, 
 
 | Voor | Na |
 | --- | --- |
-| `notes/machine-learning.md` (één plat bestand) | `wiki/concepts/supervised-learning.md` met `[[koppelingen in twee richtingen]]`, aliassen, herkomst per uitspraak en een regel in `wiki/index.md` |
+| `notes/machine-learning.md` (één plat bestand) | `wiki/concepts/supervised-learning.md` met `[[bidirectional links]]`, aliassen, herkomst per uitspraak en een regel in `wiki/index.md` |
 
 📖 Uitleg met voorbeelden staat in [GitHub Discussies → Gidsen](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Heb je er iets aan? [Geef de repository een ster](https://github.com/GD4AI/obsidian-llm-wiki) om releases te volgen.
 
@@ -202,7 +202,7 @@ Zes routes, per inleesronde te kiezen:
 - **Grenzen voor afbeeldingen & controlebewijs** — afbeeldingen worden verstuurd in pakketten van 20 MiB met beeldmateriaal, met een grens van 10 MiB per afbeelding; afbeeldingen op het internet worden nooit opgehaald. Zet je **Beeldmateriaal van afbeeldingen op de bronpagina bewaren** aan, dan krijgt de bronpagina een uitklapbare auditsectie.
 - **🗄️ Begrensde cache** — `.obsidian/plugins/karpathywiki/pdf-cache/` bewaart omgezette Markdown, met als sleutel de inhoudshash plus model plus versie van de omzetter; in totaal 100 MB, 1.000 onderdelen, 10 MB per onderdeel, waarbij het oudst gebruikte eerst verdwijnt.
 - **📝 Hulpbestand in de kluis, als je dat wilt** — Instellingen → Configuratie van de wiki → Wikimap → **Omgezette Markdown in de kluis opslaan** schrijft `<basename>.pdf.md` naast de PDF (standaard uit; alleen de cache is de standaard).
-- **🛡️ Letterlijke overname in de prompt** — omzetten in OCR-stijl met markeringen als `[onleesbaar]` en `[figuur: ...]` tegen verzonnen inhoud; als een klein lokaal model het resultaat in een codeblok wikkelt, wordt dat opgeruimd voordat het in de cache gaat.
+- **🛡️ Letterlijke transcriptie in de prompt** — omzetten in OCR-stijl met markeringen als `[illegible]` en `[figure: ...]` tegen verzonnen inhoud; als een klein lokaal model het resultaat in een codeblok wikkelt, wordt dat opgeruimd voordat het in de cache gaat.
 - **🔁 Letterlijke citaten op de bronpagina** — elke gegenereerde pagina `sources/<slug>.md` heeft een sectie *Genoemd in de bron*, gevuld met dezelfde letterlijke citaten die het extraheren per entiteit en concept al had vastgelegd, zodat het onderliggende document een controleerbare band met zijn brontekst heeft.
 - **Kanttekening bij Office-formaten** — Obsidian toont `.docx`, `.xlsx` en `.pptx` niet zelf ([bestandsformaten](https://obsidian.md/help/file-formats)), dus de praktische route is: MinerU zet het bestand om naar `.md`, de plug-in leest dat `.md` in als wikipagina's, en het originele Office-bestand blijft staan om in te kijken. Wil je Office-bestanden in Obsidian kunnen bekijken, gebruik dan een plug-in als Pandoc Plugin, Docxer, Md Importer of Office Reader.
 
@@ -214,9 +214,9 @@ Zes routes, per inleesronde te kiezen:
 
 **Zoeken en antwoorden**
 
-- 🧭 **Vijf stappen naar de beginpunten** — Personalized PageRank over `[[wiki-link]]` geeft context die meerdere stappen door de graaf gaat (zie [Hoe het zoeken werkt](#-hoe-het-zoeken-werkt)).
+- 🧭 **PPR-cascade van vijf stappen** — Personalized PageRank over `[[wiki-link]]` geeft context die meerdere stappen door de graaf gaat (zie [Hoe het zoeken werkt](#-hoe-het-zoeken-werkt)).
 - 🔤 **Scores die de tekst meenemen** — de snelle route weegt titel, aliassen, samenvatting en de tekst zelf met BM25F, zodat de langste tekst op een pagina de scorer bereikt. Het is de grootste verbetering in trefzekerheid die het project heeft doorgevoerd.
-- 🧩 **Verwante lijsten die niet dichtslibben** — één knooppuntpagina kan de andere niet meer allemaal naar zich toe trekken. Verwante lijsten worden bij elke schrijfactie opnieuw opgebouwd uit de namen die overbleven, gerangschikt en begrensd.
+- 🧩 **Verwante lijsten samenstellen** — één knooppuntpagina kan de andere niet meer allemaal naar zich toe trekken. Verwante lijsten worden bij elke schrijfactie opnieuw opgebouwd uit de namen die overbleven, gerangschikt en begrensd.
 - 📏 **Antwoordbudget van 16.000 tokens** — de pijplijn zegt expliciet wanneer het budget op is, in plaats van stilzwijgend te stoppen. De context wordt vóór het samenstellen op een paginabudget gepast, zodat er volgens plan 20 pagina's in de prompt staan en niet bij geluk.
 - 🔖 **Citaten in academische vorm** — elke bewering verwijst naar de wikipagina's waar hij vandaan komt. De composer groeit mee met je inhoud, en geschiedenis wissen wist ook het verslag.
 - 🪟 **Zijpaneel rechts** — Query Wiki opent in een paneel rechts, zoals een copiloot, in plaats van in een venster midden op het scherm.
@@ -230,7 +230,7 @@ Zes routes, per inleesronde te kiezen:
 [![Lintrapport van de wiki — de statusregel, de gevonden dode koppelingen en de knop die ze in één keer herstelt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>Controles die vóór een betaalde aanroep draaien & instellingen die een ronde bepalen</strong></summary>
+<summary>⚙️ <strong>Controles die draaien voordat de provider de aanroep in rekening brengt & instellingen die een ronde bepalen</strong></summary>
 <br/>
 
 **Controles vóór de aanroep & terugvalopties**
@@ -286,13 +286,13 @@ De plug-in werkt samen met de rest van je Obsidian-opstelling — elk programma 
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ondervraag de wiki als een database met DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) of met de JS-API. De plug-in schrijft op elke pagina gewone frontmatter (`tags:`, `type:`, `aliases:`).
 - 🌿 **Git** — houd je kluis in versiebeheer met welke Git-client dan ook. Omdat de plug-in je bronbestanden nooit herschrijft en alleen onder `wiki/` schrijft, scheidt `git diff` jouw werk netjes van wat de LLM maakte.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — maak van elke wikipagina een presentatie via Marp-frontmatter (`marp: true`).
-- 🖼️ **Canvas** — sleep wikikaarten op het oneindige canvas van Obsidian om studiegidsen, mindmaps of overzichten van je onderzoek samen te stellen.
+- 🖼️ **Canvas** — sleep wikikaarten op het oneindige canvas van Obsidian om studiegidsen, mindmaps of overzichten van je onderzoek samen te stellen uit `[[wiki-links]]`.
 
 ---
 
 ## 🔍 Hoe het zoeken werkt
 
-De meeste plug-ins voor "zoeken met AI" hakken je notities in brokstukken en stoppen die in een vectordatabase. Wij doen dat niet. [Karpathy's bezwaar tegen RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is dat het hakken in brokstukken het vermogen van de LLM breekt om over je hele kennisgraaf te redeneren — en dat bezwaar houdt in de praktijk stand. In plaats daarvan lopen we door de graaf die je al onderhoudt door `[[wiki-link]]`s te schrijven.
+De meeste plug-ins voor "zoeken met AI" hakken je notities in brokstukken en stoppen die in een vectordatabase. Wij doen dat niet. [Karpathy's bezwaar tegen RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is dat het hakken in brokstukken het vermogen van de LLM breekt om over je hele kennisgraaf te redeneren — en dat bezwaar houdt in de praktijk stand. In plaats daarvan lopen we door de graaf die je al onderhoudt doo`[[wiki-links]]`]`s te schrijven.
 
 ```mermaid
 flowchart LR
@@ -381,7 +381,7 @@ Alle drie de manieren volgen dezelfde regel van Obsidian voor SecretStorage (gee
 
 ### Wat doet de plug-in eigenlijk?
 
-Kies een notitie, een map of een selectie: de LLM haalt entiteiten en concepten eruit en schrijft een onderling gekoppelde wiki met `[[koppelingen in twee richtingen]]` onder `wiki/`. Stel een vraag en het antwoord komt uit die pagina's, met bronvermelding. Je oorspronkelijke notities worden nooit aangepast.
+Kies een notitie, een map of een selectie: de LLM haalt entiteiten en concepten eruit en schrijft een onderling gekoppelde wiki met `[[bidirectional links]]` onder `wiki/`. Stel een vraag en het antwoord komt uit die pagina's, met bronvermelding. Je oorspronkelijke notities worden nooit aangepast.
 
 ### Is mijn bestaande wiki veilig bij upgrades?
 

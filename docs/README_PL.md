@@ -14,13 +14,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — strumieniowe wczytywanie, zapamiętany limit wyjścia i mniejszy pakiet)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
-- direct-competitors: nashsu/llm_wiki (aplikacja desktopowa Tauri), SamurAIGPT/llm-wiki-agent (umiejętność Claude Code / Codex / OpenCode / Gemini CLI), atomicstrata/llm-wiki-compiler (CLI w TypeScript, wyszukiwanie po fragmentach)
-- retrieval-benchmark: PPR @5 = 27.1% wobec czystego kNN 24.1% (korpus z własnego skarbca projektu, niepubliczny zestaw referencyjny)
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -81,7 +81,7 @@ Istnieją inne otwarte realizacje pomysłu Karpathy'ego na LLM Wiki, ale żadna 
 Wtyczka traktuje twoje istniejące foldery jako ściśle **tylko do odczytu**. Wszystko, co tworzy, żyje w osobnym folderze `wiki/` — łatwo go przejrzeć, przeszukać Dataviewem albo oddzielić w `git diff`:
 
 ```text
-twój-skarbiec/
+your-vault/
 ├── notes/                       # 🔒 Ściśle tylko do odczytu — nigdy zmieniane ani przepisywane
 │   ├── machine-learning.md
 │   └── attention-paper.pdf
@@ -139,7 +139,7 @@ twój-skarbiec/
    - ⌨️ **Klawiatura:** `Cmd+P` / `Ctrl+P` → „Zadaj pytanie do wiki”.
    - 🖱️ **Ikona we wstążce:** kliknij ikonę dymka we wstążce po lewej stronie.
 
-   Po prawej otwiera się panel boczny, jak u kopilota, w którym rozmawiasz ze swoją wiki. Odpowiedzi niosą `[[wiki-link]]` z powrotem do twojego grafu wiedzy.
+   Po prawej otwiera się panel boczny, jak u kopilota, w którym rozmawiasz ze swoją wiki. Odpowiedzi niosą `[[wiki-links]]` z powrotem do twojego grafu wiedzy.
 
    [![Odpowiedź Query Wiki w panelu po prawej, gdzie każde twierdzenie ma przypis do strony wiki, z której pochodzi](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
 
@@ -152,7 +152,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 | 📥 **Wczytaj jedno źródło** | `Cmd+P` / `Ctrl+P` → „Wczytaj jedno źródło” — wybierz plik Markdown albo PDF, a dostaniesz strony encji, pojęć i źródła. Także: 🖱️ ikona naklejki przy otwartej notatce. |
 | 📂 **Wczytaj z folderu** | `Cmd+P` / `Ctrl+P` → „Wczytaj z folderu” — wczytuje wszystkie notatki z folderu, z inteligentnym pomijaniem już wczytanych. |
 | 📑 **Wczytaj wiele plików** | `Cmd+P` / `Ctrl+P` → „Wczytaj wiele plików” — wybierz podzbiór w drzewie z dwoma panelami (z kolejką i anulowaniem pojedynczego pliku). |
-| 🔍 **Zadaj pytanie do wiki** | `Cmd+P` / `Ctrl+P` → „Zadaj pytanie do wiki” — rozmowa z wiki w panelu po prawej; odpowiedzi niosą `[[wiki-link]]`. Także: 🖱️ ikona dymka. |
+| 🔍 **Zadaj pytanie do wiki** | `Cmd+P` / `Ctrl+P` → „Zadaj pytanie do wiki” — rozmowa z wiki w panelu po prawej; odpowiedzi nioszą `[[wiki-links]]`. Także: 🖱️ ikona dymka. |
 | 🛠️ **Skontroluj wiki** | `Cmd+P` / `Ctrl+P` → „Skontroluj wiki” — pełna kontrola: duplikaty, martwe odsyłacze, puste strony, strony osierocone, brakujące aliasy, sprzeczności. |
 | ⚡ **Napraw wszystko automatycznie** | w oknie lint — naprawa jednym kliknięciem w kolejności przyczyn, z raportem po każdym etapie. |
 | 📋 **Utwórz indeks ponownie** | `Cmd+P` / `Ctrl+P` → „Utwórz indeks ponownie” — odbudowuje `wiki/index.md` z obecnymi stronami i aliasami. |
@@ -163,7 +163,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 
 | Przed | Po |
 | --- | --- |
-| `notes/machine-learning.md` (jeden płaski plik) | `wiki/concepts/supervised-learning.md` z `[[odsyłaczami w obie strony]]`, aliasami, przypisaniem źródła i wpisem w `wiki/index.md` |
+| `notes/machine-learning.md` (jeden płaski plik) | `wiki/concepts/supervised-learning.md` z `[[bidirectional links]]`, aliasami, przypisaniem źródła i wpisem w `wiki/index.md` |
 
 📖 Opisy krok po kroku są w [Dyskusjach GitHub → Poradniki](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Przydatne? [Daj repozytorium gwiazdkę](https://github.com/GD4AI/obsidian-llm-wiki), aby śledzić wydania.
 
@@ -175,7 +175,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 
 - 🔍 **Wyodrębnianie encji i pojęć** — model wyodrębnia encje (osoby, organizacje, produkty, wydarzenia) i pojęcia (teorie, metody, terminy) do osobnych stron. Ilość jest konfigurowalna (od Minimalnie do Dokładnie, plus Własne), więc wymieniasz koszt na głębokość.
 - 🏷️ **Aliasy są obowiązkowe** — każda strona dostaje co najmniej jeden alias (tłumaczenie, skrót, wariant), dzięki czemu duplikaty da się znaleźć także między językami.
-- 🔄 **Duplikaty w dwóch progach** — próg 1 (ta sama nazwa: inny język, skrót, bardzo podobny tytuł) jest sprawdzany zawsze; próg 2 (wspólne odsyłacze, średnie podobieństwo) bierze to, co zostało z budżetu tokenów.
+- 🔄 **Duplikaty w dwóch poziomach** — poziom 1 (ta sama nazwa: inny język, skrót, bardzo podobny tytuł) jest sprawdzany zawsze; poziom 2 (wspólne odsyłacze, średnie podobieństwo) bierze to, co zostało z budżetu tokenów.
 - 🧩 **Scalanie i stan sprzeczności** — duplikaty są scalane z zachowaniem aliasów; sprzeczności są oznaczane wraz ze źródłem; strony z `reviewed: true` nigdy nie są nadpisywane.
 - 🎨 **Jedna lista tagów, twoja** — tagi, które strona może nosić, pochodzą z zagnieżdżonych tagów twoich notatek, z tagów już obecnych na stronach wiki oraz z listy *Własne (zdefiniowane przez użytkownika)* w Ustawienia → Konfiguracja wiki → Konfiguracja listy tagów. Prompt, kontrola zapisu, lint i ponowne tagowanie czytają tę jedną listę, więc to, co dostaje model, trafia na dysk; wartość spoza listy jest odrzucana i nigdy nie zapisywana. Małe modele nadal się mylą (mniej więcej co dziesiąta runda zwraca własną taksonomię) — kontrola to wychwytuje, a lint zgłasza stronę. Punkt zaczepienia projektu: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
@@ -214,7 +214,7 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 
 **Wyszukiwanie i odpowiedzi**
 
-- 🧭 **Kaskada PPR w 5 etapów** — Personalized PageRank po `[[wiki-link]]` daje kontekst przechodzący przez graf o wiele kroków (zobacz [Jak działa wyszukiwanie](#-jak-działa-wyszukiwanie)).
+- 🧭 **Kaskada PPR w 5 etapów** — Personalized PageRank po `[[wiki-link]]` daje wielokrokowy kontekst oparty na grafie (zobacz [Jak działa wyszukiwanie](#-jak-działa-wyszukiwanie)).
 - 🔤 **Ocena leksykalna z treścią strony** — szybka ścieżka ocenia tytuł, aliasy, podsumowanie i samą treść wzorem BM25F, więc najdłuższy tekst na stronie trafia do oceny. To największa zmiana w trafności, jaką projekt wprowadził.
 - 🧩 **Kształtowanie list powiązanych** — jedna strona-węzeł nie przeciąga już do siebie wszystkich pozostałych. Listy powiązane są przeliczane przy każdym zapisie z nazw, które przetrwały, uszeregowane i ograniczone.
 - 📏 **Budżet odpowiedzi to 16 000 tokenów** — potok wprost mówi, kiedy budżet się kończy, zamiast cicho się zatrzymać. Kontekst jest dopasowywany do budżetu stron przed złożeniem, więc 20 stron jest w prompcie z planu, a nie z przypadku.
@@ -292,7 +292,7 @@ Wtyczka współpracuje z resztą twojego zestawu w Obsidianie — każde narzęd
 
 ## 🔍 Jak działa wyszukiwanie
 
-Większość wtyczek do „wyszukiwania z AI” tnie notatki na fragmenty i wkłada je do bazy wektorowej. My tego nie robimy. [Argument Karpathy'ego przeciw RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) mówi, że cięcie na fragmenty psuje zdolność modelu do rozumowania po całym grafie wiedzy — i ten argument broni się w praktyce. Zamiast tego idziemy po grafie, który już utrzymujesz, pisząc `[[wiki-link]]`.
+Większość wtyczek do „wyszukiwania z AI” tnie notatki na fragmenty i wkłada je do bazy wektorowej. My tego nie robimy. [Argument Karpathy'ego przeciw RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) mówi, że cięcie na fragmenty psuje zdolność modelu do rozumowania po całym grafie wiedzy — i ten argument broni się w praktyce. Zamiast tego idziemy po grafie, który już utrzymujesz, piszą`[[wiki-links]]`]`.
 
 ```mermaid
 flowchart LR
@@ -314,7 +314,7 @@ Gdy pytasz „*Kto założył Microsoft?*”, Query Wiki przechodzi pięć etap�
 2. **Słowa kluczowe od modelu** — model proponuje 8–12 słów kluczowych w wielu językach na podstawie twojego pytania (synonimy, skróty i terminy słabo pokrywające się literowo, w jednym wywołaniu).
 3. **Lokalne przeszukanie tekstu** — każde zaproponowane słowo jest ponownie dopasowywane lokalnie do tytułów, aliasów i fragmentów treści. Bez dodatkowego wywołania modelu; dopełnia odporność na szum.
 4. **Powrót do bazy wiedzy przez model** — gdy ścieżka leksykalna i szukanie słów dają słaby sygnał, model przykłada najlepszych N kandydatów jeszcze raz do całej wiki.
-5. **Rozszerzenie po grafie przez PPR** — Personalized PageRank (Haveliwala 2002) po grafie `[[wiki-link]]`, startując z wybranych punktów. To daje kontekst przechodzący przez graf: „Bill Gates” → „Microsoft” → „konkurenci”, a nie tylko dosłowną zbieżność tytułu.
+5. **Rozszerzenie po grafie przez PPR** — Personalized PageRank (Haveliwala 2002) po grafie `[[wiki-link]]`, startując z wybranych punktów. To daje wielokrokowy kontekst oparty na grafie: „Bill Gates” → „Microsoft” → „konkurenci”, a nie tylko dosłowną zbieżność tytułu.
 
 Kaskada kończy się na etapie, który dał dość sygnału — bez stałego kosztu 5 etapów, bez wywołań modelu, gdy ścieżka leksykalna wystarcza, i z semantycznym powrotem tylko wtedy, gdy ścieżka leksykalna ze słowami kluczowymi nie wystarcza.
 
@@ -381,7 +381,7 @@ Wszystkie trzy tryby dzielą tę samą zasadę Obsidiana dla SecretStorage (żad
 
 ### Co ta wtyczka właściwie robi?
 
-Wybierasz notatkę, folder albo zaznaczenie: model wyodrębnia encje i pojęcia i zapisuje połączoną wiki z `[[odsyłaczami w obie strony]]` w `wiki/`. Zadajesz pytanie, a odpowiedź pochodzi z tych stron, z przypisami. Twoje notatki nie są nigdy zmieniane.
+Wybierasz notatkę, folder albo zaznaczenie: model wyodrębnia encje i pojęcia i zapisuje połączoną wiki z `[[bidirectional links]]` w `wiki/`. Zadajesz pytanie, a odpowiedź pochodzi z tych stron, z przypisami. Twoje notatki nie są nigdy zmieniane.
 
 ### Czy moja obecna wiki jest bezpieczna po aktualizacjach?
 
@@ -389,7 +389,7 @@ Wybierasz notatkę, folder albo zaznaczenie: model wyodrębnia encje i pojęcia 
 
 ### Czym to się różni od chatbota RAG?
 
-Bez cięcia na fragmenty, bez embeddingów, bez bazy wektorowej. Personalized PageRank idzie po grafie `[[wiki-link]]`, który już utrzymujesz, co daje kontekst przez wiele kroków bez kosztu embeddingów.
+Bez cięcia na fragmenty, bez embeddingów, bez bazy wektorowej. Personalized PageRank idzie po grafie `[[wiki-link]]`, który już utrzymujesz, co daje wielokrokowy kontekst bez kosztu embeddingów.
 
 ### Jak kontrolować koszty API?
 

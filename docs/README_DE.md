@@ -14,13 +14,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — Streaming-Import, eine gemerkte Ausgabemgrenze und ein kleineres Bundle)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Intelligente Gesamtbehebung, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
-- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (ein Korpus aus einem Projekt-Vault, kein öffentlicher Benchmark-Datensatz)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -81,7 +81,7 @@ Es gibt andere Open-Source-Umsetzungen von Karpathys LLM-Wiki-Idee — aber kein
 Das Plugin behandelt deine vorhandenen Ordner als strikt **schreibgeschützt**. Alles, was es erzeugt, liegt in einem eigenen `wiki/`-Ordner — leicht zu prüfen, mit Dataview abzufragen oder in `git diff` sauber abzugrenzen:
 
 ```text
-dein-vault/
+your-vault/
 ├── notes/                       # 🔒 Strikt schreibgeschützt — nie verändert oder neu geschrieben
 │   ├── machine-learning.md
 │   └── attention-paper.pdf
@@ -157,13 +157,13 @@ Das war es. **Aufnehmen** und **Wiki anfragen** liegen beide im linken Ribbon un
 | ⚡ **Intelligente Gesamtbehebung** | im Lint-Modal — Reparatur in kausaler Reihenfolge mit einem Klick, mit Bericht pro Phase. |
 | 📋 **Index neu generieren** | `Cmd+P` / `Ctrl+P` → „Index neu generieren“ — baut `wiki/index.md` mit den aktuellen Seiten und Aliasen neu auf. |
 | ⏹ **Abbrechen** | `Cmd+P` / `Ctrl+P` → „Aktuelle Aufnahme abbrechen“ oder Klick auf die Statusleiste — hält sauber an der nächsten Stapelgrenze an. |
-| 📊 **Aufnahmeverlauf** | `Cmd+P` / `Ctrl+P` → „Ingestionsverlauf anzeigen“ — durchsuchbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe. |
+| 📊 **Betriebsverlauf** | `Cmd+P` / `Ctrl+P` → „Ingestionsverlauf anzeigen“ — durchsuchbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe. |
 
 [![Alle Befehle von Karpathy LLM Wiki stehen in Obsidians Befehlspalette unter einem gemeinsamen Präfix](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
 
 | Vorher | Nachher |
 | --- | --- |
-| `notes/machine-learning.md` (eine flache Datei) | `wiki/concepts/supervised-learning.md` mit `[[bidirektionalen Links]]`, Aliasen, Quellenangabe und einem Eintrag in `wiki/index.md` |
+| `notes/machine-learning.md` (eine flache Datei) | `wiki/concepts/supervised-learning.md` mit `[[bidirectional links]]`, Aliasen, Quellenangabe und einem Eintrag in `wiki/index.md` |
 
 📖 Schritt-für-Schritt-Anleitungen in [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Hat es dir geholfen? [Gib dem Repo einen Stern](https://github.com/GD4AI/obsidian-llm-wiki), um Releases zu verfolgen.
 
@@ -177,7 +177,7 @@ Das war es. **Aufnehmen** und **Wiki anfragen** liegen beide im linken Ribbon un
 - 🏷️ **Pflicht-Aliase** — jede Seite kommt mit mindestens einem Alias (Übersetzung, Kürzel, Variante), damit die sprachübergreifende Duplikaterkennung greift.
 - 🔄 **Duplikaterkennung in zwei Stufen** — Stufe 1 (direkter Namensgleichklang: sprachübergreifend, Kürzel, sehr ähnliche Titel) wird immer geprüft; Stufe 2 (gemeinsame Links, mittlere Ähnlichkeit) füllt das restliche Token-Budget.
 - 🧩 **Intelligentes Zusammenführen und Widerspruchsstatus** — Duplikate werden zusammengeführt und behalten ihre Aliase; Widersprüche werden mit Quellenangabe markiert; Seiten mit `reviewed: true` sind vor dem Überschreiben geschützt.
-- 🎨 **Ein Tag-Vokabular, und es gehört dir** — welche Tags eine Seite tragen darf, kommt aus den verschachtelten Tags deiner Notizen, aus den Tags, die schon auf Wiki-Seiten stehen, und aus der Liste *Benutzerdefiniert (eigene)* unter Einstellungen → Wiki-Konfiguration → Tag-Vokabular-Konfiguration. Prompt, Schreibtor, Lint und Retag lesen dieselbe Liste; was dem Modell angeboten wird, landet auch auf der Platte. Ein Wert außerhalb der Liste wird verworfen und nie geschrieben. Kleine Modelle driften trotzdem (etwa ein Lauf von zehn liefert die eigene Taxonomie des Modells) — das Tor fängt es ab, und Lint meldet die Seite. Design-Anker: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Ein Tag-Vokabular, das dir gehört** — welche Tags eine Seite tragen darf, kommt aus den verschachtelten Tags deiner Notizen, aus den Tags, die schon auf Wiki-Seiten stehen, und aus der Liste *Benutzerdefiniert (eigene)* unter Einstellungen → Wiki-Konfiguration → Tag-Vokabular-Konfiguration. Prompt, Schreibtor, Lint und Retag lesen dieselbe Liste; was dem Modell angeboten wird, landet auch auf der Platte. Ein Wert außerhalb der Liste wird verworfen und nie geschrieben. Kleine Modelle driften trotzdem (etwa ein Lauf von zehn liefert die eigene Taxonomie des Modells) — das Tor fängt es ab, und Lint meldet die Seite. Design-Anker: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Eine erzeugte Konzeptseite: das Vokabular-Tag, mit dem sie geschrieben wurde, ihre Aliase AF und AFib, ihre Definition und die verwandten Seiten](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -216,7 +216,7 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 - 🧭 **PPR-Kaskade in fünf Stufen** — Personalized PageRank über `[[wiki-link]]` liefert graphbewussten Multi-Hop-Kontext (siehe [Wie die Suche funktioniert](#-wie-die-suche-funktioniert)).
 - 🔤 **Lexikales Scoring, das den Fließtext liest** — der Schnellpfad bewertet Titel, Aliase, Zusammenfassung und Fließtext mit BM25F, sodass der längste Text einer Seite den Scorer erreicht. Das ist die größte Recall-Änderung, die dieses Projekt je gemacht hat.
-- 🧩 **Zugeschnittene Related-Listen** — eine Hub-Seite zieht nicht mehr jede andere Seite zu sich. Related-Listen werden bei jedem Schreiben aus den verbliebenen Namen neu berechnet, sortiert und begrenzt.
+- 🧩 **Zugeschnittene Verwandte Listen** — eine Hub-Seite zieht nicht mehr jede andere Seite zu sich. Verwandte Listen werden bei jedem Schreiben aus den verbliebenen Namen neu berechnet, sortiert und begrenzt.
 - 📏 **Antwortbudget von 16.000 Tokens** — die Pipeline sagt ausdrücklich, wenn das Budget aufgebraucht ist, statt still zu halten. Der Kontext wird vor dem Zusammenbau auf ein Seitenbudget gepasst, sodass 20 Seiten planmäßig im Prompt stehen und nicht durch Zufall.
 - 🔖 **Zitate stehen in akademischer Form** — jede Aussage trägt die Wiki-Seiten, aus denen sie stammt. Das Eingabefeld wächst mit dem Inhalt, und *Verlauf leeren* leert die Aufzeichnung.
 - 🪟 **Rechts angedocktes Seitenpanel** — Query Wiki öffnet sich in einem rechten Sidebar-Blatt im Copilot-Stil statt in einem zentrierten Modal.
@@ -225,7 +225,7 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 - 🔍 **Lint-Gesundheitsscan** — ein einziger Befehl erfasst Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase und Widersprüche. Er listet außerdem Hub-Seiten, deren Nachbarschaft sich kristallisiert hat: ein Hub, der für Verbindungen einsteht, die der Inhalt nicht mehr herstellen kann.
 - ⚡ **Intelligente Gesamtbehebung** — Reparatur in kausaler Reihenfolge mit einem Klick: Aliase füllen → Duplikate zusammenführen → tote Links reparieren → verwaiste Seiten verlinken → leere Seiten erweitern, mit Bericht pro Phase.
-- 📊 **Panel für den Betriebsverlauf** — durchsuchbare, filterbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe.
+- 📊 **Betriebsverlauf** — durchsuchbare, filterbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe.
 
 [![Der Lint-Bericht des Wikis: die Statuszeile, die gefundenen toten Links und die Schaltfläche Intelligente Gesamtbehebung, die sie in einem Durchlauf repariert](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
@@ -286,7 +286,7 @@ Das Plugin fügt sich in den Rest deines Obsidian-Stacks — jedes Werkzeug unte
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — frag das Wiki wie eine Datenbank ab, mit DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) oder über die JS-API. Das Plugin schreibt auf jeder Seite Standard-Frontmatter (`tags:`, `type:`, `aliases:`), deshalb laufen Dataview-Abfragen sofort.
 - 🌿 **Git** — versioniere deinen Vault mit einem beliebigen Git-Client. Weil das Plugin deine Quelldateien nie neu schreibt und nur unter `wiki/` anlegt, trennt `git diff` deine Änderungen sauber von der LLM-Ausgabe.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — mach aus jeder Wiki-Seite einen Foliensatz, über Marp-Frontmatter (`marp: true`).
-- 🖼️ **Canvas** — Obsidians unendliche Leinwand. Zieh Wiki-Karten darauf, um Lerneinheiten, Mindmaps oder Forschungsübersichten zusammenzustellen.
+- 🖼️ **Canvas** — Obsidians unendliche Leinwand. Zieh Wiki-Karten darauf, um Lerneinheiten, Mindmaps oder Forschungsübersichten aus `[[wiki-links]]` zusammenzustellen.
 
 ---
 
@@ -381,7 +381,7 @@ Alle drei Arten teilen dieselbe Disziplin von Obsidian SecretStorage (keine Anme
 
 ### Was macht das Plugin eigentlich?
 
-Wähle eine Notiz, einen Ordner oder eine Auswahl: Das LLM zieht Entitäten und Konzepte heraus und schreibt ein vernetztes Wiki mit `[[bidirektionalen Links]]` unter `wiki/`. Stell eine Frage, und die Antwort kommt aus diesen Seiten, mit Zitaten. Deine ursprünglichen Notizen bleiben unverändert.
+Wähle eine Notiz, einen Ordner oder eine Auswahl: Das LLM zieht Entitäten und Konzepte heraus und schreibt ein vernetztes Wiki mit `[[bidirectional links]]` unter `wiki/`. Stell eine Frage, und die Antwort kommt aus diesen Seiten, mit Zitaten. Deine ursprünglichen Notizen bleiben unverändert.
 
 ### Ist mein bestehendes Wiki über Updates hinweg sicher?
 

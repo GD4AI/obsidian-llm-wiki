@@ -5,7 +5,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - license: Apache-2.0
 - language: TypeScript
 - runtime: Obsidian >= 1.11.4 (desktop + mobile)
-- dependencies: sem dependências em tempo de execução (Vercel AI SDK v7 incluído)
+- dependencies: zero runtime dependencies (Vercel AI SDK v7 bundled)
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
@@ -14,13 +14,13 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0 (MINOR — a ingestão em streaming, um teto de saída memorizado e um pacote menor)
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Correção inteligente de tudo, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
-- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (um corpus de um vault do projeto, não um conjunto de benchmark público)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -97,7 +97,7 @@ your-vault/
 - **Você quer uma configuração de 5 minutos.** Instale a partir dos Plugins da comunidade → escolha um provedor → ingira uma nota. As páginas wiki aparecem em `wiki/` em segundos, sem CLI, sem Python e sem base de dados vetorial para levantar primeiro.
 - **Você quer respostas a partir das suas próprias notas**, e cada resposta cita as páginas de onde veio. Ollama ou LM Studio mantêm a chamada inteira na sua máquina.
 - **Você escreve ou lê em qualquer um dos 14 idiomas.** Interface e saída da wiki são independentes: uma wiki em chinês por trás de uma interface em inglês é uma configuração suportada.
-- **Você quer manutenção de um clique.** A verificação de saúde do Lint e o Correção inteligente de tudo mantêm duplicados, links quebrados e órfãos sob controlo, sem curadoria à mão.
+- **Você quer manutenção de um clique.** A verificação de saúde do Lint e a Correção inteligente de tudo mantêm duplicados, links quebrados e órfãos sob controlo, sem intervenção manual.
 
 *Não é para você se* quer um substituto genérico do ChatGPT, RAG sobre corpora externos como Confluence ou arXiv, ou um serviço alojado com colaboração em equipa. As respostas vêm do seu vault, a ingestão cobre o seu vault mais ficheiros isolados, e não há backend para partilhar.
 
@@ -163,7 +163,7 @@ your-vault/
 
 | Antes | Depois |
 | --- | --- |
-| `notes/machine-learning.md` (um ficheiro plano) | `wiki/concepts/supervised-learning.md` com `[[links bidirecionais]]`, aliases, atribuição de fonte e uma entrada em `wiki/index.md` |
+| `notes/machine-learning.md` (um ficheiro plano) | `wiki/concepts/supervised-learning.md` com `[[bidirectional links]]`, aliases, atribuição de fonte e uma entrada em `wiki/index.md` |
 
 📖 Passo a passo em [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides). Achou útil? [Dê uma estrela ao repositório](https://github.com/GD4AI/obsidian-llm-wiki) para acompanhar as versões.
 
@@ -198,7 +198,7 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 <summary>🔧 <strong>Infraestrutura, cache limitada, limites de tokens e ressalvas dos formatos Office</strong></summary>
 <br/>
 
-- **Limites do MinerU e ciclo de vida do token** — o token vive no SecretStorage e expira ao fim de cerca de 90 dias (um aviso `401` indica a página onde o renovar). Os limites são 200 MB / 200 páginas por PDF e 256 MB / 10 000 ficheiros por arquivo.
+- **Limites do MinerU e ciclo de vida do token** — o token vive no SecretStorage e expira ao fim de cerca de 90 dias (um aviso `401` indica a página onde o renovar). Os limites são 200 MB / 200 páginas por PDF e 256 MB / 10 000 ficheiros por pacote.
 - **Limites das imagens incorporadas e rasto de auditoria** — são enviadas em pacotes de evidência visual de 20 MiB, com um limite de 10 MiB por imagem; os URLs remotos nunca são descarregados. Ative opcionalmente **Salvar evidências visuais de imagens incorporadas na página de origem** para acrescentar uma secção de auditoria recolhível à página de origem gerada.
 - **🗄️ Cache limitada** — `.obsidian/plugins/karpathywiki/pdf-cache/` guarda o Markdown convertido, indexado por hash de conteúdo + modelo + versão do conversor; tetos de 100 MB no total / 1 000 entradas / 10 MB por entrada, com remoção LRU pela data de modificação.
 - **📝 Sidecar opcional no vault** — Configurações → Configuração do Wiki → Pasta Wiki → **Gravar o Markdown convertido no Vault** escreve `<basename>.pdf.md` ao lado do PDF de origem (desligado por padrão — só a cache é o padrão).
@@ -214,9 +214,9 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 
 **Recuperação e respostas**
 
-- 🧭 **Cascata PPR de 5 estágios** — o Personalized PageRank sobre `[[wiki-link]]` dá contexto multi-hop consciente do grafo (veja [Como funciona a recuperação](#-como-funciona-a-recuperação)).
-- 🔤 **Pontuação lexical que lê o corpo do texto** — o caminho rápido pontua o título, os aliases, o resumo e o corpo do texto com BM25F, por isso o texto mais longo de uma página chega ao pontuador. É a maior melhoria de cobertura que este projeto já fez.
-- 🧩 **Formatação das páginas relacionadas** — uma página hub já não consegue arrastar todas as outras para si. As listas de relacionados são recalculadas a cada escrita a partir dos nomes que sobreviveram, ordenados e limitados.
+- 🧭 **Cascata PPR de 5 estágios** — o Personalized PageRank sobre `[[wiki-link]]` dá contexto multi-hop guiado pelo grafo (veja [Como funciona a recuperação](#-como-funciona-a-recuperação)).
+- 🔤 **Pontuação lexical que lê o corpo do texto** — o caminho rápido pontua o título, os aliases, o resumo e o corpo do texto com BM25F, por isso o texto mais longo de uma página chega ao avaliador. É a maior melhoria na recuperação que este projeto já fez.
+- 🧩 **Ajuste das páginas relacionadas** — uma página hub já não consegue arrastar todas as outras para si. As listas de relacionados são recalculadas a cada escrita a partir dos nomes que sobreviveram, ordenados e limitados.
 - 📏 **Orçamento de resposta de 16 000 tokens** — o pipeline diz explicitamente quando o orçamento acaba, em vez de parar em silêncio. O contexto é ajustado a um orçamento de páginas antes da montagem, por isso 20 páginas entram no prompt por plano e não por sorte.
 - 🔖 **Citações em forma académica** — cada afirmação remete por nota de rodapé para as páginas wiki de onde veio. O compositor cresce com o seu conteúdo, e limpar o histórico limpa de facto o registo.
 - 🪟 **Painel lateral à direita** — o Consultar Wiki abre num painel lateral direito ao estilo Copilot em vez de um modal centrado.
@@ -230,19 +230,19 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 [![Relatório do Lint — a linha de estado, os links quebrados encontrados e o botão Correção inteligente de tudo que os repara numa só passagem](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>Barreiras que correm antes de uma chamada ser paga e definições que moldam uma execução</strong></summary>
+<summary>⚙️ <strong>Barreiras que correm antes de o provedor cobrar a chamada e definições que moldam uma execução</strong></summary>
 <br/>
 
 **Barreiras anteriores à chamada e controlos de recurso**
 
 - 🛡️ **Barreira de pré-ingestão** — notas vazias, só com espaços ou só com frontmatter são rejeitadas antes de qualquer chamada ao LLM; a deduplicação por hash de conteúdo apanha ficheiros idênticos em caminhos diferentes.
 - 🚦 **Barreira de candidatos de ingestão** — opcional (`skipMentionOnlyCandidates`, desligado por padrão). Um candidato nomeado apenas entre parênteses, numa enumeração ou num item de lista curto é podado antes de custar uma geração e uma chamada de deduplicação. Aplica-se só aos idiomas com perfil medido; as notas multilingues nunca são filtradas em silêncio.
-- 🚧 **Resultado «deixar como está» em links quebrados** — Configurações → Avançado → **Criar páginas de stub para links não resolvidos** (ligado por padrão). Desligue-o e um link quebrado fica visível em todos os relatórios do Lint até uma fonte real o definir, em vez de se tornar uma página de marcador vazia.
+- 🚧 **Links quebrados deixados por resolver** — Configurações → Avançado → **Criar páginas de stub para links não resolvidos** (ligado por padrão). Desligue-o e um link quebrado fica visível em todos os relatórios do Lint até uma fonte real o definir, em vez de se tornar uma página de marcador vazia.
 - 🔁 **Interruptor do avaliador antigo** — Configurações → Avançado → **Antigo avaliador de consultas** corre a ordenação linear anterior, ajustada à mão, em vez do avaliador BM25F padrão.
 
 **Oito definições que moldam uma execução**
 
-A maior parte do que o plugin faz está decidido por si.Estas oito definições mudam isso, e cada uma delas é a resposta a uma falha que alguém encontrou:
+A maior parte do que o plugin faz está decidida por si. Estas oito definições mudam isso, e cada uma delas é a resposta a uma falha que alguém encontrou:
 
 | Definição | Onde | O que muda |
 | --- | --- | --- |
@@ -286,7 +286,7 @@ O plugin compõe-se com o resto do seu stack do Obsidian — cada ferramenta aba
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — consulte a wiki como uma base de dados com DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) ou a API JS. O plugin escreve frontmatter padrão (`tags:`, `type:`, `aliases:`) em todas as páginas.
 - 🌿 **Git** — versione o seu vault com qualquer cliente Git. Como o plugin nunca reescreve os seus ficheiros de origem e escreve apenas em `wiki/`, o `git diff` separa com clareza as suas edições do conteúdo gerado pelo LLM.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — transforme qualquer página wiki em apresentações através do frontmatter do Marp (`marp: true`).
-- 🖼️ **Canvas** — arraste cartões da wiki para a tela infinita nativa do Obsidian e monte guias de estudo, mapas mentais ou sínteses de investigação.
+- 🖼️ **Canvas** — arraste cartões da wiki para a tela infinita nativa do Obsidian e monte guias de estudo, mapas mentais ou sínteses de investigação a partir de `[[wiki-links]]`.
 
 ---
 
@@ -312,9 +312,9 @@ Quando você pergunta *"Quem fundou a Microsoft?"*, o Consultar Wiki corre cinco
 
 1. **Caminho rápido lexical** — BM25F sobre o título, os aliases, o resumo e o corpo do texto de cada entidade e conceito, com saturação por campo e IDF a partir de uma tabela real de frequência documental. Grátis, instantâneo, e a etapa que condiciona tudo o resto.
 2. **Geração de palavras-chave pelo LLM** — o LLM propõe 8–12 palavras-chave entre idiomas a partir da sua pergunta (resolve sinónimos, abreviaturas e termos resistentes à sobreposição de tokens numa única chamada).
-3. **Varredura local de substrings** — cada palavra-chave gerada é novamente comparada localmente com títulos de páginas, aliases e trechos do corpo. Sem chamada extra ao LLM; completa a cobertura tolerante a ruído.
+3. **Varredura local de substrings** — cada palavra-chave gerada é novamente comparada localmente com títulos de páginas, aliases e trechos do corpo. Sem chamada extra ao LLM; completa a recuperação tolerante a ruído.
 4. **Recurso pela base de conhecimento do LLM** — quando o caminho lexical mais a varredura devolvem sinais fracos, o LLM volta a semear os top-N candidatos contra a wiki inteira, numa passagem semântica.
-5. **Expansão do grafo por PPR** — Personalized PageRank (Haveliwala 2002) sobre o grafo `[[wiki-link]]`, a partir do conjunto de sementes candidatas. É isto que dá contexto multi-hop consciente do grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrentes"*, e não apenas sobreposição literal de títulos.
+5. **Expansão do grafo por PPR** — Personalized PageRank (Haveliwala 2002) sobre o grafo `[[wiki-link]]`, a partir do conjunto de sementes candidatas. É isto que dá contexto multi-hop guiado pelo grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrentes"*, e não apenas sobreposição literal de títulos.
 
 A cascata trunca no estágio que devolveu sinal suficiente — sem custo fixo de 5 estágios, sem chamadas ao LLM quando o caminho lexical basta, e recurso semântico só quando o caminho lexical mais a varredura não chegam.
 
@@ -326,7 +326,7 @@ Quando a cascata chega ao estágio do grafo, a consulta é expandida duas vezes 
 
 Usamos Monte Carlo PPR (Fogaras 2005) — 3 000 caminhadas aleatórias × 50 passos cada — com a regra de becos sem saída de Haveliwala 2002. O custo é $O(K \times L)$ ($K$ = caminhadas, $L$ = passos por caminhada), independente do número de páginas, por isso um vault de 2 000 páginas vê a mesma latência de expansão que um de 200 páginas.
 
-`PPR @5 = 27.1%` contra uma linha de base pure-kNN de `24.1%` num vault do projeto. O corpus não é público, por isso leia o número como a comparação que o projeto fez para si mesmo, e não como uma afirmação sobre o seu vault; `tools/dev-instrument/run-recall-harness.mjs` é o instrumento que mede a cobertura contra um vault.
+`PPR @5 = 27.1%` contra uma linha de base pure-kNN de `24.1%` num vault do projeto. O corpus não é público, por isso leia o número como a comparação que o projeto fez para si mesmo, e não como uma afirmação sobre o seu vault; `tools/dev-instrument/run-recall-harness.mjs` é o instrumento que mede a recuperação contra um vault.
 
 ### Por que nenhum embedding
 
@@ -380,7 +380,7 @@ Os três modos partilham a mesma disciplina do SecretStorage do Obsidian (nenhum
 ## ❓ FAQ
 
 ### O que o plugin faz na prática?
-Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidades e conceitos e escreve uma wiki interligada com `[[links bidirecionais]]` em `wiki/`. Faça uma pergunta e a resposta vem dessas páginas, com citações. As suas notas originais nunca são modificadas.
+Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidades e conceitos e escreve uma wiki interligada com `[[bidirectional links]]` em `wiki/`. Faça uma pergunta e a resposta vem dessas páginas, com citações. As suas notas originais nunca são modificadas.
 
 ### A minha wiki atual está segura entre atualizações?
 ✅ Retrocompatível desde a v1.0.0. Defina `reviewed: true` em qualquer página para a proteger contra sobrescrita. As atualizações nunca reescrevem o seu vault, e a conversão de PDF fica só na cache por padrão, a não ser que peça os sidecars no vault.

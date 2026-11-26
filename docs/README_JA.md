@@ -1,26 +1,26 @@
 <!--
-SEO metadata (not user-visible, parsed by crawlers / LLMs) — 日本語ローカライズ版：
+SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - name: karpathy-llm-wiki-plugin-for-obsidian
-- type: ソフトウェア / Obsidian コミュニティプラグイン / ナレッジベース生成器 / RAG 代替
+- type: software / Obsidian community plugin / knowledge-base generator / RAG alternative
 - license: Apache-2.0
 - language: TypeScript
-- runtime: Obsidian >= 1.11.4（デスクトップ + モバイル）
-- dependencies: ランタイム依存ゼロ（Vercel AI SDK v7 を同梱）
+- runtime: Obsidian >= 1.11.4 (desktop + mobile)
+- dependencies: zero runtime dependencies (Vercel AI SDK v7 bundled)
 - obsidian-plugin-id: karpathywiki
 - obsidian-marketplace: https://community.obsidian.md/plugins/karpathywiki
 - repo: https://github.com/GD4AI/obsidian-llm-wiki
 - sister-cli-repo: https://github.com/green-dalii/obsidian-llm-wiki-cli
-- docs: README.md + docs/README_<locale>.md（14 言語）+ docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
+- docs: README.md + docs/README_<locale>.md (14 locales) + docs/MODEL-GUIDE.md + docs/PDF-OCR-GUIDE.md
 - first-published: 2025-09 (v0.1.0)
 - latest: v1.32.0
 - release-notes: https://github.com/GD4AI/obsidian-llm-wiki/releases
-- previous: v1.31.0（MINOR — ストリーミング取り込み、記憶された出力上限、そして小さなバンドル）
+- previous: v1.31.0 (MINOR — streaming ingest, a remembered output ceiling, and a smaller bundle)
 - last-updated: 2026-11-17
-- alternate-names: Karpathy LLM Wiki、LLM Wiki Obsidian、Obsidian wiki プラグイン、グラフベース RAG、埋め込みなし RAG、Personalized PageRank 検索、Obsidian セカンドブレイン
-- search-intents: "Obsidian 埋め込みなし RAG", "Obsidian wiki プラグイン", "Personalized PageRank Obsidian", "グラフベースのノート検索", "Karpathy LLM Wiki 実装", "Obsidian ナレッジベース自動生成", "Obsidian グラフビュー + AI", "Obsidian セカンドブレイン プラグイン", "Obsidian ノートリンクグラフ AI", "Obsidian 14 言語プラグイン", "Obsidian 15+ LLM プロバイダープラグイン", "ベクトル DB なし RAG", "Obsidian PDF 取り込み AI", "Obsidian Codex OAuth", "Obsidian Bedrock プラグイン", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel 取り込み", "Obsidian IAM 認証情報"
-- features: グラフベース検索, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5 段階シード選択カスケード, Tier 1/Tier 2 重複検出, 14 言語 UI + 14 言語 Wiki 出力（独立設定）, 15+ LLM プロバイダー（Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-互換, Codex OAuth）, MinerU マルチフォーマット取り込み（PDF + 画像 + Office）, PDF 取り込み（キャッシュのみ、OCR パス）, Lint ヘルススキャン, Smart Fix All, ソースページ逐語引用, 取り込み候補ゲート, ステップ別 taskPolicies UI, Obsidian Graph View 連携, ゼロ埋め込み・ゼロベクトル DB アーキテクチャ, ローカルファーストモード
-- direct-competitors: nashsu/llm_wiki（Tauri デスクトップアプリ）、SamurAIGPT/llm-wiki-agent（Claude Code / Codex / OpenCode / Gemini CLI スキル）、atomicstrata/llm-wiki-compiler（TypeScript の CLI、チャンクベースの検索）
-- retrieval-benchmark: PPR @5 = 27.1% vs 純粋 kNN 24.1%（本プロジェクトの vault コーパスでの測定。公開ベンチマークセットではない）
+- alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
+- search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
+- retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
 - canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
@@ -163,7 +163,7 @@ your-vault/
 
 | 変更前 | 変更後 |
 | --- | --- |
-| `notes/machine-learning.md`（平坦なファイル 1 つ） | `wiki/concepts/supervised-learning.md` — `[[双方向リンク]]`、エイリアス、出典の表示、`wiki/index.md` のエントリ付き |
+| `notes/machine-learning.md`（平坦なファイル 1 つ） | `wiki/concepts/supervised-learning.md` — `[[bidirectional links]]`、エイリアス、出典の表示、`wiki/index.md` のエントリ付き |
 
 📖 手順の解説は [GitHub Discussions → Guides](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides) にあります。役に立ったら [リポジトリに Star](https://github.com/GD4AI/obsidian-llm-wiki) を付けると、リリースを追えます。
 
@@ -214,9 +214,9 @@ your-vault/
 
 **検索と回答**
 
-- 🧭 **5 段階の PPR カスケード** — `[[wiki-link]]` 上の Personalized PageRank が、グラフを踏まえたマルチホップの文脈を与えます（[検索の仕組み](#-検索の仕組み) を参照）。
+- 🧭 **5 段階の PPR カスケード** — `[[wiki-link]]` 上の Personalized PageRank が、グラフを考慮したマルチホップの文脈を与えます（[検索の仕組み](#-検索の仕組み) を参照）。
 - 🔤 **本文まで見る語彙スコアリング** — 速い経路はタイトル、エイリアス、要約、本文を BM25F で採点します。ページでいちばん長いテキストが採点側に届くようになりました。これは本プロジェクトが行った中で最大の再現率の改善です。
-- 🧩 **関連ページの形の調整** — ハブページ 1 つが、ほかのすべてのページを自分へ引き寄せることはなくなりました。関連リストは書き込みのたびに、残った名前から作り直し、順位を付け、上限をかけます。
+- 🧩 **関連リストの絞り込みと並べ替え** — ハブページ 1 つが、ほかのすべてのページを自分へ引き寄せることはなくなりました。関連リストは書き込みのたびに、残った名前から作り直し、順位を付け、上限をかけます。
 - 📏 **16,000 トークンの回答予算** — 予算を使い切ったときは、パイプラインが黙って止まるのではなく、そのことを明示します。文脈は組み立ての前にページ予算へ収まるよう調整されるので、20 ページが運ではなく設計でプロンプトに入ります。
 - 🔖 **学術式の引用** — すべての主張に、出典の Wiki ページへの脚注が付きます。コンポーザーは中身に応じて伸び、履歴を消去すれば記録も消えます。
 - 🪟 **右ドッキングのサイドパネル** — Wikiに問い合わせは中央のモーダルではなく、Copilot 風の右サイドバーリーフで開きます。
@@ -286,7 +286,7 @@ your-vault/
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — DQL（`LIST FROM "wiki/entities" WHERE contains(tags, "person")`）や JS API で、Wiki をデータベースのように引けます。プラグインは全ページに標準の frontmatter（`tags:`、`type:`、`aliases:`）を書きます。
 - 🌿 **Git** — 好きな Git クライアントで vault を版管理します。プラグインは元のファイルを書き換えず、`wiki/` の下にページを作るだけなので、`git diff` で自分の編集と LLM の生成物をきれいに分けられます。
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — Marp の frontmatter（`marp: true`）で、Wiki のページをスライドに変えます。
-- 🖼️ **Canvas** — Wiki のカードを Obsidian ネイティブの無限キャンバスにドラッグすれば、学習ガイド、マインドマップ、研究の俯瞰図を組み立てられます。
+- 🖼️ **Canvas** — Wiki のカードを Obsidian ネイティブの無限キャンバスにドラッグすれば、`[[wiki-links]]` から学習ガイド、マインドマップ、研究の俯瞰図を組み立てられます。
 
 ---
 
@@ -314,7 +314,7 @@ flowchart LR
 2. **LLM によるキーワード生成** — LLM がクエリから 8–12 の言語をまたぐキーワードを提案します（同義語、略語、トークンの重なりに強い語を 1 回の呼び出しで吸収します）。
 3. **ローカルの部分文字列スキャン** — 生成したキーワードを、ページのタイトル、エイリアス、本文の断片にローカルで当て直します。追加の LLM 呼び出しはなく、ノイズに強い再現率を補います。
 4. **LLM による KB フォールバック** — lex とキーワードスキャンの信号が弱いとき、LLM が上位 N 候補を Wiki 全体に対して 1 回だけ意味的に引き直します。
-5. **PPR によるグラフ拡張** — 候補のシード集合から `[[wiki-link]]` グラフ上で Personalized PageRank（Haveliwala 2002）を走らせます。これがグラフを踏まえたマルチホップの文脈を作ります。*「Bill Gates」* → *「Microsoft」* → *「競合他社」* という形で、タイトルの文字面の一致にとどまりません。
+5. **PPR によるグラフ拡張** — 候補のシード集合から `[[wiki-link]]` グラフ上で Personalized PageRank（Haveliwala 2002）を走らせます。これがグラフを考慮したマルチホップの文脈を作ります。*「Bill Gates」* → *「Microsoft」* → *「競合他社」* という形で、タイトルの文字面の一致にとどまりません。
 
 カスケードは、十分な信号が返った段で打ち切ります。5 段分の費用が固定でかかることはなく、lex で足りれば LLM 呼び出しはゼロ、意味的なフォールバックは lex とキーワードスキャンだけでは足りないときだけです。
 
@@ -381,7 +381,7 @@ Monte Carlo PPR（Fogaras 2005）を使います。3,000 本のランダムウ�
 
 ### このプラグインは実際に何をするのですか？
 
-ノート、フォルダ、ファイル選択のいずれかを渡すと、LLM がエンティティと概念を抽出し、`wiki/` の下に `[[双方向リンク]]` で結ばれた Wiki を書きます。質問すれば、答えはそのページから出て、引用が付きます。元のノートは決して変更しません。
+ノート、フォルダ、ファイル選択のいずれかを渡すと、LLM がエンティティと概念を抽出し、`wiki/` の下に `[[bidirectional links]]` で結ばれた Wiki を書きます。質問すれば、答えはそのページから出て、引用が付きます。元のノートは決して変更しません。
 
 ### いまの Wiki はアップグレードしても安全ですか？
 
