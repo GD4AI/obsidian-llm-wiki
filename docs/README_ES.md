@@ -177,7 +177,7 @@ Eso es todo. Los comandos Ingestar fuente individual y Consultar wiki están fij
 - 🏷️ **Alias obligatorios** — cada página llega con al menos un alias (traducción, abreviatura, variante), de modo que la detección de duplicados entre idiomas funciona.
 - 🔄 **Detección de duplicados por niveles** — el Nivel 1 (coincidencia directa de nombre: entre idiomas, abreviatura, títulos muy parecidos) se verifica siempre; el Nivel 2 (enlaces compartidos, similitud media) gasta el presupuesto de tokens que queda.
 - 🧩 **Fusión inteligente y estado de contradicción** — los duplicados se fusionan conservando los alias; las contradicciones se marcan con su fuente; las páginas con `reviewed: true` quedan protegidas contra la sobrescritura.
-- 🎨 **Un solo vocabulario de etiquetas, el tuyo** — las etiquetas que una página puede llevar salen de las etiquetas anidadas de tus notas, de las que ya están en las páginas del wiki y de la lista *Personalizado* de Configuración → Configuración del Wiki → Vocabulario de etiquetas. El prompt, el filtro de escritura, el lint y el reetiquetado leen esa única lista, así que lo que se le ofrece al modelo es lo que acaba en disco; un valor fuera de ella se descarta, nunca se escribe. Los modelos pequeños todavía se desvían (alrededor de una ejecución de cada diez devuelve la taxonomía propia del modelo); el filtro lo detecta y Lint informa de la página. Ancla de diseño: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Un solo vocabulario de etiquetas, el tuyo** — las etiquetas que una página puede llevar salen de las etiquetas anidadas de tus notas, de las que ya están en las páginas del wiki y de la lista *Personalizado (definido por el usuario)* de Configuración → Configuración del Wiki → Configuración del vocabulario de etiquetas. El prompt, el filtro de escritura, el lint y el reetiquetado leen esa única lista, así que lo que se le ofrece al modelo es lo que acaba en disco; un valor fuera de ella se descarta, nunca se escribe. Los modelos pequeños todavía se desvían (alrededor de una ejecución de cada diez devuelve la taxonomía propia del modelo); el filtro lo detecta y Lint informa de la página. Ancla de diseño: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Una página de concepto generada: la etiqueta del vocabulario con la que se escribió, sus alias AF y AFib, su definición y las páginas relacionadas](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,21 +187,21 @@ Seis rutas de entrada, conmutables en cada ingesta:
 
 | Ruta | Formatos | Cómo funciona |
 | --- | --- | --- |
-| **1. 🧾 Backend MinerU integrado** | PDF, imágenes (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Configuración → Configuración del Wiki → Backend de conversión Markdown → **MinerU**. Impulsado por el [parser Precise de MinerU](https://mineru.net/apiManage/docs). Ideal para artículos escaneados y archivos Office donde la maquetación importa. |
+| **1. 🧾 Backend MinerU integrado** | PDF, imágenes (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Configuración → Configuración del Wiki → Backend de conversión Markdown → **API online de MinerU**. Impulsado por el [parser Precise de MinerU](https://mineru.net/apiManage/docs). Ideal para artículos escaneados y archivos Office donde la maquetación importa. |
 | **2. ☁️ Proveedores en la nube con PDF nativo** | PDF | Anthropic, OpenAI, Google Gemini y AWS Bedrock (variantes Anthropic y OpenAI) leen los PDF como partes de archivo sin configurar nada. |
-| **3. 🖥️ OCR local en Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) incluye Microsoft Markitdown y OCR visual local ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Apunta el plugin a oMLX como proveedor personalizado compatible con OpenAI y activa **Force PDF Support**. El PDF nunca sale de tu máquina. |
+| **3. 🖥️ OCR local en Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) incluye Microsoft Markitdown y OCR visual local ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Apunta el plugin a oMLX como proveedor personalizado compatible con OpenAI y activa **Forzar soporte de PDF**. El PDF nunca sale de tu máquina. |
 | **4. 🛠️ Extractor de terceros (interfaz web de MinerU)** | PDF, Office, imágenes | Usa el [servicio MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) para una conversión manual rápida cuando no quieras configurar un token de API. Deja el `.md` descargado en tu vault e ingéstalo como una nota Markdown normal. |
 | **5. 🔌 Force PDF Support** | PDF | Para cualquier otro endpoint compatible con OpenAI o Anthropic que acepte partes de archivo (Configuración → Configuración LLM → Parámetros avanzados de LLM). Los fallos aparecen como un aviso localizado. |
-| **6. 🖼️ Imágenes incrustadas en Markdown** | imágenes locales `![[image.png]]` y `![alt](image.png)` dentro de un `.md` | Activa **Analizar imágenes incrustadas durante la ingesta de Markdown** en los ajustes avanzados. Cada imagen local se analiza junto a sus párrafos Markdown más cercanos. |
+| **6. 🖼️ Imágenes incrustadas en Markdown** | imágenes locales `![[image.png]]` y `![alt](image.png)` dentro de un `.md` | Activa **Analizar imágenes incrustadas durante la ingesta Markdown** en los ajustes avanzados. Cada imagen local se analiza junto a sus párrafos Markdown más cercanos. |
 
 <details>
 <summary>🔧 <strong>Mecánica, caché acotada, límites de tokens y advertencias sobre los formatos Office</strong></summary>
 <br/>
 
 - **Límites de MinerU y ciclo de vida del token** — el token vive en SecretStorage y caduca a los 90 días aproximadamente (un aviso 401 indica la página donde renovarlo). Los límites son 200 MB / 200 páginas por PDF y 256 MB / 10 000 archivos por comprimido.
-- **Límites de las imágenes incrustadas y rastro de auditoría** — se envían en paquetes de evidencia visual de 20 MiB, con un tope de 10 MiB por imagen; las URL remotas nunca se descargan. Puedes activar **Guardar la evidencia visual de las imágenes incrustadas en la página fuente** para añadir una sección de auditoría plegable a la página fuente generada.
+- **Límites de las imágenes incrustadas y rastro de auditoría** — se envían en paquetes de evidencia visual de 20 MiB, con un tope de 10 MiB por imagen; las URL remotas nunca se descargan. Puedes activar **Guardar evidencia visual de imágenes incrustadas en la página de origen** para añadir una sección de auditoría plegable a la página fuente generada.
 - **🗄️ Caché acotada** — `.obsidian/plugins/karpathywiki/pdf-cache/` guarda el Markdown convertido, indexado por hash de contenido + modelo + versión del conversor; topes de 100 MB en total / 1 000 entradas / 10 MB por entrada, con desalojo LRU por mtime.
-- **📝 Archivo auxiliar opcional en el vault** — Configuración → Configuración del Wiki → Carpeta del Wiki → **Write PDF Markdown to Vault** escribe `<basename>.pdf.md` junto al PDF de origen (desactivado por defecto: lo predeterminado es solo caché).
+- **📝 Archivo auxiliar opcional en el vault** — Configuración → Configuración del Wiki → Carpeta Wiki → **Escribir el Markdown convertido en el Vault** escribe `<basename>.pdf.md` junto al PDF de origen (desactivado por defecto: lo predeterminado es solo caché).
 - **🛡️ Prompt de transcripción literal** — conversión de estilo OCR con marcadores anti-alucinación `[illegible]` / `[figure: ...]`; el envoltorio de bloques Markdown que añaden los modelos locales pequeños se limpia antes de escribir en la caché.
 - **🔁 Citas literales en la página fuente** — cada página `sources/<slug>.md` generada lleva una sección *Mentions in Source* construida con las mismas citas literales que la extracción capturó por entidad y por concepto (la prosa que el modelo ya demostró ver), así que el documento de origen es la única página del wiki con un rastro real y fundamentado hasta su texto fuente.
 - **Advertencia para los formatos Office** — Obsidian no renderiza `.docx` / `.xlsx` / `.pptx` de forma nativa ([file-formats](https://obsidian.md/help/file-formats)), así que el flujo práctico con archivos Office es: MinerU los convierte a `.md`, el plugin ingesta ese `.md` en páginas del wiki y el archivo Office original se queda como referencia. Si necesitas previsualizar archivos Office dentro de Obsidian, usa un plugin comunitario como Pandoc Plugin / Docxer / Md Importer / Office Reader.
@@ -237,8 +237,8 @@ Seis rutas de entrada, conmutables en cada ingesta:
 
 - 🛡️ **Filtro previo a la ingesta** — las notas vacías, en blanco o con solo frontmatter se rechazan antes de cualquier llamada al LLM; la deduplicación por hash de contenido detecta archivos idénticos en rutas distintas.
 - 🚦 **Filtro de candidatos de ingesta** — opcional (`skipMentionOnlyCandidates`, desactivado por defecto). Un candidato nombrado solo dentro de un paréntesis, una enumeración o un elemento de lista corto se poda antes de costar una generación y una llamada de deduplicación. Solo se aplica a idiomas con un perfil medido; un idioma sin perfil nunca se filtra en silencio, y las notas multilingües no se filtran en absoluto.
-- 🚧 **Resultado de dejar el enlace como está en la corrección de enlaces rotos** — Ajustes avanzados → **Crear páginas de stub para enlaces sin resolver** (activado por defecto). Si lo desactivas, un enlace roto sigue visible en cada informe de lint hasta que una fuente real lo defina, en lugar de convertirse en una página de relleno vacía.
-- 🔁 **Interruptor del puntuador anterior** — Ajustes avanzados → **Clasificador de consultas antiguo** ejecuta la ordenación lineal anterior, ajustada a mano, en lugar del puntuador BM25F por defecto.
+- 🚧 **Resultado de dejar el enlace como está en la corrección de enlaces rotos** — Mostrar ajustes avanzados → **Crear páginas de stub para enlaces sin resolver** (activado por defecto). Si lo desactivas, un enlace roto sigue visible en cada informe de lint hasta que una fuente real lo defina, en lugar de convertirse en una página de relleno vacía.
+- 🔁 **Interruptor del puntuador anterior** — Mostrar ajustes avanzados → **Clasificador de consultas antiguo** ejecuta la ordenación lineal anterior, ajustada a mano, en lugar del puntuador BM25F por defecto.
 
 **Ocho ajustes que condicionan una ejecución**
 
@@ -246,13 +246,13 @@ El plugin decide por ti casi todo lo que hace. Estos ocho ajustes cambian eso, y
 
 | Ajuste | Dónde | Qué cambia |
 | --- | --- | --- |
-| **Streaming de las peticiones de ingesta** | Ajustes avanzados | `auto` usa streaming en móvil; `always` y `never` fuerzan la elección. El streaming mantiene una ingesta larga por debajo del tiempo de inactividad que impone el proveedor. |
+| **Streaming de las peticiones de ingesta** | Mostrar ajustes avanzados | `auto` usa streaming en móvil; `always` y `never` fuerzan la elección. El streaming mantiene una ingesta larga por debajo del tiempo de inactividad que impone el proveedor. |
 | **Nivel de razonamiento** | Parámetros avanzados de LLM | `default` / `low` / `medium` / `high`. El AI SDK traduce el nivel en función del proveedor, así que no hay ningún campo de proveedor escrito a mano. |
 | **Máx. tokens de salida por llamada** | Parámetros avanzados de LLM | Funciona en las dos direcciones: súbelo cuando un modelo de razonamiento gasta el presupuesto antes de escribir, bájalo para limitar el coste. En blanco, el modelo pone su propio techo. |
 | **Ventana de contexto del modelo** | Parámetros avanzados de LLM | El techo ya no puede superar la ventana, así que a un modelo local pequeño nunca se le envía un número que no puede aceptar. |
 | **Concurrencia LLM** | Configuración LLM | De 1 a 20 llamadas en paralelo. Un valor alto hace que una ingesta grande termine antes; uno bajo mantiene un modelo local dentro de su memoria. |
-| **Prioridad de extracción y reglas de contenido adicional** | Ajustes avanzados | Texto libre que se escribe en `schema/config.md`. Moldean lo que el modelo extrae sin que edites el esquema a mano. |
-| **Políticas de tarea por paso** | Parámetros avanzados de LLM | Sobrescribe el modo de texto o el nivel de razonamiento de un paso —extracción, fusión, consulta— sin cambiar los demás. |
+| **Prioridad de extracción y Requisitos de contenido** | Mostrar ajustes avanzados | Texto libre que se escribe en `schema/config.md`. Moldean lo que el modelo extrae sin que edites el esquema a mano. |
+| **Modo de salida y razonamiento por paso** | Parámetros avanzados de LLM | Sobrescribe el modo de texto o el nivel de razonamiento de un paso —extracción, fusión, consulta— sin cambiar los demás. |
 | **Archivos excluidos** | La propia lista de Obsidian | La ingesta de carpetas, el vigilante de archivos y la ruta automática respetan las exclusiones que fijes en Obsidian. |
 
 </details>
@@ -363,10 +363,10 @@ Quince proveedores con nombre propio, más cualquier endpoint compatible con Ope
 
 ### AWS Bedrock — tres modos de autenticación
 
-Configuración → Proveedor → Bedrock (Anthropic / OpenAI) admite tres modos de autenticación y pide después solo los datos que ese modo necesita de verdad:
+Configuración → Configuración LLM → Bedrock (Anthropic / OpenAI) admite tres modos de autenticación y pide después solo los datos que ese modo necesita de verdad:
 
 - **Clave API** — la vía del token bearer; la opción recomendada para quien ya usa una clave API de Bedrock.
-- **SSO** — flujo de dispositivo de IAM Identity Center. Pulsa **Sign in with AWS SSO**, pega en el navegador el código de verificación, y el plugin cambia el token SSO guardado en SecretStorage por credenciales temporales de rol y firma cada petición con SigV4 hecho a mano (sin añadir el SDK de AWS).
+- **SSO** — flujo de dispositivo de IAM Identity Center. Pulsa **Iniciar sesión con AWS SSO**, pega en el navegador el código de verificación, y el plugin cambia el token SSO guardado en SecretStorage por credenciales temporales de rol y firma cada petición con SigV4 hecho a mano (sin añadir el SDK de AWS).
 - **IAM** — claves de acceso estáticas para entornos sin SSO (CI, procesos por lotes programados), guardadas en SecretStorage con memorización de las credenciales en memoria.
 
 Los tres modos comparten la misma disciplina de Obsidian SecretStorage (ninguna credencial en `data.json`, en registros ni en documentación) y la misma implementación OIDC + SigV4 hecha a mano sin SDK de AWS.
@@ -412,7 +412,7 @@ Este plugin está en el Mercado de Plugins Comunitarios de Obsidian y pasa una r
 - 🚫 **Sin backend propio, sin telemetría y sin recogida de datos.** Software puramente local que se ejecuta dentro de Obsidian. El plugin no opera ningún servidor y no informa de nada a nadie.
 - 🔐 **El acceso a la red es opcional y explícito.** Solo existe para llegar a servicios que configuras *tú*: tu proveedor LLM y, si activas el backend de documentos MinerU, `mineru.net`. Ese segundo caso es la excepción que conviene nombrar: sube el documento a una jurisdicción que no elegiste y que no publica ninguna política de retención. [Dónde se procesa tu documento](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) enumera todas las rutas y a dónde va el archivo.
 - 📁 **El acceso a los archivos del vault** sirve exclusivamente para gestionar el wiki: leer notas, generar páginas bajo `wiki/`, buscar enlaces rotos, detectar duplicados. El plugin nunca modifica tus archivos de origen.
-- 📋 **El acceso al portapapeles** lo usa exclusivamente el botón "Copiar" del panel de consulta, y solo cuando haces clic.
+- 📋 **El acceso al portapapeles** lo usa exclusivamente el botón "Copy" del panel de consulta, y solo cuando haces clic.
 
 Para una localidad total de los datos, usa **Ollama** o **LM Studio**. Con un proveedor local, tus datos nunca salen de tu máquina.
 

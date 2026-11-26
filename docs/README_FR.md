@@ -18,7 +18,7 @@ Métadonnées SEO (invisibles pour l'utilisateur, lues par les crawlers et les L
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, plugin wiki Obsidian, RAG basé sur un graphe, RAG sans embedding, recherche Personalized PageRank, deuxième cerveau Obsidian
 - search-intents: "Obsidian RAG sans embeddings", "plugin wiki Obsidian", "Personalized PageRank Obsidian", "recherche par graphe de notes", "implémentation Karpathy LLM Wiki", "génération automatique de base de connaissances Obsidian", "Obsidian Graph View + IA", "plugin deuxième cerveau Obsidian", "Obsidian IA graphe de liens", "plugin Obsidian 14 langues", "plugin Obsidian 15 fournisseurs LLM", "RAG sans base vectorielle", "ingestion PDF Obsidian IA", "Obsidian Codex OAuth", "plugin Obsidian Bedrock", "Obsidian Bedrock SSO", "Obsidian MinerU", "ingestion Obsidian Word PPT Excel", "identifiants Obsidian IAM"
-- features: recherche par graphe, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascade de sélection de graines en 5 étapes, détection de doublons Tier 1/Tier 2, interface en 14 langues + sortie wiki en 14 langues (indépendantes), 15+ fournisseurs LLM (Anthropic, OpenAI, Bedrock [clé API + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingestion MinerU multi-format (PDF + images + Office), ingestion PDF (cache seul, voies OCR), analyse de santé Lint, Smart Fix All, citations verbatim des pages sources, filtre des candidats à l'ingestion, interface taskPolicies par étape, intégration Obsidian Graph View, architecture sans embedding ni base vectorielle, mode local d'abord
+- features: recherche par graphe, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), cascade de sélection de graines en 5 étapes, détection de doublons Tier 1/Tier 2, interface en 14 langues + sortie wiki en 14 langues (indépendantes), 15+ fournisseurs LLM (Anthropic, OpenAI, Bedrock [clé API + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), ingestion MinerU multi-format (PDF + images + Office), ingestion PDF (cache seul, voies OCR), analyse de santé Lint, Réparation intelligente de tout, citations verbatim des pages sources, filtre des candidats à l'ingestion, interface taskPolicies par étape, intégration Obsidian Graph View, architecture sans embedding ni base vectorielle, mode local d'abord
 - direct-competitors: nashsu/llm_wiki (application de bureau Tauri), SamurAIGPT/llm-wiki-agent (skill Claude Code / Codex / OpenCode / Gemini CLI), atomicstrata/llm-wiki-compiler (CLI TypeScript, recherche par morceaux)
 - retrieval-benchmark: PPR @5 = 27,1 % vs kNN pur 24,1 % (corpus d'un coffre du projet, pas un jeu de référence public)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -97,7 +97,7 @@ votre-coffre/
 - **Vous voulez une installation en 5 minutes.** Plugins communautaires → choisissez un fournisseur → ingérez une note. Les pages wiki apparaissent dans `wiki/` en quelques secondes, sans ligne de commande, sans Python et sans base vectorielle à monter d'abord.
 - **Vous voulez des réponses tirées de vos propres notes,** chaque réponse citant les pages d'où elle vient. Ollama ou LM Studio gardent tout l'appel sur votre machine.
 - **Vous écrivez ou lisez dans l'une des 14 langues.** L'interface et la sortie du wiki sont indépendantes : un wiki en chinois derrière une interface en anglais est une configuration prise en charge.
-- **Vous voulez une maintenance d'un clic.** L'analyse de santé et Smart Fix All contiennent doublons, liens morts et pages orphelines sans curation à la main.
+- **Vous voulez une maintenance d'un clic.** L'analyse de santé et Réparation intelligente de tout contiennent doublons, liens morts et pages orphelines sans curation à la main.
 
 *Ce plugin n'est pas pour vous* si vous cherchez un remplacement généraliste de ChatGPT, du RAG sur des corpus externes comme Confluence ou arXiv, ou un service hébergé avec collaboration d'équipe. Les réponses viennent de votre coffre, l'ingestion couvre votre coffre plus des fichiers autonomes, et il n'y a aucun backend à partager.
 
@@ -154,7 +154,7 @@ Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglée
 | 📑 **Importer plusieurs fichiers** | `Cmd+P` / `Ctrl+P` → « Importer plusieurs fichiers » — sélectionnez un sous-ensemble dans une arborescence à deux volets (file d'attente en direct et annulation fichier par fichier). |
 | 🔍 **Interroger le wiki** | `Cmd+P` / `Ctrl+P` → « Interroger le wiki » — dialoguez avec votre wiki dans un panneau latéral ancré à droite ; les réponses portent des `[[wiki-links]]`. Aussi : 🖱️ icône bulle de message du ruban. |
 | 🛠️ **Vérifier le wiki** | `Cmd+P` / `Ctrl+P` → « Vérifier le wiki » — analyse de santé complète : doublons, liens morts, pages vides, pages orphelines, alias manquants, contradictions. |
-| ⚡ **Smart Fix All** | dans la fenêtre de vérification — réparation en un clic dans l'ordre causal, avec un rapport par phase. |
+| ⚡ **Réparation intelligente de tout** | dans la fenêtre de vérification — réparation en un clic dans l'ordre causal, avec un rapport par phase. |
 | 📋 **Régénérer l'index** | `Cmd+P` / `Ctrl+P` → « Régénérer l'index » — reconstruit `wiki/index.md` avec les pages et les alias à jour. |
 | ⏹ **Annuler** | `Cmd+P` / `Ctrl+P` → « Annuler l'ingestion en cours » ou cliquez sur la barre d'état — arrêt propre à la limite de lot suivante. |
 | 📊 **Voir l'historique d'ingestion** | `Cmd+P` / `Ctrl+P` → « Voir l'historique d'ingestion » — interface de recherche pour les ingestions, les rapports de vérification et les maintenances passés. |
@@ -177,7 +177,7 @@ Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglée
 - 🏷️ **Alias obligatoires** — chaque page part avec au moins un alias (traduction, sigle, variante), pour que la détection de doublons entre langues fonctionne.
 - 🔄 **Détection de doublons à deux niveaux** — le niveau 1 (correspondance directe de nom : entre langues, sigles, titres très proches) est toujours vérifié ; le niveau 2 (liens partagés, similarité moyenne) remplit le budget de tokens restant.
 - 🧩 **Fusion intelligente et état de contradiction** — les doublons fusionnent en conservant leurs alias ; les contradictions sont signalées avec attribution de source ; les pages `reviewed: true` sont protégées contre l'écrasement.
-- 🎨 **Un vocabulaire de tags, le vôtre** — les tags qu'une page peut porter viennent des tags imbriqués de vos notes, des tags déjà présents sur les pages wiki, et de la liste *Personnalisé* sous Paramètres → Wiki → Vocabulaire de tags. Le prompt, la porte d'écriture, le lint et le retag lisent cette seule liste : ce qui est proposé au modèle atterrit sur le disque. Une valeur qui n'y figure pas est écartée, jamais écrite. Les petits modèles dérivent quand même (environ un passage sur dix renvoie la taxonomie du modèle lui-même) — la porte l'attrape et le lint signale la page. Point d'ancrage de la conception : [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Un vocabulaire de tags, le vôtre** — les tags qu'une page peut porter viennent des tags imbriqués de vos notes, des tags déjà présents sur les pages wiki, et de la liste *Personnalisé (défini par l'utilisateur)* sous Paramètres → Configuration du Wiki → Configuration du vocabulaire des tags. Le prompt, la porte d'écriture, le lint et le retag lisent cette seule liste : ce qui est proposé au modèle atterrit sur le disque. Une valeur qui n'y figure pas est écartée, jamais écrite. Les petits modèles dérivent quand même (environ un passage sur dix renvoie la taxonomie du modèle lui-même) — la porte l'attrape et le lint signale la page. Point d'ancrage de la conception : [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Une page de concept générée : le tag de vocabulaire avec lequel elle a été écrite, ses alias AF et AFib, sa définition et les pages liées](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,21 +187,21 @@ Six voies, permutables à chaque ingestion :
 
 | Voie | Formats | Comment ça marche |
 | --- | --- | --- |
-| **1. 🧾 Backend MinerU intégré** | PDF, images (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Paramètres → Configuration du wiki → Backend de conversion Markdown → **MinerU**. Propulsé par le [parseur Precise de MinerU](https://mineru.net/apiManage/docs). Idéal pour les articles numérisés et les fichiers Office dont la mise en page compte. |
+| **1. 🧾 Backend MinerU intégré** | PDF, images (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Paramètres → Configuration du wiki → Backend de conversion Markdown → **API MinerU en ligne**. Propulsé par le [parseur Precise de MinerU](https://mineru.net/apiManage/docs). Idéal pour les articles numérisés et les fichiers Office dont la mise en page compte. |
 | **2. ☁️ Fournisseurs cloud avec PDF natif** | PDF | Anthropic, OpenAI, Google Gemini et AWS Bedrock (variantes Anthropic et OpenAI) lisent les PDF comme parties de fichier, sans configuration supplémentaire. |
-| **3. 🖥️ OCR local sur Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) embarque Microsoft Markitdown et un OCR vision local ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Pointez le plugin vers oMLX comme fournisseur compatible OpenAI personnalisé, avec **Forcer la prise en charge des PDF** activée. Le PDF ne quitte jamais votre machine. |
+| **3. 🖥️ OCR local sur Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) embarque Microsoft Markitdown et un OCR vision local ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Pointez le plugin vers oMLX comme fournisseur compatible OpenAI personnalisé, avec **Forcer le support PDF** activée. Le PDF ne quitte jamais votre machine. |
 | **4. 🛠️ Extracteur tiers (interface MinerU en ligne)** | PDF, Office, images | Utilisez le [service en ligne MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) pour une interface rapide sans configurer de jeton d'API. Déposez le `.md` téléchargé dans votre coffre et ingérez-le comme une note Markdown ordinaire. |
-| **5. 🔌 Forcer la prise en charge des PDF** | PDF | Pour tout autre endpoint compatible OpenAI ou Anthropic qui accepte des parties de fichier (Paramètres → Configuration LLM → Avancé). Un échec s'affiche dans une notification localisée. |
-| **6. 🖼️ Images Markdown intégrées** | images locales `![[image.png]]` et `![alt](image.png)` dans un `.md` | Activez **Analyser les images intégrées pendant l'ingestion Markdown** dans les paramètres avancés. Chaque image locale est analysée avec les paragraphes Markdown les plus proches. |
+| **5. 🔌 Forcer la prise en charge des PDF** | PDF | Pour tout autre endpoint compatible OpenAI ou Anthropic qui accepte des parties de fichier (Paramètres → Configuration LLM → Paramètres LLM avancés). Un échec s'affiche dans une notification localisée. |
+| **6. 🖼️ Images Markdown intégrées** | images locales `![[image.png]]` et `![alt](image.png)` dans un `.md` | Activez **Analyser les images intégrées lors de l’ingestion Markdown** dans les paramètres avancés. Chaque image locale est analysée avec les paragraphes Markdown les plus proches. |
 
 <details>
 <summary>🔧 <strong>Plomberie, cache borné, limites de tokens et réserves sur les formats Office</strong></summary>
 <br/>
 
 - **Plafonds MinerU et cycle de vie du jeton** — le jeton vit dans SecretStorage et expire au bout d'environ 90 jours (une notification 401 indique la page de renouvellement). Les plafonds sont de 200 MB / 200 pages par PDF et 256 MB / 10 000 fichiers par archive.
-- **Plafonds des images intégrées et piste d'audit** — elles partent par paquets de 20 MiB de preuves visuelles, plafonnés à 10 MiB par image ; les URL distantes ne sont jamais téléchargées. Vous pouvez activer **Enregistrer les preuves visuelles des images intégrées sur la page source** pour ajouter une section d'audit repliable à la page source générée.
+- **Plafonds des images intégrées et piste d'audit** — elles partent par paquets de 20 MiB de preuves visuelles, plafonnés à 10 MiB par image ; les URL distantes ne sont jamais téléchargées. Vous pouvez activer **Enregistrer les preuves visuelles des images intégrées dans la page source** pour ajouter une section d'audit repliable à la page source générée.
 - **🗄️ Cache borné** — `.obsidian/plugins/karpathywiki/pdf-cache/` conserve le Markdown converti, indexé par empreinte du contenu + modèle + version du convertisseur ; plafonds de 100 MB au total, 1 000 entrées et 10 MB par entrée, avec éviction LRU par date de modification.
-- **📝 Fichier latéral optionnel dans le coffre** — Paramètres → Configuration du wiki → Dossier du wiki → **Écrire le Markdown PDF dans le coffre** écrit `<basename>.pdf.md` à côté du PDF source (désactivé par défaut — le cache seul est le comportement par défaut).
+- **📝 Fichier latéral optionnel dans le coffre** — Paramètres → Configuration du wiki → Dossier wiki → **Écrire le Markdown converti dans le Vault** écrit `<basename>.pdf.md` à côté du PDF source (désactivé par défaut — le cache seul est le comportement par défaut).
 - **🛡️ Invite de transcription verbatim** — conversion de type OCR avec les marqueurs anti-hallucination `[illegible]` et `[figure: ...]` ; l'ipv markdown que les petits modèles locaux ajoutent autour de la sortie est nettoyée avant l'écriture dans le cache.
 - **🔁 Citations verbatim sur la page source** — chaque page `sources/<slug>.md` générée porte une section *Mentions in Source* bâtie sur les mêmes citations verbatim que l'extraction a capturées par entité et par concept : le document sous-jacent porte ainsi une piste justifiée vers son texte d'origine.
 - **Réserve sur les formats Office** — Obsidian ne rend pas nativement `.docx`, `.xlsx` ni `.pptx` ([file-formats](https://obsidian.md/help/file-formats)) ; le cheminement pratique est donc : MinerU convertit en `.md`, le plugin ingère ce `.md` en pages wiki, et le fichier Office d'origine reste là comme référence. Pour un aperçu Office intégré, utilisez un plugin communautaire comme Pandoc Plugin, Docxer, Md Importer ou Office Reader.
@@ -224,10 +224,10 @@ Six voies, permutables à chaque ingestion :
 **Maintenance et réparation**
 
 - 🔍 **Analyse de santé Lint** — une seule commande repère doublons, liens morts, pages vides, pages orphelines, alias manquants et contradictions. Elle liste aussi les pages hub dont le voisinage s'est cristallisé : un hub qui tient lieu de connexions que le contenu ne peut plus produire.
-- ⚡ **Smart Fix All** — réparation en un clic dans l'ordre causal : remplir les alias → fusionner les doublons → réparer les liens morts → relier les orphelines → étendre les pages vides, avec un rapport par phase.
+- ⚡ **Réparation intelligente de tout** — réparation en un clic dans l'ordre causal : remplir les alias → fusionner les doublons → réparer les liens morts → relier les orphelines → étendre les pages vides, avec un rapport par phase.
 - 📊 **Panneau d'historique des opérations** — interface de recherche et de filtrage sur les ingestions, rapports de vérification et maintenances passées.
 
-[![Le rapport de vérification du wiki — la ligne d'état, les liens morts qu'il a trouvés et le bouton Smart Fix All qui les répare en une passe](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Le rapport de vérification du wiki — la ligne d'état, les liens morts qu'il a trouvés et le bouton Réparation intelligente de tout qui les répare en une passe](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Portes qui s'exécutent avant qu'un appel soit facturé et paramètres qui orientent une exécution</strong></summary>
@@ -237,8 +237,8 @@ Six voies, permutables à chaque ingestion :
 
 - 🛡️ **Porte avant ingestion** — les notes vides, uniquement blanches, ou réduites à du frontmatter sont refusées avant tout appel LLM ; la déduplication par empreinte du contenu rattrape les fichiers identiques situés à des chemins différents.
 - 🚦 **Porte des candidats à l'ingestion** — optionnelle (`skipMentionOnlyCandidates`, désactivée par défaut). Un candidat qui n'apparaît qu'entre parenthèses, dans une énumération ou dans un court élément de liste est élagué avant de coûter une génération et un appel de déduplication. Elle ne s'applique qu'aux langues dont le profil a été mesuré ; une note multilingue n'est jamais filtrée en silence.
-- 🚧 **Issue « laisser en l'état » pour les liens morts** — Paramètres → Avancé → **Créer des pages stub pour les liens non résolus** (activé par défaut). Désactivé, un lien mort reste visible dans chaque rapport de vérification jusqu'à ce qu'une vraie source le définisse, au lieu de devenir une page vide.
-- 🔁 **Bascule vers l'ancien scoreur de requête** — Paramètres → Avancé → **Ancien scoreur de recherche** exécute le classement linéaire réglé à la main auparavant au lieu du scoreur BM25F par défaut.
+- 🚧 **Issue « laisser en l'état » pour les liens morts** — Paramètres → Afficher les paramètres avancés → **Créer des pages talon pour les liens non résolus** (activé par défaut). Désactivé, un lien mort reste visible dans chaque rapport de vérification jusqu'à ce qu'une vraie source le définisse, au lieu de devenir une page vide.
+- 🔁 **Bascule vers l'ancien scoreur de requête** — Paramètres → Afficher les paramètres avancés → **Ancien scoreur de requête** exécute le classement linéaire réglé à la main auparavant au lieu du scoreur BM25F par défaut.
 
 **Huit paramètres qui orientent une exécution**
 
@@ -246,13 +246,13 @@ L'essentiel de ce que fait le plugin est décidé pour vous. Ces huit paramètre
 
 | Paramètre | Où | Ce qu'il change |
 | --- | --- | --- |
-| **Streaming pour l'ingestion** | Avancé | `auto` streame sur mobile ; `always` et `never` imposent le choix. Le streaming maintient une longue ingestion sous le délai d'inactivité du fournisseur. |
-| **Niveau de raisonnement** | Paramètres LLM avancés | `default` / `low` / `medium` / `high`. Le SDK IA traduit le niveau selon le fournisseur, sans aucun champ fournisseur écrit à la main. |
-| **Tokens de sortie max par appel** | Paramètres LLM avancés | Il joue dans les deux sens : augmentez-le quand un modèle de raisonnement dépense le budget avant d'écrire, baissez-le pour plafonner le coût. Vide demande au modèle sa propre limite. |
+| **Streaming des requêtes d'ingestion** | Afficher les paramètres avancés | `auto` streame sur mobile ; `always` et `never` imposent le choix. Le streaming maintient une longue ingestion sous le délai d'inactivité du fournisseur. |
+| **Niveau de réflexion** | Paramètres LLM avancés | `default` / `low` / `medium` / `high`. Le SDK IA traduit le niveau selon le fournisseur, sans aucun champ fournisseur écrit à la main. |
+| **Max. tokens de sortie par appel** | Paramètres LLM avancés | Il joue dans les deux sens : augmentez-le quand un modèle de raisonnement dépense le budget avant d'écrire, baissez-le pour plafonner le coût. Vide demande au modèle sa propre limite. |
 | **Fenêtre de contexte du modèle** | Paramètres LLM avancés | Le plafond ne peut plus dépasser la fenêtre, donc un petit modèle local ne reçoit jamais un nombre qu'il ne peut pas accepter. |
-| **Parallélisme LLM** | Fournisseur | 1 à 20 appels simultanés. Plus haut termine plus tôt une grande ingestion ; plus bas garde un modèle local dans sa mémoire. |
-| **Priorité d'extraction et règles de contenu additionnel** | Paramètres avancés | Texte libre écrit dans `schema/config.md`. Il façonne ce que le modèle extrait sans que vous éditiez le schéma à la main. |
-| **Politiques de tâche par étape** | Paramètres LLM avancés | Remplace le mode texte ou le niveau de raisonnement d'une seule étape — extraction, fusion, requête — sans toucher aux autres. |
+| **Parallélisme LLM** | Configuration LLM | 1 à 20 appels simultanés. Plus haut termine plus tôt une grande ingestion ; plus bas garde un modèle local dans sa mémoire. |
+| **Priorité d'extraction et Exigences de contenu** | Paramètres avancés | Texte libre écrit dans `schema/config.md`. Il façonne ce que le modèle extrait sans que vous éditiez le schéma à la main. |
+| **Mode de sortie et raisonnement par étape** | Paramètres LLM avancés | Remplace le mode texte ou le niveau de raisonnement d'une seule étape — extraction, fusion, requête — sans toucher aux autres. |
 | **Fichiers exclus** | La liste d'Obsidian | L'ingestion de dossier, le guetteur de fichiers et le chemin automatique respectent les exclusions que vous définissez dans Obsidian. |
 
 </details>
@@ -363,10 +363,10 @@ Quinze fournisseurs nommés, plus tout endpoint compatible OpenAI ou Anthropic. 
 
 ### AWS Bedrock — trois modes d'authentification
 
-Paramètres → Fournisseur → Bedrock (Anthropic / OpenAI) propose trois modes d'authentification et ne demande que les champs dont ce mode a besoin :
+Paramètres → Configuration LLM → Bedrock (Anthropic / OpenAI) propose trois modes d'authentification et ne demande que les champs dont ce mode a besoin :
 
 - **Clé API** — la voie par jeton Bearer ; recommandée à qui possède déjà une clé d'API Bedrock.
-- **SSO** — le flux d'appareil d'IAM Identity Center. Cliquez sur **Sign in with AWS SSO**, collez le code de vérification dans le navigateur, et le plugin échange le jeton SSO stocké dans SecretStorage contre des identifiants de rôle temporaires, en signant chaque requête avec une implémentation SigV4 écrite à la main (aucun SDK AWS ajouté).
+- **SSO** — le flux d'appareil d'IAM Identity Center. Cliquez sur **Se connecter avec AWS SSO**, collez le code de vérification dans le navigateur, et le plugin échange le jeton SSO stocké dans SecretStorage contre des identifiants de rôle temporaires, en signant chaque requête avec une implémentation SigV4 écrite à la main (aucun SDK AWS ajouté).
 - **IAM** — des clés d'accès statiques pour les environnements sans SSO (CI, tâches par lot planifiées), stockées dans SecretStorage avec mémorisation en mémoire des identifiants.
 
 Les trois modes partagent la même discipline Obsidian SecretStorage (aucun identifiant dans `data.json`, les journaux ou la documentation) et une implémentation OIDC + SigV4 écrite à la main, sans SDK AWS.
@@ -397,7 +397,7 @@ Utilisez la granularité **Grossière** ou **Minimale** pour l'ingestion par lot
 
 ### Comment annuler une opération en cours ?
 
-Cliquez sur la barre d'état (elle affiche « *Ingestion en cours... cliquez pour annuler* ») ou lancez `Cmd+P` / `Ctrl+P` → « Annuler l'ingestion en cours ». L'arrêt est propre à la limite de lot suivante.
+Cliquez sur la barre d'état (elle affiche « *Ingestion en cours... cliquer pour annuler* ») ou lancez `Cmd+P` / `Ctrl+P` → « Annuler l'ingestion en cours ». L'arrêt est propre à la limite de lot suivante.
 
 ### Où trouver de l'aide ?
 
@@ -412,7 +412,7 @@ Ce plugin est répertorié sur le marketplace des plugins communautaires Obsidia
 - 🚫 **Aucun backend propre, aucune télémétrie, aucune collecte de données.** Un logiciel purement local qui tourne dans Obsidian. Le plugin n'exploite aucun serveur et ne rapporte rien nulle part.
 - 🔐 **L'accès réseau est facultatif et explicite.** Il n'existe que pour joindre les services que *vous* configurez : votre fournisseur LLM et — si vous activez le backend documentaire MinerU — `mineru.net`. Le second est l'exception qu'il faut nommer : il envoie le document vers une juridiction que vous n'avez pas choisie et qui ne publie aucune politique de conservation. [Où votre document est traité](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) liste chaque voie et dit où va le fichier.
 - 📁 **L'accès aux fichiers du coffre** sert exclusivement à la gestion du wiki : lire des notes, générer des pages sous `wiki/`, repérer les liens morts, détecter les doublons. Le plugin ne modifie jamais vos fichiers sources.
-- 📋 **L'accès au presse-papiers** sert uniquement au bouton « Copier » du panneau de requête — et seulement quand vous le cliquez.
+- 📋 **L'accès au presse-papiers** sert uniquement au bouton « Copy » du panneau de requête — et seulement quand vous le cliquez.
 
 Pour une totale localité des données, utilisez **Ollama** ou **LM Studio**. Avec un fournisseur local, vos données ne quittent jamais votre machine.
 

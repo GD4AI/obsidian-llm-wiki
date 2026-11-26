@@ -18,7 +18,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Intelligente Gesamtbehebung, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (ein Korpus aus einem Projekt-Vault, kein öffentlicher Benchmark-Datensatz)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -97,7 +97,7 @@ dein-vault/
 - **Du willst in fünf Minuten eingerichtet sein.** Aus den Community-Plugins installieren → Anbieter wählen → eine Notiz aufnehmen. Wiki-Seiten stehen in Sekunden in `wiki/`, ohne CLI, ohne Python und ohne Vektor-Datenbank, die du vorher aufbauen musst.
 - **Du willst Antworten aus deinen eigenen Notizen,** und jede Antwort nennt die Seiten, aus denen sie stammt. Ollama oder LM Studio halten den ganzen Aufruf auf deinem Rechner.
 - **Du schreibst oder liest in einer von 14 Sprachen.** Oberfläche und Wiki-Ausgabe sind unabhängig: ein chinesisches Wiki hinter einer englischen Oberfläche ist eine unterstützte Kombination.
-- **Du willst Wartung mit einem Klick.** Lint-Gesundheitsscan und Smart Fix All halten Duplikate, tote Links und verwaiste Seiten in Schach, ohne dass du von Hand kuratierst.
+- **Du willst Wartung mit einem Klick.** Lint-Gesundheitsscan und Intelligente Gesamtbehebung halten Duplikate, tote Links und verwaiste Seiten in Schach, ohne dass du von Hand kuratierst.
 
 *Nicht dafür gedacht*, wenn du einen allgemeinen ChatGPT-Ersatz willst, RAG über fremde Korpora wie Confluence oder arXiv, oder einen gehosteten Dienst mit Team-Zusammenarbeit. Antworten kommen aus deinem Vault, die Aufnahme deckt ihn plus einzelne Dateien ab, und es gibt kein Backend, das du teilen könntest.
 
@@ -154,7 +154,7 @@ Das war es. **Aufnehmen** und **Wiki anfragen** liegen beide im linken Ribbon un
 | 📑 **Mehrere Dateien aufnehmen** | `Cmd+P` / `Ctrl+P` → „Mehrere Dateien aufnehmen“ — eine Teilmenge über einen zweigeteilten Dateibaum wählen (mit Live-Warteschlange und Abbruch pro Datei). |
 | 🔍 **Wiki anfragen** | `Cmd+P` / `Ctrl+P` → „Wiki anfragen“ — chatte mit deinem Wiki in einem rechts angedockten Seitenpanel; Antworten tragen `[[wiki-links]]`. Ebenfalls: 🖱️ Sprechblasen-Symbol im Ribbon. |
 | 🛠️ **Wiki prüfen** | `Cmd+P` / `Ctrl+P` → „Wiki prüfen“ — vollständiger Gesundheitsscan: Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase, Widersprüche. |
-| ⚡ **Smart Fix All** | im Lint-Modal — Reparatur in kausaler Reihenfolge mit einem Klick, mit Bericht pro Phase. |
+| ⚡ **Intelligente Gesamtbehebung** | im Lint-Modal — Reparatur in kausaler Reihenfolge mit einem Klick, mit Bericht pro Phase. |
 | 📋 **Index neu generieren** | `Cmd+P` / `Ctrl+P` → „Index neu generieren“ — baut `wiki/index.md` mit den aktuellen Seiten und Aliasen neu auf. |
 | ⏹ **Abbrechen** | `Cmd+P` / `Ctrl+P` → „Aktuelle Aufnahme abbrechen“ oder Klick auf die Statusleiste — hält sauber an der nächsten Stapelgrenze an. |
 | 📊 **Aufnahmeverlauf** | `Cmd+P` / `Ctrl+P` → „Ingestionsverlauf anzeigen“ — durchsuchbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe. |
@@ -177,7 +177,7 @@ Das war es. **Aufnehmen** und **Wiki anfragen** liegen beide im linken Ribbon un
 - 🏷️ **Pflicht-Aliase** — jede Seite kommt mit mindestens einem Alias (Übersetzung, Kürzel, Variante), damit die sprachübergreifende Duplikaterkennung greift.
 - 🔄 **Duplikaterkennung in zwei Stufen** — Stufe 1 (direkter Namensgleichklang: sprachübergreifend, Kürzel, sehr ähnliche Titel) wird immer geprüft; Stufe 2 (gemeinsame Links, mittlere Ähnlichkeit) füllt das restliche Token-Budget.
 - 🧩 **Intelligentes Zusammenführen und Widerspruchsstatus** — Duplikate werden zusammengeführt und behalten ihre Aliase; Widersprüche werden mit Quellenangabe markiert; Seiten mit `reviewed: true` sind vor dem Überschreiben geschützt.
-- 🎨 **Ein Tag-Vokabular, und es gehört dir** — welche Tags eine Seite tragen darf, kommt aus den verschachtelten Tags deiner Notizen, aus den Tags, die schon auf Wiki-Seiten stehen, und aus der Liste *Benutzerdefiniert* unter Einstellungen → Wiki-Konfiguration → Tag-Vokabular. Prompt, Schreibtor, Lint und Retag lesen dieselbe Liste; was dem Modell angeboten wird, landet auch auf der Platte. Ein Wert außerhalb der Liste wird verworfen und nie geschrieben. Kleine Modelle driften trotzdem (etwa ein Lauf von zehn liefert die eigene Taxonomie des Modells) — das Tor fängt es ab, und Lint meldet die Seite. Design-Anker: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Ein Tag-Vokabular, und es gehört dir** — welche Tags eine Seite tragen darf, kommt aus den verschachtelten Tags deiner Notizen, aus den Tags, die schon auf Wiki-Seiten stehen, und aus der Liste *Benutzerdefiniert (eigene)* unter Einstellungen → Wiki-Konfiguration → Tag-Vokabular-Konfiguration. Prompt, Schreibtor, Lint und Retag lesen dieselbe Liste; was dem Modell angeboten wird, landet auch auf der Platte. Ein Wert außerhalb der Liste wird verworfen und nie geschrieben. Kleine Modelle driften trotzdem (etwa ein Lauf von zehn liefert die eigene Taxonomie des Modells) — das Tor fängt es ab, und Lint meldet die Seite. Design-Anker: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Eine erzeugte Konzeptseite: das Vokabular-Tag, mit dem sie geschrieben wurde, ihre Aliase AF und AFib, ihre Definition und die verwandten Seiten](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,11 +187,11 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 | Weg | Formate | Wie er funktioniert |
 | --- | --- | --- |
-| **1. 🧾 Eingebautes MinerU-Backend** | PDF, Bilder (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Einstellungen → Wiki-Konfiguration → Markdown-Konvertierungs-Backend → **MinerU**. Getrieben vom [Precise-Parser von MinerU](https://mineru.net/apiManage/docs). Ideal für gescannte Arbeiten und Office-Dateien, bei denen das Layout zählt. |
+| **1. 🧾 Eingebautes MinerU-Backend** | PDF, Bilder (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Einstellungen → Wiki-Konfiguration → Markdown-Konvertierungs-Backend → **MinerU-Online-API**. Getrieben vom [Precise-Parser von MinerU](https://mineru.net/apiManage/docs). Ideal für gescannte Arbeiten und Office-Dateien, bei denen das Layout zählt. |
 | **2. ☁️ Cloud-Anbieter mit nativem PDF** | PDF | Anthropic, OpenAI, Google Gemini und AWS Bedrock (Anthropic- und OpenAI-Variante) lesen PDFs ohne weitere Einrichtung als Datei-Parts. |
 | **3. 🖥️ Lokale OCR auf Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) bringt Microsoft Markitdown und lokale Vision-OCR ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)) mit. Richte das Plugin auf oMLX als benutzerdefinierten OpenAI-kompatiblen Anbieter aus und schalte **PDF-Unterstützung erzwingen** ein. Das PDF verlässt deinen Rechner nie. |
 | **4. 🛠️ Fremder Extraktor (MinerU-Weboberfläche)** | PDF, Office, Bilder | Nimm den [MinerU-Extractor als Onlinedienst](https://mineru.net/OpenSourceTools/Extractor), wenn du eine schnelle Oberfläche willst und kein API-Token einrichten möchtest. Lege die heruntergeladene `.md` in deinem Vault ab und nimm sie als gewöhnliche Markdown-Notiz auf. |
-| **5. 🔌 PDF-Unterstützung erzwingen** | PDF | Für jeden anderen OpenAI- oder Anthropic-kompatiblen Endpunkt, der Datei-Parts annimmt (Einstellungen → LLM-Konfiguration → Erweitert). Ein Fehlschlag erscheint als lokalisierter Hinweis. |
+| **5. 🔌 PDF-Unterstützung erzwingen** | PDF | Für jeden anderen OpenAI- oder Anthropic-kompatiblen Endpunkt, der Datei-Parts annimmt (Einstellungen → LLM-Konfiguration → LLM-erweiterte Parameter). Ein Fehlschlag erscheint als lokalisierter Hinweis. |
 | **6. 🖼️ Eingebettete Markdown-Bilder** | lokale `![[image.png]]` und `![alt](image.png)` in `.md` | Schalte **Eingebettete Bilder bei der Markdown-Aufnahme analysieren** in den erweiterten Einstellungen ein. Jedes lokale Bild wird zusammen mit seinen nächsten Markdown-Absätzen analysiert. |
 
 <details>
@@ -200,7 +200,7 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 - **MinerU-Grenzen und Token-Lebenszyklus** — das Token liegt in SecretStorage und läuft nach etwa 90 Tagen ab (ein 401-Hinweis nennt die Seite zum Erneuern). Die Grenzen liegen bei 200 MB / 200 Seiten pro PDF und 256 MB / 10.000 Dateien pro Archiv.
 - **Grenzen für eingebettete Bilder und Prüfspur** — Bilder gehen in Paketen zu 20 MiB visueller Evidenz raus, gedeckelt bei 10 MiB pro Bild; entfernte URLs werden nie heruntergeladen. Optional kannst du **Visuelle Evidenz eingebetteter Bilder auf Quellseite speichern** einschalten; das hängt einen einklappbaren Prüfabschnitt an die erzeugte Quellseite.
-- **🗄️ Begrenzter Cache** — `.obsidian/plugins/karpathywiki/pdf-cache/` hält konvertiertes Markdown, verschlüsselt nach Inhalts-Hash + Modell + Konverter-Version; Grenzen bei 100 MB gesamt, 1.000 Einträgen und 10 MB pro Eintrag, mit LRU-Verdrängung nach Änderungszeit.
+- **🗄️ Begrenzter Cache** — `.obsidian/plugins/karpathywiki/pdf-cache/` hält konvertiertes Markdown, indexiert nach Inhalts-Hash + Modell + Konverter-Version; Grenzen bei 100 MB gesamt, 1.000 Einträgen und 10 MB pro Eintrag, mit LRU-Verdrängung nach Änderungszeit.
 - **📝 Optionaler Sidecar im Vault** — Einstellungen → Wiki-Konfiguration → Wiki-Ordner → **Konvertiertes Markdown in Vault schreiben** legt `<basename>.pdf.md` neben das Quell-PDF (standardmäßig aus — nur der Cache ist der Standard).
 - **🛡️ Prompt für wortgetreue Transkription** — Konvertierung im OCR-Stil mit den Anti-Halluzinations-Markern `[illegible]` und `[figure: ...]`; ein Markdown-Fence, den kleine lokale Modelle um die Ausgabe legen, wird vor dem Schreiben in den Cache entfernt.
 - **🔁 Wortgetreue Zitate auf der Quellseite** — jede erzeugte Seite `sources/<slug>.md` trägt einen Abschnitt *Mentions in Source*, gebaut aus denselben wortgetreuen Zitaten, die die Extraktion pro Entity und Concept festgehalten hat. So trägt das zugrunde liegende Dokument eine belegte Spur zurück in seinen Quelltext.
@@ -224,10 +224,10 @@ Sechs Wege, pro Aufnahme umschaltbar:
 **Wartung und Reparatur**
 
 - 🔍 **Lint-Gesundheitsscan** — ein einziger Befehl erfasst Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase und Widersprüche. Er listet außerdem Hub-Seiten, deren Nachbarschaft sich kristallisiert hat: ein Hub, der für Verbindungen einsteht, die der Inhalt nicht mehr herstellen kann.
-- ⚡ **Smart Fix All** — Reparatur in kausaler Reihenfolge mit einem Klick: Aliase füllen → Duplikate zusammenführen → tote Links reparieren → verwaiste Seiten verlinken → leere Seiten erweitern, mit Bericht pro Phase.
+- ⚡ **Intelligente Gesamtbehebung** — Reparatur in kausaler Reihenfolge mit einem Klick: Aliase füllen → Duplikate zusammenführen → tote Links reparieren → verwaiste Seiten verlinken → leere Seiten erweitern, mit Bericht pro Phase.
 - 📊 **Panel für den Betriebsverlauf** — durchsuchbare, filterbare Oberfläche für vergangene Aufnahmen, Lint-Berichte und Wartungsläufe.
 
-[![Der Lint-Bericht des Wikis: die Statuszeile, die gefundenen toten Links und die Schaltfläche Smart Fix All, die sie in einem Durchlauf repariert](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Der Lint-Bericht des Wikis: die Statuszeile, die gefundenen toten Links und die Schaltfläche Intelligente Gesamtbehebung, die sie in einem Durchlauf repariert](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Tore, die laufen, bevor ein Aufruf bezahlt wird, und Einstellungen, die einen Lauf prägen</strong></summary>
@@ -237,8 +237,8 @@ Sechs Wege, pro Aufnahme umschaltbar:
 
 - 🛡️ **Gate vor der Aufnahme** — leere Notizen, reine Whitespace-Notizen und Notizen mit nichts als Frontmatter werden abgelehnt, bevor ein LLM-Aufruf passiert; die Dedup über den Inhalts-Hash erkennt identische Dateien auf verschiedenen Pfaden.
 - 🚦 **Gate für Ingest-Kandidaten** — optional (`skipMentionOnlyCandidates`, standardmäßig aus). Ein Kandidat, der nur in einer Klammer, in einer Aufzählung oder in einem kurzen Listenpunkt vorkommt, fliegt raus, bevor er eine Generierung und einen Dedup-Aufruf kostet. Das gilt nur für Sprachen mit gemessenem Profil; eine Sprache ohne Profil wird nie stillschweigend gefiltert, und sprachübergreifende Notizen werden gar nicht gefiltert.
-- 🚧 **Ergebnis „stehen lassen“ bei defekten Links** — Einstellungen → Erweitert → **Stub-Seiten für nicht auflösbare Links anlegen** (standardmäßig an). Schaltest du es aus, bleibt ein toter Link in jedem Lint-Bericht sichtbar, bis eine echte Quelle ihn definiert, statt zu einer leeren Platzhalterseite zu werden.
-- 🔁 **Umschalter für den alten Abfrage-Scorer** — Einstellungen → Erweitert → **Älterer Such-Scorer** fährt das frühere handabgestimmte lineare Ranking statt des BM25F-Scorers.
+- 🚧 **Ergebnis „stehen lassen“ bei defekten Links** — Einstellungen → Erweiterte Einstellungen anzeigen → **Stub-Seiten für nicht auflösbare Links anlegen** (standardmäßig an). Schaltest du es aus, bleibt ein toter Link in jedem Lint-Bericht sichtbar, bis eine echte Quelle ihn definiert, statt zu einer leeren Platzhalterseite zu werden.
+- 🔁 **Umschalter für den alten Abfrage-Scorer** — Einstellungen → Erweiterte Einstellungen anzeigen → **Älterer Such-Scorer** fährt das frühere handabgestimmte lineare Ranking statt des BM25F-Scorers.
 
 **Acht Einstellungen, die einen Lauf prägen**
 
@@ -246,11 +246,11 @@ Das meiste entscheidet das Plugin für dich. Diese acht Einstellungen ändern da
 
 | Einstellung | Wo | Was sie ändert |
 | --- | --- | --- |
-| **Streaming für Ingest-Anfragen** | Erweitert | `auto` streamt auf Mobilgeräten; `always` und `never` erzwingen die Wahl. Streaming hält eine lange Aufnahme unter der Leerlaufgrenze eines Anbieters. |
+| **Streaming für Ingest-Anfragen** | Erweiterte Einstellungen anzeigen | `auto` streamt auf Mobilgeräten; `always` und `never` erzwingen die Wahl. Streaming hält eine lange Aufnahme unter der Leerlaufgrenze eines Anbieters. |
 | **Denkstufe** | LLM-erweiterte Parameter | `default` / `low` / `medium` / `high`. Das AI SDK übersetzt die Stufe je Anbieter, deshalb ist kein handgeschriebenes Anbieterfeld im Spiel. |
 | **Max. Ausgabe-Token pro Aufruf** | LLM-erweiterte Parameter | Wirkt in beide Richtungen: erhöhen, wenn ein Reasoning-Modell das Budget vor dem Schreiben verbraucht; senken, um Kosten zu deckeln. Leer überlässt dem Modell seine eigene Obergrenze. |
 | **Kontextfenster des Modells** | LLM-erweiterte Parameter | Die Obergrenze kann das Fenster nicht mehr überschreiten, sodass ein kleines lokales Modell nie eine Zahl bekommt, die es nicht annehmen kann. |
-| **LLM-Parallelität** | Anbieter | 1–20 gleichzeitige Aufrufe. Höher bringt eine große Aufnahme früher zu Ende; niedriger hält ein lokales Modell in seinem Speicher. |
+| **LLM-Parallelität** | LLM-Konfiguration | 1–20 gleichzeitige Aufrufe. Höher bringt eine große Aufnahme früher zu Ende; niedriger hält ein lokales Modell in seinem Speicher. |
 | **Extraktionsschwerpunkt und Inhaltsanforderungen** | Erweiterte Einstellungen | Freitext, der in `schema/config.md` geschrieben wird. Beides formt, was das Modell extrahiert, ohne dass du das Schema von Hand bearbeitest. |
 | **Ausgabemodus und Reasoning je Schritt** | LLM-erweiterte Parameter | Überschreibt Textmodus oder Denkstufe für einen Schritt — Extraktion, Zusammenführen, Abfrage —, ohne die anderen zu ändern. |
 | **Ausgeschlossene Dateien** | Obsidians eigene Liste | Ordner-Aufnahme, Dateiwächter und der automatische Pfad halten sich an die Ausschlüsse, die du in Obsidian setzt. |
@@ -363,10 +363,10 @@ Fünfzehn namentlich genannte Anbieter, dazu jeder OpenAI- oder Anthropic-kompat
 
 ### AWS Bedrock — drei Arten der Anmeldung
 
-Einstellungen → Anbieter → Bedrock (Anthropic / OpenAI) unterstützt drei Anmeldearten und fragt jeweils nur die Eingaben ab, die diese Art braucht:
+Einstellungen → LLM-Konfiguration → Bedrock (Anthropic / OpenAI) unterstützt drei Anmeldearten und fragt jeweils nur die Eingaben ab, die diese Art braucht:
 
 - **API-Schlüssel** — der Bearer-Weg; die empfohlene Wahl für alle, die bereits einen Bedrock-API-Schlüssel verwenden.
-- **SSO** — Geräteablauf im IAM Identity Center. Klicke auf **Sign in with AWS SSO**, gib den Bestätigungscode im Browser ein, und das Plugin tauscht das SSO-Token in SecretStorage gegen temporäre Rollen-Anmeldeinformationen und signiert jede Anfrage mit selbst geschriebenem SigV4 (kein AWS-SDK kommt hinzu).
+- **SSO** — Geräteablauf im IAM Identity Center. Klicke auf **Mit AWS SSO anmelden**, gib den Bestätigungscode im Browser ein, und das Plugin tauscht das SSO-Token in SecretStorage gegen temporäre Rollen-Anmeldeinformationen und signiert jede Anfrage mit selbst geschriebenem SigV4 (kein AWS-SDK kommt hinzu).
 - **IAM** — statische Zugriffsschlüssel für Umgebungen ohne SSO (CI, geplante Stapelaufträge), gespeichert in SecretStorage mit Zwischenspeicher der Anmeldeinformationen im Arbeitsspeicher.
 
 Alle drei Arten teilen dieselbe Disziplin von Obsidian SecretStorage (keine Anmeldeinformationen in `data.json`, in Logs oder in der Doku) und denselben Weg ohne AWS-SDK, mit selbst geschriebenem OIDC und SigV4.

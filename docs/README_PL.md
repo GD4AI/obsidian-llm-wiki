@@ -154,7 +154,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 | 📑 **Wczytaj wiele plików** | `Cmd+P` / `Ctrl+P` → „Wczytaj wiele plików” — wybierz podzbiór w drzewie z dwoma panelami (z kolejką i anulowaniem pojedynczego pliku). |
 | 🔍 **Zadaj pytanie do wiki** | `Cmd+P` / `Ctrl+P` → „Zadaj pytanie do wiki” — rozmowa z wiki w panelu po prawej; odpowiedzi niosą `[[wiki-link]]`. Także: 🖱️ ikona dymka. |
 | 🛠️ **Skontroluj wiki** | `Cmd+P` / `Ctrl+P` → „Skontroluj wiki” — pełna kontrola: duplikaty, martwe odsyłacze, puste strony, strony osierocone, brakujące aliasy, sprzeczności. |
-| ⚡ **Inteligentna naprawa wszystkiego** | w oknie lint — naprawa jednym kliknięciem w kolejności przyczyn, z raportem po każdym etapie. |
+| ⚡ **Napraw wszystko automatycznie** | w oknie lint — naprawa jednym kliknięciem w kolejności przyczyn, z raportem po każdym etapie. |
 | 📋 **Utwórz indeks ponownie** | `Cmd+P` / `Ctrl+P` → „Utwórz indeks ponownie” — odbudowuje `wiki/index.md` z obecnymi stronami i aliasami. |
 | ⏹ **Zatrzymaj** | `Cmd+P` / `Ctrl+P` → „Zatrzymaj wczytywanie” albo kliknij pasek stanu — zatrzymuje się czysto na granicy kolejnej rundy. |
 | 📊 **Historia** | `Cmd+P` / `Ctrl+P` → „Historia operacji” — przeszukiwalny widok wcześniejszych wczytań, raportów lint i konserwacji. |
@@ -177,7 +177,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 - 🏷️ **Aliasy są obowiązkowe** — każda strona dostaje co najmniej jeden alias (tłumaczenie, skrót, wariant), dzięki czemu duplikaty da się znaleźć także między językami.
 - 🔄 **Duplikaty w dwóch progach** — próg 1 (ta sama nazwa: inny język, skrót, bardzo podobny tytuł) jest sprawdzany zawsze; próg 2 (wspólne odsyłacze, średnie podobieństwo) bierze to, co zostało z budżetu tokenów.
 - 🧩 **Scalanie i stan sprzeczności** — duplikaty są scalane z zachowaniem aliasów; sprzeczności są oznaczane wraz ze źródłem; strony z `reviewed: true` nigdy nie są nadpisywane.
-- 🎨 **Jedna lista tagów, twoja** — tagi, które strona może nosić, pochodzą z zagnieżdżonych tagów twoich notatek, z tagów już obecnych na stronach wiki oraz z listy *Własne* w Ustawienia → Konfiguracja wiki → Lista tagów. Prompt, kontrola zapisu, lint i ponowne tagowanie czytają tę jedną listę, więc to, co dostaje model, trafia na dysk; wartość spoza listy jest odrzucana i nigdy nie zapisywana. Małe modele nadal się mylą (mniej więcej co dziesiąta runda zwraca własną taksonomię) — kontrola to wychwytuje, a lint zgłasza stronę. Punkt zaczepienia projektu: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Jedna lista tagów, twoja** — tagi, które strona może nosić, pochodzą z zagnieżdżonych tagów twoich notatek, z tagów już obecnych na stronach wiki oraz z listy *Własne (zdefiniowane przez użytkownika)* w Ustawienia → Konfiguracja wiki → Konfiguracja listy tagów. Prompt, kontrola zapisu, lint i ponowne tagowanie czytają tę jedną listę, więc to, co dostaje model, trafia na dysk; wartość spoza listy jest odrzucana i nigdy nie zapisywana. Małe modele nadal się mylą (mniej więcej co dziesiąta runda zwraca własną taksonomię) — kontrola to wychwytuje, a lint zgłasza stronę. Punkt zaczepienia projektu: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Wygenerowana strona pojęcia: tag z listy, z którym ją zapisano, aliasy AF i AFib, definicja oraz powiązane strony](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,11 +187,11 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 
 | Droga | Formaty | Jak to działa |
 | --- | --- | --- |
-| **1. 🧾 Wbudowany backend MinerU** | PDF, obrazy (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Ustawienia → Konfiguracja wiki → Konwerter do Markdown → **MinerU**. Napędzane przez [dokładny parser MinerU](https://mineru.net/apiManage/docs). Droga dla skanowanych artykułów i plików Office, w których liczy się układ. |
+| **1. 🧾 Wbudowany backend MinerU** | PDF, obrazy (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Ustawienia → Konfiguracja wiki → Konwerter do Markdown → **MinerU przez internet**. Napędzane przez [dokładny parser MinerU](https://mineru.net/apiManage/docs). Droga dla skanowanych artykułów i plików Office, w których liczy się układ. |
 | **2. ☁️ Dostawcy w chmurze z PDF** | PDF | Anthropic, OpenAI, Google Gemini i AWS Bedrock (warianty Anthropic i OpenAI) czytają PDF od razu jako część pliku. Nic więcej poza wyborem dostawcy. |
 | **3. 🖥️ Lokalny OCR na Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) zawiera Microsoft Markitdown i lokalne OCR obrazowe ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Wskaż wtyczce oMLX jako własnego dostawcę zgodnego z OpenAI i włącz **Zawsze próbuj PDF**. PDF nigdy nie opuszcza twojego komputera. |
 | **4. 🛠️ Narzędzie zewnętrzne (serwis MinerU)** | PDF, Office, obrazy | Użyj [usługi MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor), gdy wolisz szybki interfejs od konfigurowania tokenu API. Połóż pobrany plik `.md` w skarbcu i wczytaj jako zwykłą notatkę Markdown. |
-| **5. 🔌 Zawsze próbuj PDF** | PDF | Dla każdego innego punktu końcowego zgodnego z OpenAI lub Anthropic, który przyjmuje części pliku (Ustawienia → Konfiguracja LLM → Zaawansowane). Odmowa pojawia się jako komunikat w twoim języku. |
+| **5. 🔌 Zawsze próbuj PDF** | PDF | Dla każdego innego punktu końcowego zgodnego z OpenAI lub Anthropic, który przyjmuje części pliku (Ustawienia → Konfiguracja LLM → Zaawansowane parametry modelu). Odmowa pojawia się jako komunikat w twoim języku. |
 | **6. 🖼️ Obrazy w Markdownie** | lokalne `![[image.png]]` i `![alt](image.png)` wewnątrz `.md` | Włącz **Analizuj obrazy w notatkach podczas wczytywania** w ustawieniach zaawansowanych. Każdy lokalny obraz jest analizowany razem z najbliższymi akapitami. |
 
 <details>
@@ -202,7 +202,7 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 - **Limity obrazów osadzonych i ślad kontrolny** — obrazy idą w pakietach po 20 MiB, z limitem 10 MiB na obraz; obrazy z internetu nigdy nie są pobierane. Możesz dodatkowo włączyć **Zapisuj materiał obrazowy na stronie źródłowej**, aby strona źródłowa dostała zwijaną sekcję kontrolną.
 - **🗄️ Ograniczony bufor** — `.obsidian/plugins/karpathywiki/pdf-cache/` trzyma przekonwertowany Markdown, kluczowany hashem treści, modelem i wersją konwertera; łącznie 100 MB, 1 000 pozycji, 10 MB na pozycję, z usuwaniem najdawniej użytych.
 - **📝 Opcjonalny plik towarzyszący w skarbcu** — Ustawienia → Konfiguracja wiki → Folder wiki → **Zapisuj przekonwertowany Markdown w skarbcu** zapisuje `<basename>.pdf.md` obok pliku PDF (domyślnie wyłączone; domyślnie działa tylko bufor).
-- **🛡️ Dosłowne przepisywanie w promptcie** — konwersja w stylu OCR ze znacznikami `[nieczytelne]` i `[rycina: ...]` przeciw wymyślaniu treści; jeśli mały model lokalny opakuje wynik w blok kodu, jest on czyszczony przed zapisem do bufora.
+- **🛡️ Dosłowne przepisywanie w promptcie** — konwersja w stylu OCR ze znacznikami `[illegible]` i `[figure: ...]` przeciw wymyślaniu treści; jeśli mały model lokalny opakuje wynik w blok kodu, jest on czyszczony przed zapisem do bufora.
 - **🔁 Dosłowne cytaty na stronie źródłowej** — każda wygenerowana strona `sources/<slug>.md` ma sekcję *Wzmianki w źródle*, zbudowaną z tych samych dosłownych cytatów, które wyodrębnianie zebrało dla każdej encji i pojęcia (tekst, o którym model już pokazał, że go widzi). Dzięki temu dokument źródłowy jest jedyną stroną wiki z prawdziwym, sprawdzalnym powiązaniem z własnym tekstem.
 - **Zastrzeżenie do plików Office** — Obsidian nie wyświetla sam `.docx`, `.xlsx` ani `.pptx` ([formaty plików](https://obsidian.md/help/file-formats)), więc praktyczna droga to: MinerU zamienia plik na `.md`, wtyczka wczytuje ten `.md` jako strony wiki, a oryginał zostaje do wglądu. Jeśli chcesz podglądać pliki Office w Obsidianie, użyj wtyczki takiej jak Pandoc Plugin, Docxer, Md Importer albo Office Reader.
 
@@ -224,7 +224,7 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 **Konserwacja i naprawa**
 
 - 🔍 **Kontrola lint** — jedno polecenie wychwytuje duplikaty, martwe odsyłacze, puste strony, strony osierocone, brakujące aliasy i sprzeczności. Wymienia też węzły, których sąsiedztwo już się wykrystalizowało: węzeł zastępujący powiązania, których treść nie potrafi już nawiązać.
-- ⚡ **Inteligentna naprawa wszystkiego** — naprawa jednym kliknięciem w kolejności przyczyn: uzupełnij aliasy → scal duplikaty → napraw martwe odsyłacze → podlinkuj strony osierocone → uzupełnij puste strony, z raportem po każdym etapie.
+- ⚡ **Napraw wszystko automatycznie** — naprawa jednym kliknięciem w kolejności przyczyn: uzupełnij aliasy → scal duplikaty → napraw martwe odsyłacze → podlinkuj strony osierocone → uzupełnij puste strony, z raportem po każdym etapie.
 - 📊 **Panel historii operacji** — przeszukiwalny i filtrowany widok wcześniejszych wczytań, raportów lint i przebiegów konserwacji.
 
 [![Raport lint wiki — linia stanu, znalezione martwe odsyłacze i przycisk, który naprawia je w jednym przebiegu](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
@@ -237,8 +237,8 @@ Sześć dróg, wybieranych przy każdym wczytaniu:
 
 - 🛡️ **Kontrola przed wczytaniem** — puste notatki, notatki z samymi spacjami i notatki z samym frontmatterem są odrzucane przed jakimkolwiek wywołaniem modelu; ten sam hash treści łapie identyczne pliki na różnych ścieżkach.
 - 🚦 **Kontrola kandydatów** — opcjonalna (`skipMentionOnlyCandidates`, domyślnie wyłączona). Kandydat, którego nazwa pada tylko w nawiasie, w wyliczeniu albo w krótkim punkcie listy, odpada, zanim kosztuje generowanie i wywołanie dedup. Działa tylko dla języków z zmierzonym profilem; język bez profilu nigdy nie jest filtrowany po cichu, a notatki w innym języku nie są filtrowane wcale.
-- 🚧 **Zostawianie martwych odsyłaczy** — Ustawienia → Zaawansowane → **Twórz puste strony dla odsyłaczy donikąd** (domyślnie włączone). Wyłącz to, a martwy odsyłacz zostanie widoczny w każdym raporcie lint, dopóki prawdziwe źródło go nie zdefiniuje, zamiast zamieniać się w pustą stronę.
-- 🔁 **Powrót do starego szeregowania** — Ustawienia → Zaawansowane → **Stary sposób szeregowania wyników** uruchamia poprzednie, ręcznie dostrajane liniowe szeregowanie zamiast domyślnego BM25F.
+- 🚧 **Zostawianie martwych odsyłaczy** — Ustawienia → Pokaż ustawienia zaawansowane → **Twórz puste strony dla odsyłaczy donikąd** (domyślnie włączone). Wyłącz to, a martwy odsyłacz zostanie widoczny w każdym raporcie lint, dopóki prawdziwe źródło go nie zdefiniuje, zamiast zamieniać się w pustą stronę.
+- 🔁 **Powrót do starego szeregowania** — Ustawienia → Pokaż ustawienia zaawansowane → **Stary sposób szeregowania wyników** uruchamia poprzednie, ręcznie dostrajane liniowe szeregowanie zamiast domyślnego BM25F.
 
 **Osiem ustawień, które kształtują przebieg**
 
@@ -246,13 +246,13 @@ Większość decyzji wtyczka podejmuje za ciebie. Te osiem ustawień to zmienia,
 
 | Ustawienie | Gdzie | Co zmienia |
 | --- | --- | --- |
-| **Strumieniuj żądania wczytywania** | Zaawansowane | `auto` strumieniuje na telefonie; `always` i `never` wymuszają wybór. To strumieniowanie trzyma długie wczytanie w limicie bezczynności dostawcy. |
-| **Poziom rozumowania** | LLM Zaawansowane | `default` / `low` / `medium` / `high`. AI SDK tłumaczy poziom u każdego dostawcy, więc nie ma tu ręcznie wpisywanego pola dostawcy. |
-| **Maksymalna liczba tokenów wyjściowych na wywołanie** | LLM Zaawansowane | Działa w obie strony: podnieś, gdy model rozumujący wydaje budżet przed napisaniem, obniż, aby ograniczyć koszt. Puste pole prosi model o jego własny limit. |
-| **Okno kontekstu modelu** | LLM Zaawansowane | Limit nie może przekroczyć okna, więc mały model lokalny nigdy nie dostaje liczby, której nie przyjmie. |
-| **Równoległe wywołania modelu** | Dostawca | 1–20 wywołań naraz. Wyżej kończy duże wczytanie szybciej; niżej trzyma model lokalny w granicach pamięci. |
-| **Ukierunkowanie wyodrębniania i wymagania dotyczące treści** | Ustawienia zaawansowane | Dowolny tekst wpisywany do `schema/config.md`. Kształtuje to, co model wyodrębnia, bez ręcznej edycji schematu. |
-| **Tryb odpowiedzi i rozumowanie według kroku** | LLM Zaawansowane | Nadpisz tryb tekstowy lub poziom rozumowania dla jednego kroku — wyodrębnianie, scalanie, pytania — bez ruszania pozostałych. |
+| **Strumieniuj żądania wczytywania** | Pokaż ustawienia zaawansowane | `auto` strumieniuje na telefonie; `always` i `never` wymuszają wybór. To strumieniowanie trzyma długie wczytanie w limicie bezczynności dostawcy. |
+| **Poziom rozumowania** | Zaawansowane parametry modelu | `default` / `low` / `medium` / `high`. AI SDK tłumaczy poziom u każdego dostawcy, więc nie ma tu ręcznie wpisywanego pola dostawcy. |
+| **Maksymalna liczba tokenów wyjściowych na wywołanie** | Zaawansowane parametry modelu | Działa w obie strony: podnieś, gdy model rozumujący wydaje budżet przed napisaniem, obniż, aby ograniczyć koszt. Puste pole prosi model o jego własny limit. |
+| **Okno kontekstu modelu** | Zaawansowane parametry modelu | Limit nie może przekroczyć okna, więc mały model lokalny nigdy nie dostaje liczby, której nie przyjmie. |
+| **Równoległe wywołania modelu** | Konfiguracja LLM | 1–20 wywołań naraz. Wyżej kończy duże wczytanie szybciej; niżej trzyma model lokalny w granicach pamięci. |
+| **Ukierunkowanie wyodrębniania i Wymagania dotyczące treści** | Ustawienia zaawansowane | Dowolny tekst wpisywany do `schema/config.md`. Kształtuje to, co model wyodrębnia, bez ręcznej edycji schematu. |
+| **Tryb odpowiedzi i rozumowanie według kroku** | Zaawansowane parametry modelu | Nadpisz tryb tekstowy lub poziom rozumowania dla jednego kroku — wyodrębnianie, scalanie, pytania — bez ruszania pozostałych. |
 | **Wykluczone pliki** | lista Obsidiana | Wczytywanie folderu, obserwowanie plików i ścieżka automatyczna respektują wykluczenia ustawione w Obsidianie. |
 
 </details>
@@ -397,7 +397,7 @@ Używaj ilości Zgrubnie albo Minimalnie przy wczytywaniu zbiorczym. Inteligentn
 
 ### Jak zatrzymać trwającą operację?
 
-Kliknij pasek stanu (jest tam „*Wczytywanie… kliknij, aby zatrzymać*”) albo `Cmd+P` / `Ctrl+P` → „Zatrzymaj wczytywanie”. Zatrzymuje się czysto na granicy kolejnej rundy.
+Kliknij pasek stanu (jest tam „*Wczytywanie... kliknij, aby zatrzymać*”) albo `Cmd+P` / `Ctrl+P` → „Zatrzymaj wczytywanie”. Zatrzymuje się czysto na granicy kolejnej rundy.
 
 ### Gdzie szukać pomocy?
 
@@ -412,7 +412,7 @@ Ta wtyczka jest w Obsidian Community Plugin Market i przechodzi automatyczny prz
 - 🚫 **Bez własnego backendu, bez telemetrii, bez zbierania danych.** To zwykłe lokalne oprogramowanie działające w Obsidianie. Wtyczka nie prowadzi serwera i niczego nigdzie nie zgłasza.
 - 🔐 **Dostęp do sieci jest opcjonalny i jawny.** Istnieje tylko po to, by docierać do usług, które *ty* ustawiasz: twojego dostawcy LLM oraz — jeśli włączysz backend MinerU — `mineru.net`. To drugie to wyjątek wart nazwania: wysyła dokument do jurysdykcji, której nie wybrałeś i która nie publikuje zasad przechowywania. [Gdzie przetwarzany jest twój dokument](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) wymienia każdą drogę i miejsce, do którego trafia plik.
 - 📁 **Dostęp do plików skarbca** służy wyłącznie zarządzaniu wiki: czytanie notatek, generowanie stron w `wiki/`, szukanie martwych odsyłaczy, wykrywanie duplikatów. Wtyczka nigdy nie zmienia twoich plików źródłowych.
-- 📋 **Dostęp do schowka** jest używany wyłącznie przez przycisk „Kopiuj” w panelu pytań — i tylko gdy go klikniesz.
+- 📋 **Dostęp do schowka** jest używany wyłącznie przez przycisk „Copy” w panelu pytań — i tylko gdy go klikniesz.
 
 Jeśli chcesz pełnej lokalności, użyj **Ollamy** albo **LM Studio**. Z dostawcą lokalnym twoje dane nigdy nie opuszczają komputera.
 

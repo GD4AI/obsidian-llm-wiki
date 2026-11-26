@@ -177,7 +177,7 @@ your-vault/
 - 🏷️ **強制別名**——每一頁至少帶一個別名（翻譯、縮寫、變體），跨語言的重複偵測才有依據。
 - 🔄 **分級重複偵測**——Tier 1（名稱直接相符：跨語言、縮寫、高相似度標題）一律驗證；Tier 2（共享連結、中等相似度）用剩下的 token 預算補齊。
 - 🧩 **智慧合併與矛盾狀態**——重複頁合併時保留別名；矛盾會標示出來並附來源；`reviewed: true` 的頁面不會被覆寫。
-- 🎨 **一套標籤詞彙，由你決定**——一頁可以帶哪些標籤，來自你筆記裡的巢狀標籤、Wiki 頁面上既有的標籤，以及 設定 → Wiki → 標籤詞彙 裡的 Custom 清單。提示詞、寫入閘門、Lint 與重新打標籤讀的都是這同一份清單，所以模型拿到的就是會落到磁碟上的；清單以外的值會被丟棄，永遠不寫入。小型模型仍會漂移（大約每十次有一次回傳模型自己的分類）——閘門會攔下，Lint 會回報那一頁。設計錨點：[Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
+- 🎨 **一套標籤詞彙，由你決定**——一頁可以帶哪些標籤，來自你筆記裡的巢狀標籤、Wiki 頁面上既有的標籤，以及 設定 → Wiki 配置 → 標籤（Tags)詞彙表配置 裡的 自定義 (使用者定義) 清單。提示詞、寫入閘門、Lint 與重新打標籤讀的都是這同一份清單，所以模型拿到的就是會落到磁碟上的；清單以外的值會被丟棄，永遠不寫入。小型模型仍會漂移（大約每十次有一次回傳模型自己的分類）——閘門會攔下，Lint 會回報那一頁。設計錨點：[Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
 [![一頁生成好的概念頁：寫入時使用的詞彙標籤、別名 AF 與 AFib、定義，以及與它相關的頁面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,21 +187,21 @@ your-vault/
 
 | 入口 | 格式 | 運作方式 |
 | --- | --- | --- |
-| **1. 🧾 內建 MinerU 後端** | PDF、圖片（PNG/JPG/WebP/GIF/BMP）、Office（DOC/DOCX/PPT/PPTX/XLS/XLSX） | 設定 → Wiki Configuration → Markdown Conversion Backend → **MinerU**。由 [MinerU 的 Precise 解析器](https://mineru.net/apiManage/docs) 驅動。適合掃描論文與重視版面的 Office 檔案。 |
+| **1. 🧾 內建 MinerU 後端** | PDF、圖片（PNG/JPG/WebP/GIF/BMP）、Office（DOC/DOCX/PPT/PPTX/XLS/XLSX） | 設定 → Wiki 配置 → Markdown 轉換後端 → **MinerU 線上 API**。由 [MinerU 的 Precise 解析器](https://mineru.net/apiManage/docs) 驅動。適合掃描論文與重視版面的 Office 檔案。 |
 | **2. ☁️ 原生支援 PDF 的雲端供應商** | PDF | Anthropic、OpenAI、Google Gemini 與 AWS Bedrock（Anthropic + OpenAI 變體）開箱就把 PDF 當 file part 讀。除了選供應商，不需任何設定。 |
-| **3. 🖥️ Apple Silicon 上的本機 OCR** | PDF | [oMLX](https://github.com/jundot/omlx) 內建 Microsoft Markitdown 與本機視覺 OCR（[Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)）。把外掛指向 oMLX 作為 Custom OpenAI-Compatible 供應商，並開啟 **Force PDF Support**。PDF 全程不離開你的機器。 |
+| **3. 🖥️ Apple Silicon 上的本機 OCR** | PDF | [oMLX](https://github.com/jundot/omlx) 內建 Microsoft Markitdown 與本機視覺 OCR（[Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)）。把外掛指向 oMLX 作為 Custom OpenAI-Compatible 供應商，並開啟 **強制啟用 PDF 支援**。PDF 全程不離開你的機器。 |
 | **4. 🛠️ 第三方提取器（MinerU 線上 UI）** | PDF、Office、圖片 | 用 [MinerU Extractor 線上服務](https://mineru.net/OpenSourceTools/Extractor) 快速手動處理一次，不必接 API token。把下載好的 `.md` 放進 vault，再當一般 Markdown 筆記攝入。 |
-| **5. 🔌 Force PDF Support** | PDF | 適用於其他任何接受 file part 的 OpenAI/Anthropic 相容端點（設定 → LLM Configuration → Advanced）。失敗會以本地化 Notice 呈現。 |
-| **6. 🖼️ Markdown 內嵌圖片** | `.md` 內的本機 `![[image.png]]` 與 `![alt](image.png)` | 在進階設定開啟 **Analyze embedded images during Markdown ingestion**。每張本機圖片都會與最接近的 Markdown 段落一起分析。 |
+| **5. 🔌 強制啟用 PDF 支援** | PDF | 適用於其他任何接受 file part 的 OpenAI/Anthropic 相容端點（設定 → LLM 配置 → LLM 高階參數）。失敗會以本地化 Notice 呈現。 |
+| **6. 🖼️ Markdown 內嵌圖片** | `.md` 內的本機 `![[image.png]]` 與 `![alt](image.png)` | 在進階設定開啟 **在 Markdown 攝入時分析嵌入圖片**。每張本機圖片都會與最接近的 Markdown 段落一起分析。 |
 
 <details>
 <summary>🔧 <strong>底層機制、有界快取、token 上限與 Office 格式注意事項</strong></summary>
 <br/>
 
 - **MinerU 上限與 token 生命週期**——token 存在 SecretStorage，大約 90 天後過期（`401` 訊息會指出要更新的頁面）。上限是每份 PDF 200 MB / 200 頁，每個壓縮檔 256 MB / 10,000 個檔案。
-- **內嵌圖片上限與稽核軌跡**——以 20 MiB 的視覺證據包送出，單張上限 10 MiB；遠端 URL 從不下載。可選擇開啟 **Save embedded image visual evidence to source page**，在生成的來源頁加上可折疊的稽核區段。
+- **內嵌圖片上限與稽核軌跡**——以 20 MiB 的視覺證據包送出，單張上限 10 MiB；遠端 URL 從不下載。可選擇開啟 **將內嵌圖片視覺證據儲存到來源頁**，在生成的來源頁加上可折疊的稽核區段。
 - **🗄️ 有界快取**——`.obsidian/plugins/karpathywiki/pdf-cache/` 以內容雜湊 + 模型 + 轉換器版本為鍵，儲存轉換後的 Markdown；總量 100 MB / 1,000 筆 / 單筆 10 MB 上限，依 mtime 做 LRU 淘汰。
-- **📝 可選的 vault 側車檔案**——設定 → Wiki Configuration → Wiki Folder → **Write PDF Markdown to Vault** 會在來源 PDF 旁寫一份 `<basename>.pdf.md`（預設關閉——預設是只留快取）。
+- **📝 可選的 vault 側車檔案**——設定 → Wiki 配置 → Wiki 資料夾 → **將轉換後的 Markdown 寫入 Vault** 會在來源 PDF 旁寫一份 `<basename>.pdf.md`（預設關閉——預設是只留快取）。
 - **🛡️ 逐字轉錄提示詞**——OCR 風格的轉換，搭配 `[illegible]` / `[figure: ...]` 這類反幻覺標記；小型本機模型多包的 markdown 圍籬會在寫入快取前自動清掉。
 - **🔁 來源頁逐字引文**——每個生成的 `sources/<slug>.md` 頁面都帶一個 *Mentions in Source* 區段，內容取自提取階段為各實體／概念抓到的同一批逐字引文，讓底層文件有實據可循地回溯到來源文字。
 - **Office 格式注意事項**——Obsidian 不原生算繪 `.docx` / `.xlsx` / `.pptx`（[file-formats](https://obsidian.md/help/file-formats)），所以實際流程是：MinerU 轉成 `.md`，外掛把這個 `.md` 攝入成 Wiki 頁面，原始 Office 檔案留著備查。若需要內嵌 Office 預覽，可搭配 Pandoc Plugin / Docxer / Md Importer / Office Reader 這類社群外掛。
@@ -237,8 +237,8 @@ your-vault/
 
 - 🛡️ **攝入前閘門**——空白、只有空白字元或只有 frontmatter 的筆記，在呼叫 LLM 之前就被拒絕；內容雜湊去重抓出不同路徑下的相同檔案。
 - 🚦 **攝入候選項閘門**——需自行開啟（`skipMentionOnlyCandidates`，預設關閉）。只在括號、列舉或短清單項目裡出現一次的候選項，會在花掉一次生成與一次去重呼叫之前先被剪掉。它只對有實測語言輪廓的語言生效；跨語言筆記不會被靜默設閘。
-- 🚧 **修復斷鏈的「保留不動」結果**——設定 → 進階設定 → **Create Stubs for Unresolvable Links**（預設開啟）。關掉之後，斷鏈會留在每一份 Lint 報告裡，直到有真實來源定義它，而不是變成一個空佔位頁。
-- 🔁 **舊版查詢評分器開關**——設定 → 進階設定 → **舊版查詢評分器**，改跑上一版手工調校的線性排序，而不是預設的 BM25F 評分器。
+- 🚧 **修復斷鏈的「保留不動」結果**——設定 → 顯示進階設定 → **為無法解析的連結建立佔位頁**（預設開啟）。關掉之後，斷鏈會留在每一份 Lint 報告裡，直到有真實來源定義它，而不是變成一個空佔位頁。
+- 🔁 **舊版查詢評分器開關**——設定 → 顯示進階設定 → **舊版查詢評分器**，改跑上一版手工調校的線性排序，而不是預設的 BM25F 評分器。
 
 **八個會左右一次執行的設定**
 
@@ -246,12 +246,12 @@ your-vault/
 
 | 設定 | 位置 | 改變什麼 |
 | --- | --- | --- |
-| **串流攝取請求** | 進階設定 | `auto` 在行動端串流；`always` 與 `never` 強制指定。串流正是讓長時間攝入不撞上供應商閒置逾時的原因。 |
+| **串流攝取請求** | 顯示進階設定 | `auto` 在行動端串流；`always` 與 `never` 強制指定。串流正是讓長時間攝入不撞上供應商閒置逾時的原因。 |
 | **思考檔位** | LLM 高階參數 | `default` / `low` / `medium` / `high`。AI SDK 依供應商翻譯這個檔位，不牽涉手寫的供應商欄位。 |
 | **每次呼叫的最大輸出 Token 數** | LLM 高階參數 | 兩個方向都能調：推理模型在寫作前就把預算花光時調高，想壓成本時調低。留空則向模型要它自己的上限。 |
 | **模型上下文視窗** | LLM 高階參數 | 上限不再能超過視窗，小型本機模型不會收到它吃不下的數字。 |
 | **LLM 併發度** | LLM 配置 | 1–20 個並行呼叫。調高讓大批攝入早點結束，調低讓本機模型留在記憶體裡。 |
-| **提取重點與內容生成要求** | 進階設定 | 寫進 `schema/config.md` 的自由文字。左右模型提取什麼，你不必手改 schema。 |
+| **提取重點與內容生成要求** | 顯示進階設定 | 寫進 `schema/config.md` 的自由文字。左右模型提取什麼，你不必手改 schema。 |
 | **按步驟設定輸出模式與思考** | LLM 高階參數 | 只覆寫某一步（提取、合併、查詢）的文字模式或思考檔位，其他步驟不動。 |
 | **Excluded files** | Obsidian 自己的清單 | 資料夾攝入、檔案監看與自動路徑都遵守你在 Obsidian 設定的排除規則。 |
 
@@ -363,10 +363,10 @@ flowchart LR
 
 ### AWS Bedrock——三種驗證模式
 
-設定 → Provider → Bedrock（Anthropic / OpenAI）支援三種驗證模式，只索取該模式實際需要的輸入：
+設定 → LLM 配置 → Bedrock（Anthropic / OpenAI）支援三種驗證模式，只索取該模式實際需要的輸入：
 
 - **API key**——bearer token 路徑；已經在用 Bedrock API key 的人的建議選項。
-- **SSO**——IAM Identity Center 裝置流程。點 **Sign in with AWS SSO**，在瀏覽器貼上驗證碼，外掛就在 SecretStorage 裡把 SSO token 換成臨時角色憑證，再用自行實作的 SigV4 為每個請求簽章（沒有引入 AWS SDK）。
+- **SSO**——IAM Identity Center 裝置流程。點 **使用 AWS SSO 登入**，在瀏覽器貼上驗證碼，外掛就在 SecretStorage 裡把 SSO token 換成臨時角色憑證，再用自行實作的 SigV4 為每個請求簽章（沒有引入 AWS SDK）。
 - **IAM**——給沒有 SSO 的環境（CI、排程批次作業）用的靜態存取金鑰，存在 SecretStorage，並以記憶體快取做憑證記憶化。
 
 三種模式共用同一套 Obsidian SecretStorage 紀律（憑證不進 `data.json`、日誌或文件），也共用同一條零 AWS SDK、自行實作的 OIDC + SigV4 路徑。
@@ -393,7 +393,7 @@ flowchart LR
 
 ### 怎麼控制 API 成本？
 
-批次攝入時用 **粗略** 或 **極簡** 提取粒度。**智慧批次跳過** 會自動認出已攝入的檔案。自動維護預設 **關閉**，Lint 在修復前先顯示確切數量——沒有你同意就不會產生費用。
+批次攝入時用 **粗放** 或 **極簡** 提取粒度。**智慧批次跳過** 會自動認出已攝入的檔案。自動維護預設 **關閉**，Lint 在修復前先顯示確切數量——沒有你同意就不會產生費用。
 
 ### 怎麼取消正在跑的操作？
 
@@ -412,7 +412,7 @@ flowchart LR
 - 🚫 **沒有自己的後端、沒有遙測、沒有資料收集。** 純本機軟體，跑在 Obsidian 裡。外掛不營運任何伺服器，也不往任何地方回報。
 - 🔐 **網路存取是選擇性的，而且明確。** 只用來連你設定的服務：你的 LLM 供應商，以及——如果你開啟 MinerU 文件後端——`mineru.net`。第二個值得單獨點名：它把文件上傳到一個你沒有選擇、也不公布保留政策的司法管轄區。[文件在哪裡被處理](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) 列出每一條路徑與檔案的去向。
 - 📁 **Vault 檔案存取**只用於 Wiki 管理（讀筆記、在 `wiki/` 底下生成頁面、掃描斷鏈、偵測重複）。外掛從不修改你的來源檔案。
-- 📋 **剪貼簿存取**只由查詢面板的「複製」按鈕使用——而且只在你點它的時候。
+- 📋 **剪貼簿存取**只由查詢面板的「Copy」按鈕使用——而且只在你點它的時候。
 
 要完全本機，請用 **Ollama** 或 **LM Studio**。用本機供應商時，你的資料永遠不離開你的機器。
 

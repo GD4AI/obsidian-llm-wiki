@@ -18,7 +18,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart fix all, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -97,7 +97,7 @@ your-vault/
 - **You want a 5-minute setup.** Install from Community Plugins → pick a provider → ingest one note. Wiki pages appear in `wiki/` within seconds, with no CLI, no Python, and no vector database to stand up first.
 - **You want answers from your own notes**, with every answer citing the pages it came from. Ollama or LM Studio keep the whole call on your machine.
 - **You write in or read from any of 14 languages.** Interface and wiki output are independent: a Chinese wiki behind an English interface is a supported setup.
-- **You want one-click maintenance.** Lint health scan and Smart Fix All keep duplicates, dead links, and orphans in check without hand-curating.
+- **You want one-click maintenance.** Lint health scan and Smart fix all keep duplicates, dead links, and orphans in check without hand-curating.
 
 *Not for you if* you want a general-purpose ChatGPT replacement, RAG over external corpora such as Confluence or arXiv, or a hosted service with team collaboration. Answers come from your vault, ingest covers your vault plus standalone files, and there is no backend to share.
 
@@ -154,7 +154,7 @@ That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for 
 | 📑 **Ingest multiple files** | `Cmd+P` / `Ctrl+P` → "Ingest multiple files" — pick a subset via a two-pane file tree (with live queue + per-file cancel). |
 | 🔍 **Query wiki** | `Cmd+P` / `Ctrl+P` → "Query wiki" — chat with your wiki in a right-docked side panel; answers carry `[[wiki-links]]`. Also: 🖱️ ribbon message-circle icon. |
 | 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki" — full health scan: duplicates, dead links, empty pages, orphans, missing aliases, contradictions. |
-| ⚡ **Smart Fix All** | Inside Lint Modal — one-click causal-order repair with per-phase report. |
+| ⚡ **Smart fix all** | Inside Lint Modal — one-click causal-order repair with per-phase report. |
 | 📋 **Regenerate index** | `Cmd+P` / `Ctrl+P` → "Regenerate index" — rebuild `wiki/index.md` with current pages and aliases. |
 | ⏹ **Cancel** | `Cmd+P` / `Ctrl+P` → "Cancel current ingestion" or click the status bar — stops cleanly at the next batch boundary. |
 | 📊 **Ingestion history** | `Cmd+P` / `Ctrl+P` → "View operation history" — searchable UI for past ingestions, lint reports, and maintenance runs. |
@@ -177,7 +177,7 @@ That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for 
 - 🏷️ **Mandatory aliases** — every page ships with at least one alias (translation, abbreviation, variant) so cross-language duplicate detection works.
 - 🔄 **Tiered duplicate detection** — Tier 1 (direct name match: cross-language, abbreviation, high-similarity titles) is always verified; Tier 2 (shared links, medium similarity) fills remaining token budget.
 - 🧩 **Smart merge & contradiction state** — duplicates merge while preserving aliases; contradictions are flagged with source attribution; `reviewed: true` pages are protected from overwrite.
-- 🎨 **One tag vocabulary, yours** — the tags a page may carry come from your notes' nested tags, the tags already on wiki pages, and the Custom list in Settings → Wiki → Tag Vocabulary. Prompt, write gate, lint, and retag all read that one list, so what the model is offered is what lands on disk; a value outside it is dropped, never written. Small models still drift (about one run in ten returns the model's own taxonomy) — the gate catches it and Lint reports the page. Design anchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **One tag vocabulary, yours** — the tags a page may carry come from your notes' nested tags, the tags already on wiki pages, and the Custom (user-defined) list in Settings → Wiki Configuration → Tag Vocabulary Configuration. Prompt, write gate, lint, and retag all read that one list, so what the model is offered is what lands on disk; a value outside it is dropped, never written. Small models still drift (about one run in ten returns the model's own taxonomy) — the gate catches it and Lint reports the page. Design anchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![A generated concept page: the vocabulary tag it was written with, its aliases AF and AFib, its definition and the pages related to it](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
@@ -187,12 +187,12 @@ Six on-ramps, switchable per ingest:
 
 | On-ramp | Formats | How it works |
 | --- | --- | --- |
-| **1. 🧾 Built-in MinerU backend** | PDF, images (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Settings → Wiki Configuration → Markdown Conversion Backend → **MinerU**. Powered by [MinerU's Precise parser](https://mineru.net/apiManage/docs). Ideal for scanned papers and Office files where layout matters. |
+| **1. 🧾 Built-in MinerU backend** | PDF, images (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Settings → Wiki Configuration → Markdown conversion backend → **MinerU online API**. Powered by [MinerU's Precise parser](https://mineru.net/apiManage/docs). Ideal for scanned papers and Office files where layout matters. |
 | **2. ☁️ Cloud providers with native PDF** | PDF | Anthropic, OpenAI, Google Gemini, and AWS Bedrock (Anthropic + OpenAI variants) read PDFs as file parts out of the box. No setup beyond provider selection. |
-| **3. 🖥️ Local OCR on Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) bundles Microsoft Markitdown + local vision OCR ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Point the plugin at oMLX as a Custom OpenAI-Compatible provider with **Force PDF Support** enabled. The PDF never leaves your machine. |
+| **3. 🖥️ Local OCR on Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) bundles Microsoft Markitdown + local vision OCR ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Point the plugin at oMLX as a Custom OpenAI-Compatible provider with **Force PDF support** enabled. The PDF never leaves your machine. |
 | **4. 🛠️ Third-party extractor (MinerU online UI)** | PDF, Office, images | Use the [MinerU Extractor online service](https://mineru.net/OpenSourceTools/Extractor) for a quick manual UI without wiring up an API token. Drop the downloaded `.md` into your vault and ingest as a regular Markdown note. |
-| **5. 🔌 Force PDF Support** | PDF | For any other OpenAI/Anthropic-compatible endpoint that accepts file parts (Settings → LLM Configuration → Advanced). Failures surface as a localized Notice. |
-| **6. 🖼️ Embedded Markdown images** | Local `![[image.png]]` & `![alt](image.png)` inside `.md` | Turn on **Analyze embedded images during Markdown ingestion** in Advanced settings. Each local image is analyzed alongside its nearest Markdown paragraphs. |
+| **5. 🔌 Force PDF support** | PDF | For any other OpenAI/Anthropic-compatible endpoint that accepts file parts (Settings → LLM Configuration → Advanced LLM parameters). Failures surface as a localized Notice. |
+| **6. 🖼️ Embedded Markdown images** | Local `![[image.png]]` & `![alt](image.png)` inside `.md` | Turn on **Analyze embedded images during Markdown ingestion** under Show advanced settings. Each local image is analyzed alongside its nearest Markdown paragraphs. |
 
 <details>
 <summary>🔧 <strong>Plumbing, bounded cache, token limits & Office format caveats</strong></summary>
@@ -201,7 +201,7 @@ Six on-ramps, switchable per ingest:
 - **MinerU caps & token lifecycle** — Token lives in SecretStorage and expires after about 90 days (a `401` notice names the renewal page). Caps are 200 MB / 200 pages per PDF and 256 MB / 10,000 files per archive.
 - **Embedded image caps & audit trail** — Sent in 20 MiB visual-evidence packages, capped at 10 MiB per image; remote URLs are never downloaded. Optionally enable **Save embedded image visual evidence to source page** to add a collapsible audit section to the generated source page.
 - **🗄️ Bounded cache** — `.obsidian/plugins/karpathywiki/pdf-cache/` stores converted Markdown keyed by content hash + model + converter version; 100 MB total / 1,000 entries / 10 MB single-entry caps with LRU-by-mtime eviction.
-- **📝 Optional vault sidecar** — Settings → Wiki Configuration → Wiki Folder → **Write PDF Markdown to Vault** writes `<basename>.pdf.md` next to the source PDF (off by default — cache-only is the default).
+- **📝 Optional vault sidecar** — Settings → Wiki Configuration → Wiki Folder → **Write converted Markdown to Vault** writes `<basename>.pdf.md` next to the source PDF (off by default — cache-only is the default).
 - **🛡️ Verbatim transcriber prompt** — OCR-style conversion with `[illegible]` / `[figure: ...]` anti-hallucination markers; markdown-fence-wrapping from small local models is auto-cleaned before cache write.
 - **🔁 Source-page verbatim quotes** — Every generated `sources/<slug>.md` page carries a *Mentions in Source* section built from the same verbatim quotes the extraction captured per entity/concept, so the underlying document has a grounded trail back to its source text.
 - **Caveat for Office formats** — Obsidian does not natively render `.docx` / `.xlsx` / `.pptx` ([file-formats](https://obsidian.md/help/file-formats)), so the practical workflow is: MinerU converts to `.md`, the plugin ingests that `.md` into wiki pages, and the original Office file is kept for reference. Use a community plugin like Pandoc Plugin / Docxer / Md Importer / Office Reader if you need inline Office previews.
@@ -224,7 +224,7 @@ Six on-ramps, switchable per ingest:
 **Maintenance and repair**
 
 - 🔍 **Lint health scan** — a single command catches duplicates, dead links, empty pages, orphans, missing aliases, and contradictions. It also lists hub pages whose neighbourhood has crystallized — a hub standing in for connections that content can no longer make.
-- ⚡ **Smart Fix All** — one-click causal-order repair: fill aliases → merge duplicates → fix dead links → link orphans → expand empty pages, with a per-phase report.
+- ⚡ **Smart fix all** — one-click causal-order repair: fill aliases → merge duplicates → fix dead links → link orphans → expand empty pages, with a per-phase report.
 - 📊 **Operation history panel** — searchable, filterable UI for past ingestions, lint reports, and maintenance runs.
 
 [![Wiki lint report — the status line, the dead links it found, and the Smart fix all button that repairs them in one pass](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
@@ -237,8 +237,8 @@ Six on-ramps, switchable per ingest:
 
 - 🛡️ **Pre-ingest gate** — empty, whitespace, or frontmatter-only notes are rejected before any LLM call; content-hash dedup catches identical files across paths.
 - 🚦 **Ingest candidate gate** — opt-in (`skipMentionOnlyCandidates`, off by default). A candidate named only inside parentheses, an enumeration, or a short list item is pruned before it costs a generation and a dedup call. Applies only to languages with a measured profile; cross-language notes are never gated silently.
-- 🚧 **Fix Dead Links leave-it outcome** — Settings → Advanced → **Create Stubs for Unresolvable Links** (on by default). Turn it off and a dead link stays visible in every lint report until a real source defines it, instead of becoming an empty placeholder page.
-- 🔁 **Legacy query scorer switch** — Settings → Advanced → **Legacy query scorer** runs the previous hand-tuned linear ranking instead of the default BM25F scorer.
+- 🚧 **Fix Dead Links leave-it outcome** — Settings → Show advanced settings → **Create stub pages for unresolvable links** (on by default). Turn it off and a dead link stays visible in every lint report until a real source defines it, instead of becoming an empty placeholder page.
+- 🔁 **Legacy query scorer switch** — Settings → Show advanced settings → **Legacy query scorer** runs the previous hand-tuned linear ranking instead of the default BM25F scorer.
 
 **Eight settings that shape a run**
 
@@ -246,13 +246,13 @@ Most of what the plugin does is decided for you. These eight settings change tha
 
 | Setting | Where | What it changes |
 | --- | --- | --- |
-| **Stream ingest** | Advanced | `auto` streams on mobile; `always` and `never` force the choice. Streaming keeps a long ingest under a provider's idle timeout. |
-| **Thinking level** | LLM Advanced | `default` / `low` / `medium` / `high`. The AI SDK translates the level per provider, so no hand-written provider field is involved. |
-| **Max output tokens per call** | LLM Advanced | Works in both directions: raise it when a reasoning model spends the budget before writing, lower it to cap cost. Empty asks the model for its own ceiling. |
-| **Model context window** | LLM Advanced | The ceiling can no longer exceed the window, so a small local model is never sent a number it cannot accept. |
-| **LLM Concurrency** | Provider | 1–20 parallel calls. Higher finishes a large ingest sooner; lower keeps a local model inside its memory. |
-| **Extraction Focus and Additional Content Rules** | Advanced settings | Free text written into `schema/config.md`. Shapes what the model extracts without editing the schema by hand. |
-| **Per-step Task Policies** | LLM Advanced | Override text mode or thinking level for one step — extraction, merge, query — without changing the others. |
+| **Stream ingest calls** | Show advanced settings | `auto` streams on mobile; `always` and `never` force the choice. Streaming keeps a long ingest under a provider's idle timeout. |
+| **Thinking level** | Advanced LLM parameters | `default` / `low` / `medium` / `high`. The AI SDK translates the level per provider, so no hand-written provider field is involved. |
+| **Max output tokens per call** | Advanced LLM parameters | Works in both directions: raise it when a reasoning model spends the budget before writing, lower it to cap cost. Empty asks the model for its own ceiling. |
+| **Model context window** | Advanced LLM parameters | The ceiling can no longer exceed the window, so a small local model is never sent a number it cannot accept. |
+| **LLM Concurrency** | LLM Configuration | 1–20 parallel calls. Higher finishes a large ingest sooner; lower keeps a local model inside its memory. |
+| **Extraction Focus and Content Requirements** | Show advanced settings | Free text written into `schema/config.md`. Shapes what the model extracts without editing the schema by hand. |
+| **Per-step output mode and thinking** | Advanced LLM parameters | Override text mode or thinking level for one step — extraction, merge, query — without changing the others. |
 | **Excluded files** | Obsidian's own list | Folder ingest, the file watcher, and the automatic path all honour the exclusions you set in Obsidian. |
 
 </details>
@@ -363,7 +363,7 @@ Fifteen named providers, plus any OpenAI- or Anthropic-compatible endpoint. The 
 
 ### AWS Bedrock — three auth modes
 
-Settings → Provider → Bedrock (Anthropic / OpenAI) supports three auth modes, asking only for the inputs that mode requires:
+Settings → LLM Configuration → Bedrock (Anthropic / OpenAI) supports three auth modes, asking only for the inputs that mode requires:
 
 - **API key** — bearer token path; recommended for users who already use a Bedrock API key.
 - **SSO** — IAM Identity Center device flow. Click **Sign in with AWS SSO**, paste the verification code in the browser, and the plugin exchanges the SSO token in SecretStorage for temporary role credentials, signing every request with hand-rolled SigV4 (no AWS SDK added).
@@ -392,7 +392,7 @@ No chunking, no embeddings, no vector database. Personalized PageRank runs over 
 Use **Coarse** or **Minimal** extraction granularity for batch ingest. **Smart Batch Skip** auto-detects already-ingested files. Auto-Maintenance is **OFF** by default, and Lint shows exact counts before running fixes — nothing is charged without your approval.
 
 ### How do I cancel a running operation?
-Click the status bar (shows *"Ingesting… click to cancel"*) or run `Cmd+P` / `Ctrl+P` → **"Cancel current ingestion"**. It stops cleanly at the next batch boundary.
+Click the status bar (shows *"Ingesting... click to cancel"*) or run `Cmd+P` / `Ctrl+P` → **"Cancel current ingestion"**. It stops cleanly at the next batch boundary.
 
 ### Where do I get help?
 [GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues) for bug reports · [GitHub Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions) for questions and feature requests · Developer Console (`Ctrl+Shift+I` / `Cmd+Option+I`) for plugin logs.

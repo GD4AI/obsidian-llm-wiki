@@ -174,11 +174,11 @@ your-vault/
 
 ### 📚 지식 품질
 
-- 🔍 **엔티티·개념 추출** — LLM이 엔티티(인물, 조직, 제품, 사건)와 개념(이론, 방법, 용어)을 독립 페이지로 뽑습니다. 세분화 수준(Minimal → Fine, Custom 포함)을 정할 수 있어 비용과 깊이를 맞바꿀 수 있습니다.
+- 🔍 **엔티티·개념 추출** — LLM이 엔티티(인물, 조직, 제품, 사건)와 개념(이론, 방법, 용어)을 독립 페이지로 뽑습니다. 세분화 수준(최소 → 세밀, 사용자 지정 포함)을 정할 수 있어 비용과 깊이를 맞바꿀 수 있습니다.
 - 🏷️ **alias 필수** — 모든 페이지에 최소 하나의 alias(번역, 약어, 변형)가 붙으므로 언어를 넘는 중복 감지가 동작합니다.
 - 🔄 **계층형 중복 감지** — Tier 1(이름 직접 일치: 언어 간, 약어, 유사도 높은 제목)은 항상 검증합니다. Tier 2(공유 링크, 중간 유사도)는 남은 토큰 예산을 채웁니다.
 - 🧩 **스마트 병합과 모순 상태** — 중복은 alias를 지키며 병합되고, 모순은 출처와 함께 표시되며, `reviewed: true`인 페이지는 덮어쓰기에서 보호됩니다.
-- 🎨 **태그 어휘는 하나, 그리고 여러분의 것입니다** — 페이지가 달 수 있는 태그는 노트의 중첩 태그, 이미 위키 페이지에 있는 태그, 설정 → Wiki → Tag Vocabulary의 Custom 목록에서 옵니다. 프롬프트, 쓰기 게이트, 린트, retag가 모두 이 하나의 목록을 읽으므로 모델이 제안받은 것이 그대로 디스크에 기록되고, 목록 밖의 값은 기록되지 않고 버려집니다. 작은 모델은 여전히 흔들립니다(대략 10회 중 1회는 모델 자신의 분류를 돌려줍니다). 게이트가 그것을 잡고, Lint가 그 페이지를 보고합니다. 설계 앵커: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **태그 어휘는 하나, 그리고 여러분의 것입니다** — 페이지가 달 수 있는 태그는 노트의 중첩 태그, 이미 위키 페이지에 있는 태그, 설정 → Wiki 설정 → 태그 어휘 설정의 사용자 지정 (사용자 정의) 목록에서 옵니다. 프롬프트, 쓰기 게이트, 린트, retag가 모두 이 하나의 목록을 읽으므로 모델이 제안받은 것이 그대로 디스크에 기록되고, 목록 밖의 값은 기록되지 않고 버려집니다. 작은 모델은 여전히 흔들립니다(대략 10회 중 1회는 모델 자신의 분류를 돌려줍니다). 게이트가 그것을 잡고, Lint가 그 페이지를 보고합니다. 설계 앵커: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![생성된 개념 페이지 — 어떤 어휘 태그로 쓰였는지, alias인 AF와 AFib, 정의, 그리고 이 페이지와 연결된 페이지들이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -188,21 +188,21 @@ your-vault/
 
 | 진입 경로 | 포맷 | 동작 방식 |
 | --- | --- | --- |
-| **1. 🧾 내장 MinerU 백엔드** | PDF, 이미지(PNG/JPG/WebP/GIF/BMP), Office(DOC/DOCX/PPT/PPTX/XLS/XLSX) | 설정 → Wiki Configuration → Markdown Conversion Backend → **MinerU**. [MinerU의 Precise 파서](https://mineru.net/apiManage/docs)가 처리합니다. 레이아웃이 중요한 스캔 논문과 Office 파일에 적합합니다. |
+| **1. 🧾 내장 MinerU 백엔드** | PDF, 이미지(PNG/JPG/WebP/GIF/BMP), Office(DOC/DOCX/PPT/PPTX/XLS/XLSX) | 설정 → Wiki 설정 → Markdown 변환 백엔드 → **MinerU 온라인 API**. [MinerU의 Precise 파서](https://mineru.net/apiManage/docs)가 처리합니다. 레이아웃이 중요한 스캔 논문과 Office 파일에 적합합니다. |
 | **2. ☁️ PDF를 네이티브로 읽는 클라우드 공급자** | PDF | Anthropic, OpenAI, Google Gemini, AWS Bedrock(Anthropic + OpenAI 변형)은 PDF를 file part로 그대로 읽습니다. 공급자를 고르는 것 말고 따로 설정할 것이 없습니다. |
-| **3. 🖥️ Apple Silicon 로컬 OCR** | PDF | [oMLX](https://github.com/jundot/omlx)는 Microsoft Markitdown과 로컬 비전 OCR([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR))을 함께 씁니다. 플러그인을 Custom OpenAI-Compatible 공급자로 oMLX에 연결하고 **Force PDF Support**를 켜면 됩니다. PDF는 기기를 떠나지 않습니다. |
+| **3. 🖥️ Apple Silicon 로컬 OCR** | PDF | [oMLX](https://github.com/jundot/omlx)는 Microsoft Markitdown과 로컬 비전 OCR([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR))을 함께 씁니다. 플러그인을 Custom OpenAI-Compatible 공급자로 oMLX에 연결하고 **PDF 지원 강제**를 켜면 됩니다. PDF는 기기를 떠나지 않습니다. |
 | **4. 🛠️ 서드파티 추출기 (MinerU 온라인 UI)** | PDF, Office, 이미지 | API 토큰을 연결하지 않고 빠르게 손으로 돌려보고 싶다면 [MinerU Extractor 온라인 서비스](https://mineru.net/OpenSourceTools/Extractor)를 쓰면 됩니다. 내려받은 `.md`를 볼트에 넣고 일반 Markdown 노트처럼 수집하세요. |
-| **5. 🔌 Force PDF Support** | PDF | file part를 받는 다른 OpenAI/Anthropic 호환 엔드포인트에도 쓸 수 있습니다(설정 → LLM Configuration → Advanced). 실패하면 해당 언어의 Notice로 알려 줍니다. |
-| **6. 🖼️ Markdown에 임베드된 이미지** | `.md` 안의 로컬 `![[image.png]]` & `![alt](image.png)` | 고급 설정에서 **Analyze embedded images during Markdown ingestion**를 켜면 됩니다. 각 로컬 이미지는 가장 가까운 Markdown 문단과 함께 분석됩니다. |
+| **5. 🔌 PDF 지원 강제** | PDF | file part를 받는 다른 OpenAI/Anthropic 호환 엔드포인트에도 쓸 수 있습니다(설정 → LLM Configuration → Advanced). 실패하면 해당 언어의 Notice로 알려 줍니다. |
+| **6. 🖼️ Markdown에 임베드된 이미지** | `.md` 안의 로컬 `![[image.png]]` & `![alt](image.png)` | 고급 설정에서 **Markdown 수집 중 포함된 이미지 분석**를 켜면 됩니다. 각 로컬 이미지는 가장 가까운 Markdown 문단과 함께 분석됩니다. |
 
 <details>
 <summary>🔧 <strong>배관, 상한이 있는 캐시, 토큰 한도 & Office 포맷 주의</strong></summary>
 <br/>
 
 - **MinerU 한도 & 토큰 수명** — 토큰은 SecretStorage에 보관되고 약 90 일 뒤 만료됩니다(`401` 알림이 갱신 페이지를 알려 줍니다). 한도는 PDF당 200 MB / 200 페이지, 아카이브당 256 MB / 10,000 파일입니다.
-- **임베드 이미지 한도 & 감사 흔적** — 20 MiB 단위의 시각 자료 묶음으로 보내며, 이미지 하나는 10 MiB로 제한합니다. 원격 URL은 절대 내려받지 않습니다. 원하면 **Save embedded image visual evidence to source page**를 켜서 생성된 소스 페이지에 접이식 검토 구역을 추가할 수 있습니다.
+- **임베드 이미지 한도 & 감사 흔적** — 20 MiB 단위의 시각 자료 묶음으로 보내며, 이미지 하나는 10 MiB로 제한합니다. 원격 URL은 절대 내려받지 않습니다. 원하면 **포함된 이미지 시각 증거를 출처 페이지에 저장**를 켜서 생성된 소스 페이지에 접이식 검토 구역을 추가할 수 있습니다.
 - **🗄️ 상한이 있는 캐시** — `.obsidian/plugins/karpathywiki/pdf-cache/`에 변환된 Markdown을 콘텐츠 해시 + 모델 + converter 버전으로 키를 잡아 저장합니다. 전체 100 MB / 1,000 항목 / 항목당 10 MB 상한이고, mtime 기준 LRU로 밀어냅니다.
-- **📝 선택적 볼트 사이드카** — 설정 → Wiki Configuration → Wiki Folder → **Write PDF Markdown to Vault**를 켜면 원본 PDF 옆에 `<basename>.pdf.md`를 씁니다(기본값은 꺼짐 — 캐시만 쓰는 것이 기본입니다).
+- **📝 선택적 볼트 사이드카** — 설정 → Wiki 설정 → 위키 폴더 → **변환된 Markdown을 Vault에 기록**를 켜면 원본 PDF 옆에 `<basename>.pdf.md`를 씁니다(기본값은 꺼짐 — 캐시만 쓰는 것이 기본입니다).
 - **🛡️ Verbatim 필사 프롬프트** — `[illegible]` / `[figure: ...]` 같은 환각 방지 표시를 쓰는 OCR 방식 변환입니다. 작은 로컬 모델이 붙이는 markdown 펜스는 캐시에 쓰기 전에 자동으로 걷어냅니다.
 - **🔁 소스 페이지의 verbatim 인용** — 생성된 모든 `sources/<slug>.md` 페이지에 *Mentions in Source* 구역이 붙습니다. 엔티티·개념마다 추출 단계에서 잡아 둔 것과 같은 verbatim 인용으로 만들어지므로, 원본 문서는 소스 텍스트로 되돌아가는 근거 흔적을 갖습니다.
 - **Office 포맷 주의** — Obsidian은 `.docx` / `.xlsx` / `.pptx`를 기본으로 렌더링하지 않습니다([file-formats](https://obsidian.md/help/file-formats)), 그래서 실제 흐름은 이렇습니다 — MinerU가 `.md`로 변환하고, 플러그인이 그 `.md`를 위키 페이지로 수집하며, 원본 Office 파일은 참고용으로 남겨 둡니다. Office 파일을 인라인으로 미리 보고 싶다면 Pandoc Plugin / Docxer / Md Importer / Office Reader 같은 커뮤니티 플러그인을 쓰세요.
@@ -238,8 +238,8 @@ your-vault/
 
 - 🛡️ **사전 수집 게이트** — 빈 노트, 공백만 있는 노트, frontmatter만 있는 노트는 LLM 호출 전에 거부됩니다. 콘텐츠 해시 중복 제거가 경로만 다른 같은 파일을 잡습니다.
 - 🚦 **수집 후보 게이트** — 선택 사항입니다(`skipMentionOnlyCandidates`, 기본 꺼짐). 괄호 안, 열거, 짧은 목록 항목 안에서만 이름이 나온 후보는 생성 호출과 중복 제거 호출에 비용을 쓰기 전에 잘립니다. 측정된 프로파일이 있는 언어에만 적용되고, 언어가 섞인 노트는 조용히 걸러지지 않습니다.
-- 🚧 **Fix Dead Links의 leave-it 결과** — 설정 → 고급 설정 → **Create Stubs for Unresolvable Links**(기본 켜짐). 이걸 끄면 데드 링크는 빈 자리표시자 페이지가 되지 않고, 실제 소스가 정의할 때까지 모든 린트 보고서에 그대로 남습니다.
-- 🔁 **이전 질의 점수기 스위치** — 설정 → 고급 설정 → **Legacy query scorer**를 켜면 기본 BM25F 점수기 대신 이전의 손수 조정한 선형 순위를 씁니다.
+- 🚧 **Fix Dead Links의 leave-it 결과** — 설정 → 고급 설정 표시 → **해결되지 않는 링크의 스텁 페이지 만들기**(기본 켜짐). 이걸 끄면 데드 링크는 빈 자리표시자 페이지가 되지 않고, 실제 소스가 정의할 때까지 모든 린트 보고서에 그대로 남습니다.
+- 🔁 **이전 질의 점수기 스위치** — 설정 → 고급 설정 표시 → **이전 쿼리 점수기**를 켜면 기본 BM25F 점수기 대신 이전의 손수 조정한 선형 순위를 씁니다.
 
 **실행을 좌우하는 설정 여덟 가지**
 
@@ -247,13 +247,13 @@ your-vault/
 
 | 설정 | 위치 | 무엇이 바뀌나 |
 | --- | --- | --- |
-| **수집 요청 스트리밍** | 고급 설정 | `auto`는 모바일에서 스트리밍하고, `always`와 `never`는 선택을 강제합니다. 스트리밍이 긴 수집을 공급자의 유휴 시간 초과 안에 머물게 합니다. |
+| **수집 요청 스트리밍** | 고급 설정 표시 | `auto`는 모바일에서 스트리밍하고, `always`와 `never`는 선택을 강제합니다. 스트리밍이 긴 수집을 공급자의 유휴 시간 초과 안에 머물게 합니다. |
 | **사고 수준** | LLM 고급 매개변수 | `default` / `low` / `medium` / `high`. AI SDK가 공급자별로 수준을 번역하므로 손으로 쓴 공급자 필드가 끼어들지 않습니다. |
 | **호출당 최대 출력 토큰 수** | LLM 고급 매개변수 | 양방향으로 동작합니다. 추론 모델이 답을 쓰기 전에 예산을 다 써버리면 올리고, 비용을 줄이려면 내립니다. 비워 두면 모델 자신의 상한을 씁니다. |
 | **모델 컨텍스트 창** | LLM 고급 매개변수 | 상한이 창을 넘을 수 없으므로 작은 로컬 모델에 받아들일 수 없는 숫자가 전달되지 않습니다. |
-| **LLM 동시성** | 공급자 | 1–20 회 병렬 호출. 높이면 큰 수집이 빨리 끝나고, 낮추면 로컬 모델이 자기 메모리 안에 머뭅니다. |
-| **추출 초점과 내용 요구사항** | 고급 설정 | `schema/config.md`에 기록되는 자유 텍스트입니다. 스키마를 손으로 고치지 않고도 모델이 무엇을 추출할지 정합니다. |
-| **단계별 Task Policies** | LLM 고급 매개변수 | 추출, 병합, 질의처럼 한 단계의 텍스트 모드나 사고 수준만 바꾸고 나머지는 그대로 둡니다. |
+| **LLM 동시성** | LLM 설정 | 1–20 회 병렬 호출. 높이면 큰 수집이 빨리 끝나고, 낮추면 로컬 모델이 자기 메모리 안에 머뭅니다. |
+| **추출 초점과 내용 요구사항** | 고급 설정 표시 | `schema/config.md`에 기록되는 자유 텍스트입니다. 스키마를 손으로 고치지 않고도 모델이 무엇을 추출할지 정합니다. |
+| **단계별 출력 모드와 사고** | LLM 고급 매개변수 | 추출, 병합, 질의처럼 한 단계의 텍스트 모드나 사고 수준만 바꾸고 나머지는 그대로 둡니다. |
 | **제외 파일** | Obsidian 자체 목록 | 폴더 수집, 파일 감시자, 자동 경로가 모두 Obsidian에서 정한 제외를 따릅니다. |
 
 </details>
@@ -368,7 +368,7 @@ Monte Carlo PPR(Fogaras 2005)을 씁니다 — 무작위 워크 3,000 회 × 각
 설정 → Provider → Bedrock (Anthropic / OpenAI)은 세 가지 인증 모드를 지원하며, 그 모드가 필요로 하는 입력만 묻습니다:
 
 - **API 키** — bearer 토큰 경로입니다. Bedrock API 키를 이미 쓰고 있는 사용자에게 권합니다.
-- **SSO** — IAM Identity Center 기기 흐름입니다. **Sign in with AWS SSO**를 누르고 브라우저에 확인 코드를 붙여넣으면, 플러그인이 SecretStorage의 SSO 토큰을 임시 role 자격 증명으로 교환하고, 모든 요청을 직접 구현한 SigV4로 서명합니다(AWS SDK를 더하지 않습니다).
+- **SSO** — IAM Identity Center 기기 흐름입니다. **AWS SSO로 로그인**를 누르고 브라우저에 확인 코드를 붙여넣으면, 플러그인이 SecretStorage의 SSO 토큰을 임시 role 자격 증명으로 교환하고, 모든 요청을 직접 구현한 SigV4로 서명합니다(AWS SDK를 더하지 않습니다).
 - **IAM** — SSO가 없는 환경(CI, 예약 배치 작업)을 위한 고정 액세스 키입니다. SecretStorage에 저장되고, 메모리 캐시가 자격 증명을 기억합니다.
 
 세 모드 모두 같은 Obsidian SecretStorage 규율(`data.json`, 로그, 문서 어디에도 자격 증명 없음)과 AWS SDK 없이 직접 구현한 OIDC + SigV4 경로를 공유합니다.
@@ -395,11 +395,11 @@ Monte Carlo PPR(Fogaras 2005)을 씁니다 — 무작위 워크 3,000 회 × 각
 
 ### API 비용은 어떻게 관리하나요?
 
-일괄 수집에는 **Coarse** 또는 **Minimal** 추출 세분화를 쓰세요. **Smart Batch Skip**이 이미 수집한 파일을 알아서 걸러 냅니다. Auto-Maintenance는 기본이 **꺼짐**이고, Lint는 수리를 실행하기 전에 정확한 건수를 보여 주므로, 승인 없이 비용이 나가지 않습니다.
+일괄 수집에는 **굵음** 또는 **최소** 추출 세분화를 쓰세요. **Smart Batch Skip**이 이미 수집한 파일을 알아서 걸러 냅니다. Auto-Maintenance는 기본이 **꺼짐**이고, Lint는 수리를 실행하기 전에 정확한 건수를 보여 주므로, 승인 없이 비용이 나가지 않습니다.
 
 ### 실행 중인 작업을 취소하려면?
 
-상태 표시줄을 클릭하거나("수집 중… 클릭하여 취소") `Cmd+P` / `Ctrl+P` → **"현재 수집 취소"**를 실행하세요. 다음 배치 경계에서 깔끔하게 멈춥니다.
+상태 표시줄을 클릭하거나("수집 중... 클릭하여 취소") `Cmd+P` / `Ctrl+P` → **"현재 수집 취소"**를 실행하세요. 다음 배치 경계에서 깔끔하게 멈춥니다.
 
 ### 도움은 어디서 받나요?
 

@@ -18,7 +18,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - last-updated: 2026-11-17
 - alternate-names: Karpathy LLM Wiki, LLM Wiki Obsidian, Obsidian wiki plugin, graph-based RAG, no-embedding RAG, Personalized PageRank retrieval, Obsidian second brain
 - search-intents: "Obsidian RAG without embeddings", "Obsidian wiki plugin", "Personalized PageRank Obsidian", "graph-based note retrieval", "Karpathy LLM Wiki implementation", "Obsidian knowledge base auto-generation", "Obsidian graph view + AI", "Obsidian second brain plugin", "Obsidian note link graph AI", "Obsidian plugin 14 languages", "Obsidian plugin 15 LLM providers", "no-vector-DB RAG", "Obsidian PDF ingest AI", "Obsidian Codex OAuth", "Obsidian Bedrock plugin", "Obsidian Bedrock SSO", "Obsidian MinerU", "Obsidian Word PPT Excel ingest", "Obsidian IAM credentials"
-- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Smart Fix All, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
+- features: graph-based retrieval, Personalized PageRank (Haveliwala 2002), Monte Carlo PPR (Fogaras 2005), 5-stage seed-selection cascade, Tier 1/Tier 2 duplicate detection, 14-language UI + 14-language wiki output (independent), 15+ LLM providers (Anthropic, OpenAI, Bedrock [API key + SSO/IAM], Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, Codex OAuth), MinerU multi-format ingest (PDF + images + Office), PDF ingest (cache-only, OCR paths), lint health scan, Correção inteligente de tudo, source-page verbatim quotes, ingest candidate gate, per-step taskPolicies UI, Obsidian Graph View integration, zero-embedding zero-vector-DB architecture, local-first mode
 - direct-competitors: nashsu/llm_wiki (Tauri desktop app), SamurAIGPT/llm-wiki-agent (Claude Code / Codex / OpenCode / Gemini CLI skill), atomicstrata/llm-wiki-compiler (TypeScript CLI, chunk-based retrieval)
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (um corpus de um vault do projeto, não um conjunto de benchmark público)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
@@ -97,7 +97,7 @@ your-vault/
 - **Você quer uma configuração de 5 minutos.** Instale a partir dos Plugins da comunidade → escolha um provedor → ingira uma nota. As páginas wiki aparecem em `wiki/` em segundos, sem CLI, sem Python e sem base de dados vetorial para levantar primeiro.
 - **Você quer respostas a partir das suas próprias notas**, e cada resposta cita as páginas de onde veio. Ollama ou LM Studio mantêm a chamada inteira na sua máquina.
 - **Você escreve ou lê em qualquer um dos 14 idiomas.** Interface e saída da wiki são independentes: uma wiki em chinês por trás de uma interface em inglês é uma configuração suportada.
-- **Você quer manutenção de um clique.** A verificação de saúde do Lint e o Smart Fix All mantêm duplicados, links quebrados e órfãos sob controlo, sem curadoria à mão.
+- **Você quer manutenção de um clique.** A verificação de saúde do Lint e o Correção inteligente de tudo mantêm duplicados, links quebrados e órfãos sob controlo, sem curadoria à mão.
 
 *Não é para você se* quer um substituto genérico do ChatGPT, RAG sobre corpora externos como Confluence ou arXiv, ou um serviço alojado com colaboração em equipa. As respostas vêm do seu vault, a ingestão cobre o seu vault mais ficheiros isolados, e não há backend para partilhar.
 
@@ -154,7 +154,7 @@ your-vault/
 | 📑 **Ingerir vários ficheiros** | `Cmd+P` / `Ctrl+P` → "Ingerir vários ficheiros" — escolha um subconjunto numa árvore de dois painéis (com fila em direto e cancelamento por ficheiro). |
 | 🔍 **Consultar Wiki** | `Cmd+P` / `Ctrl+P` → "Consultar Wiki" — converse com a sua wiki num painel lateral direito; as respostas trazem `[[wiki-links]]`. Também: 🖱️ ícone de balão de mensagem na faixa lateral. |
 | 🛠️ **Verificar Wiki** | `Cmd+P` / `Ctrl+P` → "Verificar Wiki" — verificação completa de saúde: duplicados, links quebrados, páginas vazias, órfãs, aliases ausentes, contradições. |
-| ⚡ **Smart Fix All** | dentro do modal do Lint — reparação em ordem causal com um clique, com relatório por fase. |
+| ⚡ **Correção inteligente de tudo** | dentro do modal do Lint — reparação em ordem causal com um clique, com relatório por fase. |
 | 📋 **Regenerar índice** | `Cmd+P` / `Ctrl+P` → "Regenerar índice" — reconstrói `wiki/index.md` com as páginas e os aliases atuais. |
 | ⏹ **Cancelar** | `Cmd+P` / `Ctrl+P` → "Cancelar ingestão atual" ou clique na barra de estado — para de forma limpa no limite do lote seguinte. |
 | 📊 **Histórico de ingestão** | `Cmd+P` / `Ctrl+P` → "Ver histórico de ingestão" — interface pesquisável das ingestões passadas, dos relatórios de Lint e das execuções de manutenção. |
@@ -177,7 +177,7 @@ your-vault/
 - 🏷️ **Aliases obrigatórios** — cada página chega com pelo menos um alias (tradução, abreviatura, variante), para que a deteção de duplicados entre idiomas funcione.
 - 🔄 **Deteção de duplicados por níveis** — o Nível 1 (correspondência direta de nome: entre idiomas, abreviatura, títulos muito semelhantes) é sempre verificado; o Nível 2 (links partilhados, semelhança média) preenche o orçamento de tokens que resta.
 - 🧩 **Fusão inteligente e estado de contradição** — os duplicados fundem-se preservando os aliases; as contradições ficam assinaladas com atribuição de fonte; as páginas com `reviewed: true` ficam protegidas contra sobrescrita.
-- 🎨 **Um vocabulário de tags, o seu** — as tags que uma página pode carregar vêm das tags aninhadas das suas notas, das tags que já existem nas páginas wiki e da lista Personalizada em Configurações → Configuração Wiki → Vocabulário de tags. O prompt, a barreira de escrita, o Lint e o retag leem todos essa mesma lista, por isso o que é oferecido ao modelo é exatamente o que chega ao disco; um valor fora dela é descartado, nunca escrito. Modelos pequenos ainda derivam (cerca de uma execução em dez devolve a taxonomia do próprio modelo) — a barreira apanha, e o Lint sinaliza a página. Âncora de design: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Um vocabulário de tags, o seu** — as tags que uma página pode carregar vêm das tags aninhadas das suas notas, das tags que já existem nas páginas wiki e da lista Personalizado (definido pelo usuário) em Configurações → Configuração do Wiki → Configuração do vocabulário de tags. O prompt, a barreira de escrita, o Lint e o retag leem todos essa mesma lista, por isso o que é oferecido ao modelo é exatamente o que chega ao disco; um valor fora dela é descartado, nunca escrito. Modelos pequenos ainda derivam (cerca de uma execução em dez devolve a taxonomia do próprio modelo) — a barreira apanha, e o Lint sinaliza a página. Âncora de design: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Uma página de conceito gerada: a tag de vocabulário com que foi escrita, os seus aliases AF e AFib, a definição e as páginas com que se relaciona](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,11 +187,11 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 
 | Caminho de entrada | Formatos | Como funciona |
 | --- | --- | --- |
-| **1. 🧾 Backend MinerU integrado** | PDF, imagens (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Configurações → Configuração Wiki → Backend de conversão Markdown → **MinerU**. Com o [parser Precise do MinerU](https://mineru.net/apiManage/docs). Ideal para artigos digitalizados e ficheiros Office onde o layout importa. |
+| **1. 🧾 Backend MinerU integrado** | PDF, imagens (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Configurações → Configuração do Wiki → Backend de conversão Markdown → **API online do MinerU**. Com o [parser Precise do MinerU](https://mineru.net/apiManage/docs). Ideal para artigos digitalizados e ficheiros Office onde o layout importa. |
 | **2. ☁️ Provedores cloud com PDF nativo** | PDF | Anthropic, OpenAI, Google Gemini e AWS Bedrock (variantes Anthropic + OpenAI) leem PDFs como partes de ficheiro sem mais configuração do que escolher o provedor. |
 | **3. 🖥️ OCR local em Apple Silicon** | PDF | O [oMLX](https://github.com/jundot/omlx) traz o Microsoft Markitdown e o OCR de visão local ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Aponte o plugin ao oMLX como provedor OpenAI-Compatible personalizado, com **Forçar suporte a PDF** ativo. O PDF nunca sai da sua máquina. |
 | **4. 🛠️ Extrator de terceiros (interface online do MinerU)** | PDF, Office, imagens | Use o [serviço online MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) para uma interface manual rápida, sem configurar um token de API. Coloque o `.md` descarregado no seu vault e ingira-o como uma nota Markdown normal. |
-| **5. 🔌 Forçar suporte a PDF** | PDF | Para qualquer outro endpoint compatível com OpenAI ou Anthropic que aceite partes de ficheiro (Configurações → Configuração LLM → Avançado). As falhas aparecem como um Notice localizado. |
+| **5. 🔌 Forçar suporte a PDF** | PDF | Para qualquer outro endpoint compatível com OpenAI ou Anthropic que aceite partes de ficheiro (Configurações → Configuração LLM → Parâmetros LLM avançados). As falhas aparecem como um Notice localizado. |
 | **6. 🖼️ Imagens Markdown incorporadas** | `![[image.png]]` e `![alt](image.png)` locais dentro de `.md` | Ative **Analisar imagens incorporadas durante a ingestão Markdown** nas Configurações avançadas. Cada imagem local é analisada a par dos parágrafos Markdown mais próximos. |
 
 <details>
@@ -201,7 +201,7 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 - **Limites do MinerU e ciclo de vida do token** — o token vive no SecretStorage e expira ao fim de cerca de 90 dias (um aviso `401` indica a página onde o renovar). Os limites são 200 MB / 200 páginas por PDF e 256 MB / 10 000 ficheiros por arquivo.
 - **Limites das imagens incorporadas e rasto de auditoria** — são enviadas em pacotes de evidência visual de 20 MiB, com um limite de 10 MiB por imagem; os URLs remotos nunca são descarregados. Ative opcionalmente **Salvar evidências visuais de imagens incorporadas na página de origem** para acrescentar uma secção de auditoria recolhível à página de origem gerada.
 - **🗄️ Cache limitada** — `.obsidian/plugins/karpathywiki/pdf-cache/` guarda o Markdown convertido, indexado por hash de conteúdo + modelo + versão do conversor; tetos de 100 MB no total / 1 000 entradas / 10 MB por entrada, com remoção LRU pela data de modificação.
-- **📝 Sidecar opcional no vault** — Configurações → Configuração Wiki → Pasta Wiki → **Gravar o Markdown convertido no Vault** escreve `<basename>.pdf.md` ao lado do PDF de origem (desligado por padrão — só a cache é o padrão).
+- **📝 Sidecar opcional no vault** — Configurações → Configuração do Wiki → Pasta Wiki → **Gravar o Markdown convertido no Vault** escreve `<basename>.pdf.md` ao lado do PDF de origem (desligado por padrão — só a cache é o padrão).
 - **🛡️ Prompt de transcrição literal** — conversão ao estilo OCR com os marcadores anti-alucinação `[illegible]` / `[figure: ...]`; as cercas de código markdown que os modelos locais pequenos acrescentam são removidas antes da escrita na cache.
 - **🔁 Citações literais na página de origem** — cada página `sources/<slug>.md` gerada traz uma secção *Menções na fonte*, construída a partir das mesmas citações literais que a extração capturou por entidade e por conceito, para que o documento subjacente tenha um rasto fundamentado até ao seu texto de origem.
 - **Ressalva para os formatos Office** — o Obsidian não desenha `.docx` / `.xlsx` / `.pptx` nativamente ([file-formats](https://obsidian.md/help/file-formats)), por isso o fluxo prático é: o MinerU converte para `.md`, o plugin ingere esse `.md` em páginas wiki, e o ficheiro Office original fica guardado para referência. Use um plugin da comunidade como Pandoc Plugin / Docxer / Md Importer / Office Reader se precisar de pré-visualizar ficheiros Office no editor.
@@ -224,10 +224,10 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 **Manutenção e reparação**
 
 - 🔍 **Verificação de saúde do Lint** — um único comando apanha duplicados, links quebrados, páginas vazias, órfãs, aliases ausentes e contradições. Também lista as páginas hub cuja vizinhança cristalizou — um hub que ocupa o lugar de ligações que o conteúdo já não consegue fazer.
-- ⚡ **Smart Fix All** — reparação em ordem causal com um clique: preencher aliases → fundir duplicados → corrigir links quebrados → ligar órfãos → expandir páginas vazias, com relatório por fase.
+- ⚡ **Correção inteligente de tudo** — reparação em ordem causal com um clique: preencher aliases → fundir duplicados → corrigir links quebrados → ligar órfãos → expandir páginas vazias, com relatório por fase.
 - 📊 **Painel de histórico de operações** — interface pesquisável e filtrável das ingestões passadas, dos relatórios de Lint e das execuções de manutenção.
 
-[![Relatório do Lint — a linha de estado, os links quebrados encontrados e o botão Smart Fix All que os repara numa só passagem](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Relatório do Lint — a linha de estado, os links quebrados encontrados e o botão Correção inteligente de tudo que os repara numa só passagem](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Barreiras que correm antes de uma chamada ser paga e definições que moldam uma execução</strong></summary>
@@ -246,12 +246,12 @@ A maior parte do que o plugin faz está decidido por si.Estas oito definições 
 
 | Definição | Onde | O que muda |
 | --- | --- | --- |
-| **Streaming das requisições de ingestão** | Configurações avançadas | `auto` usa streaming no telemóvel; `always` e `never` forçam a escolha. O streaming mantém uma ingestão longa abaixo do tempo de inatividade de um provedor. |
+| **Streaming das requisições de ingestão** | Mostrar configurações avançadas | `auto` usa streaming no telemóvel; `always` e `never` forçam a escolha. O streaming mantém uma ingestão longa abaixo do tempo de inatividade de um provedor. |
 | **Nível de raciocínio** | Parâmetros LLM avançados | `default` / `low` / `medium` / `high`. O AI SDK traduz o nível por provedor, por isso não há nenhum campo de provedor escrito à mão. |
 | **Máx. tokens de saída por chamada** | Parâmetros LLM avançados | Funciona nos dois sentidos: suba quando um modelo de raciocínio gasta o orçamento antes de escrever, desça para limitar o custo. Vazio pede ao modelo o seu próprio teto. |
 | **Janela de contexto do modelo** | Parâmetros LLM avançados | O teto já não pode exceder a janela, por isso um modelo local pequeno nunca recebe um número que não consegue aceitar. |
 | **Paralelismo LLM** | Configuração LLM | 1–20 chamadas em paralelo. Mais alto termina uma ingestão grande mais cedo; mais baixo mantém um modelo local dentro da sua memória. |
-| **Prioridade de extração e Requisitos de conteúdo** | Configurações avançadas | Texto livre escrito em `schema/config.md`. Molda o que o modelo extrai sem que você edite o schema à mão. |
+| **Prioridade de extração e Requisitos de conteúdo** | Mostrar configurações avançadas | Texto livre escrito em `schema/config.md`. Molda o que o modelo extrai sem que você edite o schema à mão. |
 | **Modo de saída e raciocínio por etapa** | Parâmetros LLM avançados | Substitui o modo de texto ou o nível de raciocínio de uma etapa — extração, fusão, consulta — sem mudar as restantes. |
 | **Ficheiros excluídos** | A própria lista do Obsidian | A ingestão de pastas, o monitor de ficheiros e o caminho automático respeitam as exclusões que você define no Obsidian. |
 
@@ -266,7 +266,7 @@ A maior parte do que o plugin faz está decidido por si.Estas oito definições 
 ### 🌐 Idioma
 
 - 🌍 **14 idiomas de interface** — English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. O idioma da interface e o da saída da wiki são independentes — a sua wiki pode estar em chinês com a interface em inglês.
-- 📚 **14 idiomas de saída da wiki** — o mesmo conjunto; escolha em Configurações → Configuração Wiki, mais uma opção de entrada personalizada para prompts pontuais.
+- 📚 **14 idiomas de saída da wiki** — o mesmo conjunto; escolha em Configurações → Configuração do Wiki, mais uma opção de entrada personalizada para prompts pontuais.
 - **Todas as strings de interface traduzidas por locale** — cada rótulo, cada modal e cada aviso. Acrescentar outro idioma depende de contribuidores (o padrão da PR #159).
 
 [![O idioma da interface e o idioma de saída da wiki são duas definições separadas, por isso uma wiki em chinês pode correr atrás de uma interface em inglês](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
@@ -363,10 +363,10 @@ Quinze provedores com nome, mais qualquer endpoint compatível com OpenAI ou Ant
 
 ### AWS Bedrock — três modos de autenticação
 
-Configurações → Provedor → Bedrock (Anthropic / OpenAI) suporta três modos de autenticação, e pede apenas os dados que esse modo exige:
+Configurações → Configuração LLM → Bedrock (Anthropic / OpenAI) suporta três modos de autenticação, e pede apenas os dados que esse modo exige:
 
 - **Chave de API** — o caminho do token bearer; a escolha recomendada para quem já usa uma chave de API do Bedrock.
-- **SSO** — fluxo de dispositivo do IAM Identity Center. Clique em **Sign in with AWS SSO**, cole no navegador o código de verificação, e o plugin troca o token SSO guardado no SecretStorage por credenciais temporárias da role, assinando cada pedido com SigV4 escrito à mão (sem acrescentar o AWS SDK).
+- **SSO** — fluxo de dispositivo do IAM Identity Center. Clique em **Iniciar sessão com AWS SSO**, cole no navegador o código de verificação, e o plugin troca o token SSO guardado no SecretStorage por credenciais temporárias da role, assinando cada pedido com SigV4 escrito à mão (sem acrescentar o AWS SDK).
 - **IAM** — chaves de acesso estáticas para ambientes sem SSO (CI, tarefas em lote agendadas), guardadas no SecretStorage com memorização das credenciais em memória.
 
 Os três modos partilham a mesma disciplina do SecretStorage do Obsidian (nenhuma credencial em `data.json`, nos logs ou na documentação) e a mesma implementação OIDC + SigV4 escrita à mão, sem AWS SDK.
@@ -389,10 +389,10 @@ Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidade
 Sem fragmentação, sem embeddings, sem base de dados vetorial. O Personalized PageRank corre sobre o grafo `[[wiki-link]]` que você já mantém, o que dá contexto multi-hop a custo zero de embedding.
 
 ### Como controlo os custos de API?
-Use a granularidade de extração **Grossa** ou **Mínima** na ingestão em lote. O **Smart Batch Skip** deteta automaticamente os ficheiros já ingeridos. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
+Use a granularidade de extração **Grosseira** ou **Mínima** na ingestão em lote. O **Smart Batch Skip** deteta automaticamente os ficheiros já ingeridos. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
 
 ### Como cancelo uma operação em curso?
-Clique na barra de estado (mostra *"Ingerindo… clique para cancelar"*) ou use `Cmd+P` / `Ctrl+P` → **"Cancelar ingestão atual"**. Para de forma limpa no limite do lote seguinte.
+Clique na barra de estado (mostra *"Ingerindo... clique para cancelar"*) ou use `Cmd+P` / `Ctrl+P` → **"Cancelar ingestão atual"**. Para de forma limpa no limite do lote seguinte.
 
 ### Onde obtenho ajuda?
 [GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues) para relatar erros · [GitHub Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions) para perguntas e pedidos de funcionalidades · Consola de programador (`Ctrl+Shift+I` / `Cmd+Option+I`) para os logs do plugin.
@@ -406,7 +406,7 @@ Este plugin está listado no Mercado de Plugins da Comunidade do Obsidian e pass
 - 🚫 **Sem backend próprio, sem telemetria, sem recolha de dados.** Software puramente local a correr dentro do Obsidian. O plugin não opera nenhum servidor e não reporta nada a ninguém.
 - 🔐 **O acesso à rede é opcional e explícito.** Existe apenas para chegar aos serviços que você configura: o seu provedor LLM e — se ativar o backend de documentos MinerU — `mineru.net`. Esse segundo é a exceção que vale a pena nomear: carrega o documento para uma jurisdição que você não escolheu e que não publica qualquer declaração de retenção. [Onde o seu documento é processado](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) lista todos os caminhos e para onde vai o ficheiro.
 - 📁 **O acesso aos ficheiros do vault** serve exclusivamente a gestão da wiki (ler notas, gerar páginas em `wiki/`, procurar links quebrados, detetar duplicados). O plugin nunca modifica os seus ficheiros de origem.
-- 📋 **O acesso à área de transferência** é usado exclusivamente pelo botão "Copiar" do painel de consulta — e só quando você clica nele.
+- 📋 **O acesso à área de transferência** é usado exclusivamente pelo botão "Copy" do painel de consulta — e só quando você clica nele.
 
 Para localidade total dos dados, use **Ollama** ou **LM Studio**. Com um provedor local, os seus dados nunca saem da sua máquina.
 

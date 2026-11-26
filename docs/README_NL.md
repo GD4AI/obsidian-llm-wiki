@@ -23,7 +23,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 - retrieval-benchmark: PPR @5 = 27.1% vs pure-kNN 24.1% (a project vault corpus, not a public benchmark set)
 - author: green-dalii / Greener-Dalii (https://github.com/green-dalii)
 - co-maintainer: DocTpoint (https://github.com/DocTpoint)
-- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/README_NL.md
+- canonical: https://github.com/GD4AI/obsidian-llm-wiki/blob/main/README.md
 -->
 
 <div align="center">
@@ -177,7 +177,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in het linkerlint, 
 - 🏷️ **Aliassen zijn verplicht** — elke pagina krijgt minstens één alias (vertaling, afkorting, variant), zodat dubbelen ook over talen heen te vinden zijn.
 - 🔄 **Dubbelen in twee treden** — Tier 1 (dezelfde naam: andere taal, afkorting, sterk gelijkende titel) wordt altijd gecontroleerd; Tier 2 (gedeelde koppelingen, matige gelijkenis) gebruikt wat er van het tokenbudget over is.
 - 🧩 **Slim samenvoegen en tegenstrijdigheden** — dubbelen worden samengevoegd met behoud van aliassen; tegenstrijdigheden worden gemarkeerd met hun bron; pagina's met `reviewed: true` worden nooit overschreven.
-- 🎨 **Eén taglijst, de jouwe** — de tags die een pagina mag dragen komen uit de geneste tags van je notities, de tags die al op wikipagina's staan, en de lijst onder Eigen in Instellingen → Wiki → Taglijst. Prompt, schrijfcontrole, lint en opnieuw taggen lezen allemaal die ene lijst, dus wat het model aangeboden krijgt is wat er op schijf komt; een waarde daarbuiten wordt weggegooid en nooit geschreven. Kleine modellen wijken toch af (ongeveer één op de tien rondes geeft de eigen indeling van het model) — de controle vangt dat en de lintcontrole meldt de pagina. Ontwerpanchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Eén taglijst, de jouwe** — de tags die een pagina mag dragen komen uit de geneste tags van je notities, de tags die al op wikipagina's staan, en de lijst onder Eigen (zelf gedefinieerd) in Instellingen → Configuratie van de wiki → Configuratie van de taglijst. Prompt, schrijfcontrole, lint en opnieuw taggen lezen allemaal die ene lijst, dus wat het model aangeboden krijgt is wat er op schijf komt; een waarde daarbuiten wordt weggegooid en nooit geschreven. Kleine modellen wijken toch af (ongeveer één op de tien rondes geeft de eigen indeling van het model) — de controle vangt dat en de lintcontrole meldt de pagina. Ontwerpanchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Een gegenereerde conceptpagina: de tag uit de lijst waarmee hij is geschreven, de aliassen AF en AFib, de definitie en de pagina's die ermee samenhangen](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
 
@@ -187,11 +187,11 @@ Zes routes, per inleesronde te kiezen:
 
 | Route | Formaten | Hoe het werkt |
 | --- | --- | --- |
-| **1. 🧾 Ingebouwde MinerU-backend** | PDF, afbeeldingen (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Instellingen → Configuratie van de wiki → Omzetter naar Markdown → **MinerU**. Mogelijk gemaakt door de [nauwkeurige parser van MinerU](https://mineru.net/apiManage/docs). Handig voor ingescande artikelen en Office-bestanden waarbij de opmaak ertoe doet. |
+| **1. 🧾 Ingebouwde MinerU-backend** | PDF, afbeeldingen (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Instellingen → Configuratie van de wiki → Omzetter naar Markdown → **MinerU via het internet**. Mogelijk gemaakt door de [nauwkeurige parser van MinerU](https://mineru.net/apiManage/docs). Handig voor ingescande artikelen en Office-bestanden waarbij de opmaak ertoe doet. |
 | **2. ☁️ Providers in de cloud met PDF** | PDF | Anthropic, OpenAI, Google Gemini en AWS Bedrock (de varianten voor Anthropic en OpenAI) lezen PDF's meteen als bestandsdeel. Verder niets nodig dan de provider kiezen. |
 | **3. 🖥️ Lokale OCR op Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) bevat Microsoft Markitdown en lokale beeld-OCR ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Wijs de plug-in naar oMLX als eigen OpenAI-compatibele provider met **PDF altijd proberen** aan. De PDF verlaat je machine nooit. |
 | **4. 🛠️ Programma van derden (de webversie van MinerU)** | PDF, Office, afbeeldingen | Gebruik de [online dienst MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) als je liever een scherm gebruikt dan een API-token te regelen. Zet het gedownloade `.md`-bestand in je kluis en lees het in als gewone Markdown-notitie. |
-| **5. 🔌 PDF altijd proberen** | PDF | Voor elk ander OpenAI- of Anthropic-compatibel eindpunt dat bestandsdelen aanvaardt (Instellingen → LLM-configuratie → Geavanceerd). Het eindpunt beslist; een weigering verschijnt als een melding in jouw taal. |
+| **5. 🔌 PDF altijd proberen** | PDF | Voor elk ander OpenAI- of Anthropic-compatibel eindpunt dat bestandsdelen aanvaardt (Instellingen → LLM-configuratie → Geavanceerde LLM-parameters). Het eindpunt beslist; een weigering verschijnt als een melding in jouw taal. |
 | **6. 🖼️ Afbeeldingen in Markdown** | Lokale `![[image.png]]` en `![alt](image.png)` in `.md` | Zet **Afbeeldingen in notities bekijken bij het inlezen** aan bij de geavanceerde instellingen. Elke lokale afbeelding wordt bekeken samen met de dichtstbijzijnde alinea's in Markdown. |
 
 <details>
@@ -246,13 +246,13 @@ Het meeste doet de plug-in zelf. Deze acht instellingen veranderen dat, en elk e
 
 | Instelling | Waar | Wat het verandert |
 | --- | --- | --- |
-| **Verzoeken om in te lezen streamen** | Geavanceerd | `auto` streamt op mobiel; `always` en `never` forceren de keuze. Streamen houdt een lange inleesronde binnen de tijdslimiet van een provider. |
-| **Niveau van redeneren** | LLM Geavanceerd | `default` / `low` / `medium` / `high`. De AI SDK vertaalt het niveau per provider, dus er komt geen handgeschreven providerveld aan te pas. |
-| **Maximum aantal uitvoertokens per aanroep** | LLM Geavanceerd | Werkt beide kanten op: verhoog het als een redenerend model het budget uitgeeft voordat het schrijft, verlaag het om de kosten te begrenzen. Leeg vraagt het model naar zijn eigen grens. |
-| **Contextvenster van het model** | LLM Geavanceerd | De bovengrens kan niet groter zijn dan het venster, dus een klein lokaal model krijgt nooit een getal dat het niet aankan. |
-| **Gelijktijdige LLM-aanroepen** | Provider | 1–20 aanroepen tegelijk. Hoger maakt een grote inleesronde eerder klaar; lager houdt een lokaal model binnen zijn geheugen. |
-| **Focus bij het extraheren en eisen aan de inhoud** | Geavanceerde instellingen | Vrije tekst die in `schema/config.md` wordt gezet. Sturen wat het model extraheert zonder het schema met de hand te bewerken. |
-| **Uitvoermodus en redeneren per stap** | LLM Geavanceerd | Overschrijf de tekstmodus of het niveau van redeneren voor één stap — extraheren, samenvoegen, vragen — zonder de andere te raken. |
+| **Verzoeken om in te lezen streamen** | Geavanceerde instellingen tonen | `auto` streamt op mobiel; `always` en `never` forceren de keuze. Streamen houdt een lange inleesronde binnen de tijdslimiet van een provider. |
+| **Niveau van redeneren** | Geavanceerde LLM-parameters | `default` / `low` / `medium` / `high`. De AI SDK vertaalt het niveau per provider, dus er komt geen handgeschreven providerveld aan te pas. |
+| **Maximum aantal uitvoertokens per aanroep** | Geavanceerde LLM-parameters | Werkt beide kanten op: verhoog het als een redenerend model het budget uitgeeft voordat het schrijft, verlaag het om de kosten te begrenzen. Leeg vraagt het model naar zijn eigen grens. |
+| **Contextvenster van het model** | Geavanceerde LLM-parameters | De bovengrens kan niet groter zijn dan het venster, dus een klein lokaal model krijgt nooit een getal dat het niet aankan. |
+| **Gelijktijdige LLM-aanroepen** | LLM-configuratie | 1–20 aanroepen tegelijk. Hoger maakt een grote inleesronde eerder klaar; lager houdt een lokaal model binnen zijn geheugen. |
+| **Focus bij het extraheren en Eisen aan de inhoud** | Geavanceerde instellingen tonen | Vrije tekst die in `schema/config.md` wordt gezet. Sturen wat het model extraheert zonder het schema met de hand te bewerken. |
+| **Uitvoermodus en redeneren per stap** | Geavanceerde LLM-parameters | Overschrijf de tekstmodus of het niveau van redeneren voor één stap — extraheren, samenvoegen, vragen — zonder de andere te raken. |
 | **Uitgesloten bestanden** | de lijst van Obsidian zelf | Een map inlezen, het volgen van bestanden en het automatische pad respecteren de uitsluitingen die je in Obsidian instelt. |
 
 </details>
@@ -363,7 +363,7 @@ Vijftien providers bij naam, plus elk OpenAI- of Anthropic-compatibel eindpunt. 
 
 ### AWS Bedrock — drie manieren van aanmelden
 
-Instellingen → Provider → Bedrock (Anthropic / OpenAI) ondersteunt drie manieren van aanmelden, en vraagt alleen om wat die manier nodig heeft:
+Instellingen → LLM-configuratie → Bedrock (Anthropic / OpenAI) ondersteunt drie manieren van aanmelden, en vraagt alleen om wat die manier nodig heeft:
 
 - **API-sleutel** — de route met een bearer-token; aanbevolen voor wie al een Bedrock-API-sleutel gebruikt.
 - **SSO** — de apparaatflow van IAM Identity Center. Klik op **Aanmelden met AWS SSO**, plak de verificatiecode in de browser, en de plug-in wisselt het SSO-token in SecretStorage om voor tijdelijke inloggegevens van de rol, en ondertekent elk verzoek met zelfgeschreven SigV4 (zonder de AWS-SDK toe te voegen).
@@ -397,7 +397,7 @@ Gebruik de hoeveelheid Grof of Minimaal bij het in één keer inlezen. Slim over
 
 ### Hoe stop ik een ronde die loopt?
 
-Klik op de statusbalk (er staat *"Bezig met inlezen… klik om te stoppen"*) of gebruik `Cmd+P` / `Ctrl+P` → **"Inlezen stoppen"**. Het stopt netjes aan het begin van de volgende ronde.
+Klik op de statusbalk (er staat *"Bezig met inlezen... klik om te stoppen"*) of gebruik `Cmd+P` / `Ctrl+P` → **"Inlezen stoppen"**. Het stopt netjes aan het begin van de volgende ronde.
 
 ### Waar kan ik hulp krijgen?
 
@@ -412,7 +412,7 @@ Deze plug-in staat in de Obsidian Community Plugin Market en wordt automatisch b
 - 🚫 **Geen eigen backend, geen telemetrie, geen verzameling van gegevens.** Het is gewone lokale software die in Obsidian draait. De plug-in heeft geen server en meldt niets aan wie dan ook.
 - 🔐 **Netwerktoegang is optioneel en expliciet.** Die bestaat alleen om diensten te bereiken die je zelf instelt: je LLM-provider en, als je de MinerU-backend voor documenten aanzet, `mineru.net`. Dat tweede is de uitzondering die genoemd moet worden: het stuurt het document naar een rechtsgebied dat je niet hebt gekozen en dat niets zegt over hoe lang het bewaard blijft. [Waar je document wordt verwerkt](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) noemt elke route en waar het bestand heen gaat.
 - 📁 **Toegang tot bestanden in de kluis** wordt uitsluitend gebruikt voor het beheer van de wiki (notities lezen, pagina's maken onder `wiki/`, dode koppelingen zoeken, dubbelen herkennen). De plug-in past je bronbestanden nooit aan.
-- 📋 **Toegang tot het klembord** wordt alleen gebruikt door de knop "Kopiëren" in het Query-paneel, en alleen als je erop klikt.
+- 📋 **Toegang tot het klembord** wordt alleen gebruikt door de knop "Copy" in het Query-paneel, en alleen als je erop klikt.
 
 Wil je alles lokaal houden, gebruik dan **Ollama** of **LM Studio**. Met een lokale provider verlaat je data je machine nooit.
 
@@ -449,7 +449,7 @@ Foutmeldingen en pull-requests zijn allebei welkom. [CONTRIBUTING.md](https://gi
 
 ## 📜 Licentie en dank
 
-Apache License, Version 2.0 — zie [LICENSE](LICENSE), [NOTICE](NOTICE) en [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Apache License, Version 2.0 — zie [LICENSE](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/LICENSE), [NOTICE](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/NOTICE) en [THIRD-PARTY-NOTICES.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/THIRD-PARTY-NOTICES.md).
 
 **Gebouwd op:**
 
