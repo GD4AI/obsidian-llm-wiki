@@ -66,19 +66,19 @@ Een Obsidian-plug-in die je notities en documenten omzet in een samenhangende ke
 
 ## 🤔 Waarom deze plug-in?
 
-Je schrijft notities. Ze staan in mappen. Om te zien wat met wat samenhangt, moet je je herinneren wat je maanden geleden hebt opgeschreven.
+Je schrijft notities. Ze liggen in mappen. Om te zien wat met wat samenhangt, moet je herinneren welke draadjes je maanden geleden uit het oog was verloren.
 
-Er bestaan andere open-source uitwerkingen van Karpathy's LLM Wiki-idee, maar geen ervan komt als Obsidian-plug-in die je met één klik installeert. De meeste zijn opdrachtregelprogramma's, skills voor Claude Code of losse desktop-apps; deze draait ín Obsidian — met de grafiekweergave, de zijlint en het opdrachtenpalet erbij.
+Het idee van Karpathy's LLM Wiki heeft al andere open-source uitwerkingen gekregen. Maar geen daarvan komt als Obsidian-plug-in die je met één klik installeert. De meeste zijn een opdrachtregelprogramma, een skill voor Claude Code of een losse desktop-app; deze draait ín Obsidian — met grafiekweergave, zijlint en opdrachtenpalet.
 
 ### Drie keuzes die we met opzet maakten
 
-- 🪟 **Obsidian is de omgeving.** Geen terminal, geen aparte app, geen Docker, geen Python. Installeer via de plug-inbibliotheek, klik op Inlezen, en de wiki staat vanaf de eerste seconde in je kluis. De grafiekweergave van Obsidian tekent je netwerk van `[[wiki-link]]`s — ingebouwd, zonder extra omvang.
+- 🪟 **Alles draait in Obsidian.** Geen terminal, geen aparte app, geen Docker, geen Python. Installeer via Plug-ins van de community, klik op Inlezen, en de wiki staat vanaf de eerste seconde in je kluis. De grafiekweergave van Obsidian tekent de graaf van je `[[wiki-link]]`s — ingebouwd, zonder extra omvang.
 - 🧭 **Schoon en op zichzelf staand.** Geen afhankelijkheden: geen embeddingmodel, geen vectordatabase, geen pip-pakket. Eén plug-in leest je notities, praat met een LLM en schrijft pagina's in je kluis.
-- 🔌 **Elk model dat je al betaalt.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatibel, een eigen eindpunt — ruim vijftien providers, en geen ervan hoeft een embedding-eindpunt te hebben.
+- 🔌 **Elk model waarvoor je al betaalt.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatibel, een eigen eindpunt — ruim vijftien providers, en voor geen ervan heb je een embedding-eindpunt nodig.
 
 ### Je oorspronkelijke notities worden nooit aangeraakt
 
-De plug-in behandelt je bestaande mappen als strikt **alleen-lezen**. Alles wat hij maakt staat in een eigen `wiki/`-map — simpel te bekijken, te bevragen met Dataview, of apart te zien in `git diff`:
+Je bestaande mappen zijn voor de plug-in strikt **alleen-lezen**. Alles wat hij maakt, staat in een eigen `wiki/`-map — makkelijk te bekijken, te bevragen met Dataview of apart te zien in `git diff`:
 
 ```text
 your-vault/
@@ -94,15 +94,15 @@ your-vault/
 
 ### Voor wie het bedoeld is
 
-- **Je wilt binnen 5 minuten beginnen.** Installeren uit de plug-inbibliotheek, een provider kiezen, één notitie inlezen. Binnen enkele seconden staan er wikipagina's in `wiki/`, zonder opdrachtregel, zonder Python en zonder vectordatabase.
+- **Je wilt in 5 minuten klaar zijn.** Installeer via Plug-ins van de community → kies een provider → lees één notitie in. Binnen enkele seconden staan er wikipagina's in `wiki/`. Er is geen opdrachtregel, geen Python en geen vectordatabase om eerst op te zetten.
 - **Je wilt antwoorden uit je eigen notities**, waarbij elk antwoord de pagina's noemt waar het vandaan komt. Met Ollama of LM Studio blijft de hele aanroep op je eigen machine.
-- **Je schrijft of leest in een van de 14 talen.** Interface en wiki-uitvoer staan los van elkaar: een Chinese wiki achter een Nederlandse interface is een ondersteunde opzet.
-- **Je wilt onderhoud met één klik.** De lintcontrole en Alles slim herstellen houden dubbelen, dode koppelingen en verweesde pagina's in bedwang zonder handwerk.
+- **Je schrijft of leest in een van de 14 talen.** Interface en wiki-uitvoer staan los van elkaar: een Chinese wiki achter een Nederlandse interface is een ondersteunde combinatie.
+- **Je wilt de wiki met één klik in orde houden.** Met de lintcontrole vind je dubbelen, dode koppelingen en verweesde pagina's, en met Alles slim herstellen ruim je ze op, zonder dat je het met de hand hoeft te doen.
 
-*Niet voor jou als* je een algemene vervanger van ChatGPT zoekt, RAG over externe verzamelingen zoals Confluence of arXiv, of een gehoste dienst met samenwerking in een team. De antwoorden komen uit je kluis, het inlezen dekt je kluis plus losse bestanden, en er is geen backend om te delen.
+*Niet voor jou als* je een algemeen alternatief voor ChatGPT zoekt, RAG over externe verzamelingen zoals Confluence of arXiv, of een gehoste dienst met samenwerking in een team. De antwoorden komen uit je kluis, het inlezen dekt je kluis plus losse bestanden, en er is geen backend om te delen.
 
 <details>
-<summary>📊 <strong>Hoe we ons verhouden tot CLI- en desktopimplementaties van LLM Wiki</strong></summary>
+<summary>📊 <strong>Hoe we ons verhouden tot opdrachtregel- en desktopimplementaties van LLM Wiki</strong></summary>
 <br/>
 
 | | Karpathy LLM Wiki (deze plug-in) | nashsu / llm_wiki | SamurAIGPT / llm-wiki-agent | atomicstrata / llm-wiki-compiler |
@@ -112,8 +112,8 @@ your-vault/
 | **i18n (interface + wiki-uitvoer)** | ✅ 14 talen | 🟡 Engels / Chinees | ❌ alleen Engels | ❌ alleen Engels |
 | **LLM-providers** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-compatibel, …) | 🟡 OpenAI-compatibel | 🟡 via een abonnement op Claude Code / Codex | 🟡 OpenAI-compatibel |
 | **Zoeken en vragen** | ✅ PPR + Monte Carlo over de graaf van `[[wiki-link]]`s | 🟡 verval over 2 stappen (heuristiek met 4 signalen) | 🟡 communitydetectie met Louvain | 🟡 BM25 + semantiek over brokstukken |
-| **Grafiekweergave** | ✅ de ingebouwde grafiekweergave van Obsidian (geen extra omvang) | 🟡 eigen sigma.js + graphology in de desktop-app | 🟡 vis.js graph.html (apart bestand) | ❌ alleen-lezen weergave in de browser |
-| **Inleesformaten** | ✅ Markdown + PDF + afbeeldingen + Office (DOCX/PPTX/XLSX) — één schakelaar kiest tussen PDF via de provider (Anthropic / OpenAI / Bedrock / Gemini) en de ingebouwde MinerU-backend voor meerdere formaten | 🟡 Markdown + PDF | 🟡 alleen Markdown en codebestanden | 🟡 alleen Markdown |
+| **Grafiekweergave** | ✅ de ingebouwde grafiekweergave van Obsidian (geen extra omvang) | 🟡 eigen sigma.js + graphology in de desktop-app | 🟡 vis.js graph.html (apart bestand) | ❌ alleen-lezenweergave in de browser |
+| **Inleesformaten** | ✅ Markdown + PDF + afbeeldingen + Office (DOCX/PPTX/XLSX) — één schakelaar wisselt tussen PDF via de provider (Anthropic / OpenAI / Bedrock / Gemini) en de ingebouwde MinerU-backend voor meerdere formaten | 🟡 Markdown + PDF | 🟡 alleen Markdown en codebestanden | 🟡 alleen Markdown |
 
 </details>
 
@@ -292,7 +292,7 @@ De plug-in werkt samen met de rest van je Obsidian-opstelling — elk programma 
 
 ## 🔍 Hoe het zoeken werkt
 
-De meeste plug-ins voor "zoeken met AI" hakken je notities in brokstukken en stoppen die in een vectordatabase. Wij doen dat niet. [Karpathy's bezwaar tegen RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is dat het hakken in brokstukken het vermogen van de LLM breekt om over je hele kennisgraaf te redeneren — en dat bezwaar houdt in de praktijk stand. In plaats daarvan lopen we door de graaf die je al onderhoudt doo`[[wiki-links]]`]`s te schrijven.
+De meeste plug-ins voor "zoeken met AI" hakken je notities in brokstukken en stoppen die in een vectordatabase. Dat doen we niet. [Karpathy's bezwaar tegen RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is dat zo'n hakken in brokstukken de LLM niet meer over je hele kennisgraaf kan laten redeneren — en dat bezwaar houdt in de praktijk stand. In plaats daarvan lopen we door de graaf die je al onderhoudt door `[[wiki-links]]`s te schrijven.
 
 ```mermaid
 flowchart LR
@@ -310,66 +310,66 @@ flowchart LR
 
 Als je vraagt *"Wie heeft Microsoft opgericht?"*, doorloopt Query Wiki 5 stappen voordat er een antwoord wordt gemaakt:
 
-1. **Snelle lexicale route** — BM25F over elke titel van een entiteit of concept, over aliassen, samenvatting en de tekst zelf, met verzadiging per veld en IDF over een echte tabel van documentfrequenties. Gratis, direct, en de poort voor alles wat volgt.
-2. **Trefwoorden door de LLM** — de LLM stelt 8–12 trefwoorden in meerdere talen voor bij je vraag (synoniemen, afkortingen en termen die weinig letters delen, in één aanroep).
-3. **Lokaal zoeken in de tekst** — elk voorgesteld trefwoord wordt lokaal opnieuw vergeleken met titels, aliassen en stukken tekst. Geen extra LLM-aanroep; dit vult de trefzekerheid aan.
-4. **Terugval op de kennisbank via de LLM** — als de lexicale route en het zoeken met trefwoorden weinig opleveren, laat de LLM de beste N kandidaten nog één keer semantisch tegen de hele wiki leggen.
-5. **Uitbreiding over de graaf met PPR** — Personalized PageRank (Haveliwala 2002) over de graaf van `[[wiki-link]]`s, vertrekkend van de gekozen beginpunten. Dit geeft context die meerdere stappen gaat: *"Bill Gates"* → *"Microsoft"* → *"concurrenten"*, niet alleen een titel die letterlijk overeenkomt.
+1. **Snelle lexicale route** — BM25F over elke titel van een entiteit of concept, over aliassen, samenvatting en de tekst zelf, met verzadiging per veld en IDF over een echte tabel van documentfrequenties. Gratis, direct, en de selectiestap voor alles wat volgt.
+2. **Trefwoorden door de LLM** — de LLM stelt 8–12 trefwoorden in meerdere talen voor op basis van je vraag (synoniemen, afkortingen en termen die nauwelijks in je vraag voorkomen, in één LLM-aanroep).
+3. **Lokaal zoeken in de tekst** — elk voorgesteld trefwoord wordt lokaal opnieuw vergeleken met titels, aliassen en stukken tekst. Geen extra LLM-aanroep; dit vult de trefzekerheid aan, ook als de tekst ruis bevat.
+4. **Terugval op de kennisbank via de LLM** — als de lexicale route en het zoeken met trefwoorden weinig opleveren, neemt de LLM de beste N kandidaten nog één keer semantisch door tegen de hele wiki.
+5. **Uitbreiding over de graaf met PPR** — Personalized PageRank (Haveliwala 2002) over de graaf van `[[wiki-link]]`s, vertrekkend van de gekozen beginpunten. Zo krijg je context die meerdere stappen door de graaf gaat: *"Bill Gates"* → *"Microsoft"* → *"concurrenten"*, niet alleen een titel die letterlijk overeenkomt.
 
 De reeks stopt bij de stap die genoeg oplevert — geen vaste kosten voor 5 stappen, geen LLM-aanroepen als de lexicale route volstaat, en een semantische terugval alleen als de lexicale route plus het zoeken met trefwoorden niet genoeg is.
 
 ### De vraag uitbreiden, en de weg terug
 
-Als de reeks de graaf bereikt, wordt de vraag twee keer uitgebreid voordat de beginpunten worden gekozen: eerst met de termen van de wiki zelf, daarna met termen die de LLM voorstelt. Elke ronde weegt mee, en de winst is gemeten op de kluizen van het project in plaats van aangenomen — op de twee kluizen die de huidige release schreef is de uitbreiding `+0.086` en `+0.113` waard op `r@10`, met een interval dat in beide gevallen nul uitsluit. De bewering is met opzet smal: de gewogen vorm is niet meetbaar beter dan de eenvoudige aaneenschakeling, en de schakelaar die de vorige rangschikking gebruikt (`Instellingen → Geavanceerd → Oude rangschikking bij vragen`) staat er voor wie slechtere resultaten kreeg.
+Als de reeks de graaf bereikt, wordt de vraag twee keer uitgebreid voordat de beginpunten worden gekozen: eerst met de termen van de wiki zelf, daarna met termen die de LLM voorstelt. Elke ronde telt met een eigen gewicht, en de winst is op de kluizen van het project gemeten, niet aangenomen — op de twee kluizen die de huidige release heeft geschreven is de uitbreiding `+0.086` en `+0.113` waard op `r@10`, met een interval dat in beide gevallen nul uitsluit. De bewering is bewust beperkt: de gewogen vorm is niet meetbaar beter dan de eenvoudige aaneenschakeling, en wie slechtere resultaten kreeg, kan met de schakelaar terug naar de vorige rangschikking (`Instellingen → Geavanceerd → Oude rangschikking bij vragen`).
 
 ### Personalized PageRank op schaal
 
 We gebruiken Monte Carlo PPR (Fogaras 2005) — 3.000 willekeurige wandelingen van elk 50 stappen — met de regel voor doodlopende paden uit Haveliwala 2002. De kosten zijn $O(K \times L)$ ($K$ = wandelingen, $L$ = stappen per wandeling) en hangen niet af van het aantal pagina's, dus een kluis van 2.000 pagina's heeft dezelfde wachttijd als een van 200.
 
-`PPR @5 = 27.1%` tegenover een pure-kNN-baseline van `24.1%` op een kluis van het project. De verzameling is niet openbaar, dus lees het getal als de vergelijking die het project voor zichzelf heeft gemeten, niet als een bewering over jouw kluis; `tools/dev-instrument/run-recall-harness.mjs` is het programma waarmee de trefzekerheid op een kluis wordt gemeten.
+`PPR @5 = 27.1%` tegenover een pure-kNN-baseline van `24.1%` op een kluis van het project. Het corpus is niet openbaar, dus lees het getal als de vergelijking die het project voor zichzelf heeft gemeten, niet als een bewering over jouw kluis; `tools/dev-instrument/run-recall-harness.mjs` is het programma waarmee de trefzekerheid op een kluis wordt gemeten.
 
 ### Waarom geen embeddings
 
-We hebben de weg van embeddings met opzet afgewezen in [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175). Het signaal zit al in de graaf — elke `[[wiki-link]]` is een met de hand gelegde verbinding *"deze horen bij elkaar"* — en de meeste providers die we ondersteunen (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) hebben helemaal geen `/v1/embeddings`-eindpunt. Een embeddingmodel toevoegen zou een download per pagina, een adapter per provider en nul winst in trefzekerheid betekenen.
+We hebben de route met embeddings met opzet afgewezen in [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175). Het signaal zit al in de graaf — elke `[[wiki-link]]` is een met de hand gelegde verbinding *"deze horen bij elkaar"* — en de meeste providers die we ondersteunen (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) hebben helemaal geen `/v1/embeddings`-eindpunt. Een embeddingmodel toevoegen zou een download per pagina, een adapter per provider en nul winst in trefzekerheid betekenen.
 
 ---
 
 ## 🤖 Modellen
 
-Vijftien providers bij naam, plus elk OpenAI- of Anthropic-compatibel eindpunt. De volledige tabel om per niveau te kiezen — cloud, lokaal, OCR, kwantisatie, hardware — staat in **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)** en is gecontroleerd tegen [models.dev](https://models.dev/).
+Vijftien providers bij naam, plus elk OpenAI- of Anthropic-compatibel eindpunt. De volledige keuzetabel — cloud, lokaal, OCR, kwantisatie, hardware — staat in **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)** en is gecontroleerd tegen [models.dev](https://models.dev/).
 
-- **Cloud, vooraan** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. PDF native bij Anthropic, OpenAI en Gemini.
-- **Voordelig en open gewicht** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
+- **Topmodellen in de cloud** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. Anthropic, OpenAI en Gemini lezen PDF's meteen als bestandsdeel.
+- **Budget en modellen met open gewicht** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
 - **Zakelijk** — AWS Bedrock (varianten voor Anthropic en OpenAI, met API-sleutel, SSO of IAM) en ChatGPT Plan via Codex OAuth.
-- **Lokaal en als doorgang** — Ollama, LM Studio, OpenRouter, Anthropic-compatibele doorgangen.
+- **Lokaal en gateways** — Ollama, LM Studio, OpenRouter, Anthropic-compatibele gateways.
 
 ### Waar het op aankomt
 
-- 🧠 **Contextvenster van 200K tokens of meer** voor kluizen met meer dan ongeveer 500 pagina's. Onder 200K kan de reeks eerdere stappen laten vallen om te passen.
+- 🧠 **Contextvenster van 200K tokens of meer** voor kluizen met meer dan ongeveer 500 pagina's. Onder 200K kan de reeks eerdere stappen laten vallen om binnen het venster te passen.
 - ⚖️ **Het volgen van instructies weegt zwaarder dan ruwe intelligentie** bij het extraheren — kies een model dat de sjabloon van het schema volgt, niet alleen het hoogste cijfer op een ranglijst.
 - 🔌 **Een embedding-eindpunt is niet nodig** — we gebruiken geen embeddings. Een provider zonder `/v1/embeddings` werkt zonder problemen.
 - 🦙 **Lokaal voor vragen, cloud voor inlezen** — inlezen op een kluis van 2.000 pagina's vraagt meestal een model in de cloud met een lange context; een lokaal model met 262K dekt de meeste vragen.
-- 🔧 **Eigen headers & een stream die veerkrachtig is** — elke provider heeft een vrij tekstveld voor eigen headers onder de basis-URL (met een voorinstelling voor OpenCode en een variant voor `/v1/responses`). Wordt een verzoek van een andere herkomst geweigerd op de desktop, dan gaat de stream opnieuw over een `node:https`-transport in plaats van terug te vallen op een gebufferd antwoord.
+- 🔧 **Eigen headers & een stream die veerkrachtig is** — elke provider heeft een vrij tekstveld voor eigen headers onder de basis-URL (met een voorinstelling voor OpenCode en een variant voor `/v1/responses`). Wordt een cross-origin verzoek op de desktop geweigerd, dan herhaalt de stream het verzoek over `node:https` in plaats van terug te vallen op een gebufferd antwoord.
 
 <details>
-<summary>🔐 <strong>Grenzen van providerverificatie: Codex OAuth & AWS Bedrock (API Key / SSO / IAM)</strong></summary>
+<summary>🔐 <strong>Grenzen van de aanmelding bij providers: Codex OAuth & AWS Bedrock (API Key / SSO / IAM)</strong></summary>
 <br/>
 
-### Anthropic vs OpenAI vs Codex OAuth — het zijn echt verschillende providers
+### Anthropic vs OpenAI vs Codex OAuth — het zijn verschillende providers
 
 - **Anthropic (en de Bedrock-variant)** — een API-sleutel van het Anthropic-platform, apart gefactureerd.
 - **OpenAI** — een API-sleutel van het OpenAI-platform, apart gefactureerd.
-- **ChatGPT Plan (Codex OAuth)** — experimenteel en een aparte provider, die na aanmelden via de browser of met een eenmalige code gebruikmaakt van het Codex-tegoed waar je recht op hebt; de beschikbaarheid volgt de aanmeldstatus en het tegoodbeleid van OpenAI Codex, niet de naam van je plan. Dit is compatibiliteit met Codex van derden, geen partnerschap met OpenAI en geen algemene ChatGPT-API.
+- **ChatGPT Plan (Codex OAuth)** — een experimentele, aparte provider die na aanmelden via de browser of met een eenmalige code gebruikmaakt van het Codex-tegoed waar je recht op hebt; de beschikbaarheid volgt de regels van OpenAI Codex over aanmelden en tegoed, niet de naam van je plan. Dit is een koppeling met Codex van derden, geen partnerschap met OpenAI en geen algemene ChatGPT-API.
 
 ### AWS Bedrock — drie manieren van aanmelden
 
-Instellingen → LLM-configuratie → Bedrock (Anthropic / OpenAI) ondersteunt drie manieren van aanmelden, en vraagt alleen om wat die manier nodig heeft:
+Instellingen → LLM-configuratie → Bedrock (Anthropic / OpenAI) ondersteunt drie manieren van aanmelden en vraagt alleen om de gegevens die die manier nodig heeft:
 
 - **API-sleutel** — de route met een bearer-token; aanbevolen voor wie al een Bedrock-API-sleutel gebruikt.
-- **SSO** — de apparaatflow van IAM Identity Center. Klik op **Aanmelden met AWS SSO**, plak de verificatiecode in de browser, en de plug-in wisselt het SSO-token in SecretStorage om voor tijdelijke inloggegevens van de rol, en ondertekent elk verzoek met zelfgeschreven SigV4 (zonder de AWS-SDK toe te voegen).
-- **IAM** — vaste toegangssleutels voor omgevingen zonder SSO (CI, geplande batchtaken), bewaard in SecretStorage met een cache in het geheugen.
+- **SSO** — de aanmeldstroom met een code van IAM Identity Center. Klik op **Aanmelden met AWS SSO** en plak de verificatiecode in de browser. De plug-in ruilt het SSO-token in SecretStorage om voor tijdelijke rolgegevens en ondertekent elk verzoek met een zelfgebouwde SigV4-implementatie (de AWS-SDK wordt niet toegevoegd).
+- **IAM** — vaste toegangssleutels voor omgevingen zonder SSO (CI, geplande batchtaken), bewaard in SecretStorage en in het geheugen onthouden.
 
-Alle drie de manieren volgen dezelfde regel van Obsidian voor SecretStorage (geen inloggegevens in `data.json`, logboeken of documentatie) en dezelfde implementatie van OIDC en SigV4 zonder AWS-SDK.
+Alle drie de manieren volgen dezelfde regel van Obsidian voor SecretStorage (geen inloggegevens in `data.json`, logboeken of documentatie) en gebruiken alle drie een zelfgebouwde OIDC- en SigV4-implementatie, zonder de AWS-SDK.
 
 </details>
 
@@ -389,13 +389,13 @@ Kies een notitie, een map of een selectie: de LLM haalt entiteiten en concepten 
 
 ### Hoe verschilt dit van een RAG-chatbot?
 
-Geen hakken in brokstukken, geen embeddings, geen vectordatabase. Personalized PageRank loopt over de graaf van `[[wiki-link]]`s die je al onderhoudt, en dat geeft context over meerdere stappen zonder kosten voor embeddings.
+Geen hakken in brokstukken, geen embeddings, geen vectordatabase. Personalized PageRank loopt over de graaf van `[[wiki-link]]`s die je al onderhoudt, en dat geeft context die meerdere stappen door de graaf gaat, zonder kosten voor embeddings.
 
 ### Hoe houd ik de kosten van de API in de hand?
 
-Gebruik de hoeveelheid Grof of Minimaal bij het in één keer inlezen. Slim overslaan herkent bestanden die al ingelezen zijn. Automatisch onderhoud staat standaard uit, en de lintcontrole toont precieze aantallen voordat er iets wordt hersteld — er wordt niets betaald zonder jouw toestemming.
+Gebruik de hoeveelheid Grof of Minimaal bij het in één keer inlezen. Slim overslaan herkent automatisch bestanden die al ingelezen zijn. Automatisch onderhoud staat standaard uit, en de lintcontrole toont precieze aantallen voordat er iets wordt hersteld — er wordt niets betaald zonder jouw toestemming.
 
-### Hoe stop ik een ronde die loopt?
+### Hoe stop ik een lopende handeling?
 
 Klik op de statusbalk (er staat *"Bezig met inlezen... klik om te stoppen"*) of gebruik `Cmd+P` / `Ctrl+P` → **"Inlezen stoppen"**. Het stopt netjes aan het begin van de volgende ronde.
 
@@ -410,9 +410,9 @@ Klik op de statusbalk (er staat *"Bezig met inlezen... klik om te stoppen"*) of 
 Deze plug-in staat in de Obsidian Community Plugin Market en wordt automatisch beoordeeld op veiligheid en rechten.
 
 - 🚫 **Geen eigen backend, geen telemetrie, geen verzameling van gegevens.** Het is gewone lokale software die in Obsidian draait. De plug-in heeft geen server en meldt niets aan wie dan ook.
-- 🔐 **Netwerktoegang is optioneel en expliciet.** Die bestaat alleen om diensten te bereiken die je zelf instelt: je LLM-provider en, als je de MinerU-backend voor documenten aanzet, `mineru.net`. Dat tweede is de uitzondering die genoemd moet worden: het stuurt het document naar een rechtsgebied dat je niet hebt gekozen en dat niets zegt over hoe lang het bewaard blijft. [Waar je document wordt verwerkt](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) noemt elke route en waar het bestand heen gaat.
+- 🔐 **Netwerktoegang is optioneel en expliciet.** Die bestaat alleen om diensten te bereiken die je zelf instelt: je LLM-provider en, als je de MinerU-backend voor documenten aanzet, `mineru.net`. Dat tweede is de uitzondering die genoemd moet worden: het stuurt het document naar een rechtsgebied dat je niet hebt gekozen en waar geen bewaartermijn is gepubliceerd. [Waar je document wordt verwerkt](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) noemt elke route en waar het bestand heen gaat.
 - 📁 **Toegang tot bestanden in de kluis** wordt uitsluitend gebruikt voor het beheer van de wiki (notities lezen, pagina's maken onder `wiki/`, dode koppelingen zoeken, dubbelen herkennen). De plug-in past je bronbestanden nooit aan.
-- 📋 **Toegang tot het klembord** wordt alleen gebruikt door de knop "Copy" in het Query-paneel, en alleen als je erop klikt.
+- 📋 **Toegang tot het klembord** wordt alleen gebruikt door de knop "Copy" in het zijpaneel van Query Wiki, en alleen als je erop klikt.
 
 Wil je alles lokaal houden, gebruik dan **Ollama** of **LM Studio**. Met een lokale provider verlaat je data je machine nooit.
 
@@ -420,9 +420,9 @@ Wil je alles lokaal houden, gebruik dan **Ollama** of **LM Studio**. Met een lok
 
 ## 💖 Steun
 
-Karpathy LLM Wiki is gratis, draait bij jou en heeft geen eigen backend. Als het een vast onderdeel van je werkwijze is geworden:
+Karpathy LLM Wiki is gratis, draait volledig bij jou en heeft geen eigen backend. Als het een vast onderdeel van je werkwijze is geworden:
 
-- ☕ **[Trakteer me op een Ko-fi](https://ko-fi.com/greenerdalii)** — één keer of per maand
+- ☕ **[Steun me met een Ko-fi](https://ko-fi.com/greenerdalii)** — één keer of per maand
 - 💳 **[Een fooi via PayPal](https://paypal.me/greenerdalii)** — één keer
 - ⭐ **[Geef de repository een ster](https://github.com/GD4AI/obsidian-llm-wiki)** — helpt anderen het project te ontdekken
 
@@ -436,14 +436,14 @@ Dank aan de volgende mensen voor hun steun aan het project:
 
 Foutmeldingen en pull-requests zijn allebei welkom. [CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) beschrijft de build, de testronde en de controles die een wijziging moet doorstaan; [CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) is kort. [ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) laat zien wat er gepland staat, en [CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) legt vast wat er is uitgebracht.
 
-**Zelf bouwen:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — dat laatste is lint, controle van de architectuur, typecontrole, build, tests en CSS-lint in één opdracht. `tools/dev-instrument/` is het meetinstrument voor ontwikkelaars: het draait de echte `WikiEngine.ingestSource` op een map op schijf zonder Obsidian en toont per taak het tokenverbruik en de tijd, en daar komen de prestatiecijfers in het changelog vandaan. De opdrachtregelversie voor gebruikers staat in een aparte repository — `npm i -g karpathywiki-cli`.
+**Zelf bouwen:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — dat laatste is lint, controle van de architectuur, typecontrole, build, tests en CSS-lint in één opdracht. `tools/dev-instrument/` is het meetinstrument voor ontwikkelaars: het draait de echte `WikiEngine.ingestSource` op een map op schijf zonder Obsidian-runtime en toont per taak het tokenverbruik en de tijd; daar komen de prestatiecijfers in het changelog vandaan. De opdrachtregelversie voor gebruikers staat in een zusterrepository — `npm i -g karpathywiki-cli`.
 
 ## 🔭 Andere projecten
 
 - **[obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli)** — dezelfde `WikiEngine` zonder scherm: `npm i -g karpathywiki-cli`, daarna `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
-- **[pi-shift-router](https://github.com/green-dalii/pi-shift-router)** — een router per taak voor [pi-coding-agent](https://github.com/earendil-works/pi): een kleine keurder merkt elke beurt als gewoon of belangrijk, en het gekozen niveau bepaalt het model, de hulpmiddelen en de volgorde van terugvallen. MIT. → [shiftrouter.greenerai.top](https://shiftrouter.greenerai.top/)
-- **[dsh-shift-router](https://github.com/green-dalii/dsh-shift-router)** — hetzelfde ontwerp voor de omgeving van [dsh-coding-agent](https://github.com/earendil-works/dsh) runtime. MIT.
-- **[dsh-plugin-dev-skill](https://github.com/green-dalii/dsh-plugin-dev-skill)** — de werkwijze voor Obsidian-plug-ins aan de DSH-kant: zet een werkmap op, stuurt een rood-groen-cyclus, draait dezelfde kwaliteitscontroles als deze repository en laat een uitgaveklare `feat/*`- of `fix/*`-branch achter.
+- **[pi-shift-router](https://github.com/green-dalii/pi-shift-router)** — een router per taak voor [pi-coding-agent](https://github.com/earendil-works/pi): een kleine keurder bepaalt bij elke beurt of die routine is of gevolgen heeft, en het gekozen niveau bepaalt het model, de hulpmiddelen en de volgorde van terugvallen. MIT. → [shiftrouter.greenerai.top](https://shiftrouter.greenerai.top/)
+- **[dsh-shift-router](https://github.com/green-dalii/dsh-shift-router)** — hetzelfde ontwerp voor de runtime van [dsh-coding-agent](https://github.com/earendil-works/dsh). MIT.
+- **[dsh-plugin-dev-skill](https://github.com/green-dalii/dsh-plugin-dev-skill)** — de werkwijze voor Obsidian-plug-ins aan de DSH-kant: zet een werkomgeving op, stuurt een rood-groen-cyclus, draait dezelfde kwaliteitscontroles als deze repository en laat een `feat/*`- of `fix/*`-branch achter die klaar is voor uitgifte.
 
 ---
 

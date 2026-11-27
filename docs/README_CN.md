@@ -58,7 +58,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <p align="center">
   <a href="https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-01-before-after.webp">
-    <img src="https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-01-before-after.webp" alt="左边是那篇笔记，右边是它生成的摄入页面——属性、描述，以及相关概念" width="860" />
+    <img src="https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-01-before-after.webp" alt="左边是你的原始笔记，右边是由它生成的页面——属性、描述和相关概念" width="860" />
   </a>
   <br/>
   <em><b>左：</b>你未被改动的原始笔记。<b>右：</b>由它生成的互联 Wiki 页面——属性、别名、描述，以及相关概念。</em>
@@ -68,17 +68,17 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 你写笔记，它们躺在文件夹里。想找出哪些内容互相关联，只能靠回忆几个月前就忘掉的线索。
 
-Karpathy 的 LLM Wiki 构想已有别的开源实现——但没有一个是以一键 Obsidian 插件的形式交付的。它们多是 CLI 工具、Claude Code 技能，或者独立的桌面应用；本插件就长在 Obsidian 内部——图谱视图、ribbon、命令面板一应俱全。
+Karpathy 的 LLM Wiki 构想已经有其他开源实现——但没有一个做成了能一键安装的 Obsidian 插件。它们多是 CLI 工具、Claude Code 技能，或者独立的桌面应用；本插件就长在 Obsidian 内部——图谱视图、左侧图标栏、命令面板一应俱全。
 
 ### 三个有意的设计选择
 
-- 🪟 **Obsidian 就是运行环境。** 不要终端，不要独立应用，不要 Docker，不要 Python。从社区插件市场装好，点一下摄入，Wiki 从第一秒起就长在你的 vault 里。Obsidian 原生图谱视图渲染你的 `[[wiki-link]]` 图——内建，零额外体积。
+- 🪟 **Obsidian 就是运行环境。** 不需要终端，不需要独立应用，不需要 Docker，不需要 Python。从社区插件市场装好，点一下“摄入”，Wiki 从第一秒起就长在你的 vault 里。Obsidian 原生图谱视图直接渲染你的 `[[wiki-link]]` 图——内建，零额外体积。
 - 🧭 **干净、自包含。** 零依赖：没有嵌入模型，没有向量数据库，没有 pip 包。一个插件读你的笔记，与 LLM 对话，把页面写进你的 vault。
-- 🔌 **任何你已付费的模型。** Anthropic、Bedrock、OpenAI、ChatGPT Plan (Codex OAuth)、Gemini、DeepSeek、Qwen、Grok、Kimi、GLM、MiniMax、Step、Hunyuan、MiMo、Gemma、Ollama、LM Studio、OpenRouter、Anthropic 兼容、自定义端点——十五个以上提供商，没有一个必须提供嵌入端点。
+- 🔌 **任何你已付费的模型。** Anthropic、Bedrock、OpenAI、ChatGPT Plan (Codex OAuth)、Gemini、DeepSeek、Qwen、Grok、Kimi、GLM、MiniMax、Step、Hunyuan、MiMo、Gemma、Ollama、LM Studio、OpenRouter、Anthropic 兼容、自定义端点——超过十五家提供商，没有一家必须提供嵌入端点。
 
 ### 你的原始笔记绝不会被改动
 
-插件把你已有的文件夹严格视为**只读**。它创建的一切都放在一个专用的 `wiki/` 文件夹里——查看它、用 Dataview 查询它，或在 `git diff` 里把它分离出来，都很轻松：
+插件把你已有的文件夹严格视为**只读**。它创建的一切都放在专用的 `wiki/` 文件夹里：查看轻松，能用 Dataview 查询，也能在 `git diff` 里单独分离出来。
 
 ```text
 your-vault/
@@ -97,9 +97,9 @@ your-vault/
 - **你想 5 分钟装完。** 从社区插件市场安装 → 选一个提供商 → 摄入一篇笔记。几秒内 `wiki/` 里就出现页面，事先不用装 CLI、不用装 Python、不用搭向量数据库。
 - **你想从自己的笔记里得到答案**，每个答案都注明它出自哪些页面。用 Ollama 或 LM Studio，整次调用都留在你的机器上。
 - **你写的、读的是 14 种语言中的任何一种。** 界面和 Wiki 输出相互独立：英文界面后面挂一个中文 Wiki，是受支持的用法。
-- **你想一键维护。** Lint 健康扫描与一键修复所有问题盯住重复页、断链和孤立页，不必手动整理。
+- **你想一键维护。** Wiki 自检与“一键修复所有问题”替你盯住重复页、断链和孤立页，不用一页一页地手动整理。
 
-*以下情况不适合你：* 想要一个通用 ChatGPT 替代品，想对 Confluence、arXiv 这类外部语料做 RAG，或者需要带团队协作的托管服务。答案来自你的 vault，摄入覆盖你的 vault 加独立文件，也没有可以共享的后端。
+*不适合你的情况：* 你想要一个通用的 ChatGPT 替代品，想对 Confluence、arXiv 这类外部语料做 RAG，或者需要带团队协作的托管服务。答案来自你的 vault，摄入覆盖你的 vault 和独立文件，也没有后端可以跟别人共享。
 
 <details>
 <summary>📊 <strong>我们与 CLI 版和桌面版 LLM Wiki 实现的对比</strong></summary>
@@ -121,49 +121,49 @@ your-vault/
 
 ## 🚀 快速开始
 
-**运行要求：** Obsidian 1.11.4 或更高，桌面端或移动端。没有别的——不需要 Node，不需要 Python，不需要容器。用你自己的 API key，或者用完全不需要 key 的本地模型；凭据存放在 Obsidian SecretStorage 里，1.11.4 这个下限就来自这里。
+**运行要求：** Obsidian 1.11.4 或更高，桌面端或移动端。没有别的——不需要 Node，不需要 Python，不需要容器。用你自己的 API key，或者用完全不需要 key 的本地模型；凭据保存在 Obsidian SecretStorage 里，所以最低版本才是 1.11.4。
 
 1. **安装。** Obsidian → 设置 → 第三方插件 → 浏览 → 搜索 **“Karpathy LLM Wiki”** → 安装 → 启用。也可以打开 [社区插件页面](https://community.obsidian.md/plugins/karpathywiki)，点击 **Add to Obsidian**。
 
    [![在 Obsidian 第三方插件列表里已安装并启用的 Karpathy LLM Wiki](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
-2. **配置一个提供商。** 打开 设置 → Karpathy LLM Wiki → 选提供商（OpenAI、Anthropic、Ollama、ChatGPT Plan (Codex OAuth) 等）→ 填入 API Key（本地模型不需要）→ 点击 **测试连接** → **保存**。
+2. **配置一个提供商。** 打开 设置 → Karpathy LLM Wiki → 选提供商（OpenAI、Anthropic、Ollama、ChatGPT Plan (Codex OAuth) 等）→ 填入 API Key（本地模型不需要）→ 点击 **测试连接** → **保存设置**。
 
 3. **摄入一篇笔记。** 两种方式：
    - ⌨️ **键盘：** `Cmd+P` / `Ctrl+P` → **“摄入单个源文件”** → 挑一个 Markdown 或 PDF 文件。
-   - 🖱️ **工具栏图标：** 点击 Obsidian 左侧 ribbon 的贴纸图标，立即摄入当前打开的笔记——不用翻菜单。
+   - 🖱️ **工具栏图标：** 点击 Obsidian 左侧图标栏的贴纸图标，立即摄入当前打开的笔记——不用翻菜单。
 
    首批 Wiki 页面几秒内出现在 `wiki/sources/`、`wiki/entities/` 和 `wiki/concepts/` 中。
 
 4. **查询你的 Wiki。** 两种方式：
    - ⌨️ **键盘：** `Cmd+P` / `Ctrl+P` → **“查询 Wiki”**。
-   - 🖱️ **工具栏图标：** 点击 Obsidian 左侧 ribbon 的消息圆形图标。
+   - 🖱️ **工具栏图标：** 点击 Obsidian 左侧图标栏的消息圆形图标。
 
    右侧会打开一个停靠面板（Copilot 风格），你可以在里面与 Wiki 对话。答案带 `[[wiki-links]]`，指回你的知识图谱。
 
    [![右侧停靠面板中的一条查询 Wiki 答案，每条结论都脚注到它来源的那个 Wiki 页面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
-就这样。**摄入** 和 **查询 Wiki** 都固定在左侧 ribbon 上，随时一键可用。（macOS 上是 `Cmd`，Windows/Linux 上是 `Ctrl`。）
+就这样。**摄入** 和 **查询 Wiki** 都钉在左侧图标栏上，随时一键可用。（macOS 上是 `Cmd`，Windows/Linux 上是 `Ctrl`。）
 
 ### 核心命令
 
 | 命令 | 作用 |
 | --- | --- |
-| 📥 **摄入单个源文件** | `Cmd+P` / `Ctrl+P` → “摄入单个源文件”——选一个 Markdown 或 PDF 文件，换来实体/概念/Wiki 页面。另有一条路：🖱️ 点左侧 ribbon 的贴纸图标，作用于当前笔记。 |
+| 📥 **摄入单个源文件** | `Cmd+P` / `Ctrl+P` → “摄入单个源文件”——选一个 Markdown 或 PDF 文件，生成实体页、概念页和 Wiki 页面。还有一种方式：🖱️ 点左侧图标栏的贴纸图标，作用于当前笔记。 |
 | 📂 **从文件夹摄入** | `Cmd+P` / `Ctrl+P` → “从文件夹摄入”——批量摄入一个文件夹里的全部笔记，含智能批量跳过。 |
 | 📑 **多选文件摄入** | `Cmd+P` / `Ctrl+P` → “多选文件摄入”——用双栏文件树挑一个子集（带实时队列与逐文件取消）。 |
-| 🔍 **查询 Wiki** | `Cmd+P` / `Ctrl+P` → “查询 Wiki”——在右侧停靠面板里与 Wiki 对话；答案带 `[[wiki-links]]`。另有一条路：🖱️ 点左侧 ribbon 的消息圆形图标。 |
-| 🛠️ **维护 Wiki** | `Cmd+P` / `Ctrl+P` → “维护 Wiki”——完整体检扫描：重复页、断链、空洞页、孤立页、缺失别名、矛盾。 |
-| ⚡ **一键修复所有问题** | 在 Lint 弹窗内——按因果关系顺序一键修复，附各阶段报告。 |
+| 🔍 **查询 Wiki** | `Cmd+P` / `Ctrl+P` → “查询 Wiki”——在右侧停靠面板里与 Wiki 对话；答案带 `[[wiki-links]]`。还有一种方式：🖱️ 点左侧图标栏的消息圆形图标。 |
+| 🛠️ **维护 Wiki** | `Cmd+P` / `Ctrl+P` → “维护 Wiki”——一次完整自检：重复页、断链、空洞页、孤立页、缺失别名、矛盾。 |
+| ⚡ **一键修复所有问题** | 在维护弹窗内——按因果顺序一步到位地修复，并给出每一阶段的报告。 |
 | 📋 **重新生成索引** | `Cmd+P` / `Ctrl+P` → “重新生成索引”——用当前页面与别名重建 `wiki/index.md`。 |
-| ⏹ **取消** | `Cmd+P` / `Ctrl+P` → “取消当前提取”，或点状态栏——在下一个批次边界干净停下。 |
-| 📊 **操作历史** | `Cmd+P` / `Ctrl+P` → “查看摄入历史”——可搜索的界面，回看摄入、Lint 报告与维护运行。 |
+| ⏹ **取消** | `Cmd+P` / `Ctrl+P` → “取消当前提取”，或点状态栏——在下一个批次边界安全停下。 |
+| 📊 **操作历史** | `Cmd+P` / `Ctrl+P` → “查看摄入历史”——可搜索的界面，回看过去的摄入、自检报告与维护运行记录。 |
 
 [![Obsidian 命令面板里，Karpathy LLM Wiki 的每条命令都归在同一个前缀下](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | 之前 | 之后 |
 | --- | --- |
-| `notes/machine-learning.md`（一个平铺的文件） | `wiki/concepts/supervised-learning.md`，带 `[[bidirectional links]]`、别名、来源归属，以及 `wiki/index.md` 里的一条索引 |
+| `notes/machine-learning.md`（平铺目录里的一个文件） | `wiki/concepts/supervised-learning.md`，带 `[[bidirectional links]]`、别名、来源出处，并在 `wiki/index.md` 里留下一条索引 |
 
 📖 逐步教程在 [GitHub Discussions → 指南](https://github.com/GD4AI/obsidian-llm-wiki/discussions/categories/guides)。觉得有用？[给仓库点个 Star](https://github.com/GD4AI/obsidian-llm-wiki)，跟进后续发布。
 
@@ -174,10 +174,10 @@ your-vault/
 ### 📚 知识质量
 
 - 🔍 **实体与概念提取** —— LLM 把人物、组织、产品、事件这类实体，以及理论、方法、术语这类概念，提取成独立页面。提取粒度可配置（极简 → 精细，另有自定义），由你在成本与深度之间取舍。
-- 🏷️ **强制别名** —— 每个页面至少带一个别名（译名、缩写、变体），跨语言重复检测才成立。
+- 🏷️ **强制别名** —— 每个页面至少带一个别名（译名、缩写、变体），跨语言查重才有效。
 - 🔄 **分级重复检测** —— Tier 1（直接名称匹配：跨语言、缩写、高相似度标题）一律验证；Tier 2（共享链接、中等相似度）填满剩余的 token 预算。
 - 🧩 **智能合并与矛盾状态** —— 重复页合并时保留别名；矛盾被标记并注明来源；`reviewed: true` 的页面受保护，不会被覆盖。
-- 🎨 **一套标签词汇表，由你掌握** —— 一个页面能带的标签，来自你笔记里的嵌套标签、wiki 页面已有的标签，以及 设置 → Wiki 配置 → 标签（Tags)词汇表配置 里的自定义 (用户定义) 列表。提示词、写入闸门、Lint 与重新打标签读的都是这一份列表，所以模型拿到的就是最终会落盘的内容；列表之外的值被丢弃，绝不写入。小模型仍会漂移（大约十次运行有一次返回模型自己的分类法）——闸门会拦下，Lint 会报告该页面。设计锚点见 [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
+- 🎨 **一套标签词汇表，由你掌握** —— 一个页面能带的标签，来自你笔记里的嵌套标签、Wiki 页面已有的标签，以及 设置 → Wiki 配置 → 标签（Tags)词汇表配置 里的自定义列表。提示词、写入前的拦截、自检与重新打标签读的都是这一份列表，所以模型拿到的就是最终会落盘的内容；列表之外的值被丢弃，绝不写入。小模型仍会漂移（大约十次运行有一次返回模型自己的分类法）——拦截会挡下来，自检会报出这个页面。设计锚点见 [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
 [![一个生成的概念页：写作时用的词汇表标签、它的别名 AF 与 AFib、它的定义，以及与之相关的页面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
@@ -191,7 +191,7 @@ your-vault/
 | **2. ☁️ 原生支持 PDF 的云端提供商** | PDF | Anthropic、OpenAI、Google Gemini 与 AWS Bedrock（Anthropic + OpenAI 变体）开箱就把 PDF 当文件部分读取。除了选提供商，不用额外设置。 |
 | **3. 🖥️ Apple Silicon 上的本地 OCR** | PDF | [oMLX](https://github.com/jundot/omlx) 内置 Microsoft Markitdown 与本地视觉 OCR（[百度 Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)）。把插件指向 oMLX，当作自定义 OpenAI 兼容提供商，并打开 **强制启用 PDF 支持**。PDF 全程不离开你的机器。 |
 | **4. 🛠️ 第三方提取器（MinerU 在线界面）** | PDF、Office、图片 | 不想接 API token 时，用 [MinerU Extractor 在线服务](https://mineru.net/OpenSourceTools/Extractor) 快速手动转一次。把下载好的 `.md` 放进你的 vault，当作普通 Markdown 笔记摄入。 |
-| **5. 🔌 强制启用 PDF 支持** | PDF | 其他任何接受文件部分的 OpenAI/Anthropic 兼容端点都可以用（设置 → LLM 配置 → LLM 高级参数）。失败会弹本地化的 Notice。 |
+| **5. 🔌 强制启用 PDF 支持** | PDF | 其他任何接受文件部分的 OpenAI/Anthropic 兼容端点都可以用（设置 → LLM 配置 → LLM 高级参数）。失败会弹出一条本地化通知。 |
 | **6. 🖼️ Markdown 内嵌图片** | `.md` 里的本地 `![[image.png]]` 与 `![alt](image.png)` | 在「显示高级设置」下打开 **在 Markdown 摄入时分析嵌入图片**。每张本地图片与它最近的 Markdown 段落一起分析。 |
 
 <details>
@@ -199,11 +199,11 @@ your-vault/
 <br/>
 
 - **MinerU 上限与 token 生命周期** —— token 存在 SecretStorage 里，约 90 天后过期（`401` 通知会写明去哪个页面续期）。上限是每个 PDF 200 MB / 200 页，每个压缩包 256 MB / 10,000 个文件。
-- **内嵌图片上限与审计痕迹** —— 按 20 MiB 的视觉证据包发送，单张上限 10 MiB；远程 URL 一律不下载。可以再打开 **将内嵌图片视觉证据保存到来源页**，在生成的源页里加一个可折叠的审计段。
+- **内嵌图片上限与审计痕迹** —— 按 20 MiB 的视觉证据包发送，单张上限 10 MiB；远程 URL 一律不下载。可以再打开 **将内嵌图片视觉证据保存到来源页**，在生成的来源页里加一个可折叠的审计段。
 - **🗄️ 有界缓存** —— `.obsidian/plugins/karpathywiki/pdf-cache/` 按内容哈希 + 模型 + 转换器版本存放转换后的 Markdown；总量 100 MB / 1,000 条 / 单条 10 MB 三个上限，按 mtime 做 LRU 淘汰。
-- **📝 可选的 vault sidecar** —— 设置 → Wiki 配置 → Wiki 文件夹 → **将转换后的 Markdown 写入 Vault** 会在源 PDF 旁写出 `<basename>.pdf.md`（默认关闭——默认只走缓存）。
+- **📝 可选的 vault sidecar** —— 设置 → Wiki 配置 → Wiki 文件夹 → **将转换后的 Markdown 写入 Vault** 会在源 PDF 旁写出 `<basename>.pdf.md`（默认关闭——也就是默认只走缓存）。
 - **🛡️ 逐字转录提示** —— OCR 风格的转换，带 `[illegible]` / `[figure: ...]` 反幻觉标记；小型本地模型爱套的 markdown 围栏，在写缓存前自动清掉。
-- **🔁 源页原句引用** —— 每个生成的 `sources/<slug>.md` 页面都带一个 *Mentions in Source* 段，内容取自提取时按实体/概念抓下的原句，于是源文档成为唯一一个能真实回溯到原始文本的 Wiki 页面。
+- **🔁 来源页里的原句引用** —— 每个生成的 `sources/<slug>.md` 页面都带一个 *Mentions in Source* 段，内容取自提取时按实体/概念抓下的原句，于是底层文档多了一条有据可查的、回到原文的线索。
 - **Office 格式的注意事项** —— Obsidian 不原生渲染 `.docx` / `.xlsx` / `.pptx`（[file-formats](https://obsidian.md/help/file-formats)），所以 Office 文件的实用做法是：MinerU 转成 `.md`，插件把这个 `.md` 摄入成 Wiki 页面，原始 Office 文件留着备查。需要内联预览 Office 文件，可以用 Pandoc Plugin / Docxer / Md Importer / Office Reader 这类社区插件。
 
 </details>
@@ -214,42 +214,42 @@ your-vault/
 
 **检索与回答**
 
-- 🧭 **5 级 PPR 级联** —— `[[wiki-link]]` 图上的 Personalized PageRank 给出图感知的多跳上下文（见 [检索工作原理](#-检索工作原理)）。
-- 🔤 **正文感知的词法打分** —— 快速路径用 BM25F 对标题、别名、摘要和正文打分，页面上最长的那段文字也能进入打分器。这是本项目做过的最大的单次召回改进。
-- 🧩 **相关页塑形** —— 一个枢纽页不再能把其他所有页面都拽向自己。相关列表每次写入时按存活的名称重算、排序、封顶。
-- 📏 **16,000 token 的答案预算** —— 预算用尽时管线会明说，不再静默停下。上下文在拼装前先按页面预算装填，于是 20 个页面是按计划进提示词的，不是靠运气。
-- 🔖 **引用按学术格式排** —— 每条结论都脚注到它出自的 Wiki 页面。输入框随内容长高，*清空历史* 真的会清掉记录。
-- 🪟 **右侧停靠面板** —— 查询 Wiki 开在 Copilot 风格的右侧叶面板，不再用居中弹窗。
+- 🧭 **5 级 PPR 级联** —— 在 `[[wiki-link]]` 图上跑 Personalized PageRank，给出顺着图谱跳转的多跳上下文（见 [检索工作原理](#-检索工作原理)）。
+- 🔤 **连正文一起算的词法打分** —— 快速路径用 BM25F 对标题、别名、摘要和正文打分，页面里最长的一段文字也能参与打分。这是本项目迄今最大的一次召回提升。
+- 🧩 **相关页的均衡** —— 一个枢纽页不再会把其他所有页面都拽向自己。每次写入都会重算相关列表：只保留还在的名称，再排序、再截断。
+- 📏 **16,000 token 的答案预算** —— 预算用完时管线会明说，不会悄悄停下。上下文在拼装前先按页面数量裁剪，于是每次进提示词的都是计划好的 20 个页面，不是靠运气。
+- 🔖 **按学术格式排的引用** —— 每条结论都脚注到它出自的 Wiki 页面。输入框会随内容变高，“清空历史”确实会把记录清干净。
+- 🪟 **右侧停靠面板** —— 查询 Wiki 开在 Copilot 风格的右侧停靠面板里，不再是居中弹窗。
 
 **维护与修复**
 
-- 🔍 **Lint 健康扫描** —— 一条命令查出重复页、断链、空洞页、孤立页、缺失别名和矛盾。它还会列出周边关系已经结晶化的枢纽页——一个枢纽顶替了内容再也连不出的那些连接。
-- ⚡ **一键修复所有问题** —— 按因果关系顺序的一次性修复：补别名 → 合并重复 → 修断链 → 连孤立页 → 扩空洞页，附各阶段报告。
-- 📊 **操作历史面板** —— 可搜索、可筛选的界面，回看过去的摄入、Lint 报告与维护运行。
+- 🔍 **Wiki 自检** —— 一条命令查出重复页、断链、空洞页、孤立页、缺失别名和矛盾。它还会列出周边关系已经定型的枢纽页——这样的枢纽，替那些内容再也连不上的关系当了代表。
+- ⚡ **一键修复所有问题** —— 按因果顺序一步到位地修复：补别名 → 合并重复 → 修断链 → 连上孤立页 → 补全空洞页，并给出每一阶段的报告。
+- 📊 **操作历史面板** —— 可搜索、可筛选的界面，回看过去的摄入、自检报告与维护运行记录。
 
-[![Wiki 维护报告——状态行、它查出的断链，以及一遍修完它们的一键修复所有问题按钮](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
+[![Wiki 自检报告——状态行、它查出的断链，以及一遍修完它们的一键修复所有问题按钮](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>付费调用之前先过的闸门，以及改变一次运行的设置</strong></summary>
+<summary>⚙️ <strong>付费调用之前的拦截，以及影响一次运行的设置</strong></summary>
 <br/>
 
-**付费调用之前先过的闸门**
+**付费调用之前的拦截**
 
-- 🛡️ **摄入前置闸门** —— 空笔记、只有空白、只有 frontmatter 的笔记，在任何 LLM 调用之前就被拒；内容哈希去重会抓住不同路径下的同一个文件。
-- 🚦 **摄入候选闸门** —— 可选开关（`skipMentionOnlyCandidates`，默认关闭）。只出现在括号里、枚举里或短列表项里的候选，在花掉一次生成和一次去重调用之前被剪掉。它只对有实测画像的语言生效；跨语言笔记不会被静默拦下。
-- 🚧 **修断链的“放着不管”出口** —— 设置 → 显示高级设置 → **为无法解析的链接创建占位页**（默认开启）。关掉它，断链会在每份 Lint 报告里一直可见，直到真的有源把它定义出来，而不是变成一个空占位页。
-- 🔁 **旧版查询打分开关** —— 设置 → 显示高级设置 → **旧版查询打分器** 跑此前手工调出来的线性排序，而不是默认的 BM25F 打分器。
+- 🛡️ **摄入前的拦截** —— 空笔记、只有空白或只有 frontmatter 的笔记，在任何 LLM 调用之前就被拒掉；内容哈希去重能抓住路径不同、内容相同的同一个文件。
+- 🚦 **摄入候选筛选** —— 可选开关（`skipMentionOnlyCandidates`，默认关闭）。只出现在括号里、枚举里或短列表项里的候选，会在花掉一次生成和一次去重调用之前被剪掉。它只对做过实测的语言生效；跨语言笔记不会被悄悄拦下。
+- 🚧 **修断链时的“放着不管”选项** —— 设置 → 显示高级设置 → **为无法解析的链接创建占位页**（默认开启）。关掉它，断链会在每份自检报告里一直可见，直到真的有来源页面定义了它，而不是变成一个空占位页。
+- 🔁 **旧版查询打分开关** —— 设置 → 显示高级设置 → **旧版查询打分器** 跑此前人工调校的线性排序，而不是默认的 BM25F 打分器。
 
-**改变一次运行的八项设置**
+**影响一次运行的八项设置**
 
 插件的大部分行为已经替你定好了。下面这八项会改变它，每一项都是对某个真实失败的回应：
 
 | 设置 | 位置 | 它改变什么 |
 | --- | --- | --- |
-| **流式摄取请求** | 显示高级设置 | `auto` 在移动端走流式，`always` 与 `never` 强制选择。流式正是让长摄入不撞上提供商空闲超时的东西。 |
-| **思考档位** | LLM 高级参数 | `default` / `low` / `medium` / `high`。AI SDK 按提供商翻译档位，不涉及任何手写的提供商字段。 |
+| **流式摄取请求** | 显示高级设置 | `auto` 在移动端走流式，`always` 与 `never` 强制选择。流式传输能让长时间的摄入不撞上提供商的空闲超时。 |
+| **思考档位** | LLM 高级参数 | `default` / `low` / `medium` / `high`。AI SDK 会按提供商把档位转成对应的参数，不涉及任何手写的提供商字段。 |
 | **每次调用的最大输出 Token 数** | LLM 高级参数 | 两个方向都能调：推理模型在写答案前就把预算花光时调高，想压成本时调低。留空即向模型要它自己的上限。 |
-| **模型上下文窗口** | LLM 高级参数 | 上限不可能再超过窗口，所以小型本地模型不会收到它接受不了的数字。 |
+| **模型上下文窗口** | LLM 高级参数 | 上限不会再超过窗口，所以小型本地模型不会收到它接不住的数字。 |
 | **LLM 并发度** | LLM 配置 | 1–20 个并行调用。调高让大摄入更早跑完；调低让本地模型不超内存。 |
 | **提取重点** 与 **内容生成要求** | 显示高级设置 | 写进 `schema/config.md` 的自由文本。它们改变模型提取什么，你不用手改 schema。 |
 | **按步骤设置输出模式与思考** | LLM 高级参数 | 只为某一步覆盖文本模式或思考档位——提取、合并、查询——不动其他步骤。 |
@@ -259,7 +259,7 @@ your-vault/
 
 ### 🦙 本地优先
 
-- 🖥️ **Ollama、LM Studio、OpenRouter、自定义端点** —— 开箱可用。本地模型够用来查询（上下文窗口小一些）；2,000 页 vault 的摄入通常受益于长上下文的云端模型。
+- 🖥️ **Ollama、LM Studio、OpenRouter、自定义端点** —— 开箱可用。本地模型做查询够用（上下文窗口小一些）；2,000 页的 vault 做摄入时，通常更适合用长上下文的云端模型。
 - 📄 **Apple Silicon 上的 PDF OCR 完全本地** —— 见上文 [文档 / PDF / 图片 摄入](#-文档--pdf--图片-摄入)。
 - 🔐 **ChatGPT Plan (Codex OAuth)** —— 桌面端走回环回调，移动端走设备代码；凭据只存在 Obsidian SecretStorage 里。
 
@@ -267,7 +267,7 @@ your-vault/
 
 - 🌍 **14 种界面语言** —— English、简体中文、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Русский、Nederlands、Polski、ไทย。界面语言与 Wiki 输出语言相互独立——你的 Wiki 可以是中文，界面是英文。
 - 📚 **14 种 Wiki 输出语言** —— 同样是这一组；在 设置 → Wiki 配置 里选。另有 *自定义输入* 选项，用于临时提示。
-- **所有界面文案按语种翻译** —— 每个标签、弹窗、通知都翻了。加更多语言由贡献者推动（PR #159 的模式）。
+- **所有界面文案按语种翻译** —— 每个标签、弹窗和通知都翻了。加更多语言由贡献者推动（PR #159 的模式）。
 
 [![界面语言与 Wiki 输出语言是两个各自独立的设置，所以中文 Wiki 能跑在英文界面后面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
@@ -275,9 +275,9 @@ your-vault/
 
 ## 🌐 生态
 
-插件与你 Obsidian 里其他工具搭得上——下面每个工具都能接进 `[[wiki-link]]` 图，不用改代码。
+插件能和你 Obsidian 里的其他工具配合——下面每个工具都能接进 `[[wiki-link]]` 图，不用改代码。
 
-- 📄 **[MinerU 多格式后端](https://mineru.net/apiManage/docs)** —— 过去要单独跑 CLI/UI 的一步，现在是一个插件开关；见 [文档 / PDF / 图片 摄入](#-文档--pdf--图片-摄入)。[MinerU 在线服务](https://mineru.net/OpenSourceTools/Extractor) 与[自建 MinerU](https://github.com/opendatalab/mineru) 也都支持。
+- 📄 **[MinerU 多格式后端](https://mineru.net/apiManage/docs)** —— 过去要单独跑 CLI/UI 的一步，现在是一个插件开关；见 [文档 / PDF / 图片 摄入](#-文档--pdf--图片-摄入)。[MinerU 在线服务](https://mineru.net/OpenSourceTools/Extractor) 与 [自建 MinerU](https://github.com/opendatalab/mineru) 也都支持。
 - 🕸️ **Obsidian 图谱视图** —— 在任意 Wiki 页上打开原生图谱；每个 `[[wiki-link]]` 是一个节点，每条反向链接是一条边。内建，零额外体积。
 
   [![生成出来的 Wiki 在 Obsidian 原生图谱视图里的样子——源页、实体页与概念页连成一张图](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
@@ -310,23 +310,23 @@ flowchart LR
 
 当你问“微软是谁创立的？”时，查询 Wiki 在生成任何答案之前先跑五个阶段：
 
-1. **Lex 快速路径** —— 对每个实体/概念的标题、别名、摘要和正文做 BM25F，带字段饱和与本项目真实文档频率表上的 IDF。免费、即时，也是后面所有阶段的把关者。
-2. **LLM 关键词生成** —— LLM 从你的问题里提出 8–12 个跨语言关键词（同义词、缩写、难以靠 token 重叠命中的术语，一次调用全处理）。
-3. **本地子串扫描** —— 每个生成的关键词在本地对页面标题、别名与正文片段重新匹配。不再调 LLM；把抗噪声的召回补齐。
+1. **Lex 快速路径** —— 对每个实体/概念的标题、别名、摘要和正文做 BM25F，带字段饱和和真实的文档频率表上的 IDF。免费、即时，后面每一步都要先过它这一关。
+2. **LLM 关键词生成** —— LLM 从你的问题里提出 8–12 个跨语言关键词（同义词、缩写，以及用 token 重叠匹配不上的术语，一次调用全处理）。
+3. **本地子串扫描** —— 每个生成的关键词在本地对页面标题、别名与正文片段重新匹配。不再额外调用 LLM；再补一轮对噪声不敏感的召回。
 4. **LLM 知识库回退** —— lex 加关键词扫描信号太弱时，LLM 拿 top-N 候选对着整个 Wiki 再做一次语义过筛。
-5. **PPR 图扩展** —— 从候选种子集出发，在 `[[wiki-link]]` 图上跑 Personalized PageRank（Haveliwala 2002）。图感知的多跳上下文就是这一步给的：“比尔·盖茨” → “微软” → “竞争对手”，而不只是标题字面重合。
+5. **PPR 图扩展** —— 从候选种子集出发，在 `[[wiki-link]]` 图上跑 Personalized PageRank（Haveliwala 2002）。这一步给出的就是顺着图谱跳转的多跳上下文：“比尔·盖茨” → “微软” → “竞争对手”，而不只是标题字面重合。
 
 级联在第一个信号足够的阶段截断——没有固定的五段成本；lex 够用时一次 LLM 调用都不发；只有 lex 加关键词扫描还不够，才走语义回退。
 
 ### 查询扩展，以及一条退路
 
-级联走到图扩展阶段时，查询会先扩展两次再选种子：一次用 Wiki 自己的词，一次用 LLM 提出的词。每一轮都带权重，收益是在本项目自己的 vault 上量出来的，不是假设——在本版本写出的两个 vault 上，扩展在 `r@10` 上分别值 `+0.086` 与 `+0.113`，两个区间都不含零。这个结论刻意说得很窄：加权形式**并不**比简单拼接可测量地更好，而那个跑旧打分器的开关（`设置 → 高级设置 → 旧版查询评分器`）就在那里，留给结果变差的读者。
+级联走到图扩展阶段时，查询会先扩展两次再选种子：一次用 Wiki 自己的词，一次用 LLM 提出的词。每一轮都带权重，收益是在本项目自己的 vault 上量出来的，不是假设——在本版本写出的两个 vault 上，扩展在 `r@10` 上分别值 `+0.086` 与 `+0.113`，两个区间都不含零。这个结论刻意说得很窄：加权形式并不比简单拼接可测量地更好。那个跑旧打分器的开关（`设置 → 显示高级设置 → 旧版查询打分器`）就放在那里，留给那些结果变差了的读者。
 
 ### 规模化运行的 Personalized PageRank
 
-我们用 Monte Carlo PPR（Fogaras 2005）——3,000 次随机游走 × 每次 50 步——加上 Haveliwala 2002 的死端规则。开销是 $O(K \times L)$（$K$ = 游走次数，$L$ = 每次游走的步数），与页面数量无关，所以 2,000 页的 vault 与 200 页的 vault 扩展延迟相同。
+我们用 Monte Carlo PPR（Fogaras 2005）——3,000 次随机游走 × 每次 50 步——加上 Haveliwala 2002 的死端规则。开销为 $O(K \times L)$（$K$ = 游走次数，$L$ = 每次游走的步数），与页面数量无关，所以 2,000 页的 vault 与 200 页的 vault 扩展延迟相同。
 
-`PPR @5 = 27.1%` 对比纯 kNN 基线 `24.1%`，测在一个项目自有 vault 上。语料不公开，所以请把这个数字读成项目给自己量的一次对比，而不是关于你的 vault 的结论；`tools/dev-instrument/run-recall-harness.mjs` 就是对着一个 vault 测召回的测量工具。
+`PPR @5 = 27.1%` 对比纯 kNN 基线 `24.1%`，是在项目自己的一个 vault 上测的。语料不公开，所以请把这个数字读成项目给自己量的一次对比，而不是关于你的 vault 的结论；`tools/dev-instrument/run-recall-harness.mjs` 就是那个对着 vault 测召回的工具。
 
 ### 为什么不用嵌入
 
@@ -336,7 +336,7 @@ flowchart LR
 
 ## 🤖 模型推荐
 
-十五个具名提供商，外加任何 OpenAI 或 Anthropic 兼容端点。完整的分级选型表——云端、本地、OCR、量化、硬件——在 **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**，最后核对于 [models.dev](https://models.dev/)。
+十五家具名提供商，外加任何 OpenAI 兼容或 Anthropic 兼容的端点。完整的分级选型表——云端、本地、OCR、量化、硬件——在 **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**，最后核对于 [models.dev](https://models.dev/)。
 
 - **前沿云端** —— Anthropic、OpenAI、Google Gemini、xAI Grok、Moonshot Kimi、Zhipu GLM、MiniMax。Anthropic、OpenAI 与 Gemini 原生支持 PDF。
 - **低价与开放权重** —— DeepSeek、Alibaba Qwen、Step、Tencent Hunyuan、Xiaomi MiMo、Google Gemma。
@@ -349,7 +349,7 @@ flowchart LR
 - ⚖️ **指令遵循质量** 对提取任务比原始 IQ 更重要——挑一个能照 schema 模板走的模型，而不是排行榜上最靠前的那一个。
 - 🔌 **嵌入端点无关** —— 我们不用嵌入。没有 `/v1/embeddings` 的提供商完全没问题。
 - 🦙 **本地适合查询，云端适合摄入** —— 2,000 页 vault 的摄入通常需要长上下文的云端模型；262K 的本地模型够覆盖大多数查询。
-- 🔧 **自定义请求头与韧性流式** —— 每个提供商在 API Base URL 下方都有一块自由文本的自定义请求头字段（自带 OpenCode 预设，以及 `/v1/responses` 变体）。桌面端上跨域请求被拒时，流会改走 `node:https` 传输重试，而不是降级成缓冲式回答。
+- 🔧 **自定义请求头与更稳的流式传输** —— 每个提供商在 API Base URL 下方都有一块自由文本的自定义请求头字段（自带 OpenCode 预设，以及 `/v1/responses` 变体）。桌面端上跨域请求被拒时，流会改走 `node:https` 传输重试，而不是降级成缓冲式回答。
 
 <details>
 <summary>🔐 <strong>提供商的认证边界：Codex OAuth 与 AWS Bedrock（API Key / SSO / IAM）</strong></summary>
@@ -393,11 +393,11 @@ flowchart LR
 
 ### 怎么控制 API 成本？
 
-批量摄入用 **粗放** 或 **极简** 提取粒度。**智能批量跳过** 会自动识别已摄入的文件。自动维护默认**关闭**，Lint 先给出确切计数再跑修复——未经你确认不产生费用。
+批量摄入时用 **粗放** 或 **极简** 提取粒度。**智能批量跳过** 能自动认出已经摄入过的文件。自动维护默认**关闭**，自检会先给出确切的数字再动手修复——没有你的确认，就不会产生费用。
 
 ### 怎么取消正在运行的操作？
 
-点状态栏（显示 *“提取中... 点击取消”*）或运行 `Cmd+P` / `Ctrl+P` → **“取消当前提取”**。会在下一个批次边界干净停下。
+点状态栏（显示 *“提取中... 点击取消”*）或运行 `Cmd+P` / `Ctrl+P` → **“取消当前提取”**。会在下一个批次边界安全停下。
 
 ### 哪里可以求助？
 
@@ -414,7 +414,7 @@ Bug 报告去 [GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues)
 - 📁 **Vault 文件访问** 只用于 Wiki 管理（读笔记、在 `wiki/` 下生成页面、扫描断链、检测重复）。插件永不修改你的源文件。
 - 📋 **剪贴板访问** 只由查询面板里的 “Copy” 按钮使用——且只在你点它时。
 
-要完全数据本地化，用 **Ollama** 或 **LM Studio**。用本地提供商时，你的数据从不离开你的机器。
+想让数据完全留在本地，用 **Ollama** 或 **LM Studio**。用本地提供商时，你的数据从不离开你的机器。
 
 ---
 
@@ -434,9 +434,9 @@ Karpathy LLM Wiki 免费、自托管、没有自己的后端。如果它已经�
 
 ### 🛠️ 参与贡献
 
-Bug 报告和 PR 都有用。[CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) 讲了构建、测试循环与一次改动必须过的检查；[CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) 很短。[ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) 写着计划，[CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) 记着已发布的内容。
+Bug 报告和 PR 都欢迎。[CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) 讲了构建、测试循环与一次改动必须过的检查；[CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) 很短。[ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) 写着计划，[CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) 记着已发布的内容。
 
-**从源码构建：** `pnpm install`、`pnpm build:dev`、`pnpm gate:1`——最后一条一次跑完 lint、架构检查、类型检查、构建、测试与 CSS lint。`tools/dev-instrument/` 是 dev-only 的测量工具：它不用 Obsidian 运行时，对着磁盘上的一个文件夹跑真正的 `WikiEngine.ingestSource`，打印每个任务的 token 与实际耗时，变更日志里的性能数字就是从这里来的。面向用户的 CLI 在另一个仓库——`npm i -g karpathywiki-cli`。
+**从源码构建：** `pnpm install`、`pnpm build:dev`、`pnpm gate:1`——最后一条一次跑完 lint、架构检查、类型检查、构建、测试与 CSS lint。`tools/dev-instrument/` 是只用于开发的测量工具：它不用 Obsidian 运行时，对着磁盘上的一个文件夹跑真正的 `WikiEngine.ingestSource`，打印每个任务的 token 与实际耗时，变更日志里的性能数字就是从这里来的。面向用户的 CLI 在另一个仓库——`npm i -g karpathywiki-cli`。
 
 ## 🔭 其他项目
 

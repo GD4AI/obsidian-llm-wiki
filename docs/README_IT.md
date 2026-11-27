@@ -66,19 +66,19 @@ Un plugin Obsidian che trasforma le tue note e i tuoi documenti in una base di c
 
 ## 🤔 Perché questo plugin?
 
-Scrivi note. Restano nelle cartelle. Per capire cosa si collega a cosa devi ricordare fili che hai dimenticato mesi fa.
+Scrivi note. Restano nelle cartelle. Per capire cosa si collega a cosa devi ricordare fili che hai perso di vista mesi fa.
 
 Esistono altre reimplementazioni open source dell'idea LLM Wiki di Karpathy, ma nessuna arriva come plugin Obsidian da un clic. La maggior parte sono strumenti a riga di comando, skill per Claude Code o applicazioni desktop separate; questo gira dentro Obsidian — Graph View, barra laterale e palette dei comandi compresi.
 
-### Tre scelte volute, non capitate
+### Tre scelte volute, non per caso
 
-- 🪟 **Obsidian è il runtime.** Niente terminale, niente app separata, niente Docker, niente Python. Installi dai Plugin della community, clicchi Acquisisci, e il wiki vive nel tuo vault dal primo secondo. La Graph View nativa di Obsidian disegna il tuo grafo `[[wiki-link]]`: è già lì, e non aggiunge un byte al bundle.
+- 🪟 **Obsidian è il runtime.** Niente terminale, niente app separata, niente Docker, niente Python. Installi il plugin dai Plugin della community, clicchi Acquisisci e il wiki vive nel tuo vault da subito. La Graph View nativa di Obsidian disegna il grafo dei tuoi `[[wiki-link]]`: è già integrata e non aggiunge un byte al bundle.
 - 🧭 **Pulito e autosufficiente.** Zero dipendenze: nessun modello di embedding, nessun database vettoriale, nessun pacchetto pip. Un solo plugin legge le tue note, parla con un LLM e scrive le pagine nel tuo vault.
-- 🔌 **Qualsiasi modello per cui già paghi.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, endpoint Anthropic-compatibile o personalizzato: oltre quindici provider, e nessuno di loro deve avere un endpoint per gli embedding.
+- 🔌 **Qualsiasi modello per cui già paghi.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, endpoint Anthropic-compatibile o personalizzato: oltre quindici provider, e nessuno richiede un endpoint per gli embedding.
 
 ### Le tue note originali non vengono mai toccate
 
-Il plugin tratta le tue cartelle esistenti come **strettamente in sola lettura**. Tutto ciò che crea vive dentro una cartella dedicata `wiki/`: banalmente ispezionabile, interrogabile con Dataview o separabile in `git diff`:
+Il plugin tratta le tue cartelle esistenti come **strettamente in sola lettura**. Tutto ciò che crea vive in una cartella dedicata, `wiki/`: facile da ispezionare, interrogabile con Dataview o da separare in `git diff`:
 
 ```text
 your-vault/
@@ -94,12 +94,12 @@ your-vault/
 
 ### Per chi è
 
-- **Vuoi una configurazione da 5 minuti.** Installi dai Plugin della community → scegli un provider → acquisisci una nota. Le pagine wiki compaiono in `wiki/` in pochi secondi, senza CLI, senza Python e senza database vettoriale da tirare su prima.
-- **Vuoi risposte dalle tue note**, e ogni risposta cita le pagine da cui viene. Ollama o LM Studio tengono l'intera chiamata sulla tua macchina.
+- **Vuoi una configurazione da 5 minuti.** Installi dai Plugin della community → scegli un provider → acquisisci una nota. Le pagine wiki compaiono in `wiki/` in pochi secondi, senza CLI, senza Python e senza un database vettoriale da preparare prima.
+- **Vuoi risposte dalle tue note**, e ogni risposta cita le pagine da cui proviene. Ollama o LM Studio tengono l'intera chiamata sulla tua macchina.
 - **Scrivi o leggi in una qualsiasi delle 14 lingue.** Interfaccia e output del wiki sono indipendenti: un wiki in cinese dietro un'interfaccia in inglese è una configurazione supportata.
-- **Vuoi manutenzione con un clic.** L'analisi di integrità del Lint e la Correzione intelligente totale tengono a bada duplicati, link morti e orfani senza curatela manuale.
+- **Vuoi manutenzione con un clic.** La scansione di integrità del Lint e la Correzione intelligente totale tengono a bada duplicati, collegamenti interrotti e pagine orfane, senza doverli sistemare a mano.
 
-*Non fa per te se* cerchi un sostituto generico di ChatGPT, un RAG su corpora esterni come Confluence o arXiv, oppure un servizio ospitato con collaborazione di squadra. Le risposte arrivano dal tuo vault, l'acquisizione copre il tuo vault più i file singoli, e non c'è nessun backend da condividere.
+*Non fa per te se* cerchi un sostituto generico di ChatGPT, un RAG su corpora esterni come Confluence o arXiv, oppure un servizio ospitato con collaborazione di squadra. Le risposte arrivano dal tuo vault, l'acquisizione copre il tuo vault più i singoli file, e non c'è nessun backend da condividere.
 
 <details>
 <summary>📊 <strong>Come ci confrontiamo con le implementazioni LLM Wiki da CLI e desktop</strong></summary>
@@ -127,11 +127,11 @@ your-vault/
 
    [![Karpathy LLM Wiki installato e attivo nell'elenco dei plugin della community di Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
-2. **Configura un provider.** Apri Impostazioni → Karpathy LLM Wiki → scegli un provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), ecc.) → inserisci la chiave API (non serve per i modelli locali) → clicca **Testa connessione** → **Salva**.
+2. **Configura un provider.** Apri Impostazioni → Karpathy LLM Wiki → scegli un provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), ecc.) → inserisci la chiave API (non serve per i modelli locali) → clicca **Testa connessione** → **Salva impostazioni**.
 
 3. **Acquisisci una nota.** Due strade:
    - ⌨️ **Da tastiera:** `Cmd+P` / `Ctrl+P` → **"Acquisisci singola sorgente"** → scegli un file Markdown o PDF.
-   - 🖱️ **Icona nella barra:** clicca l'icona adesivo nella barra laterale sinistra di Obsidian e acquisisci all'istante la nota aperta, senza cercare nei menu.
+   - 🖱️ **Icona nella barra:** clicca l'icona adesiva nella barra laterale sinistra di Obsidian e acquisisci subito la nota aperta, senza cercare nei menu.
 
    Le prime pagine wiki compaiono in `wiki/sources/`, `wiki/entities/` e `wiki/concepts/` in pochi secondi.
 
@@ -139,7 +139,7 @@ your-vault/
    - ⌨️ **Da tastiera:** `Cmd+P` / `Ctrl+P` → **"Interroga wiki"**.
    - 🖱️ **Icona nella barra:** clicca l'icona fumetto nella barra laterale sinistra di Obsidian.
 
-   Si apre un pannello laterale ancorato a destra (in stile Copilot) in cui conversi con il tuo wiki. Le risposte portano `[[wiki-links]]` che rientrano nel tuo grafo della conoscenza.
+   Si apre un pannello laterale ancorato a destra (in stile Copilot) in cui conversi con il tuo wiki. Le risposte portano `[[wiki-links]]` che rimandano al tuo grafo della conoscenza.
 
    [![Una risposta di Interroga wiki nel pannello laterale a destra, con ogni affermazione annotata verso la pagina wiki da cui proviene](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
@@ -149,15 +149,15 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 
 | Comando | Cosa fa |
 | --- | --- |
-| 📥 **Acquisisci singola sorgente** | `Cmd+P` / `Ctrl+P` → "Acquisisci singola sorgente": scegli un file Markdown o PDF e ottieni pagine entità, concetti e wiki. Inoltre: 🖱️ l'icona adesivo della barra laterale, sulla nota attiva. |
-| 📂 **Acquisisci da cartella** | `Cmd+P` / `Ctrl+P` → "Acquisisci da cartella": acquisisce in blocco tutte le note di una cartella, con salto intelligente dei file già trattati. |
-| 📑 **Acquisisci più file** | `Cmd+P` / `Ctrl+P` → "Acquisisci più file": scegli un sottoinsieme con un albero dei file a due pannelli (coda in tempo reale e annullamento per singolo file). |
+| 📥 **Acquisisci singola sorgente** | `Cmd+P` / `Ctrl+P` → "Acquisisci singola sorgente": scegli un file Markdown o PDF e ottieni pagine di entità, concetti e wiki. Inoltre: 🖱️ l'icona adesiva della barra laterale, sulla nota attiva. |
+| 📂 **Acquisisci da cartella** | `Cmd+P` / `Ctrl+P` → "Acquisisci da cartella": acquisisce in blocco tutte le note di una cartella, con salto intelligente dei file già acquisiti. |
+| 📑 **Acquisisci più file** | `Cmd+P` / `Ctrl+P` → "Acquisisci più file": scegli un insieme di file con un albero a due pannelli (coda in tempo reale e annullamento per singolo file). |
 | 🔍 **Interroga wiki** | `Cmd+P` / `Ctrl+P` → "Interroga wiki": conversa con il wiki in un pannello laterale ancorato a destra; le risposte portano `[[wiki-links]]`. Inoltre: 🖱️ l'icona fumetto della barra laterale. |
-| 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki": analisi di integrità completa — duplicati, link morti, pagine vuote, orfani, alias mancanti, contraddizioni. |
-| ⚡ **Correzione intelligente totale** | dentro il modale Lint: riparazione in un clic, in ordine causale, con report per ogni fase. |
+| 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki": scansione di integrità completa — duplicati, collegamenti interrotti, pagine vuote, pagine orfane, alias mancanti, contraddizioni. |
+| ⚡ **Correzione intelligente totale** | dentro il modale Lint: riparazione con un clic, in ordine causale, con un report per ogni fase. |
 | 📋 **Rigenera indice** | `Cmd+P` / `Ctrl+P` → "Rigenera indice": ricostruisce `wiki/index.md` con le pagine e gli alias attuali. |
-| ⏹ **Annulla** | `Cmd+P` / `Ctrl+P` → "Annulla acquisizione corrente", oppure clicca la barra di stato: si ferma in modo pulito al confine del lotto successivo. |
-| 📊 **Cronologia acquisizioni** | `Cmd+P` / `Ctrl+P` → "Visualizza cronologia acquisizioni": interfaccia ricercabile sulle acquisizioni passate, sui report Lint e sui cicli di manutenzione. |
+| ⏹ **Annulla** | `Cmd+P` / `Ctrl+P` → "Annulla acquisizione corrente", oppure clicca la barra di stato: si ferma in modo pulito al termine del lotto corrente. |
+| 📊 **Cronologia operazioni** | `Cmd+P` / `Ctrl+P` → "Visualizza cronologia acquisizioni": pannello cercabile con le acquisizioni passate, i report Lint e le operazioni di manutenzione. |
 
 [![Tutti i comandi di Karpathy LLM Wiki, raggruppati sotto un unico prefisso nella palette dei comandi di Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
@@ -175,20 +175,20 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 
 - 🔍 **Estrazione di entità e concetti** — l'LLM estrae entità (persone, organizzazioni, prodotti, eventi) e concetti (teorie, metodi, termini) in pagine autonome. La granularità è configurabile (Minima → Fine, più Personalizzata), così scegli tu il compromesso tra costo e profondità.
 - 🏷️ **Alias obbligatori** — ogni pagina nasce con almeno un alias (traduzione, abbreviazione, variante), così il rilevamento dei duplicati tra lingue funziona.
-- 🔄 **Rilevamento duplicati a livelli** — il Livello 1 (corrispondenza diretta del nome: cross-lingua, abbreviazione, titoli molto simili) viene sempre verificato; il Livello 2 (link condivisi, similarità media) riempie il budget di token rimasto.
+- 🔄 **Rilevamento duplicati a livelli** — il Livello 1 (corrispondenza diretta del nome: tra lingue diverse, abbreviazione, titoli molto simili) viene sempre verificato; il Livello 2 (collegamenti condivisi, similarità media) riempie il budget di token rimasto.
 - 🧩 **Fusione intelligente e stato delle contraddizioni** — i duplicati vengono fusi conservando gli alias; le contraddizioni vengono segnalate con l'attribuzione della fonte; le pagine con `reviewed: true` sono protette dalla sovrascrittura.
-- 🎨 **Un solo vocabolario di tag, il tuo** — i tag che una pagina può portare vengono dai tag annidati delle tue note, dai tag già presenti nelle pagine wiki e dalla lista Personalizzato (definito dall'utente) in Impostazioni → Configurazione Wiki → Configurazione vocabolario tag. Prompt, gate di scrittura, Lint e retag leggono tutti quell'unica lista, quindi quello che viene offerto al modello è esattamente quello che finisce su disco; un valore fuori lista viene scartato, mai scritto. I modelli piccoli derivano comunque (circa una volta su dieci restituiscono la tassonomia interna del modello) — il gate la intercetta e Lint segnala la pagina. Ancora di progetto: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
+- 🎨 **Un solo vocabolario di tag, il tuo** — i tag che una pagina può portare vengono dai tag annidati delle tue note, dai tag già presenti nelle pagine wiki e dalla lista **Personalizzato** (definito dall'utente) in Impostazioni → Configurazione Wiki → Configurazione vocabolario tag. Prompt, controllo in scrittura, Lint e rietichettatura leggono tutti quell'unica lista, quindi quello che viene offerto al modello è esattamente quello che finisce su disco; un valore fuori lista viene scartato, mai scritto. I modelli piccoli scivolano comunque (circa una volta su dieci restituiscono la tassonomia interna del modello): il controllo intercetta la deviazione e Lint segnala la pagina. Il principio alla base: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
 [![Una pagina di concetto generata: il tag del vocabolario con cui è stata scritta, i suoi alias AF e AFib, la definizione e le pagine collegate](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
-### 📄 Ingest di Documenti / PDF / Immagini
+### 📄 Acquisizione di documenti / PDF / immagini
 
 Sei vie d'ingresso, scegliibili a ogni acquisizione:
 
 | Via d'ingresso | Formati | Come funziona |
 | --- | --- | --- |
 | **1. 🧾 Backend MinerU integrato** | PDF, immagini (PNG/JPG/WebP/GIF/BMP), Office (DOC/DOCX/PPT/PPTX/XLS/XLSX) | Impostazioni → Configurazione Wiki → Backend di conversione Markdown → **API online MinerU**. Basato sul [parser Precise di MinerU](https://mineru.net/apiManage/docs). Ideale per gli articoli scansionati e per i file Office in cui conta l'impaginazione. |
-| **2. ☁️ Provider cloud con PDF nativo** | PDF | Anthropic, OpenAI, Google Gemini e AWS Bedrock (varianti Anthropic e OpenAI) leggono i PDF come file parts senza configurazione. Oltre a scegliere il provider non serve altro. |
+| **2. ☁️ Provider cloud con PDF nativo** | PDF | Anthropic, OpenAI, Google Gemini e AWS Bedrock (varianti Anthropic e OpenAI) leggono i PDF come file parts, senza configurazione. Oltre a scegliere il provider non serve altro. |
 | **3. 🖥️ OCR locale su Apple Silicon** | PDF | [oMLX](https://github.com/jundot/omlx) include Microsoft Markitdown e l'OCR visivo locale ([Baidu Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR)). Punta il plugin su oMLX come provider OpenAI-compatibile personalizzato con **Forza supporto PDF** attivo. Il PDF non lascia mai la tua macchina. |
 | **4. 🛠️ Estrattore di terze parti (interfaccia online MinerU)** | PDF, Office, immagini | Usa il [servizio online MinerU Extractor](https://mineru.net/OpenSourceTools/Extractor) per un'interfaccia manuale e rapida, senza dover configurare un token API. Metti il `.md` scaricato nel vault e acquisiscilo come una normale nota Markdown. |
 | **5. 🔌 Forza supporto PDF** | PDF | Per qualsiasi altro endpoint OpenAI/Anthropic-compatibile che accetta file parts (Impostazioni → Configurazione LLM → Parametri LLM avanzati). I fallimenti compaiono come Notice localizzata. |
@@ -214,31 +214,31 @@ Sei vie d'ingresso, scegliibili a ogni acquisizione:
 
 **Recupero e risposte**
 
-- 🧭 **Cascata PPR a 5 stadi** — Personalized PageRank sul grafo `[[wiki-link]]` dà un contesto multi-hop che tiene conto del grafo (vedi [Come funziona il recupero](#-come-funziona-il-recupero)).
-- 🔤 **Punteggio lessicale che legge il corpo** — il percorso rapido valuta titolo, alias, sintesi e testo del corpo con BM25F, quindi il testo più lungo di una pagina arriva al punteggio. È il singolo cambiamento di richiamo più grande che il progetto abbia fatto.
-- 🧩 **Rifinitura degli elenchi di pagine correlate** — una pagina hub non riesce più a trascinare tutte le altre verso di sé. Gli elenchi delle pagine correlate vengono ricalcolati a ogni scrittura a partire dai nomi sopravvissuti, ordinati e limitati.
-- 📏 **Budget della risposta di 16.000 token** — la pipeline dice esplicitamente quando il budget finisce, invece di interrompersi in silenzio. Il contesto viene adattato a un budget di pagine prima dell'assemblaggio, quindi 20 pagine entrano nel prompt secondo un piano e non per fortuna.
+- 🧭 **Cascata PPR a 5 stadi** — Personalized PageRank sul grafo `[[wiki-link]]` fornisce un contesto multi-hop basato sul grafo (vedi [Come funziona il recupero](#-come-funziona-il-recupero)).
+- 🔤 **Punteggio lessicale che legge il corpo** — il percorso rapido valuta con BM25F il titolo, gli alias, la sintesi e il testo del corpo, così anche il testo più lungo di una pagina arriva al punteggio. È il miglioramento del richiamo più grande fatto finora dal progetto.
+- 🧩 **Scelta delle pagine correlate** — una pagina hub non riesce più a trascinare tutte le altre verso di sé. Gli elenchi delle pagine correlate vengono ricalcolati a ogni scrittura, a partire dai nomi rimasti, ordinati e limitati.
+- 📏 **Budget della risposta di 16.000 token** — la pipeline dice esplicitamente quando il budget finisce, invece di interrompersi in silenzio. Il contesto viene adattato a un budget di pagine prima dell'assemblaggio, quindi 20 pagine entrano nel prompt secondo un piano, non per caso.
 - 🔖 **Citazioni in forma accademica** — ogni affermazione annota a piè di pagina le pagine wiki da cui proviene. Il composer cresce con i tuoi contenuti, e cancellare la cronologia cancella davvero il registro.
 - 🪟 **Pannello laterale ancorato a destra** — Query Wiki si apre in un leaf laterale destro in stile Copilot invece che in un modale centrato.
 
 **Manutenzione e riparazione**
 
-- 🔍 **Scansione di salute Lint** — un solo comando intercetta duplicati, link morti, pagine vuote, orfani, alias mancanti e contraddizioni. Elenca anche le pagine hub il cui vicinato si è cristallizzato: un hub che sostituisce connessioni che il contenuto non riesce più a fare.
-- ⚡ **Correzione intelligente totale** — riparazione in ordine causale con un clic: riempi gli alias → fondi i duplicati → correggi i link morti → collega gli orfani → espandi le pagine vuote, con report per ogni fase.
-- 📊 **Pannello cronologia operazioni** — interfaccia ricercabile e filtrabile sulle acquisizioni, sui report Lint e sui cicli di manutenzione passati.
+- 🔍 **Scansione di integrità del wiki** — un solo comando intercetta duplicati, collegamenti interrotti, pagine vuote, pagine orfane, alias mancanti e contraddizioni. Elenca anche le pagine hub il cui intorno si è cristallizzato: un hub che fa le veci di connessioni che il contenuto non riesce più a creare.
+- ⚡ **Correzione intelligente totale** — riparazione con un clic, in ordine causale: riempi gli alias → fondi i duplicati → correggi i collegamenti interrotti → collega le pagine orfane → espandi le pagine vuote, con un report per ogni fase.
+- 📊 **Pannello Cronologia operazioni** — interfaccia cercabile e filtrabile con le acquisizioni passate, i report Lint e le operazioni di manutenzione.
 
-[![Il report Lint del wiki: la riga di stato, i link morti trovati e il pulsante Correzione intelligente totale che li ripara in un solo passaggio](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
+[![Il report Lint del wiki: la riga di stato, i collegamenti interrotti trovati e il pulsante Correzione intelligente totale che li ripara in un solo passaggio](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
-<summary>⚙️ <strong>Gate che scattano prima che una chiamata venga pagata e impostazioni che danno forma a un'esecuzione</strong></summary>
+<summary>⚙️ <strong>Controlli che scattano prima che una chiamata venga pagata e impostazioni che danno forma a un'esecuzione</strong></summary>
 <br/>
 
-**Gate pre-chiamata e controlli di fallback**
+**Controlli prima della chiamata e opzioni di fallback**
 
-- 🛡️ **Gate di pre-acquisizione** — le note vuote, fatte di soli spazi o di solo frontmatter, vengono rifiutate prima di qualsiasi chiamata LLM; la deduplicazione per hash del contenuto intercetta file identici su percorsi diversi.
-- 🚦 **Gate dei candidati in acquisizione** — opzionale (`skipMentionOnlyCandidates`, disattivato per default). Un candidato nominato solo dentro parentesi, dentro un'enumerazione o in una voce di elenco breve viene potato prima di costare una generazione e una chiamata di deduplicazione. Vale solo per le lingue che hanno un profilo misurato; le note cross-lingua non passano mai da questo gate in silenzio.
-- 🚧 **Esito «il collegamento resta com'è» di Fix Dead Links** — Impostazioni → Mostra impostazioni avanzate → **Crea pagine segnaposto per i collegamenti irrisolti** (attivo per default). Se lo disattivi, un link morto resta visibile in ogni report Lint finché una fonte reale non lo definisce, invece di diventare una pagina segnaposto vuota.
-- 🔁 **Interruttore del vecchio punteggio di ricerca** — Impostazioni → Mostra impostazioni avanzate → **Vecchio punteggio di ricerca** esegue il precedente ordinamento lineare scritto a mano invece dello scorer BM25F predefinito.
+- 🛡️ **Controllo prima dell'acquisizione** — le note vuote, fatte di soli spazi o di solo frontmatter, vengono rifiutate prima di qualsiasi chiamata LLM; la deduplicazione per hash del contenuto intercetta file identici su percorsi diversi.
+- 🚦 **Controllo sui candidati in acquisizione** — opzionale (`skipMentionOnlyCandidates`, disattivato per default). Un candidato nominato solo dentro parentesi, dentro un'enumerazione o in una voce di elenco breve viene potato prima di costare una generazione e una chiamata di deduplicazione. Vale solo per le lingue che hanno un profilo misurato; le note tra lingue diverse non passano mai da questo controllo in silenzio.
+- 🚧 **«Correggi collegamenti interrotti»: quando lascia il collegamento com'è** — Impostazioni → Mostra impostazioni avanzate → **Crea pagine segnaposto per i collegamenti irrisolti** (attivo per default). Se lo disattivi, un collegamento interrotto resta visibile in ogni report Lint finché una fonte reale non lo definisce, invece di diventare una pagina segnaposto vuota.
+- 🔁 **Interruttore del vecchio punteggio di ricerca** — Impostazioni → Mostra impostazioni avanzate → **Vecchio punteggio di ricerca** usa il vecchio ordinamento lineare tarato a mano invece del punteggio BM25F predefinito.
 
 **Le otto impostazioni che danno forma a un'esecuzione**
 
@@ -250,8 +250,8 @@ Quasi tutto quello che il plugin fa è già deciso per te. Queste otto impostazi
 | **Livello di ragionamento** | Parametri LLM avanzati | `default` / `low` / `medium` / `high`. L'AI SDK traduce il livello provider per provider, quindi nessun campo scritto a mano entra nella richiesta. |
 | **Max token di output per chiamata** | Parametri LLM avanzati | Funziona in entrambe le direzioni: alzalo quando un modello di ragionamento spende il budget prima di scrivere, abbassalo per limitare il costo. Vuoto chiede al modello il proprio tetto. |
 | **Finestra di contesto del modello** | Parametri LLM avanzati | Il tetto non può più superare la finestra, quindi a un modello locale piccolo non viene mai inviato un numero che non può accettare. |
-| **Concorrenza LLM** | Provider | Da 1 a 20 chiamate in parallelo. Più alta finisce prima un'acquisizione grande; più bassa tiene un modello locale dentro la sua memoria. |
-| **Priorità di estrazione e Requisiti di contenuto** | Mostra impostazioni avanzate | Testo libero scritto in `schema/config.md`. Cambiano cosa estrae il modello senza che tu debba modificare lo schema a mano. |
+| **Concorrenza LLM** | Configurazione LLM | Da 1 a 20 chiamate in parallelo. Più alta finisce prima un'acquisizione grande; più bassa tiene un modello locale dentro la sua memoria. |
+| **Priorità di estrazione e Requisiti di contenuto** | Mostra impostazioni avanzate | Testo libero scritto in `schema/config.md`. Cambiano ciò che il modello estrae, senza che tu debba modificare lo schema a mano. |
 | **Modalità di output e ragionamento per passo** | Parametri LLM avanzati | Sovrascrive la modalità testo o il livello di ragionamento di un passo — estrazione, fusione, interrogazione — senza toccare gli altri. |
 | **File esclusi** | L'elenco di Obsidian | L'acquisizione da cartella, il monitoraggio dei file e il percorso automatico rispettano le esclusioni che hai impostato in Obsidian. |
 
@@ -260,14 +260,14 @@ Quasi tutto quello che il plugin fa è già deciso per te. Queste otto impostazi
 ### 🦙 Prima di tutto in locale
 
 - 🖥️ **Ollama, LM Studio, OpenRouter, endpoint personalizzato** — pronti all'uso. I modelli locali bastano per l'interrogazione (con finestre di contesto più piccole); su un vault di 2.000 pagine l'acquisizione richiede di solito un modello cloud a contesto lungo.
-- 📄 **OCR dei PDF del tutto locale su Apple Silicon** — vedi [Ingest di Documenti / PDF / Immagini](#-ingest-di-documenti--pdf--immagini) più sopra.
+- 📄 **OCR dei PDF del tutto locale su Apple Silicon** — vedi [Acquisizione di documenti / PDF / immagini](#-acquisizione-di-documenti--pdf--immagini) più sopra.
 - 🔐 **ChatGPT Plan (Codex OAuth)** — loopback su desktop o codice dispositivo su mobile; le credenziali vivono solo in Obsidian SecretStorage.
 
 ### 🌐 Lingua
 
 - 🌍 **14 lingue per l'interfaccia** — inglese, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Русский, Nederlands, Polski, ไทย. L'interfaccia e la lingua di output del wiki sono indipendenti: il tuo wiki può essere in cinese mentre l'interfaccia è in inglese.
 - 📚 **14 lingue per l'output del wiki** — lo stesso insieme; si sceglie in Impostazioni → Configurazione Wiki, più un'opzione di input personalizzato per i prompt ad-hoc.
-- **Tutte le stringhe dell'interfaccia tradotte per lingua** — ogni etichetta, modale e notifica. Aggiungere un'altra lingua dipende dai contributori (il modello è la PR #159).
+- **Tutte le stringhe dell'interfaccia tradotte per lingua** — ogni etichetta, modale e notifica. Aggiungere un'altra lingua dipende dai contributori (come nella PR #159).
 
 [![Lingua dell'interfaccia e lingua di output del wiki sono due impostazioni separate, quindi un wiki in cinese può girare dietro un'interfaccia in inglese](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
@@ -277,12 +277,12 @@ Quasi tutto quello che il plugin fa è già deciso per te. Queste otto impostazi
 
 Il plugin si compone con il resto del tuo stack Obsidian: ogni strumento qui sotto entra nel grafo `[[wiki-link]]` senza modifiche al codice.
 
-- 📄 **[Backend multi-formato MinerU](https://mineru.net/apiManage/docs)** — quello che prima era un passaggio separato da CLI o interfaccia ora è un interruttore del plugin; vedi [Ingest di Documenti / PDF / Immagini](#-ingest-di-documenti--pdf--immagini). Sono supportati anche il [servizio online MinerU](https://mineru.net/OpenSourceTools/Extractor) e [MinerU ospitato da sé](https://github.com/opendatalab/mineru).
+- 📄 **[Backend multi-formato MinerU](https://mineru.net/apiManage/docs)** — quello che prima era un passaggio separato da CLI o interfaccia ora è un interruttore del plugin; vedi [Acquisizione di documenti / PDF / immagini](#-acquisizione-di-documenti--pdf--immagini). Sono supportati anche il [servizio online MinerU](https://mineru.net/OpenSourceTools/Extractor) e [MinerU ospitato da sé](https://github.com/opendatalab/mineru).
 - 🕸️ **Obsidian Graph View** — apri il grafo nativo su qualsiasi pagina wiki; ogni `[[wiki-link]]` diventa un nodo, ogni backlink un arco. Integrato, zero peso aggiuntivo nel bundle.
 
   [![La Graph View nativa di Obsidian su un wiki generato: pagine sorgente, entità e concetti formano un unico grafo connesso](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
-- ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — l'estensione ufficiale per il browser. Salva pagine web (articoli, post di blog, thread su Reddit, Hacker News, paper di ricerca, trascrizioni YouTube) in qualsiasi cartella del vault, poi esegui **Acquisisci da cartella** per estrarre in blocco entità e concetti.
+- ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — l'estensione ufficiale per il browser. Salva pagine web (articoli, post di blog, thread su Reddit, Hacker News, lavori di ricerca, trascrizioni YouTube) in qualsiasi cartella del vault, poi esegui **Acquisisci da cartella** per estrarre in blocco entità e concetti.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — interroga il wiki come un database con DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) o con l'API JS. Il plugin scrive frontmatter standard (`tags:`, `type:`, `aliases:`) su ogni pagina.
 - 🌿 **Git** — versiona il vault con qualsiasi client Git. Poiché il plugin non riscrive mai i tuoi file sorgente e scrive solo sotto `wiki/`, `git diff` separa nettamente le tue modifiche dal contenuto generato dall'LLM.
 - 🎞️ **[Marp Slides](https://github.com/samuele-cozzi/obsidian-marp-slides)** — trasforma qualsiasi pagina wiki in una presentazione tramite il frontmatter Marp (`marp: true`).
@@ -292,7 +292,7 @@ Il plugin si compone con il resto del tuo stack Obsidian: ogni strumento qui sot
 
 ## 🔍 Come funziona il recupero
 
-La maggior parte dei plugin di "ricerca AI" spezzetta le tue note in chunk e le incorpora in un database vettoriale. Noi no. L'[argomento di Karpathy contro il RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) è che il chunking rompe la capacità dell'LLM di ragionare su tutto il tuo grafo della conoscenza, e quell'argomento regge nella pratica. Noi percorriamo invece il grafo che già mantieni scrivend`[[wiki-links]]`]`.
+La maggior parte dei plugin di "ricerca AI" spezzetta le tue note in chunk e le incorpora in un database vettoriale. Noi no. L'[argomento di Karpathy contro il RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) è che il chunking rompe la capacità dell'LLM di ragionare su tutto il tuo grafo della conoscenza, e quell'argomento regge nella pratica. Noi percorriamo invece il grafo che già mantieni, scrivendo `[[wiki-links]]`.
 
 ```mermaid
 flowchart LR
@@ -306,21 +306,21 @@ flowchart LR
     S5 --> A([Cited Answer])
 ```
 
-### La cascata di selezione dei semi a 5 stadi
+### La cascata di selezione dei seed a 5 stadi
 
 Quando chiedi *"Chi ha fondato Microsoft?"*, Interroga wiki esegue cinque stadi prima di generare qualsiasi risposta:
 
-1. **Percorso rapido lessicale** — BM25F su titolo, alias, sintesi e testo del corpo di ogni entità e concetto, con saturazione per campo e IDF su una vera tabella di frequenza documentale. Gratis, istantaneo, e fa da gate per tutto ciò che segue.
-2. **Generazione di keyword via LLM** — l'LLM propone da 8 a 12 keyword cross-lingua dalla tua domanda: gestisce sinonimi, abbreviazioni e termini che resistono alla sovrapposizione di token in una sola chiamata LLM.
+1. **Percorso rapido lessicale** — BM25F su titolo, alias, sintesi e testo del corpo di ogni entità e concetto, con saturazione per campo e IDF su una vera tabella di frequenza documentale. Gratis, istantaneo, e fa da filtro per tutto ciò che segue.
+2. **Generazione di keyword via LLM** — l'LLM propone da 8 a 12 keyword in più lingue a partire dalla tua domanda: gestisce sinonimi, abbreviazioni e termini che resistono alla sovrapposizione di token in una sola chiamata LLM.
 3. **Scansione locale di sottostringhe** — ogni keyword generata viene ricercata localmente nei titoli delle pagine, negli alias e negli estratti del corpo. Nessuna chiamata LLM in più; completa il richiamo tollerante al rumore.
-4. **Fallback sulla KB via LLM** — quando il percorso lessicale e la scansione delle keyword danno segnali deboli, l'LLM risemina i primi N candidati contro l'intero wiki, in un unico passaggio semantico.
-5. **Espansione del grafo con PPR** — Personalized PageRank (Haveliwala 2002) sul grafo `[[wiki-link]]`, a partire dall'insieme dei semi candidati. È questo che dà un contesto multi-hop che tiene conto del grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrenti"*, non la sola sovrapposizione letterale dei titoli.
+4. **Fallback sulla KB via LLM** — quando il percorso lessicale e la scansione delle keyword danno segnali deboli, l'LLM riseleziona i migliori N candidati su tutto il wiki, in un unico passaggio semantico.
+5. **Espansione del grafo con PPR** — Personalized PageRank (Haveliwala 2002) sul grafo `[[wiki-link]]`, a partire dall'insieme dei seed candidati. È questo che dà un contesto multi-hop che tiene conto del grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrenti"*, non la sola sovrapposizione letterale dei titoli.
 
 La cascata si ferma allo stadio che ha restituito segnale sufficiente: nessun costo fisso di cinque stadi, nessuna chiamata LLM quando il percorso lessicale basta, fallback semantico solo quando lessicale e scansione delle keyword da soli non bastano.
 
 ### Espansione della query, e una via di ritorno
 
-Quando la cascata arriva allo stadio del grafo, la query viene espansa due volte prima di scegliere i semi: una con i termini del wiki, poi di nuovo con i termini proposti dall'LLM. Ogni passaggio ha un peso, e il guadagno è misurato sui vault del progetto invece che dato per scontato: sui due vault scritti dalla release attuale l'espansione vale `+0.086` e `+0.113` a `r@10`, e in entrambi i casi l'intervallo esclude lo zero. L'affermazione è volutamente stretta: la forma pesata non è misurabilmente migliore della semplice concatenazione, e l'interruttore che esegue lo scorer precedente (Impostazioni → Avanzate → *Vecchio punteggio di ricerca*) esiste per chi ha ottenuto risultati peggiori.
+Quando la cascata arriva allo stadio del grafo, la query viene espansa due volte prima di scegliere i seed: una con i termini del wiki, poi di nuovo con i termini proposti dall'LLM. Ogni passaggio ha un peso, e il guadagno è misurato sui vault del progetto invece che dato per scontato: sui due vault scritti dalla release attuale l'espansione vale `+0.086` e `+0.113` a `r@10`, e in entrambi i casi l'intervallo esclude lo zero. L'affermazione è volutamente stretta: la forma pesata non è misurabilmente migliore della semplice concatenazione, e l'interruttore che usa il vecchio punteggio di ricerca (Impostazioni → Mostra impostazioni avanzate → **Vecchio punteggio di ricerca**) esiste per chi ha ottenuto risultati peggiori.
 
 ### Personalized PageRank su larga scala
 
@@ -336,9 +336,9 @@ Abbiamo rifiutato di proposito la strada degli embedding nella [Issue #175](http
 
 ## 🤖 Modelli
 
-Quindici provider con un nome, più qualsiasi endpoint compatibile OpenAI o Anthropic. La tabella completa di scelta per livello — cloud, locale, OCR, quantizzazione, hardware — è in **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**, verificata su [models.dev](https://models.dev/).
+Quindici provider con un nome proprio, più qualsiasi endpoint compatibile OpenAI o Anthropic. La tabella completa di scelta per livello — cloud, locale, OCR, quantizzazione, hardware — è in **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**, verificata su [models.dev](https://models.dev/).
 
-- **Frontiera cloud** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. PDF nativo su Anthropic, OpenAI e Gemini.
+- **I più avanzati in cloud** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. PDF nativo su Anthropic, OpenAI e Gemini.
 - **Economici e open-weight** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
 - **Enterprise** — AWS Bedrock (varianti Anthropic e OpenAI, con autenticazione a chiave API, SSO o IAM) e ChatGPT Plan tramite Codex OAuth.
 - **Locali e gateway** — Ollama, LM Studio, OpenRouter, gateway Anthropic-compatibili.
@@ -346,7 +346,7 @@ Quindici provider con un nome, più qualsiasi endpoint compatibile OpenAI o Anth
 ### Cosa conta davvero
 
 - 🧠 **Finestra di contesto ≥ 200K token** per vault oltre le ~500 pagine. Sotto i 200K la cascata può scartare gli stadi iniziali per rientrare.
-- ⚖️ **La qualità nel seguire le istruzioni conta più del QI grezzo** nell'estrazione: scegli un modello che segua il template dello schema, non il numero più alto in classifica.
+- ⚖️ **La capacità di seguire le istruzioni conta più dell'intelligenza grezza** nell'estrazione: scegli un modello che segua il template dello schema, non il numero più alto in classifica.
 - 🔌 **L'endpoint di embedding è irrilevante** — non usiamo embedding. Un provider senza `/v1/embeddings` funziona senza problemi.
 - 🦙 **Il locale serve per interrogare, il cloud per acquisire** — su un vault di 2.000 pagine l'acquisizione richiede di solito un modello cloud a contesto lungo; un modello locale da 262K copre la maggior parte delle interrogazioni.
 - 🔧 **Intestazioni personalizzate e streaming resiliente** — ogni provider ha un campo di testo libero per le intestazioni personalizzate subito sotto l'URL di base API (include un preset OpenCode e una variante `/v1/responses`). Quando una richiesta cross-origin viene rifiutata su desktop, lo streaming viene ritentato sul trasporto `node:https` invece di degradare a una risposta bufferizzata.
@@ -366,8 +366,8 @@ Quindici provider con un nome, più qualsiasi endpoint compatibile OpenAI o Anth
 Impostazioni → Configurazione LLM → Bedrock (Anthropic / OpenAI) supporta tre modalità di autenticazione e chiede solo gli input che quella modalità richiede:
 
 - **Chiave API** — il percorso bearer; la scelta consigliata a chi usa già una chiave API Bedrock.
-- **SSO** — flusso device di IAM Identity Center. Clicca **Accedi con AWS SSO**, incolla nel browser il codice di verifica, e il plugin scambia il token SSO in SecretStorage con credenziali di ruolo temporanee, firmando ogni richiesta con SigV4 scritto a mano (nessun AWS SDK aggiunto).
-- **IAM** — chiavi di accesso statiche per gli ambienti senza SSO (CI, job batch pianificati), conservate in SecretStorage con memorizzazione delle credenziali in memoria.
+- **SSO** — flusso con codice dispositivo di IAM Identity Center. Clicca **Accedi con AWS SSO**, incolla nel browser il codice di verifica, e il plugin scambia il token SSO in SecretStorage con credenziali di ruolo temporanee, firmando ogni richiesta con SigV4 scritto a mano (nessun AWS SDK aggiunto).
+- **IAM** — chiavi di accesso statiche per gli ambienti senza SSO (CI, processi batch pianificati), conservate in SecretStorage e tenute in memoria.
 
 Tutte e tre le modalità condividono la disciplina di Obsidian SecretStorage (nessuna credenziale in `data.json`, nei log o nella documentazione) e un'implementazione OIDC + SigV4 scritta a mano, senza AWS SDK.
 
@@ -383,7 +383,7 @@ Tutte e tre le modalità condividono la disciplina di Obsidian SecretStorage (ne
 
 Scegli una nota, una cartella o una selezione di file: l'LLM estrae entità e concetti e scrive un wiki interconnesso con `[[bidirectional links]]` sotto `wiki/`. Fai una domanda e la risposta arriva da quelle pagine, con le citazioni. Le tue note originali non vengono mai modificate.
 
-### Il mio wiki esistente è al sicuro?
+### Il mio wiki esistente resta al sicuro dopo un aggiornamento?
 
 ✅ Retrocompatibile dalla v1.0.0. Imposta `reviewed: true` su una pagina per proteggerla dalla sovrascrittura. Gli aggiornamenti non riscrivono mai il tuo vault, e la conversione dei PDF è solo cache per default, a meno che tu non attivi i sidecar nel vault.
 
@@ -397,7 +397,7 @@ Usa la granularità di estrazione **Grossolana** o **Minima** per l'acquisizione
 
 ### Come annullo un'operazione in corso?
 
-Clicca la barra di stato (mostra *"Acquisizione... clicca per annullare"*) oppure `Cmd+P` / `Ctrl+P` → **"Annulla acquisizione corrente"**. Si ferma in modo pulito al confine del lotto successivo.
+Clicca la barra di stato (mostra *"Acquisizione... clicca per annullare"*) oppure `Cmd+P` / `Ctrl+P` → **"Annulla acquisizione corrente"**. Si ferma in modo pulito al termine del lotto corrente.
 
 ### Dove trovo aiuto?
 
@@ -411,16 +411,16 @@ Questo plugin è elencato nel Marketplace dei plugin della community di Obsidian
 
 - 🚫 **Nessun backend proprio, nessuna telemetria, nessuna raccolta dati.** È software puramente locale che gira dentro Obsidian. Il plugin non gestisce alcun server e non riporta niente da nessuna parte.
 - 🔐 **L'accesso alla rete è opt-in ed esplicito.** Serve solo a raggiungere i servizi che configuri: il tuo provider LLM e, se attivi il backend documenti MinerU, `mineru.net`. Il secondo è l'eccezione che vale la pena nominare: carica il documento in una giurisdizione che non hai scelto e che non pubblica alcuna dichiarazione sulla conservazione. [Dove viene elaborato il tuo documento](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) elenca ogni percorso e dove finisce il file.
-- 📁 **L'accesso ai file del vault** serve esclusivamente alla gestione del wiki (leggere note, generare pagine sotto `wiki/`, scansionare link morti, rilevare duplicati). Il plugin non modifica mai i tuoi file sorgente.
-- 📋 **L'accesso agli appunti di sistema** è usato esclusivamente dal pulsante "Copy" nel pannello di interrogazione, e solo quando ci clicchi.
+- 📁 **L'accesso ai file del vault** serve esclusivamente alla gestione del wiki (leggere note, generare pagine sotto `wiki/`, scansionare i collegamenti interrotti, rilevare duplicati). Il plugin non modifica mai i tuoi file sorgente.
+- 📋 **L'accesso alla clipboard** è usato esclusivamente dal pulsante "Copy" nel pannello di interrogazione, e solo quando ci clicchi.
 
-Per la località completa dei dati, usa **Ollama** o **LM Studio**. Con un provider locale i tuoi dati non lasciano mai la tua macchina.
+Per tenere tutti i dati in locale, usa **Ollama** o **LM Studio**. Con un provider locale i tuoi dati non lasciano mai la tua macchina.
 
 ---
 
 ## 💖 Supporto
 
-Karpathy LLM Wiki è gratuito, si ospita da soli e non ha un backend proprio. Se è diventato una parte significativa del tuo modo di lavorare con la conoscenza:
+Karpathy LLM Wiki è gratuito, lo ospiti tu stesso e non ha un backend proprio. Se è diventato una parte significativa del tuo modo di lavorare con la conoscenza:
 
 - ☕ **[Offrimi un Ko-fi](https://ko-fi.com/greenerdalii)** — una volta o ogni mese
 - 💳 **[Mancia con PayPal](https://paypal.me/greenerdalii)** — una tantum
@@ -436,14 +436,14 @@ Grazie a chi sostiene il progetto:
 
 Le segnalazioni di bug e le pull request sono entrambe benvenute. [CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) descrive la build, il ciclo di test e i controlli che una modifica deve passare; [CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) è breve. [ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) mostra cosa è in programma e [CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) registra cosa è stato rilasciato.
 
-**Compilare dai sorgenti:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — l'ultimo comando fa lint, controllo dell'architettura, controllo dei tipi, build, test e lint CSS in un colpo solo. `tools/dev-instrument/` è lo strumento di misurazione riservato agli sviluppatori: esegue il vero `WikiEngine.ingestSource` su una cartella su disco senza runtime Obsidian e stampa la contabilità di token e di tempo reale per ogni task, ed è da lì che vengono i numeri di prestazione nel changelog. La CLI per gli utenti vive in un repository fratello: `npm i -g karpathywiki-cli`.
+**Compilare dai sorgenti:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — l'ultimo comando fa lint, controllo dell'architettura, controllo dei tipi, build, test e lint CSS in un colpo solo. `tools/dev-instrument/` è lo strumento di misurazione riservato agli sviluppatori: esegue il vero `WikiEngine.ingestSource` su una cartella su disco senza runtime Obsidian e stampa il conteggio dei token e il tempo reale impiegato per ogni task, ed è da lì che vengono i numeri di prestazione riportati nel changelog. La CLI per gli utenti vive in un repository fratello: `npm i -g karpathywiki-cli`.
 
 ## 🔭 Altri progetti
 
 - **[obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli)** — lo stesso `WikiEngine` senza renderer: `npm i -g karpathywiki-cli`, poi `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
 - **[pi-shift-router](https://github.com/green-dalii/pi-shift-router)** — un router a livello di task per [pi-coding-agent](https://github.com/earendil-works/pi): un piccolo giudice marca ogni turno come ordinario o impegnativo, e il livello scelto guida il modello, gli strumenti e la catena di fallback. MIT. → [shiftrouter.greenerai.top](https://shiftrouter.greenerai.top/)
 - **[dsh-shift-router](https://github.com/green-dalii/dsh-shift-router)** — lo stesso design di routing per il runtime [dsh-coding-agent](https://github.com/earendil-works/dsh). MIT.
-- **[dsh-plugin-dev-skill](https://github.com/green-dalii/dsh-plugin-dev-skill)** — il flusso di lavoro per plugin Obsidian lato DSH: prepara lo spazio di lavoro, guida il ciclo Rosso→Verde, esegue gli stessi gate di qualità di questo repository e lascia un ramo `feat/*` o `fix/*` pronto per il rilascio.
+- **[dsh-plugin-dev-skill](https://github.com/green-dalii/dsh-plugin-dev-skill)** — il flusso di lavoro per plugin Obsidian lato DSH: prepara lo spazio di lavoro, guida il ciclo Rosso→Verde, esegue gli stessi controlli di qualità di questo repository e lascia un ramo `feat/*` o `fix/*` pronto per il rilascio.
 
 ---
 

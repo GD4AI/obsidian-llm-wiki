@@ -66,19 +66,19 @@ Um plugin do Obsidian que transforma as suas notas e documentos numa base de con
 
 ## 🤔 Por que este plugin?
 
-Você escreve notas. Elas ficam em pastas. Para descobrir o que se relaciona com o quê, precisa de se lembrar de fios que perdeu há meses.
+Você escreve notas. Elas ficam em pastas. Para descobrir o que se relaciona com o quê, precisa de se lembrar dos assuntos que esqueceu há meses.
 
-Existem outras reimplementações de código aberto da ideia do LLM Wiki do Karpathy — mas nenhuma delas chega como um plugin do Obsidian de um clique. A maioria são ferramentas de linha de comando, skills do Claude Code ou aplicações de desktop à parte; esta corre dentro do Obsidian — Graph View, faixa lateral e paleta de comandos incluídas.
+Existem outras reimplementações de código aberto da ideia do LLM Wiki do Karpathy — mas nenhuma delas vem como um plugin do Obsidian de um clique. A maioria são ferramentas de linha de comando, skills do Claude Code ou aplicações de desktop à parte; este corre dentro do Obsidian — Graph View, faixa lateral e paleta de comandos incluídas.
 
 ### Três coisas que escolhemos de propósito, não por acidente
 
-- 🪟 **O Obsidian é o runtime.** Sem terminal, sem aplicação à parte, sem Docker, sem Python. Instale a partir dos Plugins da comunidade, clique em Ingerir, e a wiki vive no seu vault desde o primeiro segundo. A Graph View nativa do Obsidian desenha o seu grafo `[[wiki-link]]` — integrada, zero de tamanho extra no bundle.
+- 🪟 **O Obsidian é o runtime.** Sem terminal, sem aplicação à parte, sem Docker, sem Python. Instale a partir dos Plugins da comunidade, clique em Ingerir, e a wiki vive no seu vault desde o primeiro instante. A Graph View nativa do Obsidian desenha o grafo das suas `[[wiki-link]]` — já integrada, zero de tamanho extra no bundle.
 - 🧭 **Limpo e autocontido.** Zero dependências: sem modelo de embedding, sem base de dados vetorial, sem pacote pip. Um único plugin lê as suas notas, fala com um LLM e escreve páginas no seu vault.
-- 🔌 **Qualquer modelo pelo qual já paga.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatible, endpoint à medida — mais de quinze provedores, e nenhum deles precisa de ter um endpoint de embeddings.
+- 🔌 **Qualquer modelo pelo qual já paga.** Anthropic, Bedrock, OpenAI, ChatGPT Plan (Codex OAuth), Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Ollama, LM Studio, OpenRouter, Anthropic-compatible, endpoint à medida — mais de quinze provedores, e nenhum deles exige um endpoint de embeddings.
 
 ### As suas notas originais nunca são tocadas
 
-O plugin trata as suas pastas existentes como estritamente **apenas de leitura**. Tudo o que cria vive dentro de uma pasta `wiki/` dedicada — fácil de inspecionar, de consultar com o Dataview ou de separar no `git diff`:
+O plugin trata as suas pastas existentes como **apenas de leitura**, sem exceção. Tudo o que cria vive dentro de uma pasta `wiki/` dedicada — fácil de inspecionar, de consultar com o Dataview ou de separar com o `git diff`:
 
 ```text
 your-vault/
@@ -94,20 +94,20 @@ your-vault/
 
 ### Para quem é
 
-- **Você quer uma configuração de 5 minutos.** Instale a partir dos Plugins da comunidade → escolha um provedor → ingira uma nota. As páginas wiki aparecem em `wiki/` em segundos, sem CLI, sem Python e sem base de dados vetorial para levantar primeiro.
-- **Você quer respostas a partir das suas próprias notas**, e cada resposta cita as páginas de onde veio. Ollama ou LM Studio mantêm a chamada inteira na sua máquina.
-- **Você escreve ou lê em qualquer um dos 14 idiomas.** Interface e saída da wiki são independentes: uma wiki em chinês por trás de uma interface em inglês é uma configuração suportada.
-- **Você quer manutenção de um clique.** A verificação de saúde do Lint e a Correção inteligente de tudo mantêm duplicados, links quebrados e órfãos sob controlo, sem intervenção manual.
+- **Você quer uma configuração de 5 minutos.** Instale a partir dos Plugins da comunidade → escolha um provedor → ingira uma nota. As páginas wiki aparecem em `wiki/` em segundos, sem CLI, sem Python e sem ter de montar antes uma base de dados vetorial.
+- **Você quer respostas a partir das suas notas**, e cada resposta cita as páginas de onde veio. Ollama ou LM Studio mantêm a chamada inteira na sua máquina.
+- **Você escreve ou lê em qualquer um dos 14 idiomas.** A interface e a saída da wiki são independentes: uma wiki em chinês por trás de uma interface em inglês é uma configuração suportada.
+- **Você quer manutenção com um clique.** A verificação de saúde do Lint e a Correção inteligente de tudo mantêm duplicados, links quebrados e órfãos sob controlo, sem ter de os corrigir à mão um a um.
 
-*Não é para você se* quer um substituto genérico do ChatGPT, RAG sobre corpora externos como Confluence ou arXiv, ou um serviço alojado com colaboração em equipa. As respostas vêm do seu vault, a ingestão cobre o seu vault mais ficheiros isolados, e não há backend para partilhar.
+*Não é para você se* quiser um substituto genérico do ChatGPT, RAG sobre corpora externos como Confluence ou arXiv, ou um serviço alojado com colaboração em equipa. As respostas vêm do seu vault, a ingestão cobre o seu vault mais ficheiros isolados, e não há backend para partilhar.
 
 <details>
-<summary>📊 <strong>Como nos comparamos com as implementações de LLM Wiki de linha de comando e de desktop</strong></summary>
+<summary>📊 <strong>Como nos comparamos com as implementações de LLM Wiki na linha de comando e para desktop</strong></summary>
 <br/>
 
 | | Karpathy LLM Wiki (este plugin) | nashsu / llm_wiki | SamurAIGPT / llm-wiki-agent | atomicstrata / llm-wiki-compiler |
 | --- | --- | --- | --- | --- |
-| **Entrega** | ✅ Plugin do Obsidian de um clique | 🟡 Aplicação de desktop em Tauri | 🟡 Skill para Claude Code / Codex / OpenCode / Gemini CLI | 🟡 Pipeline em TypeScript na linha de comando |
+| **Forma de entrega** | ✅ Plugin do Obsidian de um clique | 🟡 Aplicação de desktop em Tauri | 🟡 Skill para Claude Code / Codex / OpenCode / Gemini CLI | 🟡 Pipeline em TypeScript na linha de comando |
 | **Dependências** | ✅ Nenhuma — só o plugin | 🟡 Runtime Python + sqlite | 🟡 Runtime Claude Code / Codex / OpenCode | ❌ Modelo de embedding + base de dados vetorial (segundo a documentação deles) |
 | **i18n (interface + saída da wiki)** | ✅ 14 idiomas | 🟡 EN / 中文 | ❌ Só EN | ❌ Só EN |
 | **Provedores LLM** | ✅ 15+ (Anthropic, OpenAI, Bedrock, Gemini, DeepSeek, Qwen, Grok, Kimi, GLM, MiniMax, Step, Hunyuan, MiMo, Gemma, Codex OAuth, Ollama, LM Studio, OpenRouter, Anthropic-Compatible, …) | 🟡 Compatível com OpenAI | 🟡 Assinatura via Claude Code / Codex | 🟡 Compatível com OpenAI |
@@ -292,7 +292,7 @@ O plugin compõe-se com o resto do seu stack do Obsidian — cada ferramenta aba
 
 ## 🔍 Como funciona a recuperação
 
-A maioria dos plugins de «busca com IA» fragmenta as suas notas em chunks e embebe-os numa base de dados vetorial. Nós não. O [argumento do Karpathy contra o RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) é que a fragmentação quebra a capacidade de o LLM raciocinar sobre o seu grafo de conhecimento inteiro — e o argumento aguenta na prática. Em vez disso, percorremos o grafo que você já mantém ao escrever `[[wiki-links]]`.
+A maioria dos plugins de «busca com IA» fragmenta as suas notas em chunks e converte-os em embeddings numa base de dados vetorial. Nós não. O [argumento do Karpathy contra o RAG](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) é simples: a fragmentação quebra a capacidade de o LLM raciocinar por todo o seu grafo de conhecimento — e o argumento aguenta na prática. Em vez disso, percorremos o grafo que você já mantém, escrevendo `[[wiki-links]]`.
 
 ```mermaid
 flowchart LR
@@ -310,64 +310,64 @@ flowchart LR
 
 Quando você pergunta *"Quem fundou a Microsoft?"*, o Consultar Wiki corre cinco estágios antes de gerar qualquer resposta:
 
-1. **Caminho rápido lexical** — BM25F sobre o título, os aliases, o resumo e o corpo do texto de cada entidade e conceito, com saturação por campo e IDF a partir de uma tabela real de frequência documental. Grátis, instantâneo, e a etapa que condiciona tudo o resto.
-2. **Geração de palavras-chave pelo LLM** — o LLM propõe 8–12 palavras-chave entre idiomas a partir da sua pergunta (resolve sinónimos, abreviaturas e termos resistentes à sobreposição de tokens numa única chamada).
-3. **Varredura local de substrings** — cada palavra-chave gerada é novamente comparada localmente com títulos de páginas, aliases e trechos do corpo. Sem chamada extra ao LLM; completa a recuperação tolerante a ruído.
-4. **Recurso pela base de conhecimento do LLM** — quando o caminho lexical mais a varredura devolvem sinais fracos, o LLM volta a semear os top-N candidatos contra a wiki inteira, numa passagem semântica.
-5. **Expansão do grafo por PPR** — Personalized PageRank (Haveliwala 2002) sobre o grafo `[[wiki-link]]`, a partir do conjunto de sementes candidatas. É isto que dá contexto multi-hop guiado pelo grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrentes"*, e não apenas sobreposição literal de títulos.
+1. **Caminho rápido lexical** — BM25F sobre o título, os aliases, o resumo e o corpo do texto de cada entidade e conceito, com saturação por campo e IDF a partir de uma tabela real de frequência documental. Grátis, instantâneo, e a etapa que decide o que acontece a seguir.
+2. **Geração de palavras-chave pelo LLM** — o LLM propõe 8–12 palavras-chave entre idiomas a partir da sua pergunta (resolve sinónimos, abreviaturas e termos que a correspondência por tokens deixaria de fora, numa única chamada ao LLM).
+3. **Varredura local de substrings** — cada palavra-chave gerada é comparada outra vez, localmente, com títulos de páginas, aliases e trechos do corpo. Sem chamada extra ao LLM; completa a recuperação, que aguenta ruído.
+4. **Fallback semântico do LLM** — quando o caminho lexical mais a varredura devolvem sinais fracos, o LLM volta a semear os top-N candidatos sobre a wiki inteira, numa passagem semântica.
+5. **Expansão do grafo por PPR** — Personalized PageRank (Haveliwala 2002) sobre o grafo `[[wiki-link]]`, a partir do conjunto de sementes candidatas. É daqui que vem o contexto multi-hop guiado pelo grafo: *"Bill Gates"* → *"Microsoft"* → *"concorrentes"*, e não apenas a sobreposição literal de títulos.
 
-A cascata trunca no estágio que devolveu sinal suficiente — sem custo fixo de 5 estágios, sem chamadas ao LLM quando o caminho lexical basta, e recurso semântico só quando o caminho lexical mais a varredura não chegam.
+A cascata interrompe-se no estágio que devolveu sinal suficiente — sem custo fixo de 5 estágios, sem chamadas ao LLM quando o caminho lexical basta, e o fallback semântico só entra quando o caminho lexical mais a varredura não chegam.
 
 ### Expansão da consulta, e um caminho de volta
 
-Quando a cascata chega ao estágio do grafo, a consulta é expandida duas vezes antes de as sementes serem escolhidas: uma com os termos da própria wiki, outra com termos propostos pelo LLM. Cada passagem tem peso, e o ganho é **medido** nos vaults do próprio projeto em vez de suposto — nos dois vaults escritos pela versão atual, a expansão vale `+0.086` e `+0.113` em `r@10`, e em ambos os casos o intervalo exclui o zero. A afirmação é deliberadamente estreita: a forma ponderada **não** é mensuravelmente melhor do que a simples concatenação, e o interruptor que corre o avaliador anterior (`Configurações → Avançado → Antigo avaliador de consultas`) está lá para quem teve piores resultados.
+Quando a cascata chega ao estágio do grafo, a consulta é expandida duas vezes antes de as sementes serem escolhidas: uma com os termos da própria wiki, outra com termos propostos pelo LLM. Cada uma das duas passagens tem o seu peso, e o ganho é **medido** nos vaults do próprio projeto em vez de suposto — nos dois vaults escritos pela versão atual, a expansão vale `+0.086` e `+0.113` em `r@10`, e em ambos os casos o intervalo exclui o zero. A afirmação é deliberadamente restrita: a forma ponderada **não** é mensuravelmente melhor do que a simples concatenação, e o interruptor que corre o avaliador anterior (`Configurações → Avançado → Antigo avaliador de consultas`) está lá para quem viu os resultados piorarem.
 
 ### Personalized PageRank em escala
 
-Usamos Monte Carlo PPR (Fogaras 2005) — 3 000 caminhadas aleatórias × 50 passos cada — com a regra de becos sem saída de Haveliwala 2002. O custo é $O(K \times L)$ ($K$ = caminhadas, $L$ = passos por caminhada), independente do número de páginas, por isso um vault de 2 000 páginas vê a mesma latência de expansão que um de 200 páginas.
+Usamos Monte Carlo PPR (Fogaras 2005) — 3 000 caminhadas aleatórias × 50 passos cada — com a regra dos becos sem saída de Haveliwala 2002. O custo é $O(K \times L)$ ($K$ = caminhadas, $L$ = passos por caminhada), independente do número de páginas, por isso um vault de 2 000 páginas vê a mesma latência de expansão que um vault de 200 páginas.
 
-`PPR @5 = 27.1%` contra uma linha de base pure-kNN de `24.1%` num vault do projeto. O corpus não é público, por isso leia o número como a comparação que o projeto fez para si mesmo, e não como uma afirmação sobre o seu vault; `tools/dev-instrument/run-recall-harness.mjs` é o instrumento que mede a recuperação contra um vault.
+`PPR @5 = 27.1%` contra uma referência pure-kNN de `24.1%` num vault do projeto. O corpus não é público, por isso leia o número como a comparação que o projeto fez para si mesmo, e não como uma afirmação sobre o seu vault; `tools/dev-instrument/run-recall-harness.mjs` é o instrumento que mede a recuperação num vault.
 
 ### Por que nenhum embedding
 
-Rejeitámos o caminho do embedding de propósito na [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175). O sinal do grafo já lá está — cada `[[wiki-link]]` é uma aresta «estes estão relacionados» curada à mão — e a maioria dos provedores que suportamos (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) não tem sequer um endpoint `/v1/embeddings`. Acrescentar um modelo de embedding significaria um download por página, um adaptador por provedor e zero benefício na qualidade da recuperação.
+Rejeitámos de propósito o caminho do embedding na [Issue #175](https://github.com/GD4AI/obsidian-llm-wiki/issues/175). O sinal do grafo já lá está — cada `[[wiki-link]]` é uma aresta «estes estão relacionados» feita à mão — e a maioria dos provedores que suportamos (Ollama, LM Studio, Anthropic, Bedrock, Kimi, GLM, MiniMax) não tem sequer um endpoint `/v1/embeddings`. Acrescentar um modelo de embedding significaria um download por página, um adaptador por provedor e zero benefício na qualidade da recuperação.
 
 ---
 
 ## 🤖 Modelos
 
-Quinze provedores com nome, mais qualquer endpoint compatível com OpenAI ou Anthropic. A tabela completa de escolha por nível — cloud, local, OCR, quantização, hardware — está em **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**, verificada contra [models.dev](https://models.dev/).
+Quinze provedores identificados, mais qualquer endpoint compatível com OpenAI ou Anthropic. A tabela completa de escolha por nível — cloud, local, OCR, quantização, hardware — está em **[docs/MODEL-GUIDE.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/MODEL-GUIDE.md)**, verificada contra [models.dev](https://models.dev/).
 
 - **Cloud de fronteira** — Anthropic, OpenAI, Google Gemini, xAI Grok, Moonshot Kimi, Zhipu GLM, MiniMax. PDF nativo em Anthropic, OpenAI e Gemini.
-- **Custo contido e pesos abertos** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
+- **Baixo custo e pesos abertos** — DeepSeek, Alibaba Qwen, Step, Tencent Hunyuan, Xiaomi MiMo, Google Gemma.
 - **Empresas** — AWS Bedrock (variantes Anthropic e OpenAI, com autenticação por chave de API, SSO ou IAM) e ChatGPT Plan através de Codex OAuth.
-- **Local e gateways** — Ollama, LM Studio, OpenRouter, gateways compatíveis com Anthropic.
+- **Locais e gateways** — Ollama, LM Studio, OpenRouter, gateways compatíveis com Anthropic.
 
 ### O que importa
 
-- 🧠 **Janela de contexto ≥ 200K tokens** para vaults com mais de cerca de 500 páginas. Abaixo de 200K a cascata pode largar estágios anteriores para caber.
-- ⚖️ **A qualidade no seguimento de instruções** importa mais do que a inteligência bruta na extração — escolha um modelo que siga o template do schema, não apenas o maior número do leaderboard.
+- 🧠 **Janela de contexto ≥ 200K tokens** para vaults com mais de cerca de 500 páginas. Abaixo de 200K a cascata pode descartar estágios anteriores para caber.
+- ⚖️ **A qualidade no seguimento de instruções** importa mais do que a inteligência bruta na extração — escolha um modelo que siga o schema, e não apenas o maior número do leaderboard.
 - 🔌 **O endpoint de embeddings é irrelevante** — não usamos embeddings. Um provedor sem `/v1/embeddings` serve perfeitamente.
-- 🦙 **Local para consultar, cloud para ingerir** — a ingestão de um vault de 2 000 páginas normalmente pede um modelo cloud de contexto longo; um modelo local de 262K cobre a maioria das consultas.
-- 🔧 **Cabeçalhos personalizados e streaming resistente** — cada provedor inclui um campo de texto livre para cabeçalhos próprios logo abaixo do API Base URL (traz um preset OpenCode e uma variante `/v1/responses`). Quando um pedido de outra origem é recusado no desktop, o streaming é repetido por um transporte `node:https` em vez de degradar para uma resposta em buffer.
+- 🦙 **Local para consultar, cloud para ingerir** — a ingestão de um vault de 2 000 páginas normalmente pede um modelo cloud com janela de contexto longa; um modelo local de 262K cobre a maioria das consultas.
+- 🔧 **Cabeçalhos personalizados e streaming resiliente** — cada provedor inclui um campo de texto livre para cabeçalhos próprios logo abaixo do campo API Base URL (traz um preset OpenCode e uma variante `/v1/responses`). Quando um pedido de origem cruzada é recusado no desktop, o streaming é retomado por um transporte `node:https` em vez de ficar por uma resposta em buffer.
 
 <details>
-<summary>🔐 <strong>Limites de autenticação dos provedores: Codex OAuth e AWS Bedrock (chave de API / SSO / IAM)</strong></summary>
+<summary>🔐 <strong>Fronteiras de autenticação dos provedores: Codex OAuth e AWS Bedrock (chave de API / SSO / IAM)</strong></summary>
 <br/>
 
 ### Anthropic vs OpenAI vs Codex OAuth — são provedores distintos
 
 - **Anthropic (e a sua variante Bedrock)** — chave da API Anthropic Platform, faturada à parte.
 - **OpenAI** — chave da API OpenAI Platform, faturada à parte.
-- **ChatGPT Plan (Codex OAuth)** — experimental, um provedor distinto que usa a franquia Codex elegível depois de entrar pelo navegador ou por código de dispositivo; a disponibilidade segue as políticas de autenticação e de franquia do OpenAI Codex, não o nome do plano. É compatibilidade de terceiros com o Codex, não uma parceria com a OpenAI nem uma API genérica do ChatGPT.
+- **ChatGPT Plan (Codex OAuth)** — experimental, um provedor distinto que usa a franquia Codex elegível depois de entrar pelo navegador ou por código de dispositivo; a disponibilidade segue as políticas de autenticação e de franquia do OpenAI Codex, e não o nome do plano. É compatibilidade de terceiros com o Codex, não uma parceria com a OpenAI nem uma API genérica do ChatGPT.
 
 ### AWS Bedrock — três modos de autenticação
 
-Configurações → Configuração LLM → Bedrock (Anthropic / OpenAI) suporta três modos de autenticação, e pede apenas os dados que esse modo exige:
+Configurações → Configuração LLM → Bedrock (Anthropic / OpenAI) suporta três modos de autenticação, e pede apenas os dados de que cada modo precisa:
 
 - **Chave de API** — o caminho do token bearer; a escolha recomendada para quem já usa uma chave de API do Bedrock.
-- **SSO** — fluxo de dispositivo do IAM Identity Center. Clique em **Iniciar sessão com AWS SSO**, cole no navegador o código de verificação, e o plugin troca o token SSO guardado no SecretStorage por credenciais temporárias da role, assinando cada pedido com SigV4 escrito à mão (sem acrescentar o AWS SDK).
-- **IAM** — chaves de acesso estáticas para ambientes sem SSO (CI, tarefas em lote agendadas), guardadas no SecretStorage com memorização das credenciais em memória.
+- **SSO** — fluxo de dispositivo do IAM Identity Center. Clique em **Iniciar sessão com AWS SSO**, cole no navegador o código de verificação, e o plugin troca o token SSO guardado no SecretStorage por credenciais temporárias da função, assinando cada pedido com SigV4 escrito à mão (sem acrescentar o AWS SDK).
+- **IAM** — chaves de acesso estáticas para ambientes sem SSO (CI, tarefas em lote agendadas), guardadas no SecretStorage e memorizadas em memória.
 
 Os três modos partilham a mesma disciplina do SecretStorage do Obsidian (nenhuma credencial em `data.json`, nos logs ou na documentação) e a mesma implementação OIDC + SigV4 escrita à mão, sem AWS SDK.
 
@@ -380,19 +380,19 @@ Os três modos partilham a mesma disciplina do SecretStorage do Obsidian (nenhum
 ## ❓ FAQ
 
 ### O que o plugin faz na prática?
-Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidades e conceitos e escreve uma wiki interligada com `[[bidirectional links]]` em `wiki/`. Faça uma pergunta e a resposta vem dessas páginas, com citações. As suas notas originais nunca são modificadas.
+Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidades e conceitos e escreve uma wiki interligada, com `[[bidirectional links]]`, dentro de `wiki/`. Faça uma pergunta e a resposta vem dessas páginas, com citações. As suas notas originais nunca são modificadas.
 
 ### A minha wiki atual está segura entre atualizações?
-✅ Retrocompatível desde a v1.0.0. Defina `reviewed: true` em qualquer página para a proteger contra sobrescrita. As atualizações nunca reescrevem o seu vault, e a conversão de PDF fica só na cache por padrão, a não ser que peça os sidecars no vault.
+✅ Retrocompatível desde a v1.0.0. Defina `reviewed: true` em qualquer página para a proteger de ser sobrescrita. As atualizações nunca reescrevem o seu vault, e a conversão de PDF fica só na cache por padrão, a não ser que opte pelos sidecars no vault.
 
 ### Em que difere de um chatbot RAG?
 Sem fragmentação, sem embeddings, sem base de dados vetorial. O Personalized PageRank corre sobre o grafo `[[wiki-link]]` que você já mantém, o que dá contexto multi-hop a custo zero de embedding.
 
 ### Como controlo os custos de API?
-Use a granularidade de extração **Grosseira** ou **Mínima** na ingestão em lote. O **Smart Batch Skip** deteta automaticamente os ficheiros já ingeridos. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
+Use a granularidade de extração **Grosseira** ou **Mínima** na ingestão em lote. O salto inteligente de lotes deteta automaticamente os ficheiros já ingeridos. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
 
 ### Como cancelo uma operação em curso?
-Clique na barra de estado (mostra *"Ingerindo... clique para cancelar"*) ou use `Cmd+P` / `Ctrl+P` → **"Cancelar ingestão atual"**. Para de forma limpa no limite do lote seguinte.
+Clique na barra de estado (mostra *"Ingerindo... clique para cancelar"*) ou use `Cmd+P` / `Ctrl+P` → **"Cancelar ingestão atual"**. A operação para de forma limpa no limite do lote seguinte.
 
 ### Onde obtenho ajuda?
 [GitHub Issues](https://github.com/GD4AI/obsidian-llm-wiki/issues) para relatar erros · [GitHub Discussions](https://github.com/GD4AI/obsidian-llm-wiki/discussions) para perguntas e pedidos de funcionalidades · Consola de programador (`Ctrl+Shift+I` / `Cmd+Option+I`) para os logs do plugin.
@@ -403,12 +403,12 @@ Clique na barra de estado (mostra *"Ingerindo... clique para cancelar"*) ou use 
 
 Este plugin está listado no Mercado de Plugins da Comunidade do Obsidian e passa por revisão automática de segurança e permissões.
 
-- 🚫 **Sem backend próprio, sem telemetria, sem recolha de dados.** Software puramente local a correr dentro do Obsidian. O plugin não opera nenhum servidor e não reporta nada a ninguém.
+- 🚫 **Sem backend próprio, sem telemetria, sem recolha de dados.** Software puramente local a correr dentro do Obsidian. O plugin não opera nenhum servidor e não envia nada a lado nenhum.
 - 🔐 **O acesso à rede é opcional e explícito.** Existe apenas para chegar aos serviços que você configura: o seu provedor LLM e — se ativar o backend de documentos MinerU — `mineru.net`. Esse segundo é a exceção que vale a pena nomear: carrega o documento para uma jurisdição que você não escolheu e que não publica qualquer declaração de retenção. [Onde o seu documento é processado](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/PDF-OCR-GUIDE.md#-where-your-document-is-processed) lista todos os caminhos e para onde vai o ficheiro.
-- 📁 **O acesso aos ficheiros do vault** serve exclusivamente a gestão da wiki (ler notas, gerar páginas em `wiki/`, procurar links quebrados, detetar duplicados). O plugin nunca modifica os seus ficheiros de origem.
+- 📁 **O acesso aos ficheiros do vault** serve exclusivamente para gerir a wiki (ler notas, gerar páginas em `wiki/`, procurar links quebrados, detetar duplicados). O plugin nunca modifica os seus ficheiros de origem.
 - 📋 **O acesso à área de transferência** é usado exclusivamente pelo botão "Copy" do painel de consulta — e só quando você clica nele.
 
-Para localidade total dos dados, use **Ollama** ou **LM Studio**. Com um provedor local, os seus dados nunca saem da sua máquina.
+Para que os dados fiquem totalmente no seu equipamento, use **Ollama** ou **LM Studio**. Com um provedor local, os seus dados nunca saem da sua máquina.
 
 ---
 
@@ -429,13 +429,13 @@ Obrigado a quem apoia o projeto:
 
 Relatos de erros e pull requests são ambos bem-vindos. O [CONTRIBUTING.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CONTRIBUTING.md) cobre o build, o ciclo de testes e as verificações que uma alteração tem de passar; o [CODE_OF_CONDUCT.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CODE_OF_CONDUCT.md) é curto. O [ROADMAP.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/ROADMAP.md) mostra o que está planeado, e o [CHANGELOG.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/CHANGELOG.md) regista o que foi lançado.
 
-**Compilar a partir do código-fonte:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — o último corre lint, verificação de arquitetura, verificação de tipos, build, testes e CSS lint num único comando. O `tools/dev-instrument/` é o instrumento de medição, apenas para desenvolvimento: corre o verdadeiro `WikiEngine.ingestSource` contra uma pasta no disco sem runtime do Obsidian e imprime a contabilidade de tokens e de tempo de relógio por tarefa, que é de onde vêm os números de desempenho do changelog. A CLI para o utilizador final está num repositório irmão — `npm i -g karpathywiki-cli`.
+**Compilar a partir do código-fonte:** `pnpm install`, `pnpm build:dev`, `pnpm gate:1` — o último corre lint, verificação de arquitetura, verificação de tipos, build, testes e CSS lint num único comando. O `tools/dev-instrument/` é o instrumento de medição, apenas para desenvolvimento: corre o verdadeiro `WikiEngine.ingestSource` contra uma pasta no disco sem runtime do Obsidian e imprime a contagem de tokens e o tempo decorrido por tarefa, que é de onde vêm os números de desempenho do changelog. A CLI para o utilizador final está num repositório irmão — `npm i -g karpathywiki-cli`.
 
 ## 🔭 Outros projetos
 
 - **[obsidian-llm-wiki-cli](https://github.com/green-dalii/obsidian-llm-wiki-cli)** — o mesmo `WikiEngine` sem renderizador: `npm i -g karpathywiki-cli`, depois `karpathywiki-cli ingest --sources <path> --wiki <path> --provider <id> --key <key>`.
 - **[pi-shift-router](https://github.com/green-dalii/pi-shift-router)** — um router ao nível da tarefa para o [pi-coding-agent](https://github.com/earendil-works/pi): um juiz pequeno marca cada turno como rotineiro ou consequente, e o nível escolhido conduz o modelo, as ferramentas e a cadeia de fallback. MIT. → [shiftrouter.greenerai.top](https://shiftrouter.greenerai.top/)
-- **[dsh-shift-router](https://github.com/green-dalii/dsh-shift-router)** — o mesmo desenho de routing para o runtime do [dsh-coding-agent](https://github.com/earendil-works/dsh). MIT.
+- **[dsh-shift-router](https://github.com/green-dalii/dsh-shift-router)** — a mesma abordagem de routing para o runtime do [dsh-coding-agent](https://github.com/earendil-works/dsh). MIT.
 - **[dsh-plugin-dev-skill](https://github.com/green-dalii/dsh-plugin-dev-skill)** — o fluxo de trabalho de plugins do Obsidian do lado do DSH: monta um espaço de trabalho, conduz o ciclo Red→Green, corre as mesmas verificações de qualidade que este repositório usa e deixa um ramo `feat/*` ou `fix/*` pronto para lançamento.
 
 ---
@@ -444,7 +444,7 @@ Relatos de erros e pull requests são ambos bem-vindos. O [CONTRIBUTING.md](http
 
 Licença Apache, Versão 2.0 — veja [LICENSE](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/LICENSE), [NOTICE](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/NOTICE) e [THIRD-PARTY-NOTICES.md](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/THIRD-PARTY-NOTICES.md).
 
-**Construído sobre:**
+**Construído com:**
 
 - 💡 [LLM Wiki do Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — o conceito original
 - 🛠️ [Obsidian Plugin API](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
