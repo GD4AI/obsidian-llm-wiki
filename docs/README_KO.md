@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Karpathy LLM Wiki 플러그인 배너 — Obsidian 노트로 만들어진, 서로 연결된 위키 페이지들의 네트워크](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Karpathy LLM Wiki 플러그인 배너 — Obsidian 노트로 만들어진, 서로 연결된 위키 페이지들의 네트워크](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Karpathy LLM Wiki — Obsidian 플러그인
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **설치.** Obsidian → 설정 → 커뮤니티 플러그인 → 찾아보기 → **"Karpathy LLM Wiki"** 검색 → 설치 → 활성화. 또는 [커뮤니티 플러그인 페이지](https://community.obsidian.md/plugins/karpathywiki)에서 **Add to Obsidian**을 클릭합니다.
 
-   [![Obsidian 커뮤니티 플러그인 목록에서 Karpathy LLM Wiki를 설치하고 활성화한 화면](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![Obsidian 커뮤니티 플러그인 목록에서 Karpathy LLM Wiki를 설치하고 활성화한 화면](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **공급자 설정.** 설정 → Karpathy LLM Wiki → 공급자 선택(OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) 등) → API 키 입력(로컬은 불필요) → **Test Connection** 클릭 → **저장**.
 
@@ -141,7 +141,7 @@ your-vault/
 
    Copilot 스타일의 우측 도킹 사이드 패널이 열리고, 그 안에서 위키와 대화할 수 있습니다. 답변에는 지식 그래프로 되돌아가는 `[[wiki-links]]`가 붙습니다.
 
-   [![우측 도킹 사이드 패널에 표시된 위키 질의 답변 — 각 주장마다 근거가 된 위키 페이지가 각주로 붙어 있습니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![우측 도킹 사이드 패널에 표시된 위키 질의 답변 — 각 주장마다 근거가 된 위키 페이지가 각주로 붙어 있습니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 그게 전부입니다. **수집**과 **위키 질의**는 왼쪽 리본에 고정되어 있어 언제든 한 번의 클릭으로 실행할 수 있습니다. (`Cmd`는 macOS, `Ctrl`은 Windows/Linux입니다.)
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **작업 취소** | `Cmd+P` / `Ctrl+P` → "현재 수집 취소" 또는 상태 표시줄 클릭 — 다음 배치 경계에서 깔끔하게 멈춥니다. |
 | 📊 **작업 기록** | `Cmd+P` / `Ctrl+P` → "수집 이력 보기" — 지난 수집, 린트 보고서, 유지보수 실행을 검색할 수 있는 화면. |
 
-[![Obsidian 명령 팔레트에서 하나의 접두사 아래 묶여 있는 Karpathy LLM Wiki의 모든 명령](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![Obsidian 명령 팔레트에서 하나의 접두사 아래 묶여 있는 Karpathy LLM Wiki의 모든 명령](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | 전 | 후 |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **스마트 병합과 모순 상태** — 중복은 alias를 지키며 병합되고, 모순은 출처와 함께 표시되며, `reviewed: true`인 페이지는 덮어쓰기에서 보호됩니다.
 - 🎨 **태그 어휘는 하나, 그리고 여러분의 것입니다** — 페이지가 달 수 있는 태그는 노트의 중첩 태그, 이미 위키 페이지에 있는 태그, 설정 → Wiki 설정 → 태그 어휘 설정의 사용자 지정 (사용자 정의) 목록에서 옵니다. 프롬프트, 쓰기 게이트, 린트, retag가 모두 이 하나의 목록을 읽으므로 모델이 제안받은 것이 그대로 디스크에 기록되고, 목록 밖의 값은 기록되지 않고 버려집니다. 작은 모델은 여전히 흔들립니다(대략 10회 중 1회는 모델 자신의 분류를 돌려줍니다). 게이트가 그것을 잡고, Lint가 그 페이지를 보고합니다. 설계 앵커: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![생성된 개념 페이지 — 어떤 어휘 태그로 쓰였는지, alias인 AF와 AFib, 정의, 그리고 이 페이지와 연결된 페이지들이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![생성된 개념 페이지 — 어떤 어휘 태그로 쓰였는지, alias인 AF와 AFib, 정의, 그리고 이 페이지와 연결된 페이지들이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 문서 / PDF / 이미지 수집
 
@@ -227,7 +227,7 @@ your-vault/
 - ⚡ **Smart Fix All** — 한 번의 클릭으로 인과 순서대로 수리합니다: alias 채우기 → 중복 병합 → 데드 링크 수정 → 고아 연결 → 빈 페이지 확장, 단계별 보고서 포함.
 - 📊 **작업 기록** — 지난 수집, 린트 보고서, 유지보수 실행을 검색하고 걸러 볼 수 있는 화면입니다.
 
-[![위키 린트 보고서 — 상태 줄, 발견된 데드 링크, 그리고 한 번에 고치는 Smart fix all 버튼이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![위키 린트 보고서 — 상태 줄, 발견된 데드 링크, 그리고 한 번에 고치는 Smart fix all 버튼이 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>호출 비용을 치르기 전에 도는 게이트 & 실행을 좌우하는 설정</strong></summary>
@@ -269,7 +269,7 @@ your-vault/
 - 📚 **위키 출력 14 개 언어** — 같은 목록이며 설정 → Wiki Configuration에서 고릅니다. 임시 프롬프트를 위한 Custom 입력 옵션도 있습니다.
 - **모든 UI 문자열이 언어별로 번역되어 있습니다** — 라벨, 모달, Notice까지 전부. 다음 언어 추가는 기여자 주도입니다(PR #159 방식).
 
-[![인터페이스 언어와 위키 출력 언어는 서로 다른 두 설정이라, 영어 인터페이스 뒤에서 중국어 위키를 돌릴 수 있습니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![인터페이스 언어와 위키 출력 언어는 서로 다른 두 설정이라, 영어 인터페이스 뒤에서 중국어 위키를 돌릴 수 있습니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -281,7 +281,7 @@ your-vault/
 
 - 🕸️ **Obsidian Graph View** — 어느 위키 페이지에서든 네이티브 그래프를 엽니다. `[[wiki-link]]`마다 노드가 되고, 역방향 링크마다 엣지가 됩니다. 내장 기능이고 번들 크기는 늘지 않습니다.
 
-  [![생성된 위키에 Obsidian 네이티브 Graph View를 연 화면 — 소스, 엔티티, 개념 페이지가 하나의 연결된 그래프로 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![생성된 위키에 Obsidian 네이티브 Graph View를 연 화면 — 소스, 엔티티, 개념 페이지가 하나의 연결된 그래프로 보입니다](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — 공식 브라우저 확장입니다. 웹 페이지(기사, 블로그 글, Reddit 스레드, Hacker News, 논문, YouTube 자막)를 볼트의 아무 폴더에나 저장한 뒤, **폴더에서 수집**을 실행해 엔티티와 개념을 한꺼번에 뽑습니다.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — DQL(`LIST FROM "wiki/entities" WHERE contains(tags, "person")`)이나 JS API로 위키를 데이터베이스처럼 질의합니다. 플러그인이 모든 페이지에 표준 frontmatter(`tags:`, `type:`, `aliases:`)를 씁니다.

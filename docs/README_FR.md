@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Bannière du plugin Karpathy LLM Wiki — un réseau de pages wiki reliées entre elles, construites à partir de vos notes Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Bannière du plugin Karpathy LLM Wiki — un réseau de pages wiki reliées entre elles, construites à partir de vos notes Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Plugin Karpathy LLM Wiki pour Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **Installez.** Obsidian → Paramètres → Plugins communautaires → Parcourir → recherchez « Karpathy LLM Wiki » → Installer → Activer. Vous pouvez aussi ouvrir la [page du plugin communautaire](https://community.obsidian.md/plugins/karpathywiki) et cliquer sur **Ajouter à Obsidian**.
 
-   [![Le plugin Karpathy LLM Wiki installé et activé dans la liste des plugins communautaires d'Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![Le plugin Karpathy LLM Wiki installé et activé dans la liste des plugins communautaires d'Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **Configurez un fournisseur.** Ouvrez Paramètres → Karpathy LLM Wiki → choisissez un fournisseur (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → saisissez la clé API (inutile en local) → cliquez sur **Tester la connexion** → Enregistrez.
 
@@ -141,7 +141,7 @@ your-vault/
 
    Un panneau latéral ancré à droite s'ouvre (façon Copilot) : vous dialoguez avec votre wiki. Les réponses portent des `[[wiki-links]]` qui vous ramènent dans votre graphe de connaissances.
 
-   [![Une réponse de Query wiki dans le panneau latéral droit, chaque affirmation renvoyant en note de bas de page à la page wiki qui la fonde](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![Une réponse de Query wiki dans le panneau latéral droit, chaque affirmation renvoyant en note de bas de page à la page wiki qui la fonde](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglées dans le ruban gauche, accessibles en un clic à tout moment. (`Cmd` sur macOS, `Ctrl` sous Windows et Linux.)
 
@@ -159,7 +159,7 @@ Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglée
 | ⏹ **Annuler** | `Cmd+P` / `Ctrl+P` → « Annuler l'ingestion en cours » ou cliquez sur la barre d'état — arrêt propre à la limite de lot suivante. |
 | 📊 **Voir l'historique d'ingestion** | `Cmd+P` / `Ctrl+P` → « Voir l'historique d'ingestion » — interface de recherche pour les ingestions, les rapports de vérification et les maintenances passés. |
 
-[![Toutes les commandes de Karpathy LLM Wiki, réunies sous un seul préfixe dans la palette de commandes d'Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![Toutes les commandes de Karpathy LLM Wiki, réunies sous un seul préfixe dans la palette de commandes d'Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | Avant | Après |
 | --- | --- |
@@ -179,7 +179,7 @@ Voilà tout. L'ingestion et « Interroger le wiki » sont toutes deux épinglée
 - 🧩 **Fusion intelligente et état de contradiction** — les doublons fusionnent en conservant leurs alias ; les contradictions sont signalées avec attribution de source ; les pages `reviewed: true` sont protégées contre l'écrasement.
 - 🎨 **Un vocabulaire de tags, le vôtre** — les tags qu'une page peut porter viennent des tags imbriqués de vos notes, des tags déjà présents sur les pages wiki, et de la liste *Personnalisé (défini par l'utilisateur)* sous Paramètres → Configuration du Wiki → Configuration du vocabulaire des tags. Le prompt, la porte d'écriture, le lint et le retag lisent cette seule liste : ce qui est proposé au modèle atterrit sur le disque. Une valeur qui n'y figure pas est écartée, jamais écrite. Les petits modèles dérivent quand même (environ un passage sur dix renvoie la taxonomie du modèle lui-même) — la porte l'attrape et le lint signale la page. Point d'ancrage de la conception : [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![Une page de concept générée : le tag de vocabulaire avec lequel elle a été écrite, ses alias AF et AFib, sa définition et les pages liées](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![Une page de concept générée : le tag de vocabulaire avec lequel elle a été écrite, ses alias AF et AFib, sa définition et les pages liées](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Ingestion de documents / PDF / images
 
@@ -227,7 +227,7 @@ Six voies, permutables à chaque ingestion :
 - ⚡ **Réparation intelligente de tout** — réparation en un clic dans l'ordre causal : remplir les alias → fusionner les doublons → réparer les liens morts → relier les orphelines → étendre les pages vides, avec un rapport par phase.
 - 📊 **Panneau d'historique des opérations** — interface de recherche et de filtrage sur les ingestions, rapports de vérification et maintenances passées.
 
-[![Le rapport de vérification du wiki — la ligne d'état, les liens morts qu'il a trouvés et le bouton Réparation intelligente de tout qui les répare en une passe](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Le rapport de vérification du wiki — la ligne d'état, les liens morts qu'il a trouvés et le bouton Réparation intelligente de tout qui les répare en une passe](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Portes qui s'exécutent avant qu'un appel soit facturé et paramètres qui orientent une exécution</strong></summary>
@@ -269,7 +269,7 @@ L'essentiel de ce que fait le plugin est décidé pour vous. Ces huit paramètre
 - 📚 **14 langues de sortie wiki** — le même choix ; à définir dans Paramètres → Configuration du wiki, avec une option *Entrée personnalisée* pour les invites ponctuelles.
 - **Toute l'interface est traduite par langue** — chaque libellé, chaque fenêtre, chaque notification. Ajouter une langue vient de la communauté (le modèle est la PR #159).
 
-[![La langue d'interface et la langue de sortie du wiki sont deux réglages distincts : un wiki en chinois peut tourner derrière une interface en anglais](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![La langue d'interface et la langue de sortie du wiki sont deux réglages distincts : un wiki en chinois peut tourner derrière une interface en anglais](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ Le plugin s'articule avec le reste de votre pile Obsidian — chaque outil ci-de
 - 📄 **[Backend MinerU multi-format](https://mineru.net/apiManage/docs)** — ce qui exigeait autrefois une étape CLI ou interface séparée est devenu un simple réglage du plugin ; voir [Ingestion de documents / PDF / images](#-ingestion-de-documents--pdf--images). Le [service en ligne MinerU](https://mineru.net/OpenSourceTools/Extractor) et [MinerU auto-hébergé](https://github.com/opendatalab/mineru) sont également pris en charge.
 - 🕸️ **Obsidian Graph View** — ouvrez le graphe natif sur n'importe quelle page wiki ; chaque `[[wiki-link]]` devient un nœud, chaque lien retour une arête. Intégré, zéro octet de bundle en plus.
 
-  [![Le Graph View natif d'Obsidian sur un wiki généré : pages sources, entités et concepts en un seul graphe connecté](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![Le Graph View natif d'Obsidian sur un wiki généré : pages sources, entités et concepts en un seul graphe connecté](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — l'extension de navigateur officielle. Enregistrez des pages web (articles, billets de blog, fils Reddit, Hacker News, articles de recherche, transcriptions YouTube) dans n'importe quel dossier de votre coffre, puis lancez « Importer depuis un dossier » pour extraire en lot entités et concepts.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — interrogez le wiki comme une base de données, avec DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) ou l'API JS. Le plugin écrit un frontmatter standard (`tags:`, `type:`, `aliases:`) sur chaque page : les requêtes Dataview fonctionnent aussitôt.

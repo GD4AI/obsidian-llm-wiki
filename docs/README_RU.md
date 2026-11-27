@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Баннер плагина Karpathy LLM Wiki — сеть взаимосвязанных wiki-страниц, построенных из ваших заметок Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Баннер плагина Karpathy LLM Wiki — сеть взаимосвязанных wiki-страниц, построенных из ваших заметок Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Плагин Karpathy LLM Wiki для Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **Установите.** Obsidian → Настройки → Сторонние плагины → Обзор → найдите **«Karpathy LLM Wiki»** → Установить → Включить. Или откройте [страницу плагина в каталоге сообщества](https://community.obsidian.md/plugins/karpathywiki) и нажмите **Add to Obsidian**.
 
-   [![Плагин Karpathy LLM Wiki установлен и включён в списке сторонних плагинов Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![Плагин Karpathy LLM Wiki установлен и включён в списке сторонних плагинов Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **Настройте провайдера.** Откройте Настройки → Karpathy LLM Wiki → выберите провайдера (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) и т. д.) → введите API-ключ (для локальных не нужен) → нажмите **Проверить подключение** → **Сохранить**.
 
@@ -141,7 +141,7 @@ your-vault/
 
    Справа открывается закреплённая боковая панель в стиле Copilot, где можно разговаривать со своей Wiki. Ответы несут `[[wiki-links]]` обратно в ваш граф знаний.
 
-   [![Ответ «Запрос к Wiki» в правой боковой панели: каждое утверждение имеет сноску на страницу Wiki, из которой оно взято](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![Ответ «Запрос к Wiki» в правой боковой панели: каждое утверждение имеет сноску на страницу Wiki, из которой оно взято](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 Вот и всё. И **«Импорт»**, и **«Запрос к Wiki»** закреплены на левой ленте, доступны в один клик в любой момент. (`Cmd` на macOS, `Ctrl` на Windows/Linux.)
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **Отмена** | `Cmd+P` / `Ctrl+P` → «Отменить текущий импорт» или щелчок по строке состояния — останавливается аккуратно на границе следующего пакета. |
 | 📊 **История импорта** | `Cmd+P` / `Ctrl+P` → «Просмотр истории операций» — интерфейс с поиском по прошлым импортам, отчётам lint и прогонам обслуживания. |
 
-[![Все команды Karpathy LLM Wiki, собранные под одним префиксом в палитре команд Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![Все команды Karpathy LLM Wiki, собранные под одним префиксом в палитре команд Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | До | После |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **Умное слияние и состояние противоречий** — дубликаты сливаются с сохранением псевдонимов; противоречия помечаются с указанием источника; страницы с `reviewed: true` защищены от перезаписи.
 - 🎨 **Один словарь тегов — ваш** — теги, которые может нести страница, приходят из вложенных тегов ваших заметок, тегов, уже стоящих на страницах Wiki, и списка Пользовательский (определяется пользователем) в разделе Настройки → Конфигурация Wiki → Конфигурация словаря тегов. Промпт, шлюз записи, lint и retag читают один и тот же список, поэтому модели предлагается ровно то, что попадает на диск; значение вне списка отбрасывается и не записывается никогда. Маленькие модели всё равно отклоняются (примерно один прогон из десяти возвращает собственную таксономию модели) — шлюз это ловит, а Lint сообщает о такой странице. Якорь дизайна: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![Сгенерированная страница концепции: тег из словаря, с которым она записана, её псевдонимы AF и AFib, определение и связанные страницы](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![Сгенерированная страница концепции: тег из словаря, с которым она записана, её псевдонимы AF и AFib, определение и связанные страницы](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Импорт документов / PDF / изображений
 
@@ -227,7 +227,7 @@ your-vault/
 - ⚡ **Smart fix всех** — исправление в причинном порядке одним кликом: заполнить псевдонимы → слить дубликаты → исправить мёртвые ссылки → связать висячие страницы → расширить пустые, с отчётом по каждой фазе.
 - 📊 **Панель истории операций** — интерфейс с поиском и фильтрами по прошлым импортам, отчётам lint и прогонам обслуживания.
 
-[![Отчёт lint по Wiki: строка состояния, найденные мёртвые ссылки и кнопка Smart fix all, которая исправляет их за один проход](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Отчёт lint по Wiki: строка состояния, найденные мёртвые ссылки и кнопка Smart fix all, которая исправляет их за один проход](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Шлюзы, которые срабатывают до того, как провайдер возьмёт плату за вызов, и настройки, определяющие прогон</strong></summary>
@@ -269,7 +269,7 @@ your-vault/
 - 📚 **14 языков вывода Wiki** — тот же набор; выбирается в Настройки → Конфигурация Wiki, плюс опция Custom input для разовых промптов.
 - **Все строки интерфейса переведены для каждого языка** — каждая метка, модальное окно и уведомление. Следующий язык добавляют контрибьюторы (образец — PR #159).
 
-[![Язык интерфейса и язык вывода Wiki — две отдельные настройки, поэтому китайская Wiki может работать при английском интерфейсе](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![Язык интерфейса и язык вывода Wiki — две отдельные настройки, поэтому китайская Wiki может работать при английском интерфейсе](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ your-vault/
 - 📄 **[Мультиформатный бэкенд MinerU](https://mineru.net/apiManage/docs)** — то, что раньше было отдельным шагом CLI или интерфейса, теперь переключатель плагина; см. [Импорт документов / PDF / изображений](#-импорт-документов--pdf--изображений). Поддерживаются и [онлайн-сервис MinerU](https://mineru.net/OpenSourceTools/Extractor), и [собственный хостинг MinerU](https://github.com/opendatalab/mineru).
 - 🕸️ **Obsidian Graph View** — откройте нативный граф на любой странице Wiki; каждая `[[wiki-link]]` становится узлом, каждая обратная ссылка — ребром. Встроен, не добавляет размера бандла.
 
-  [![Нативный Graph View Obsidian на сгенерированной Wiki: страницы источников, сущностей и концепций как один связный граф](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![Нативный Graph View Obsidian на сгенерированной Wiki: страницы источников, сущностей и концепций как один связный граф](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — официальное расширение для браузера. Сохраняйте веб-страницы (статьи, посты блогов, треды Reddit, Hacker News, научные работы, расшифровки YouTube) в любую папку хранилища, затем запускайте **«Импорт из папки»**, чтобы пакетно извлечь сущности и концепции.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — запрашивайте Wiki как базу данных через DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) или JS API. Плагин пишет стандартный frontmatter (`tags:`, `type:`, `aliases:`) на каждой странице.

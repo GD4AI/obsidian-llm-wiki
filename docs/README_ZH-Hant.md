@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Karpathy LLM Wiki 外掛橫幅：由你的 Obsidian 筆記長出的一張互聯 Wiki 頁面網路](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Karpathy LLM Wiki 外掛橫幅：由你的 Obsidian 筆記長出的一張互聯 Wiki 頁面網路](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Obsidian 的 Karpathy LLM Wiki 外掛
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **安裝。** Obsidian → 設定 → 社群外掛 → 瀏覽 → 搜尋 **「Karpathy LLM Wiki」** → 安裝 → 啟用。或到 [社群外掛頁面](https://community.obsidian.md/plugins/karpathywiki) 點 **Add to Obsidian**。
 
-   [![在 Obsidian 社群外掛清單中已安裝並啟用的 Karpathy LLM Wiki](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![在 Obsidian 社群外掛清單中已安裝並啟用的 Karpathy LLM Wiki](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **設定供應商。** 開啟 設定 → Karpathy LLM Wiki → 選一個供應商（OpenAI、Anthropic、Ollama、ChatGPT Plan (Codex OAuth) 等）→ 輸入 API key（本機模型不需要）→ 點 **測試連線** → **儲存**。
 
@@ -141,7 +141,7 @@ your-vault/
 
    右側會停靠一個類 Copilot 的側邊面板，你可以在裡面與 Wiki 對話。答案帶著 `[[wiki-links]]` 回到你的知識圖譜。
 
-   [![查詢 Wiki 的答案出現在右側停靠面板，每一句都標出來源頁](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![查詢 Wiki 的答案出現在右側停靠面板，每一句都標出來源頁](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 就這樣。**攝入** 與 **查詢 Wiki** 都釘在左側 ribbon，隨時一鍵可用。（macOS 用 `Cmd`，Windows/Linux 用 `Ctrl`。）
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **取消** | `Cmd+P` / `Ctrl+P` →「取消當前提取」，或點狀態列——在下一個批次邊界乾淨停下。 |
 | 📊 **檢視攝入歷史** | `Cmd+P` / `Ctrl+P` →「檢視攝入歷史」——可搜尋的介面，瀏覽過去的攝入、Lint 報告與維護執行。 |
 
-[![命令面板裡所有 Karpathy LLM Wiki 指令都收在同一個前綴下](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![命令面板裡所有 Karpathy LLM Wiki 指令都收在同一個前綴下](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | 之前 | 之後 |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **智慧合併與矛盾狀態**——重複頁合併時保留別名；矛盾會標示出來並附來源；`reviewed: true` 的頁面不會被覆寫。
 - 🎨 **一套標籤詞彙，由你決定**——一頁可以帶哪些標籤，來自你筆記裡的巢狀標籤、Wiki 頁面上既有的標籤，以及 設定 → Wiki 配置 → 標籤（Tags)詞彙表配置 裡的 自定義 (使用者定義) 清單。提示詞、寫入閘門、Lint 與重新打標籤讀的都是這同一份清單，所以模型拿到的就是會落到磁碟上的；清單以外的值會被丟棄，永遠不寫入。小型模型仍會漂移（大約每十次有一次回傳模型自己的分類）——閘門會攔下，Lint 會回報那一頁。設計錨點：[Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
-[![一頁生成好的概念頁：寫入時使用的詞彙標籤、別名 AF 與 AFib、定義，以及與它相關的頁面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![一頁生成好的概念頁：寫入時使用的詞彙標籤、別名 AF 與 AFib、定義，以及與它相關的頁面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 文件 / PDF / 圖片攝入
 
@@ -227,7 +227,7 @@ your-vault/
 - ⚡ **一鍵修復所有問題**——依因果順序一鍵修復：補別名 → 合併重複 → 修斷鏈 → 連結孤立頁 → 擴充空頁，附各階段報告。
 - 📊 **檢視攝入歷史**——可搜尋、可篩選的介面，瀏覽過去的攝入、Lint 報告與維護執行。
 
-[![Wiki 維護報告：狀態列、找到的斷鏈，以及一次修完的一鍵修復按鈕](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Wiki 維護報告：狀態列、找到的斷鏈，以及一次修完的一鍵修復按鈕](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>花錢之前先跑的閘門，以及會左右一次執行的設定</strong></summary>
@@ -269,7 +269,7 @@ your-vault/
 - 📚 **14 種 Wiki 輸出語言**——同一組語言；在 設定 → Wiki Configuration 選擇，另有 Custom 輸入選項可臨時指定提示詞。
 - **每個語系的 UI 字串都已完整翻譯**——每個標籤、彈窗與通知。新增更多語言由貢獻者驅動（PR #159 的模式）。
 
-[![介面語言與 Wiki 輸出語言是兩個獨立設定，所以中文 Wiki 可以搭配英文介面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![介面語言與 Wiki 輸出語言是兩個獨立設定，所以中文 Wiki 可以搭配英文介面](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ your-vault/
 - 📄 **[MinerU 多格式後端](https://mineru.net/apiManage/docs)**——過去要另開 CLI／UI 的步驟，現在只是外掛裡的一個開關；見 [文件 / PDF / 圖片攝入](#-文件--pdf--圖片攝入)。[MinerU 線上服務](https://mineru.net/OpenSourceTools/Extractor) 與[自行架設 MinerU](https://github.com/opendatalab/mineru) 也都支援。
 - 🕸️ **Obsidian 圖譜檢視**——在任何 Wiki 頁面開啟原生圖譜；每個 `[[wiki-link]]` 是一個節點，每條反向連結是一條邊。內建功能，零額外體積。
 
-  [![在生成的 Wiki 上開啟 Obsidian 原生圖譜檢視：來源頁、實體頁與概念頁連成一張圖](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![在生成的 Wiki 上開啟 Obsidian 原生圖譜檢視：來源頁、實體頁與概念頁連成一張圖](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)**——官方瀏覽器擴充。把網頁（文章、部落格、Reddit 討論、Hacker News、研究論文、YouTube 字幕）存到 vault 裡任一資料夾，再執行 **從資料夾攝入**，批次抽出實體與概念。
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)**——用 DQL（`LIST FROM "wiki/entities" WHERE contains(tags, "person")`）或 JS API 像查資料庫一樣查 Wiki。外掛在每一頁寫標準 frontmatter（`tags:`、`type:`、`aliases:`）。

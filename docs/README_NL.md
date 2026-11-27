@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Banner van de Karpathy LLM Wiki-plug-in — een netwerk van onderling gekoppelde wikipagina's, gebouwd uit je Obsidian-notities](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Banner van de Karpathy LLM Wiki-plug-in — een netwerk van onderling gekoppelde wikipagina's, gebouwd uit je Obsidian-notities](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Karpathy LLM Wiki-plug-in voor Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **Installeren.** Obsidian → Instellingen → Plug-ins van de community → Bladeren → zoek **"Karpathy LLM Wiki"** → Installeren → Inschakelen. Of ga naar de [pagina in de plug-inbibliotheek](https://community.obsidian.md/plugins/karpathywiki) en klik op **Add to Obsidian**.
 
-   [![Karpathy LLM Wiki geïnstalleerd en ingeschakeld in de plug-inlijst van Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![Karpathy LLM Wiki geïnstalleerd en ingeschakeld in de plug-inlijst van Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **Een provider instellen.** Open Instellingen → Karpathy LLM Wiki → kies een provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), enz.) → vul de API-sleutel in (niet nodig bij een lokaal model) → klik op **Verbinding testen** → **Opslaan**.
 
@@ -141,7 +141,7 @@ your-vault/
 
    Rechts opent een zijpaneel, zoals bij een copiloot, waarin je met je wiki kunt praten. De antwoorden dragen `[[wiki-links]]`s terug naar je kennisgraaf.
 
-   [![Een antwoord van Query Wiki in het zijpaneel rechts, waarbij elke bewering verwijst naar de wikipagina waar hij vandaan komt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![Een antwoord van Query Wiki in het zijpaneel rechts, waarbij elke bewering verwijst naar de wikipagina waar hij vandaan komt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in de linkerzijlint, dus altijd binnen één klik. (`Cmd` op macOS, `Ctrl` op Windows en Linux.)
 
@@ -159,7 +159,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in de linkerzijlint
 | ⏹ **Stoppen** | `Cmd+P` / `Ctrl+P` → "Inlezen stoppen" of klik op de statusbalk — stopt netjes aan het begin van de volgende ronde. |
 | 📊 **Geschiedenis** | `Cmd+P` / `Ctrl+P` → "Geschiedenis van handelingen" — doorzoekbaar overzicht van eerdere inleesrondes, lintrapporten en onderhoud. |
 
-[![Alle opdrachten van Karpathy LLM Wiki, gegroepeerd onder één voorvoegsel in het opdrachtenpalet van Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![Alle opdrachten van Karpathy LLM Wiki, gegroepeerd onder één voorvoegsel in het opdrachtenpalet van Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | Voor | Na |
 | --- | --- |
@@ -179,7 +179,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in de linkerzijlint
 - 🧩 **Slim samenvoegen en tegenstrijdigheden** — dubbelen worden samengevoegd met behoud van aliassen; tegenstrijdigheden worden gemarkeerd met hun bron; pagina's met `reviewed: true` worden nooit overschreven.
 - 🎨 **Eén taglijst, de jouwe** — de tags die een pagina mag dragen komen uit de geneste tags van je notities, de tags die al op wikipagina's staan, en de lijst onder Eigen (zelf gedefinieerd) in Instellingen → Configuratie van de wiki → Configuratie van de taglijst. Prompt, schrijfcontrole, lint en opnieuw taggen lezen allemaal die ene lijst, dus wat het model aangeboden krijgt is wat er op schijf komt; een waarde daarbuiten wordt weggegooid en nooit geschreven. Kleine modellen wijken toch af (ongeveer één op de tien rondes geeft de eigen indeling van het model) — de controle vangt dat en de lintcontrole meldt de pagina. Ontwerpanchor: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![Een gegenereerde conceptpagina: de tag uit de lijst waarmee hij is geschreven, de aliassen AF en AFib, de definitie en de pagina's die ermee samenhangen](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![Een gegenereerde conceptpagina: de tag uit de lijst waarmee hij is geschreven, de aliassen AF en AFib, de definitie en de pagina's die ermee samenhangen](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Documenten, PDF en afbeeldingen inlezen
 
@@ -227,7 +227,7 @@ Zes routes, per inleesronde te kiezen:
 - ⚡ **Alles slim herstellen** — herstel in de juiste volgorde met één klik: aliassen aanvullen → dubbelen samenvoegen → dode koppelingen herstellen → verweesde pagina's koppelen → lege pagina's aanvullen, met een rapport per fase.
 - 📊 **Paneel met de geschiedenis** — doorzoekbaar en te filteren overzicht van eerdere inleesrondes, lintrapporten en onderhoud.
 
-[![Lintrapport van de wiki — de statusregel, de gevonden dode koppelingen en de knop die ze in één keer herstelt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Lintrapport van de wiki — de statusregel, de gevonden dode koppelingen en de knop die ze in één keer herstelt](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Controles die draaien voordat de provider de aanroep in rekening brengt & instellingen die een ronde bepalen</strong></summary>
@@ -269,7 +269,7 @@ Het meeste doet de plug-in zelf. Deze acht instellingen veranderen dat, en elk e
 - 📚 **14 talen voor de wiki-uitvoer** — dezelfde reeks; te kiezen in Instellingen → Configuratie van de wiki, plus de optie *Zelf invullen* voor eenmalige vragen.
 - **Alle teksten per taal vertaald** — elk label, elk venster en elke melding. Een andere taal toevoegen gebeurt door bijdragers (PR #159 is het voorbeeld).
 
-[![Taal van de interface en taal van de wiki-uitvoer zijn twee aparte instellingen, dus een Chinese wiki kan achter een Nederlandse interface draaien](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![Taal van de interface en taal van de wiki-uitvoer zijn twee aparte instellingen, dus een Chinese wiki kan achter een Nederlandse interface draaien](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ De plug-in werkt samen met de rest van je Obsidian-opstelling — elk programma 
 - 📄 **[MinerU voor meerdere formaten](https://mineru.net/apiManage/docs)** — wat eerst een aparte stap op de opdrachtregel of in een scherm was, is nu een schakelaar in de plug-in; zie [Documenten, PDF en afbeeldingen inlezen](#-documenten-pdf-en-afbeeldingen-inlezen). De [online dienst van MinerU](https://mineru.net/OpenSourceTools/Extractor) en [MinerU zelf gehost](https://github.com/opendatalab/mineru) worden ook ondersteund.
 - 🕸️ **Grafiekweergave van Obsidian** — open de gewone grafiek op elke wikipagina; elke `[[wiki-link]]` wordt een knooppunt en elke koppeling terug een verbinding. Ingebouwd, zonder extra omvang.
 
-  [![De grafiekweergave van Obsidian op een gegenereerde wiki — bron-, entiteits- en conceptpagina's als één samenhangende graaf](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![De grafiekweergave van Obsidian op een gegenereerde wiki — bron-, entiteits- en conceptpagina's als één samenhangende graaf](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — de officiële uitbreiding voor de browser. Bewaar webpagina's (artikelen, blogposts, Reddit-threads, Hacker News, onderzoeksartikelen, YouTube-transcripties) in elke map van je kluis en gebruik daarna **Een map inlezen** om entiteiten en concepten in één keer eruit te halen.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ondervraag de wiki als een database met DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) of met de JS-API. De plug-in schrijft op elke pagina gewone frontmatter (`tags:`, `type:`, `aliases:`).

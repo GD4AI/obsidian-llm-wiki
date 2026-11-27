@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Banner do plugin Karpathy LLM Wiki — uma rede de páginas wiki interligadas, construída a partir das suas notas do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Banner do plugin Karpathy LLM Wiki — uma rede de páginas wiki interligadas, construída a partir das suas notas do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Plugin Karpathy LLM Wiki para Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **Instalar.** Obsidian → Configurações → Plugins da comunidade → Procurar → pesquise **"Karpathy LLM Wiki"** → Instalar → Ativar. Ou visite a [página do plugin na comunidade](https://community.obsidian.md/plugins/karpathywiki) e clique em **Add to Obsidian**.
 
-   [![O Karpathy LLM Wiki instalado e ativado na lista de plugins da comunidade do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![O Karpathy LLM Wiki instalado e ativado na lista de plugins da comunidade do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **Configurar um provedor.** Abra Configurações → Karpathy LLM Wiki → escolha um provedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → introduza a chave de API (não é necessária para modelos locais) → clique em **Testar conexão** → **Guardar**.
 
@@ -141,7 +141,7 @@ your-vault/
 
    Abre-se um painel lateral direito (ao estilo Copilot) onde pode conversar com a sua wiki. As respostas trazem `[[wiki-links]]` de volta para o seu grafo de conhecimento.
 
-   [![Uma resposta do Consultar Wiki no painel lateral direito, com cada afirmação remetida por nota de rodapé para a página wiki de onde veio](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![Uma resposta do Consultar Wiki no painel lateral direito, com cada afirmação remetida por nota de rodapé para a página wiki de onde veio](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 É isto. Tanto **Ingerir** como **Consultar Wiki** estão fixados na faixa lateral esquerda, para acesso com um clique a qualquer momento. (`Cmd` no macOS, `Ctrl` no Windows e no Linux.)
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **Cancelar** | `Cmd+P` / `Ctrl+P` → "Cancelar ingestão atual" ou clique na barra de estado — para de forma limpa no limite do lote seguinte. |
 | 📊 **Histórico de ingestão** | `Cmd+P` / `Ctrl+P` → "Ver histórico de ingestão" — interface pesquisável das ingestões passadas, dos relatórios de Lint e das execuções de manutenção. |
 
-[![Todos os comandos do Karpathy LLM Wiki reunidos sob um único prefixo na paleta de comandos do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![Todos os comandos do Karpathy LLM Wiki reunidos sob um único prefixo na paleta de comandos do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | Antes | Depois |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **Fusão inteligente e estado de contradição** — os duplicados fundem-se preservando os aliases; as contradições ficam assinaladas com atribuição de fonte; as páginas com `reviewed: true` ficam protegidas contra sobrescrita.
 - 🎨 **Um vocabulário de tags, o seu** — as tags que uma página pode carregar vêm das tags aninhadas das suas notas, das tags que já existem nas páginas wiki e da lista Personalizado (definido pelo usuário) em Configurações → Configuração do Wiki → Configuração do vocabulário de tags. O prompt, a barreira de escrita, o Lint e o retag leem todos essa mesma lista, por isso o que é oferecido ao modelo é exatamente o que chega ao disco; um valor fora dela é descartado, nunca escrito. Modelos pequenos ainda derivam (cerca de uma execução em dez devolve a taxonomia do próprio modelo) — a barreira apanha, e o Lint sinaliza a página. Âncora de design: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328).
 
-[![Uma página de conceito gerada: a tag de vocabulário com que foi escrita, os seus aliases AF e AFib, a definição e as páginas com que se relaciona](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![Uma página de conceito gerada: a tag de vocabulário com que foi escrita, os seus aliases AF e AFib, a definição e as páginas com que se relaciona](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 Ingestão de documentos / PDF / imagens
 
@@ -227,7 +227,7 @@ Seis caminhos de entrada, alternáveis em cada ingestão:
 - ⚡ **Correção inteligente de tudo** — reparação em ordem causal com um clique: preencher aliases → fundir duplicados → corrigir links quebrados → ligar órfãos → expandir páginas vazias, com relatório por fase.
 - 📊 **Painel de histórico de operações** — interface pesquisável e filtrável das ingestões passadas, dos relatórios de Lint e das execuções de manutenção.
 
-[![Relatório do Lint — a linha de estado, os links quebrados encontrados e o botão Correção inteligente de tudo que os repara numa só passagem](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Relatório do Lint — a linha de estado, os links quebrados encontrados e o botão Correção inteligente de tudo que os repara numa só passagem](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>Barreiras que correm antes de o provedor cobrar a chamada e definições que moldam uma execução</strong></summary>
@@ -269,7 +269,7 @@ A maior parte do que o plugin faz está decidida por si. Estas oito definições
 - 📚 **14 idiomas de saída da wiki** — o mesmo conjunto; escolha em Configurações → Configuração do Wiki, mais uma opção de entrada personalizada para prompts pontuais.
 - **Todas as strings de interface traduzidas por locale** — cada rótulo, cada modal e cada aviso. Acrescentar outro idioma depende de contribuidores (o padrão da PR #159).
 
-[![O idioma da interface e o idioma de saída da wiki são duas definições separadas, por isso uma wiki em chinês pode correr atrás de uma interface em inglês](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![O idioma da interface e o idioma de saída da wiki são duas definições separadas, por isso uma wiki em chinês pode correr atrás de uma interface em inglês](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ O plugin compõe-se com o resto do seu stack do Obsidian — cada ferramenta aba
 - 📄 **[Backend multiformato MinerU](https://mineru.net/apiManage/docs)** — o que antes era um passo separado de CLI ou de interface é agora um interruptor do plugin; veja [Ingestão de documentos / PDF / imagens](#-ingestão-de-documentos--pdf--imagens). O [serviço online do MinerU](https://mineru.net/OpenSourceTools/Extractor) e o [MinerU auto-hospedado](https://github.com/opendatalab/mineru) também são suportados.
 - 🕸️ **Obsidian Graph View** — abra o grafo nativo em qualquer página wiki; cada `[[wiki-link]]` torna-se um nó e cada backlink uma aresta. Integrado, zero de tamanho extra no bundle.
 
-  [![A Graph View nativa do Obsidian sobre uma wiki gerada — páginas de origem, entidade e conceito como um único grafo ligado](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![A Graph View nativa do Obsidian sobre uma wiki gerada — páginas de origem, entidade e conceito como um único grafo ligado](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — extensão oficial do navegador. Guarde páginas web (artigos, posts de blog, tópicos do Reddit, Hacker News, artigos científicos, transcrições do YouTube) em qualquer pasta do seu vault e depois execute **Ingerir de pasta** para extrair entidades e conceitos em lote.
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — consulte a wiki como uma base de dados com DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) ou a API JS. O plugin escreve frontmatter padrão (`tags:`, `type:`, `aliases:`) em todas as páginas.

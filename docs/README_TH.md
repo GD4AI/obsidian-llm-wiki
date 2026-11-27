@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![แบนเนอร์ปลั๊กอิน Karpathy LLM Wiki — เครือข่ายหน้าวิกิที่เชื่อมโยงกัน สร้างจากโน้ตใน Obsidian ของคุณ](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![แบนเนอร์ปลั๊กอิน Karpathy LLM Wiki — เครือข่ายหน้าวิกิที่เชื่อมโยงกัน สร้างจากโน้ตใน Obsidian ของคุณ](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 ปลั๊กอิน Karpathy LLM Wiki สำหรับ Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **ติดตั้ง** Obsidian → การตั้งค่า → ปลั๊กอินของชุมชน → เรียกดู → ค้นหา **"Karpathy LLM Wiki"** → ติดตั้ง → เปิดใช้งาน หรือเข้าที่[หน้าปลั๊กอิน](https://community.obsidian.md/plugins/karpathywiki) แล้วกด **Add to Obsidian**
 
-   [![Karpathy LLM Wiki ที่ติดตั้งและเปิดใช้งานในรายการปลั๊กอินของ Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![Karpathy LLM Wiki ที่ติดตั้งและเปิดใช้งานในรายการปลั๊กอินของ Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **ตั้งค่าผู้ให้บริการ** เปิด การตั้งค่า → Karpathy LLM Wiki → เลือกผู้ให้บริการ (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth) ฯลฯ) → ใส่คีย์ API (ไม่ต้องใช้ถ้าเป็นโมเดลในเครื่อง) → กด **ทดสอบการเชื่อมต่อ** → **บันทึก**
 
@@ -141,7 +141,7 @@ your-vault/
 
    แผงด้านขวาจะเปิดขึ้นเหมือนผู้ช่วยข้างเคียง ให้คุณคุยกับวิกิได้ คำตอบมี `[[wiki-links]]` พากลับไปยังกราฟความรู้ของคุณ
 
-   [![คำตอบของ Query Wiki ในแผงด้านขวา ทุกข้อความอ้างอิงถึงหน้าวิกิที่มา](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![คำตอบของ Query Wiki ในแผงด้านขวา ทุกข้อความอ้างอิงถึงหน้าวิกิที่มา](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 เท่านี้ ทั้ง **นำเข้า** และ **ถามวิกิ** ปักไว้บนริบบอนด้านซ้าย ใช้ได้ในคลิกเดียวเสมอ (`Cmd` บน macOS, `Ctrl` บน Windows และ Linux)
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **หยุด** | `Cmd+P` / `Ctrl+P` → "หยุดการนำเข้าปัจจุบัน" หรือกดแถบสถานะ — หยุดอย่างเรียบร้อยที่ขอบรอบถัดไป |
 | 📊 **ประวัติ** | `Cmd+P` / `Ctrl+P` → "ดูประวัติการทำงาน" — ดูย้อนหลังได้ทั้งการนำเข้า รายงาน lint และงานดูแลระบบ |
 
-[![คำสั่งทั้งหมดของ Karpathy LLM Wiki รวมอยู่ใต้คำนำหน้าเดียวในพาเลตคำสั่งของ Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![คำสั่งทั้งหมดของ Karpathy LLM Wiki รวมอยู่ใต้คำนำหน้าเดียวในพาเลตคำสั่งของ Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | ก่อน | หลัง |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **รวมหน้าและการบันทึกข้อขัดแย้ง** — หน้าซ้ำถูกรวมโดยเก็บ alias ไว้ ข้อขัดแย้งถูกทำเครื่องหมายพร้อมแหล่งที่มา หน้าที่มี `reviewed: true` ไม่ถูกเขียนทับ
 - 🎨 **ชุดแท็กเดียวที่เป็นของคุณ** — แท็กที่หน้าใดมีได้มาจากแท็กซ้อนในโน้ตของคุณ แท็กที่อยู่บนหน้าวิกิแล้ว และรายการ กำหนดเอง (ผู้ใช้กำหนด) ใน การตั้งค่า → การตั้งค่าวิกิ → การตั้งค่าชุดแท็ก พรอมต์ การตรวจตอนเขียน lint และการติดแท็กใหม่อ่านรายการเดียวกันหมด สิ่งที่โมเดลได้จึงเป็นสิ่งที่ลงดิสก์ ค่าที่อยู่นอกรายการถูกทิ้ง ไม่ถูกเขียน โมเดลเล็กยังคลาดได้ (ประมาณหนึ่งในสิบรอบตอบอนุกรมของตัวเอง) การตรวจจับได้และ lint รายงานหน้าไว้ จุดยึดของการออกแบบ: [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)
 
-[![หน้าของแนวคิดที่สร้างขึ้น: แท็กจากชุดที่ใช้เขียน alias AF และ AFib คำนิยาม และหน้าที่เกี่ยวข้อง](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![หน้าของแนวคิดที่สร้างขึ้น: แท็กจากชุดที่ใช้เขียน alias AF และ AFib คำนิยาม และหน้าที่เกี่ยวข้อง](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 เอกสาร PDF และรูปภาพ
 
@@ -227,7 +227,7 @@ your-vault/
 - ⚡ **ซ่อมทั้งหมดอัตโนมัติ** — ซ่อมในคลิกเดียวตามลำดับเหตุและผล: เติม alias → รวมหน้าซ้ำ → ซ่อมลิงก์ตาย → ใส่ลิงก์ให้หน้าที่ไม่มีใครลิงก์ถึง → เติมหน้าว่าง พร้อมรายงานแยกขั้น
 - 📊 **แผงประวัติการทำงาน** — ดูย้อนหลังได้ ค้นหาและกรองได้ ทั้งการนำเข้า รายงาน lint และงานดูแลระบบ
 
-[![รายงาน lint ของวิกิ — บรรทัดสถานะ ลิงก์ตายที่พบ และปุ่มที่ซ่อมทั้งหมดในครั้งเดียว](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![รายงาน lint ของวิกิ — บรรทัดสถานะ ลิงก์ตายที่พบ และปุ่มที่ซ่อมทั้งหมดในครั้งเดียว](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>ด่านที่ทำงานก่อนผู้ให้บริการจะคิดเงินค่าการเรียก และการตั้งค่าที่กำหนดการทำงาน</strong></summary>
@@ -269,7 +269,7 @@ your-vault/
 - 📚 **14 ภาษาของผลลัพธ์วิกิ** — ชุดเดียวกัน เลือกได้ที่ การตั้งค่า → การตั้งค่าวิกิ พร้อมตัวเลือกกรอกเองสำหรับพรอมต์ที่ใช้ครั้งเดียว
 - **ข้อความหน้าจอแปลครบทุกภาษา** — ทุกป้าย ทุกหน้าต่าง และทุกประกาศ การเพิ่มภาษาถัดไปมาจากผู้ร่วมพัฒนา (PR #159 เป็นตัวอย่าง)
 
-[![ภาษาหน้าจอและภาษาผลลัพธ์วิกิเป็นการตั้งค่าสองอย่าง วิกิภาษาจีนจึงทำงานคู่กับหน้าจอภาษาอังกฤษได้](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![ภาษาหน้าจอและภาษาผลลัพธ์วิกิเป็นการตั้งค่าสองอย่าง วิกิภาษาจีนจึงทำงานคู่กับหน้าจอภาษาอังกฤษได้](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ your-vault/
 - 📄 **[MinerU สำหรับหลายรูปแบบ](https://mineru.net/apiManage/docs)** — สิ่งที่เคยเป็นขั้นแยกบนบรรทัดคำสั่งหรือหน้าเว็บ ตอนนี้เป็นสวิตช์ในปลั๊กอิน ดู [เอกสาร PDF และรูปภาพ](#-เอกสาร-pdf-และรูปภาพ) [บริการออนไลน์ของ MinerU](https://mineru.net/OpenSourceTools/Extractor) และ[ติดตั้ง MinerU เอง](https://github.com/opendatalab/mineru) ก็รองรับด้วย
 - 🕸️ **กราฟวิวของ Obsidian** — เปิดกราฟปกติบนหน้าวิกิใดก็ได้ ทุก `[[wiki-link]]` กลายเป็นโหนด และทุก backlink เป็นเส้นเชื่อม มีในตัว ไม่เพิ่มขนาดแพ็กเกจ
 
-  [![กราฟวิวของ Obsidian บนวิกิที่สร้างขึ้น — หน้าต้นทาง เอนทิตี และแนวคิดเป็นกราฟเดียวที่เชื่อมกัน](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![กราฟวิวของ Obsidian บนวิกิที่สร้างขึ้น — หน้าต้นทาง เอนทิตี และแนวคิดเป็นกราฟเดียวที่เชื่อมกัน](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — ส่วนขยายเบราว์เซอร์อย่างเป็นทางการ เก็บหน้าเว็บ (บทความ บล็อก กระทู้ Reddit, Hacker News, บทความวิจัย ถอดความ YouTube) ลงโฟลเดอร์ใดก็ได้ใน vault แล้วใช้ **นำเข้าจากโฟลเดอร์** เพื่อสกัดเอนทิตีและแนวคิดเป็นชุด
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — ถามวิกิเหมือนฐานข้อมูลด้วย DQL (`LIST FROM "wiki/entities" WHERE contains(tags, "person")`) หรือ JS API ปลั๊กอินเขียน frontmatter มาตรฐาน (`tags:`, `type:`, `aliases:`) ทุกหน้า

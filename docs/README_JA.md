@@ -28,7 +28,7 @@ SEO metadata (not user-visible, parsed by crawlers / LLMs):
 
 <div align="center">
 
-[![Karpathy LLM Wiki プラグインのバナー — Obsidian のノートから組み上げた Wiki ページが相互リンクしたネットワーク](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/llm_wiki_banner.webp)
+[![Karpathy LLM Wiki プラグインのバナー — Obsidian のノートから組み上げた Wiki ページが相互リンクしたネットワーク](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/llm_wiki_banner.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/llm_wiki_banner.webp)
 
 # 🧠 Karpathy LLM Wiki Plugin for Obsidian
 
@@ -125,7 +125,7 @@ your-vault/
 
 1. **インストール。** Obsidian → 設定 → コミュニティプラグイン → ブラウズ → **「Karpathy LLM Wiki」** を検索 → インストール → 有効化。[コミュニティプラグインのページ](https://community.obsidian.md/plugins/karpathywiki) を開いて **Add to Obsidian** を押しても同じです。
 
-   [![コミュニティプラグインの一覧で、Karpathy LLM Wiki がインストール済み・有効になっている状態](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-02-install.webp)
+   [![コミュニティプラグインの一覧で、Karpathy LLM Wiki がインストール済み・有効になっている状態](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
 2. **プロバイダーを設定。** 設定 → Karpathy LLM Wiki → プロバイダーを選ぶ（OpenAI、Anthropic、Ollama、ChatGPT Plan（Codex OAuth）など）→ API キーを入力（ローカルなら不要）→ **接続テスト** → **保存**。
 
@@ -141,7 +141,7 @@ your-vault/
 
    Copilot 風の右ドッキングのサイドパネルが開き、そこで Wiki と会話できます。答えにはナレッジグラフへ戻る `[[wiki-links]]` が付きます。
 
-   [![右ドッキングのサイドパネルに表示された Wiki への問い合わせの答え — 主張ごとに、出典の Wiki ページへの脚注が付く](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-07-query-citations.webp)
+   [![右ドッキングのサイドパネルに表示された Wiki への問い合わせの答え — 主張ごとに、出典の Wiki ページへの脚注が付く](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-07-query-citations.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-07-query-citations.webp)
 
 以上です。**取り込み** と **Wikiに問い合わせ** はどちらも左リボンに固定され、いつでもワンクリックで使えます。（macOS は `Cmd`、Windows / Linux は `Ctrl`。）
 
@@ -159,7 +159,7 @@ your-vault/
 | ⏹ **キャンセル** | `Cmd+P` / `Ctrl+P` →「現在の取り込みをキャンセル」か、ステータスバーをクリック — 次のバッチの境界でクリーンに停止します。 |
 | 📊 **取り込み履歴** | `Cmd+P` / `Ctrl+P` →「取り込み履歴を表示」— 過去の取り込み、Lint レポート、メンテナンス実行を検索できる UI。 |
 
-[![コマンドパレット — Karpathy LLM Wiki のコマンドが 1 つのプレフィックスの下にまとまっている](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-03-commands.webp)
+[![コマンドパレット — Karpathy LLM Wiki のコマンドが 1 つのプレフィックスの下にまとまっている](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-03-commands.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-03-commands.webp)
 
 | 変更前 | 変更後 |
 | --- | --- |
@@ -179,7 +179,7 @@ your-vault/
 - 🧩 **スマートマージと矛盾の記録** — 重複はエイリアスを保ったままマージします。矛盾は出典付きで印を付けます。`reviewed: true` のページは上書きから守られます。
 - 🎨 **タグ語彙は 1 つ、あなたが決める** — ページが持てるタグは、ノートのネストしたタグ、Wiki ページにすでに付いているタグ、そして 設定 → Wiki設定 → タグ語彙設定 の カスタム (ユーザー定義) リストから来ます。プロンプト、書き込みゲート、Lint、再タグ付けは、どれもこの同じ 1 つのリストを読みます。モデルに提示されたものがディスクに残り、リストの外の値は捨てられて書かれません。小型モデルは今もぶれます（10 回に 1 回ほど、モデル自身の分類を返します）。ゲートがそれを受け止め、Lint が該当ページを報告します。設計の根拠は [Issue #328](https://github.com/GD4AI/obsidian-llm-wiki/issues/328)。
 
-[![生成された概念ページ — 書き込みに使われた語彙のタグ、エイリアス AF と AFib、定義、そして関連するページ](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-04-entity-page.webp)
+[![生成された概念ページ — 書き込みに使われた語彙のタグ、エイリアス AF と AFib、定義、そして関連するページ](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-04-entity-page.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-04-entity-page.webp)
 
 ### 📄 ドキュメント / PDF / 画像の取り込み
 
@@ -227,7 +227,7 @@ your-vault/
 - ⚡ **一括スマート修復** — 因果順のワンクリック修復：エイリアス補完 → 重複マージ → リンク切れ修正 → 孤立ページの接続 → 空ページの拡張。フェーズごとにレポートします。
 - 📊 **操作履歴パネル** — 過去の取り込み、Lint レポート、メンテナンス実行を検索・絞り込みできる UI。
 
-[![Wiki の Lint レポート — 状態の行、見つかったリンク切れ、そして 1 回で修復する一括スマート修復ボタン](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-08-lint-report.webp)
+[![Wiki の Lint レポート — 状態の行、見つかったリンク切れ、そして 1 回で修復する一括スマート修復ボタン](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-08-lint-report.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-08-lint-report.webp)
 
 <details>
 <summary>⚙️ <strong>呼び出しの費用を払う前に走るゲートと、実行内容を左右する設定</strong></summary>
@@ -269,7 +269,7 @@ your-vault/
 - 📚 **Wiki 出力も 14 言語** — 同じ顔ぶれです。設定 → Wiki Configuration で選びます。その場限りのプロンプト用に Custom 入力もあります。
 - **UI の文字列はロケールごとに全訳** — ラベル、モーダル、通知のすべて。今後の言語追加はコントリビューター主導です（PR #159 が前例）。
 
-[![インターフェースの言語と Wiki 出力の言語は別々の設定 — 英語の UI のまま中国語の Wiki を動かせる](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-06-language-settings.webp)
+[![インターフェースの言語と Wiki 出力の言語は別々の設定 — 英語の UI のまま中国語の Wiki を動かせる](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-06-language-settings.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-06-language-settings.webp)
 
 ---
 
@@ -280,7 +280,7 @@ your-vault/
 - 📄 **[MinerU マルチフォーマットバックエンド](https://mineru.net/apiManage/docs)** — 以前は別の CLI／UI の手順だったものが、プラグインのスイッチ 1 つになりました。経路の一覧は [ドキュメント / PDF / 画像の取り込み](#-ドキュメント--pdf--画像の取り込み) にあります。[MinerU のオンラインサービス](https://mineru.net/OpenSourceTools/Extractor) と [MinerU のセルフホスト](https://github.com/opendatalab/mineru) にも対応しています。
 - 🕸️ **Obsidian グラフビュー** — Wiki のどのページからでもネイティブのグラフを開けます。`[[wiki-link]]` はすべてノードに、バックリンクはすべてエッジになります。内蔵で、バンドルサイズは増えません。
 
-  [![生成された Wiki を Obsidian ネイティブのグラフビューで見たところ — ソース、エンティティ、概念のページが 1 つのグラフになっている](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/assets/readme/readme-05-graph-view.webp)
+  [![生成された Wiki を Obsidian ネイティブのグラフビューで見たところ — ソース、エンティティ、概念のページが 1 つのグラフになっている](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-05-graph-view.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-05-graph-view.webp)
 
 - ✂️ **[Obsidian Web Clipper](https://obsidian.md/clipper)** — 公式のブラウザ拡張です。Web ページ（記事、ブログ、Reddit のスレッド、Hacker News、論文、YouTube 字幕）を vault の好きなフォルダに保存し、**フォルダーからの取り込み**を実行すれば、エンティティと概念をまとめて抽出できます。
 - 📊 **[Dataview](https://github.com/blacksmithgu/obsidian-dataview)** — DQL（`LIST FROM "wiki/entities" WHERE contains(tags, "person")`）や JS API で、Wiki をデータベースのように引けます。プラグインは全ページに標準の frontmatter（`tags:`、`type:`、`aliases:`）を書きます。
