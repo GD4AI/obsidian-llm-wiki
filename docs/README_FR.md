@@ -150,7 +150,7 @@ Voilà tout. « Importer » et « Interroger le wiki » sont tous deux épinglé
 | Commande | Ce qu'elle fait |
 | --- | --- |
 | 📥 **Importer une source unique** | `Cmd+P` / `Ctrl+P` → « Importer une source unique » — choisissez un fichier Markdown ou PDF, vous obtenez des pages d'entité, de concept et de wiki. Aussi : 🖱️ icône autocollant du ruban sur la note active. |
-| 📂 **Importer depuis un dossier** | `Cmd+P` / `Ctrl+P` → « Importer depuis un dossier » — ingestion par lots de toutes les notes d'un dossier, avec saut intelligent des fichiers déjà ingérés. |
+| 📂 **Importer depuis un dossier** | `Cmd+P` / `Ctrl+P` → « Importer depuis un dossier » — ingestion par lots de toutes les notes d'un dossier, en ignorant les fichiers déjà ingérés. |
 | 📑 **Importer plusieurs fichiers** | `Cmd+P` / `Ctrl+P` → « Importer plusieurs fichiers » — sélectionnez un sous-ensemble dans une arborescence à deux volets (file d'attente en direct et annulation fichier par fichier). |
 | 🔍 **Interroger le wiki** | `Cmd+P` / `Ctrl+P` → « Interroger le wiki » — dialoguez avec votre wiki dans un panneau latéral ancré à droite ; les réponses portent des `[[wiki-links]]`. Aussi : 🖱️ icône bulle de message du ruban. |
 | 🛠️ **Vérifier le wiki** | `Cmd+P` / `Ctrl+P` → « Vérifier le wiki » — vérification complète : doublons, liens morts, pages vides, pages orphelines, alias manquants, contradictions. |
@@ -393,7 +393,7 @@ Pas de découpage, pas d'embeddings, pas de base vectorielle. Personalized PageR
 
 ### Comment maîtriser les coûts d'API ?
 
-Utilisez la granularité de l'extraction **Grossière** ou **Minimale** pour l'ingestion par lots. **Smart Batch Skip** détecte automatiquement les fichiers déjà ingérés. La maintenance automatique est **désactivée** par défaut, et le lint affiche le décompte exact avant de lancer les réparations — rien n'est facturé sans votre accord.
+Utilisez la granularité de l'extraction **Grossière** ou **Minimale** pour l'ingestion par lots. Les fichiers déjà ingérés sont ignorés automatiquement. La maintenance automatique est **désactivée** par défaut, et le lint affiche le décompte exact avant de lancer les réparations — rien n'est facturé sans votre accord.
 
 ### Comment annuler une opération en cours ?
 

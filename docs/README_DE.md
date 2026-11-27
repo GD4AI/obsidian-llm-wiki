@@ -150,7 +150,7 @@ Das war es. **Aufnehmen** und **Wiki anfragen** liegen beide im linken Ribbon un
 | Befehl | Was er tut |
 | --- | --- |
 | 📥 **Einzelne Quelle aufnehmen** | `Cmd+P` / `Ctrl+P` → „Einzelne Quelle aufnehmen“ — wähle eine Markdown- oder PDF-Datei, und du bekommst Entitäts-, Konzept- und Wiki-Seiten. Ebenfalls: 🖱️ Sticker-Symbol im Ribbon, wirkt auf die aktive Notiz. |
-| 📂 **Aus Ordner aufnehmen** | `Cmd+P` / `Ctrl+P` → „Aus Ordner aufnehmen“ — jede Notiz eines Ordners stapelweise aufnehmen, mit intelligentem Überspringen. |
+| 📂 **Aus Ordner aufnehmen** | `Cmd+P` / `Ctrl+P` → „Aus Ordner aufnehmen“ — jede Notiz eines Ordners stapelweise aufnehmen; bereits aufgenommene Dateien werden übersprungen. |
 | 📑 **Mehrere Dateien aufnehmen** | `Cmd+P` / `Ctrl+P` → „Mehrere Dateien aufnehmen“ — eine Teilmenge über einen zweigeteilten Dateibaum wählen (mit Live-Warteschlange und Abbruch pro Datei). |
 | 🔍 **Wiki anfragen** | `Cmd+P` / `Ctrl+P` → „Wiki anfragen“ — chatte mit deinem Wiki in einer rechts angedockten Seitenleiste; Antworten tragen `[[wiki-links]]`. Ebenfalls: 🖱️ Sprechblasen-Symbol im Ribbon. |
 | 🛠️ **Wiki prüfen** | `Cmd+P` / `Ctrl+P` → „Wiki prüfen“ — vollständige Lint-Prüfung: Duplikate, tote Links, leere Seiten, verwaiste Seiten, fehlende Aliase, Widersprüche. |
@@ -393,7 +393,7 @@ Kein Chunking, keine Embeddings, keine Vektor-Datenbank. Personalized PageRank l
 
 ### Wie halte ich die API-Kosten im Griff?
 
-Nimm für die Stapelaufnahme die Granularität Grob oder Minimal. Das automatische Überspringen erkennt bereits aufgenommene Dateien von selbst. Die automatische Wartung ist standardmäßig AUS, und Lint zeigt die genauen Zahlen, bevor es repariert — ohne deine Zustimmung wird nichts berechnet.
+Nimm für die Stapelaufnahme die Granularität Grob oder Minimal. Bereits aufgenommene Dateien werden automatisch übersprungen. Die automatische Wartung ist standardmäßig AUS, und Lint zeigt die genauen Zahlen, bevor es repariert — ohne deine Zustimmung wird nichts berechnet.
 
 ### Wie breche ich einen laufenden Vorgang ab?
 

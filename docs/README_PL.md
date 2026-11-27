@@ -150,7 +150,7 @@ To wszystko. **Wczytaj** i **Zadaj pytanie do wiki** są przypięte do wstążki
 | Polecenie | Co robi |
 | --- | --- |
 | 📥 **Wczytaj jedno źródło** | `Cmd+P` / `Ctrl+P` → „Wczytaj jedno źródło” — wybierz plik Markdown albo PDF, a dostaniesz strony encji, pojęć i źródła. Także: 🖱️ ikona naklejki przy otwartej notatce. |
-| 📂 **Wczytaj z folderu** | `Cmd+P` / `Ctrl+P` → „Wczytaj z folderu” — wczytuje wszystkie notatki z folderu, z inteligentnym pomijaniem już wczytanych. |
+| 📂 **Wczytaj z folderu** | `Cmd+P` / `Ctrl+P` → „Wczytaj z folderu” — wczytuje wszystkie notatki z folderu, pomijając te już wczytane. |
 | 📑 **Wczytaj wiele plików** | `Cmd+P` / `Ctrl+P` → „Wczytaj wiele plików” — wybierz podzbiór w drzewie z dwoma panelami (z kolejką i anulowaniem pojedynczego pliku). |
 | 🔍 **Zadaj pytanie do wiki** | `Cmd+P` / `Ctrl+P` → „Zadaj pytanie do wiki” — rozmowa z wiki w panelu po prawej; odpowiedzi nioszą `[[wiki-links]]`. Także: 🖱️ ikona dymka. |
 | 🛠️ **Skontroluj wiki** | `Cmd+P` / `Ctrl+P` → „Skontroluj wiki” — pełna kontrola lint: duplikaty, martwe odsyłacze, puste strony, strony osierocone, brakujące aliasy, sprzeczności. |
@@ -393,7 +393,7 @@ Bez cięcia na fragmenty, bez embeddingów, bez bazy wektorowej. Personalized Pa
 
 ### Jak kontrolować koszty API?
 
-Używaj ilości Zgrubnie albo Minimalnie przy wczytywaniu zbiorczym. Inteligentne pomijanie rozpoznaje pliki już wczytane. Automatyczne utrzymanie jest domyślnie WYŁĄCZONE, a lint pokazuje dokładne liczby przed naprawą — nic nie jest płatne bez twojej zgody.
+Używaj ilości Zgrubnie albo Minimalnie przy wczytywaniu zbiorczym. Pliki już wczytane są automatycznie pomijane. Automatyczne utrzymanie jest domyślnie WYŁĄCZONE, a lint pokazuje dokładne liczby przed naprawą — nic nie jest płatne bez twojej zgody.
 
 ### Jak zatrzymać trwającą operację?
 

@@ -127,7 +127,7 @@ your-vault/
 
    [![Karpathy LLM Wiki geïnstalleerd en ingeschakeld in de plug-inlijst van Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
-2. **Een provider instellen.** Open Instellingen → Karpathy LLM Wiki → kies een provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), enz.) → vul de API-sleutel in (niet nodig bij een lokaal model) → klik op **Verbinding testen** → **Opslaan**.
+2. **Een provider instellen.** Open Instellingen → Karpathy LLM Wiki → kies een provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), enz.) → vul de API-sleutel in (niet nodig bij een lokaal model) → klik op **Verbinding testen** → **Instellingen opslaan**.
 
 3. **Eén notitie inlezen.** Dat kan op twee manieren:
    - ⌨️ **Toetsenbord:** `Cmd+P` / `Ctrl+P` → **"Eén bron inlezen"** → kies een Markdown- of PDF-bestand.
@@ -150,7 +150,7 @@ Dat is alles. **Inlezen** en **Wiki bevragen** staan allebei in de linkerzijlint
 | Opdracht | Wat hij doet |
 | --- | --- |
 | 📥 **Eén bron inlezen** | `Cmd+P` / `Ctrl+P` → "Eén bron inlezen" — kies een Markdown- of PDF-bestand en je krijgt pagina's voor entiteiten, concepten en de bron. Ook: 🖱️ het stickerpictogram bij de notitie die open staat. |
-| 📂 **Een map inlezen** | `Cmd+P` / `Ctrl+P` → "Een map inlezen" — leest elke notitie in een map in, met slim overslaan van wat al gedaan is. |
+| 📂 **Een map inlezen** | `Cmd+P` / `Ctrl+P` → "Een map inlezen" — leest elke notitie in een map in; bestanden die al ingelezen zijn, worden overgeslagen. |
 | 📑 **Meerdere bestanden inlezen** | `Cmd+P` / `Ctrl+P` → "Meerdere bestanden inlezen" — kies een deelverzameling in een boom met twee panelen (met wachtrij en stoppen per bestand). |
 | 🔍 **Wiki bevragen** | `Cmd+P` / `Ctrl+P` → "Wiki bevragen" — praat met je wiki in een zijpaneel rechts; de antwoorden dragen `[[wiki-links]]`s. Ook: 🖱️ het pictogram met de tekstballon. |
 | 🛠️ **Wiki controleren** | `Cmd+P` / `Ctrl+P` → "Wiki controleren" — volledige controle: dubbelen, dode koppelingen, lege pagina's, verweesde pagina's, ontbrekende aliassen, tegenstrijdigheden. |
@@ -393,7 +393,7 @@ Geen hakken in brokstukken, geen embeddings, geen vectordatabase. Personalized P
 
 ### Hoe houd ik de kosten van de API in de hand?
 
-Gebruik de hoeveelheid Grof of Minimaal bij het in één keer inlezen. Slim overslaan herkent automatisch bestanden die al ingelezen zijn. Automatisch onderhoud staat standaard uit, en de lintcontrole toont precieze aantallen voordat er iets wordt hersteld — er wordt niets betaald zonder jouw toestemming.
+Gebruik de hoeveelheid Grof of Minimaal bij het in één keer inlezen. Bestanden die al ingelezen zijn, worden automatisch overgeslagen. Automatisch onderhoud staat standaard uit, en de lintcontrole toont precieze aantallen voordat er iets wordt hersteld — er wordt niets betaald zonder jouw toestemming.
 
 ### Hoe stop ik een lopende handeling?
 

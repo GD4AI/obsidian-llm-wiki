@@ -127,7 +127,7 @@ your-vault/
 
    [![Karpathy LLM Wiki installed and enabled in Obsidian's Community plugins list](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
-2. **Configure a provider.** Open Settings → Karpathy LLM Wiki → pick a provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → enter API key (not needed for local) → click **Test Connection** → **Save**.
+2. **Configure a provider.** Open Settings → Karpathy LLM Wiki → pick a provider (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → enter API key (not needed for local) → click **Test Connection** → **Save Settings**.
 
 3. **Ingest one note.** Two ways:
    - ⌨️ **Keyboard:** `Cmd+P` / `Ctrl+P` → **"Ingest single source"** → pick any Markdown or PDF file.
@@ -150,7 +150,7 @@ That's it. Both **Ingest** and **Query wiki** are pinned to the left ribbon for 
 | Command | What it does |
 | --- | --- |
 | 📥 **Ingest single source** | `Cmd+P` / `Ctrl+P` → "Ingest single source" — pick a Markdown or PDF file, get entity/concept/wiki pages. Also: 🖱️ ribbon sticker icon on the active note. |
-| 📂 **Ingest from folder** | `Cmd+P` / `Ctrl+P` → "Ingest from folder" — batch-ingest every note in a folder, with smart batch skip. |
+| 📂 **Ingest from folder** | `Cmd+P` / `Ctrl+P` → "Ingest from folder" — batch-ingest every note in a folder, skipping the ones already ingested. |
 | 📑 **Ingest multiple files** | `Cmd+P` / `Ctrl+P` → "Ingest multiple files" — pick a subset via a two-pane file tree (with live queue + per-file cancel). |
 | 🔍 **Query wiki** | `Cmd+P` / `Ctrl+P` → "Query wiki" — chat with your wiki in a right-docked side panel; answers carry `[[wiki-links]]`. Also: 🖱️ ribbon message-circle icon. |
 | 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki" — full health scan: duplicates, dead links, empty pages, orphans, missing aliases, contradictions. |
@@ -389,7 +389,7 @@ Pick a note, folder, or file selection: the LLM extracts entities and concepts a
 No chunking, no embeddings, no vector database. Personalized PageRank runs over the `[[wiki-link]]` graph you already maintain, giving multi-hop context at zero embedding cost.
 
 ### How do I control API costs?
-Use **Coarse** or **Minimal** extraction granularity for batch ingest. **Smart Batch Skip** auto-detects already-ingested files. Auto-Maintenance is **OFF** by default, and Lint shows exact counts before running fixes — nothing is charged without your approval.
+Use **Coarse** or **Minimal** extraction granularity for batch ingest. Files that were already ingested are skipped automatically. Auto Maintenance is **OFF** by default, and Lint shows exact counts before running fixes — nothing is charged without your approval.
 
 ### How do I cancel a running operation?
 Click the status bar (shows *"Ingesting... click to cancel"*) or run `Cmd+P` / `Ctrl+P` → **"Cancel current ingestion"**. It stops cleanly at the next batch boundary.

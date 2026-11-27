@@ -150,7 +150,7 @@ Eso es todo. Los comandos Ingestar fuente individual y Consultar wiki están fij
 | Comando | Qué hace |
 | --- | --- |
 | 📥 **Ingestar fuente individual** | `Cmd+P` / `Ctrl+P` → "Ingestar fuente individual" — elige un archivo Markdown o PDF y obtienes páginas de entidades, conceptos y wiki. También: 🖱️ el icono de pegatina de la cinta sobre la nota activa. |
-| 📂 **Ingestar desde carpeta** | `Cmd+P` / `Ctrl+P` → "Ingestar desde carpeta" — ingiere por lotes todas las notas de una carpeta, con salto inteligente de lotes. |
+| 📂 **Ingestar desde carpeta** | `Cmd+P` / `Ctrl+P` → "Ingestar desde carpeta" — ingiere por lotes todas las notas de una carpeta, omitiendo los archivos ya ingeridos. |
 | 📑 **Ingerir varios archivos** | `Cmd+P` / `Ctrl+P` → "Ingerir varios archivos" — elige una selección en un árbol de archivos de dos paneles (con cola en tiempo real y cancelación por archivo). |
 | 🔍 **Consultar wiki** | `Cmd+P` / `Ctrl+P` → "Consultar wiki" — conversa con tu wiki en un panel acoplado a la derecha; las respuestas llevan `[[wiki-links]]`. También: 🖱️ el icono de bocadillo de mensaje de la cinta. |
 | 🛠️ **Verificar wiki** | `Cmd+P` / `Ctrl+P` → "Verificar wiki" — verificación completa: duplicados, enlaces rotos, páginas vacías, huérfanas, alias ausentes y contradicciones. |
@@ -393,7 +393,7 @@ Sin troceado, sin embeddings y sin base de datos vectorial. Personalized PageRan
 
 ### ¿Cómo controlo el coste de la API?
 
-Usa la granularidad **Gruesa** o **Mínima** para ingestar por lotes. El salto inteligente de lotes detecta los archivos ya ingeridos. El Mantenimiento automático está DESACTIVADO por defecto, y Lint muestra los recuentos exactos antes de ejecutar las correcciones: no se cobra nada sin tu aprobación.
+Usa la granularidad **Gruesa** o **Mínima** para ingestar por lotes. Los archivos ya ingeridos se omiten automáticamente. El Mantenimiento automático está DESACTIVADO por defecto, y Lint muestra los recuentos exactos antes de ejecutar las correcciones: no se cobra nada sin tu aprobación.
 
 ### ¿Cómo cancelo una operación en curso?
 

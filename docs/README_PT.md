@@ -127,7 +127,7 @@ your-vault/
 
    [![O Karpathy LLM Wiki instalado e ativado na lista de plugins da comunidade do Obsidian](https://raw.githubusercontent.com/GD4AI/obsidian-llm-wiki/main/docs/assets/readme/readme-02-install.webp)](https://github.com/GD4AI/obsidian-llm-wiki/blob/main/docs/assets/readme/readme-02-install.webp)
 
-2. **Configurar um provedor.** Abra Configurações → Karpathy LLM Wiki → escolha um provedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → introduza a chave de API (não é necessária para modelos locais) → clique em **Testar conexão** → **Guardar**.
+2. **Configurar um provedor.** Abra Configurações → Karpathy LLM Wiki → escolha um provedor (OpenAI, Anthropic, Ollama, ChatGPT Plan (Codex OAuth), etc.) → introduza a chave de API (não é necessária para modelos locais) → clique em **Testar conexão** → **Salvar configurações**.
 
 3. **Ingerir uma nota.** Duas formas:
    - ⌨️ **Teclado:** `Cmd+P` / `Ctrl+P` → "Ingerir fonte individual" → escolha qualquer ficheiro Markdown ou PDF.
@@ -150,7 +150,7 @@ your-vault/
 | Comando | O que faz |
 | --- | --- |
 | 📥 **Ingerir fonte individual** | `Cmd+P` / `Ctrl+P` → "Ingerir fonte individual" — escolha um ficheiro Markdown ou PDF e obtenha páginas de entidade, conceito e wiki. Também: 🖱️ ícone de autocolante na faixa lateral, sobre a nota ativa. |
-| 📂 **Ingerir de pasta** | `Cmd+P` / `Ctrl+P` → "Ingerir de pasta" — ingere em lote todas as notas de uma pasta, com salto inteligente de lotes. |
+| 📂 **Ingerir de pasta** | `Cmd+P` / `Ctrl+P` → "Ingerir de pasta" — ingere em lote todas as notas de uma pasta, ignorando os ficheiros já ingeridos. |
 | 📑 **Ingerir vários ficheiros** | `Cmd+P` / `Ctrl+P` → "Ingerir vários ficheiros" — escolha um subconjunto numa árvore de dois painéis (com fila em direto e cancelamento por ficheiro). |
 | 🔍 **Consultar Wiki** | `Cmd+P` / `Ctrl+P` → "Consultar Wiki" — converse com a sua wiki num painel lateral direito; as respostas trazem `[[wiki-links]]`. Também: 🖱️ ícone de balão de mensagem na faixa lateral. |
 | 🛠️ **Verificar Wiki** | `Cmd+P` / `Ctrl+P` → "Verificar Wiki" — verificação completa de saúde: duplicados, links quebrados, páginas vazias, órfãs, aliases ausentes, contradições. |
@@ -389,7 +389,7 @@ Escolha uma nota, uma pasta ou uma seleção de ficheiros: o LLM extrai entidade
 Sem fragmentação, sem embeddings, sem base de dados vetorial. O Personalized PageRank corre sobre o grafo `[[wiki-link]]` que você já mantém, o que dá contexto multi-hop a custo zero de embedding.
 
 ### Como controlo os custos de API?
-Use a granularidade de extração **Grosseira** ou **Mínima** na ingestão em lote. O salto inteligente de lotes deteta automaticamente os ficheiros já ingeridos. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
+Use a granularidade de extração **Grosseira** ou **Mínima** na ingestão em lote. Os ficheiros já ingeridos são ignorados automaticamente. A manutenção automática está **DESLIGADA** por padrão, e o Lint mostra contagens exatas antes de executar as correções — nada é cobrado sem a sua aprovação.
 
 ### Como cancelo uma operação em curso?
 Clique na barra de estado (mostra *"Ingerindo... clique para cancelar"*) ou use `Cmd+P` / `Ctrl+P` → **"Cancelar ingestão atual"**. A operação para de forma limpa no limite do lote seguinte.

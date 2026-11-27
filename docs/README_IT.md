@@ -150,7 +150,7 @@ Fine. Sia **Acquisisci** sia **Interroga wiki** sono fissati alla barra laterale
 | Comando | Cosa fa |
 | --- | --- |
 | 📥 **Acquisisci singola sorgente** | `Cmd+P` / `Ctrl+P` → "Acquisisci singola sorgente": scegli un file Markdown o PDF e ottieni pagine di entità, concetti e wiki. Inoltre: 🖱️ l'icona adesiva della barra laterale, sulla nota attiva. |
-| 📂 **Acquisisci da cartella** | `Cmd+P` / `Ctrl+P` → "Acquisisci da cartella": acquisisce in blocco tutte le note di una cartella, con salto intelligente dei file già acquisiti. |
+| 📂 **Acquisisci da cartella** | `Cmd+P` / `Ctrl+P` → "Acquisisci da cartella": acquisisce in blocco tutte le note di una cartella, saltando i file già acquisiti. |
 | 📑 **Acquisisci più file** | `Cmd+P` / `Ctrl+P` → "Acquisisci più file": scegli un insieme di file con un albero a due pannelli (coda in tempo reale e annullamento per singolo file). |
 | 🔍 **Interroga wiki** | `Cmd+P` / `Ctrl+P` → "Interroga wiki": conversa con il wiki in un pannello laterale ancorato a destra; le risposte portano `[[wiki-links]]`. Inoltre: 🖱️ l'icona fumetto della barra laterale. |
 | 🛠️ **Lint wiki** | `Cmd+P` / `Ctrl+P` → "Lint wiki": scansione di integrità completa — duplicati, collegamenti interrotti, pagine vuote, pagine orfane, alias mancanti, contraddizioni. |
@@ -393,7 +393,7 @@ Nessun chunking, nessun embedding, nessun database vettoriale. Personalized Page
 
 ### Come tengo sotto controllo i costi API?
 
-Usa la granularità di estrazione **Grossolana** o **Minima** per l'acquisizione in blocco. **Smart Batch Skip** riconosce da solo i file già acquisiti. La manutenzione automatica è **disattivata** per default, e Lint mostra i conteggi esatti prima di eseguire le correzioni: niente viene addebitato senza la tua approvazione.
+Usa la granularità di estrazione **Grossolana** o **Minima** per l'acquisizione in blocco. I file già acquisiti vengono saltati automaticamente. La manutenzione automatica è **disattivata** per default, e Lint mostra i conteggi esatti prima di eseguire le correzioni: niente viene addebitato senza la tua approvazione.
 
 ### Come annullo un'operazione in corso?
 
